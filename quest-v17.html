@@ -1,0 +1,4118 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#062637">
+<title>知多半島 旅ラン QUEST｜V17 GPS</title>
+<style>
+:root{
+  --ink:#12303c;--muted:#6d7d83;--line:#e6e1d8;--gold:#f3b92e;
+  --green:#208261;--orange:#ee4b19;--blue:#0875b8;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:#e9e7e1;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",Meiryo,sans-serif}
+button{font:inherit}
+#app{width:100%;max-width:480px;min-height:100vh;margin:auto;background:#fffdf8;overflow:hidden}
+.btn{width:100%;border:0;border-radius:16px;padding:15px 13px;font-weight:950}
+.btn:active{transform:scale(.985)}
+.primary{background:linear-gradient(135deg,#062d42,#08758f);color:#fff}
+.secondary{margin-top:9px;background:#efebe4;color:#17313b}
+.gold{background:linear-gradient(135deg,#ffe37c,#e3a515);color:#3b2700}
+.orange{background:linear-gradient(135deg,#ff7d1d,#ed4313);color:#fff}
+.card{background:#fff;border:1px solid var(--line);border-radius:22px;padding:19px;box-shadow:0 10px 28px rgba(8,45,66,.06)}
+main{padding:15px 13px calc(72px + env(safe-area-inset-bottom))}
+.eyebrow{font-size:9px;letter-spacing:.14em;font-weight:950;color:#916122}
+.desc{font-size:13px;line-height:1.75;color:var(--muted)}
+
+/* COVER */
+.cover{min-height:100vh;padding:calc(24px + env(safe-area-inset-top)) 18px 26px;color:#fff;background:radial-gradient(circle at 86% 5%,rgba(255,190,64,.22),transparent 25%),linear-gradient(150deg,#031b27,#073e55 56%,#08738d)}
+.logo{width:152px;height:152px;border-radius:50%;object-fit:cover;background:#fff;border:4px solid #fff;box-shadow:0 18px 36px rgba(0,0,0,.27)}
+.kick{margin-top:17px;font-size:9px;letter-spacing:.18em;font-weight:900;color:#bdd6df}
+.cover h1{font-size:46px;line-height:.96;margin:7px 0 0}.cover h1 span{display:block;color:#ffb65d}
+.coverCopy{margin-top:17px;font-size:13px;line-height:1.85;color:#e2eff2}
+.how{margin-top:17px;padding:12px 0;border-top:1px solid rgba(255,255,255,.18);border-bottom:1px solid rgba(255,255,255,.18);font-size:11px;line-height:1.85;color:#c6dce1}
+.startTitle{margin-top:18px;font-size:10px;letter-spacing:.13em;font-weight:950;color:#ffd89b}
+.start{width:100%;margin-top:8px;padding:13px 14px;border-radius:15px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;text-align:left}
+.start b{display:block;font-size:14px}.start span{display:block;margin-top:3px;font-size:10px;opacity:.7}
+.note{text-align:center;font-size:10px;line-height:1.65;color:#b9cbd0;margin-top:10px}
+
+/* HEADER */
+header{position:sticky;top:0;z-index:40;padding:calc(9px + env(safe-area-inset-top)) 13px 10px;color:#fff;background:linear-gradient(145deg,#072d40,#0b6279);box-shadow:0 5px 18px rgba(0,0,0,.12)}
+header.s2{background:linear-gradient(145deg,#694100,#df8514)}header.s3{background:linear-gradient(145deg,#07364a,#087d9d)}
+.head{display:flex;justify-content:space-between;gap:8px}.brand{font-size:8px;letter-spacing:.14em;font-weight:900;opacity:.72}.title{font-size:18px;font-weight:950;margin-top:2px}.hr{text-align:right;font-size:9px;line-height:1.45}
+.sound{border:0;border-radius:99px;padding:5px 8px;margin-top:4px;background:rgba(255,255,255,.14);color:#fff;font-size:9px;font-weight:900}.track{font-size:8px;opacity:.74;margin-top:4px}
+.stamps{display:flex;align-items:center;gap:7px;margin-top:9px}.slot{width:47px;height:47px;border-radius:50%;overflow:hidden;position:relative;border:1px dashed rgba(255,255,255,.4);background:rgba(255,255,255,.08)}
+.slot img{width:100%;height:100%;object-fit:cover;filter:grayscale(1);opacity:.13}.slot.on{background:#fff;border:2px solid #ffd066}.slot.on img{filter:none;opacity:1}.slot.skip{opacity:.28}
+.slot small{position:absolute;right:0;bottom:0;width:17px;height:17px;border-radius:50%;display:grid;place-items:center;background:#ffb524;color:#17313b;font-size:8px;font-weight:950}.count{margin-left:auto;text-align:right;font-size:9px;font-weight:950}
+
+/* STAGE */
+.stage{min-height:475px;border:0;color:#fff;padding:25px}.stage.s1{background:linear-gradient(155deg,#062a3b,#11718b)}.stage.s2{background:linear-gradient(155deg,#664100,#ed8a15)}.stage.s3{background:linear-gradient(155deg,#07364a,#0786a6)}
+.stageNo{font-size:10px;letter-spacing:.18em;opacity:.72;font-weight:950}.stageIcon{font-size:58px;margin-top:24px}.stage h2{font-size:35px;line-height:1.03;margin:9px 0 0}.stageSub{font-size:14px;font-weight:850;margin-top:6px}
+.route{margin-top:19px;padding:13px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);border-radius:15px;font-size:12px;line-height:1.65}.mission{margin-top:15px;font-size:12px;line-height:1.7;color:#e3eff2}.stage .btn{margin-top:22px;background:#fff;color:#16343e}
+
+/* ARRIVAL + GPS */
+.arrival{padding:0;overflow:hidden;background:linear-gradient(180deg,#f9fcfd,#fff7e9)}.arriveTop{padding:21px 20px 4px}.place{font-size:31px;font-weight:950;margin-top:5px}.place.compactTitle{font-size:clamp(20px,6.15vw,27px);letter-spacing:-.055em;white-space:nowrap}.arriveText{margin-top:7px;font-size:12px;line-height:1.65;color:#728289}
+.gpsPanel{margin:17px 18px 0;padding:15px;border-radius:18px;border:1px solid #d6e5ea;background:linear-gradient(180deg,#f8fdff,#eef8fb)}
+.gpsTop{display:flex;align-items:center;gap:10px}.gpsPulse{width:42px;height:42px;flex:none;border-radius:50%;display:grid;place-items:center;background:#0a79ba;color:#fff;font-size:20px;box-shadow:0 0 0 0 rgba(10,121,186,.4);animation:gpsPulse 1.8s infinite}.gpsPulse.off{background:#85949a;animation:none}.gpsPulse.good{background:#18875f}
+@keyframes gpsPulse{0%{box-shadow:0 0 0 0 rgba(10,121,186,.35)}70%{box-shadow:0 0 0 12px rgba(10,121,186,0)}100%{box-shadow:0 0 0 0 rgba(10,121,186,0)}}
+.gpsTitle{font-size:13px;font-weight:950}.gpsStatus{margin-top:3px;font-size:10px;line-height:1.45;color:#728289}.gpsDistance{margin-top:12px;text-align:center;font-size:38px;line-height:1;font-weight:1000;color:#075d8c}.gpsDistance small{font-size:11px;letter-spacing:.08em;color:#73878f}.gpsMeta{margin-top:10px;padding-top:9px;border-top:1px solid #d8e7eb;font-size:9px;line-height:1.65;color:#819198;text-align:center}.gpsActions{display:flex;gap:8px;margin-top:11px}.gpsMini{flex:1;border:0;border-radius:12px;padding:10px 8px;background:#dceff7;color:#075879;font-size:10px;font-weight:950}
+.autoHint{margin:15px 18px 0;padding:12px 13px;border-radius:14px;background:#0b3247;color:#fff;font-size:11px;line-height:1.65}.autoHint b{color:#ffd66c}
+.manualWrap{padding:17px 18px 23px}.manualBtn{width:100%;border:1px solid #d4d8d6;border-radius:14px;padding:13px;background:#fff;color:#33484f;font-size:11px;font-weight:950}.manualBtn span{display:block;margin-top:3px;color:#869397;font-size:9px;font-weight:700}
+
+/* REACHED */
+.reached{min-height:100vh;padding:calc(22px + env(safe-area-inset-top)) 18px calc(28px + env(safe-area-inset-bottom));color:#fff;display:flex;flex-direction:column;justify-content:center;position:relative;overflow:hidden;background:radial-gradient(circle at 50% 15%,rgba(255,220,120,.23),transparent 25%),linear-gradient(155deg,#041f30,#0b6680)}
+.reached.s2{background:radial-gradient(circle at 50% 15%,rgba(255,236,177,.25),transparent 25%),linear-gradient(155deg,#5a3600,#df8313)}.reached.s3{background:radial-gradient(circle at 50% 15%,rgba(255,255,255,.17),transparent 25%),linear-gradient(155deg,#052c41,#087b99)}
+.clearKicker{text-align:center;font-size:10px;letter-spacing:.22em;font-weight:950;color:#ffd884}.clearBadge{width:112px;height:112px;margin:14px auto 10px;border-radius:50%;display:grid;place-items:center;background:#fff;color:#13835e;font-size:58px;box-shadow:0 18px 38px rgba(0,0,0,.25);animation:pop .55s cubic-bezier(.18,1.5,.4,1)}
+.congrats{text-align:center;margin-top:8px;color:#ffe07e;font-size:34px;line-height:1.05;font-weight:950}.reached h2{text-align:center;font-size:35px;line-height:1.12;margin:9px 0 0}.reached h2.compactTitle{font-size:clamp(22px,6.3vw,29px);letter-spacing:-.05em;white-space:nowrap}
+.checkMethod{display:inline-block;margin:10px auto 0;padding:5px 10px;border-radius:99px;background:rgba(255,255,255,.14);font-size:8px;letter-spacing:.1em;font-weight:950}.power{margin:18px 0 0;padding:15px;border-radius:17px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);font-size:18px;line-height:1.55;font-weight:950;text-align:center}
+.cheer{margin-top:12px;font-size:14px;line-height:1.78;color:#edf7f8;text-align:center}.word{margin-top:14px;padding:11px 13px;border-left:3px solid #ffd168;background:rgba(255,255,255,.08);border-radius:0 12px 12px 0}.word small{display:block;font-size:9px;letter-spacing:.13em;color:#ffd98c;font-weight:950}.word div{margin-top:5px;font-size:12px;line-height:1.7}
+.next{margin-top:18px;padding:18px 14px;border:2px solid rgba(255,220,125,.62);background:rgba(0,0,0,.14);border-radius:18px;text-align:center}.next small{display:block;font-size:9px;letter-spacing:.19em;color:#ffd985;font-weight:950}.next b{display:block;font-size:26px;line-height:1.35;margin-top:6px}.arrivalSub{display:block;font-size:.72em;margin-top:4px}.destMain{display:block;font-size:1.04em}.destMain.compactDest{font-size:.77em;letter-spacing:-.045em;white-space:nowrap}.destSub{display:block;font-size:.86em;margin-top:3px}
+@keyframes pop{from{transform:scale(.15) rotate(-20deg);opacity:0}to{transform:scale(1);opacity:1}}
+
+/* QUIZ */
+.quizHead{display:flex;justify-content:space-between;gap:8px;align-items:center}.tag{background:#f4e5d0;color:#8e591e;border-radius:30px;padding:6px 8px;font-size:8px;font-weight:950}.qplace{font-size:9px;color:#7a878b;font-weight:900}.question{font-size:20px;line-height:1.5;font-weight:950;margin:15px 0}.choice{width:100%;display:flex;gap:9px;align-items:flex-start;text-align:left;border:1px solid #d9dfdb;background:#fff;border-radius:15px;padding:12px;margin:8px 0;color:#17313b}.letter{width:28px;height:28px;border-radius:50%;flex:none;background:#edf0ec;display:grid;place-items:center;font-weight:950}.hint{margin-top:10px;background:#fff;border:1px solid var(--line);color:#243b43}
+.progress{margin-top:16px;border-top:1px solid #ece7df;padding-top:12px}.progressTitle{font-size:9px;letter-spacing:.12em;color:#818d91;font-weight:950;margin-bottom:7px}.row{display:flex;gap:8px;align-items:center;font-size:11px;padding:6px 0}.box{width:19px;height:19px;border:1.5px solid #c8cfcb;border-radius:6px;display:grid;place-items:center;font-size:11px;color:#fff}.box.done{background:var(--green);border-color:var(--green)}.box.now{border-color:#f1b42c;box-shadow:0 0 0 3px #f9edcf}
+
+/* RESULT */
+.overlay{position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;padding:22px;background:rgba(2,22,31,.88);backdrop-filter:blur(6px)}.result{width:min(420px,100%);color:#fff;text-align:center;padding:28px 21px;border-radius:26px;box-shadow:0 25px 60px rgba(0,0,0,.42);animation:pop .4s cubic-bezier(.15,1.35,.4,1)}.result.ok{background:linear-gradient(150deg,#0b5d45,#22a372)}.result.ng{background:linear-gradient(150deg,#7b2928,#c94b43)}.resultIcon{font-size:64px}.resultBig{font-size:38px;font-weight:950}.resultText{margin-top:13px;font-size:13px;line-height:1.75}.result .btn{margin-top:17px;background:#fff;color:#19343e}
+
+/* HISTORY */
+.secret{color:#fff;padding:22px;background:radial-gradient(circle at 80% 10%,rgba(226,185,129,.17),transparent 25%),linear-gradient(145deg,#251915,#694836)}.secret small{color:#e7c09d;letter-spacing:.14em;font-weight:950}.secret h2{font-size:28px;margin:9px 0}.secret p{color:#eee2da;font-size:12px;line-height:1.8}.secret .btn{margin-top:15px;background:#f2dac0;color:#422d23}.hp{height:7px;border-radius:10px;background:#e8ddd5;overflow:hidden;margin:13px 0}.hp div{height:100%;background:#6a4736}
+
+/* STAGE CLEAR */
+.stageClearScreen{min-height:100vh;padding:calc(26px + env(safe-area-inset-top)) 18px calc(30px + env(safe-area-inset-bottom));color:#fff;text-align:center;display:flex;flex-direction:column;justify-content:center;position:relative;overflow:hidden;background:radial-gradient(circle at 50% 32%,rgba(255,187,45,.22),transparent 29%),linear-gradient(160deg,#020b11,#071c27 55%,#0b3547)}
+.stageClearTop{font-size:10px;letter-spacing:.24em;color:#ffd465;font-weight:950}.stageClearHuge{font-size:58px;line-height:.94;font-weight:1000;margin:12px 0 0}.stageClearHuge span{display:block;color:#ffd15d;font-size:30px;margin-top:10px}.stageClearIcon{width:148px;height:148px;margin:24px auto 16px;border-radius:50%;display:grid;place-items:center;font-size:74px;background:radial-gradient(circle at 35% 30%,#fff6b4,#f2bd2d 48%,#bb7100);box-shadow:0 0 0 8px rgba(255,215,104,.14),0 24px 45px rgba(0,0,0,.38);animation:clearIcon 1s .15s cubic-bezier(.15,1.3,.35,1) both}.stageClearRoute{font-size:14px;line-height:1.7;color:#e7f1f4}.stageClearCall{margin-top:18px;padding:15px;border:1px solid rgba(255,255,255,.17);border-radius:18px;background:rgba(255,255,255,.08);font-size:18px;font-weight:950;line-height:1.5}.stageClearScreen .btn{margin-top:20px;background:linear-gradient(135deg,#ffe47a,#e7a613);color:#3d2900}
+@keyframes clearIcon{0%{transform:translateY(-190px) rotate(-25deg) scale(.3);opacity:0}70%{transform:translateY(10px) rotate(5deg) scale(1.12);opacity:1}100%{transform:none}}
+
+/* STAMP */
+.stampReady{text-align:center;padding:25px 18px 27px;background:linear-gradient(180deg,#fffdf8,#fff6e8)}.stampReady h2{font-size:31px;margin:8px 0}.stampReady p{font-size:13px;line-height:1.8;color:#6e7b7f}.pad{width:232px;height:232px;border-radius:50%;border:2px dashed #dcb872;margin:22px auto 18px;display:grid;place-items:center;background:radial-gradient(circle,#fff 0 55%,#fff5df 56%)}.pad img{width:165px;height:165px;border-radius:50%;object-fit:cover;opacity:.13;filter:grayscale(1)}
+.stampShow{min-height:520px;text-align:center;padding:25px 15px;background:radial-gradient(circle at 50% 45%,rgba(246,179,37,.24),transparent 29%),linear-gradient(180deg,#fffdf7,#fff4e2)}.stampShow h2{font-size:34px;margin:6px 0}.don{color:#ef4314;font-size:22px;font-weight:950;letter-spacing:.12em}.bigStamp{width:235px;height:235px;margin:18px auto 12px;position:relative;animation:stamp .9s cubic-bezier(.15,.9,.3,1.3)}.bigStamp img{width:100%;height:100%;border-radius:50%;object-fit:cover;border:6px solid #fff;box-shadow:0 22px 30px rgba(20,45,55,.23)}
+@keyframes stamp{0%{transform:translateY(-360px) scale(1.9) rotate(-20deg);opacity:0}55%{transform:translateY(18px) scale(.82) rotate(4deg);opacity:1}70%{transform:scale(1.13) rotate(-3deg)}100%{transform:scale(1) rotate(-4deg)}}
+.ribbon{position:absolute;bottom:14px;left:50%;transform:translateX(-50%) rotate(-4deg);background:#ee4213;color:#fff;padding:6px 15px;border:3px solid #fff;border-radius:8px;white-space:nowrap;font-size:13px;font-weight:950}
+
+/* FINISH */
+.final{min-height:100vh;padding:calc(18px + env(safe-area-inset-top)) 16px 30px;position:relative;overflow:hidden;color:#fff;text-align:center;background:radial-gradient(circle at 50% 35%,rgba(255,199,49,.12),transparent 28%),linear-gradient(160deg,#010b11,#032536 55%,#061b26)}.finalInner{position:relative;z-index:5}.finalKick{color:#e8c75c;font-size:9px;letter-spacing:.22em;font-weight:950}.final h1{font-size:34px;line-height:1.15;margin:7px 0 5px}.finalLead{color:#dce9ed;font-size:12px;line-height:1.7}.medalArea{height:325px;position:relative;margin:3px auto 10px}
+.medalRibbonL,.medalRibbonR{position:absolute;top:8px;left:50%;width:54px;height:147px;z-index:1;background:repeating-linear-gradient(90deg,rgba(255,255,255,.08) 0 2px,transparent 2px 5px),linear-gradient(90deg,#0d416e 0 30%,#f1eadb 30% 39%,#ea4b24 39% 61%,#f1eadb 61% 70%,#0d416e 70% 100%);box-shadow:inset 5px 0 8px rgba(255,255,255,.09),inset -6px 0 8px rgba(0,0,0,.23),0 13px 20px rgba(0,0,0,.3)}.medalRibbonL{transform:translateX(-51px) rotate(9deg)}.medalRibbonR{transform:translateX(-3px) rotate(-9deg)}
+.medalLoop{position:absolute;z-index:2;top:92px;left:50%;transform:translateX(-50%);width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#fff09c,#a36d0d 52%,#efc957);box-shadow:0 0 0 4px #6b4304,inset 0 3px 5px rgba(255,255,255,.55)}
+.premiumMedal{position:absolute;top:108px;left:50%;z-index:3;transform:translateX(-50%);width:188px;height:188px;border-radius:50%;background:conic-gradient(from 4deg,#503000,#d9a52b,#fff0a0,#916009,#e9c456,#644003,#f0d46d,#885706,#fff0a0,#4e3000);box-shadow:0 0 0 3px #382000,0 0 0 7px #d7aa38,0 0 0 9px #493001,0 22px 34px rgba(0,0,0,.52),inset 0 2px 8px rgba(255,255,255,.4);animation:premiumDrop 1.4s cubic-bezier(.13,1.25,.32,1) both}.premiumMedal:before{content:"";position:absolute;inset:12px;border-radius:50%;background:repeating-linear-gradient(105deg,rgba(255,255,255,.018) 0 2px,transparent 2px 6px),radial-gradient(circle at 38% 28%,#114b6d,#082f48 47%,#041b2c 100%);box-shadow:inset 0 0 0 2px #e2bc4d,inset 0 0 0 4px #6e4806,inset 0 6px 12px rgba(255,255,255,.08),inset 0 -13px 19px rgba(0,0,0,.35)}.premiumMedal:after{content:"";position:absolute;z-index:8;top:-50px;left:-90px;width:38px;height:285px;transform:rotate(26deg);background:linear-gradient(90deg,transparent,rgba(255,255,255,.58),transparent);filter:blur(3px);animation:medalShine 2.2s 1.1s ease-in-out both}
+.medalContent{position:absolute;z-index:5;inset:18px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:21px}.medalTop{font-size:6px;letter-spacing:.18em;font-weight:950;color:#eaca61;margin-bottom:6px}.medalLogo{width:74px;height:74px;border-radius:50%;object-fit:cover;background:#fff;border:3px solid #edcf67;box-shadow:0 0 0 3px #08283e,0 5px 10px rgba(0,0,0,.35)}.medalFinisher{margin-top:8px;color:#f6d970;font-size:17px;line-height:1;font-weight:1000;letter-spacing:.055em;text-shadow:0 2px #362000}.medalDate{margin-top:7px;color:#fff0a7;font-size:8px;font-weight:950;letter-spacing:.09em}.medalRoutePlate{position:absolute;z-index:7;top:291px;left:50%;transform:translateX(-50%);white-space:nowrap;padding:6px 17px;border-radius:999px;border:1px solid #f0ce65;background:linear-gradient(135deg,#f8dc77,#a36a09);color:#302000;font-size:8px;letter-spacing:.16em;font-weight:1000;box-shadow:0 7px 14px rgba(0,0,0,.35)}
+@keyframes premiumDrop{0%{transform:translateX(-50%) translateY(-340px) rotateY(620deg) rotateZ(-14deg) scale(.4);opacity:0}60%{transform:translateX(-50%) translateY(11px) rotateY(40deg) rotateZ(3deg) scale(1.07);opacity:1}78%{transform:translateX(-50%) translateY(-5px) rotateY(-13deg) scale(.98)}100%{transform:translateX(-50%) translateY(0) rotateY(0) scale(1)}}
+@keyframes medalShine{0%{left:-95px;opacity:0}18%{opacity:1}76%{opacity:1}100%{left:240px;opacity:0}}
+.finishBox{margin-top:3px;padding:14px;border:1px solid rgba(255,255,255,.17);background:rgba(255,255,255,.07);border-radius:17px;font-size:12px;line-height:1.75;color:#ebf5f7}
+.partialFinal{min-height:100vh;padding:calc(32px + env(safe-area-inset-top)) 18px calc(30px + env(safe-area-inset-bottom));color:#fff;text-align:center;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 25%,rgba(255,198,62,.18),transparent 28%),linear-gradient(160deg,#02131d,#06384d 58%,#074f63)}.partialFinalInner{width:100%;max-width:430px}.partialKick{font-size:9px;letter-spacing:.22em;color:#ffd16e;font-weight:950}.partialIcon{width:118px;height:118px;margin:20px auto 10px;border-radius:50%;display:grid;place-items:center;font-size:62px;background:radial-gradient(circle at 35% 30%,#fff1a1,#eab439 53%,#9b6207);box-shadow:0 0 0 7px rgba(255,215,100,.12),0 20px 35px rgba(0,0,0,.3)}.partialFinal h1{font-size:42px;margin:8px 0 3px;color:#ffe184}.partialFinal h2{font-size:28px;margin:0 0 18px}.partialRoute{padding:15px 12px;border-radius:16px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.09);font-size:18px;font-weight:950}.partialRoute span{display:inline-block;margin:0 10px;color:#ffd267}.partialBadge{display:inline-block;margin-top:14px;padding:7px 13px;border-radius:99px;background:#ffd15e;color:#332100;font-size:10px;letter-spacing:.1em;font-weight:950}.partialFinal p{font-size:13px;line-height:1.8;color:#e6f1f4}.partialMusic{margin:18px 0;padding:13px;border-radius:14px;background:rgba(0,0,0,.16);border:1px solid rgba(255,213,107,.33);color:#ffe09a;font-size:12px;font-weight:900}
+
+/* FX */
+#fx{position:fixed;inset:0;z-index:9999;pointer-events:none;overflow:hidden}.conf{position:absolute;width:9px;height:15px;top:-20px;animation:fall var(--d) linear forwards}@keyframes fall{to{transform:translate(var(--x),110vh) rotate(800deg);opacity:.8}}.fire{position:fixed;width:6px;height:6px;border-radius:50%;z-index:10000;pointer-events:none;box-shadow:0 -55px #ffd45b,39px -39px #ff7045,55px 0 #5fc4ec,39px 39px #fff,0 55px #ffcf3f,-39px 39px #69d58b,-55px 0 #ff7045,-39px -39px #fff;animation:burst .9s ease-out forwards}@keyframes burst{from{transform:scale(.05);opacity:1}to{transform:scale(1.65);opacity:0}}.shake{animation:shake .45s}@keyframes shake{15%{transform:translate(-6px,3px)}30%{transform:translate(6px,-3px)}60%{transform:translate(5px,3px)}100%{transform:none}}
+#resumeBgm{position:fixed;right:14px;bottom:calc(18px + env(safe-area-inset-bottom));z-index:12000;border:0;border-radius:99px;padding:11px 15px;background:#082d42;color:#fff;font-weight:950;box-shadow:0 8px 24px rgba(0,0,0,.28)}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="fx"></div>
+<audio id="bgm" preload="none" playsinline></audio>
+
+<script>
+/* =========================================================
+   V17 GPS VERSION
+   GitHub Pages の HTTPS 上で使用
+========================================================= */
+
+const LOGO='https://drive.google.com/thumbnail?id=19QPLFebMMzk2GLWv57r44YSU4EFtnoHw&sz=w1000';
+
+/* 同じ GitHub Pages リポジトリ内のMP3を使用 */
+const BGM={
+  bright:'./'+encodeURIComponent('快晴・爽快・冒険.mp3'),
+  history:'./'+encodeURIComponent('和風ロックBGM.mp3'),
+  sea:'./'+encodeURIComponent('潮風と渚(Coast,sea_breeze).mp3'),
+  finish:'./'+encodeURIComponent('遥かなる大地(The_distant_TERRA).mp3')
+};
+
+const BGM_NAME={
+  bright:'快晴・爽快・冒険',
+  history:'和風ロックBGM',
+  sea:'潮風と渚',
+  finish:'遥かなる大地'
+};
+
+/* 実機調整 V17 */
+const BGM_VOL={
+  bright:.010,
+  history:.0023,
+  sea:.028,
+  finish:.075
+};
+
+const SAVE='tabirunQuestV17';
+const SOUND='tabirunSoundV17';
+const LAST_GPS='tabirunLastGpsV17';
+
+let soundOn=localStorage.getItem(SOUND)!=='off';
+let ctx=null;
+let bgmKey='';
+let bgmUnlocked=false;
+let duckTimer=null;
+let finalPlayed=false;
+let finishPrimed=false;
+
+/* GPS runtime */
+let gpsWatchId=null;
+let gpsStatus='idle';
+let gpsMessage='GPS判定を開始できます';
+let gpsCurrent=null;
+let gpsLast=null;
+let gpsDistance=null;
+let gpsAutoLock=false;
+let gpsPermissionDenied=false;
+
+/* ---------------------------------------------------------
+   GPS判定座標
+   lat / lng = 実際の判定地点
+   radius = 自動通過判定半径(m)
+--------------------------------------------------------- */
+const GPS_POINTS={
+  handaBrick:{lat:34.9016044,lng:136.9283617,radius:140},
+  handaCanal:{lat:34.8919811,lng:136.9347103,radius:150},
+  taketoyoFamilymart:{lat:34.8449736,lng:136.9247824,radius:150},
+  kowaguchi:{lat:34.798055,lng:136.918924,radius:140},
+
+  /* 実際のオレンジライン走行ルート上の指定点 */
+  orangeLine:{lat:34.8071111,lng:136.8921944,radius:180},
+
+  /* 鵜ノ池：美浜町上野間堂前 */
+  unoike:{lat:34.801759,lng:136.883315,radius:180},
+
+  beachlandConvenience:{lat:34.7858708,lng:136.8582033,radius:150},
+  chitaOkuda:{lat:34.7870421,lng:136.8645347,radius:140},
+  hozanji:{lat:34.772453,lng:136.864902,radius:140},
+  nomaDaibo:{lat:34.7708773,lng:136.8529801,radius:140},
+  nomaLighthouse:{lat:34.7576944,lng:136.8445556,radius:150},
+
+  /* 既存旅ランルート上の指定点 */
+  onoura:{lat:34.753028,lng:136.849417,radius:180},
+
+  /* 指定の内海峠 */
+  utsumiPass:{lat:34.7469722,lng:136.8599722,radius:170},
+
+  goal:{lat:34.7359569,lng:136.8700953,radius:160}
+};
+
+const stageInfo=[
+  ['🏙️','CITY & CANAL','街・運河・武豊工業地帯','半田の歴史をたどり、武豊の工業地帯で補給して河和口へ進め。'],
+  ['🍊','HILL & NATURE','オレンジライン・鵜の池・補給','丘を越え、鵜の池を抜け、ビーチランド入口の補給地点から知多奥田へ。'],
+  ['🌊','HISTORY & COAST','歴史・海岸・峠','源義朝の物語から伊勢湾の海岸へ。最後のステージ。']
+];
+
+const stages=[
+{
+  name:'SECTION 1',
+  route:'阿久比町役場 → 河和口',
+  points:[
+    {
+      name:'半田赤レンガ建物',gps:'handaBrick',
+      cheer:'おめでとう！明治の産業遺産まで到達。旅はまだ始まったばかり。ここから半田の物語が動き出す。',
+      word:'まだ旅は始まったばかり。次の景色を取りにいこう。',
+      next:'半田運河',
+      q:'半田赤レンガ建物は、明治31年（1898年）にもともと何の工場として建てられた？',
+      a:['カブトビールの醸造工場','食酢の醸造工場','紡績工場','鉄道車両工場'],c:0,
+      e:'半田赤レンガ建物は、カブトビールの醸造工場として建設されました。',h:'明治期の半田で世界を目指した飲み物です。'
+    },
+    {
+      name:'半田運河',gps:'handaCanal',
+      cheer:'運河攻略！江戸へ酢や酒を送り出した水辺を、自分の足で通過した。次は武豊の工業地帯へ。',
+      word:'一歩進めば、景色も時代も変わる。',next:'武豊工業地帯',nextSub:'コンビニ休憩だ！',
+      q:'半田の「粕酢」は、酒造りで生まれる何を原料として作られた？',a:['米ぬか','酒粕','麦芽','大豆粕'],c:1,
+      e:'酒造りの副産物だった酒粕を利用して、粕酢が作られました。',h:'酒造りのあとに残るものです。'
+    },
+    {
+      name:'武豊工業地帯',gps:'taketoyoFamilymart',arrivalSub:'コンビニ休憩地点',
+      cheer:'ここで休憩！武豊の工業地帯まで到達。火力発電所手前のコンビニで、給水・補給をして脚を整えよう。前半の大きな区切りを越えた！',
+      word:'焦らず補給。休むことも、最後まで走り切るための大事な攻略だ。',next:'河和口',
+      q:'旅ランガイドで、武豊の工業地帯を抜ける途中に横目に通過する大規模施設として登場するのは？',
+      a:['武豊火力発電所','碧南火力発電所','知多火力発電所','渥美火力発電所'],c:0,
+      e:'旅ランガイドでは、武豊火力発電所などを横目に工業地帯を抜け、河和方面へ向かう流れになっています。',h:'チェックポイントのすぐ先にある大規模な発電施設です。'
+    },
+    {
+      name:'河和口',gps:'kowaguchi',
+      cheer:'STAGE 1の終点に到達！街・運河・武豊工業地帯をつないだ。ここから舞台は丘へ変わる。',
+      word:'ここまで来た脚なら、次の丘も越えられる。',next:'美浜オレンジライン',terminal:true
+    }
+  ]
+},
+
+{
+  name:'SECTION 2',route:'河和口 → 知多奥田',
+  points:[
+    {
+      name:'美浜オレンジライン',gps:'orangeLine',
+      cheer:'ロードから緑の世界へ。旅ラン中盤戦に突入！アップダウンも、この旅の景色のひとつ。',
+      word:'上りは永遠には続かない。越えれば景色が変わる。',next:'鵜の池',
+      q:'美浜オレンジラインは、美浜町をどの方向に横断するコース？',a:['東西','南北','海岸沿いだけ','町の中心部だけ'],c:0,
+      e:'美浜オレンジラインは、美浜町を東西に横断するコースです。',h:'三河湾側から伊勢湾側へ向かうイメージです。'
+    },
+    {
+      name:'鵜の池',gps:'unoike',
+      cheer:'オレンジラインの奥まで到達！自然の中をここまで進んだ。次はビーチランド入口の補給ポイントへ！',
+      word:'中盤の山場を突破。次の補給地点まで、もうひと押し！',next:'南知多ビーチランド入口',nextSub:'コンビニ休憩だ！',nextCompact:true,
+      q:'鵜の池近くの「鵜の山」が、国の天然記念物に指定されている理由は？',a:['カワウの繁殖地だから','コウノトリの渡来地だから','フクロウの生息地だから','ウミネコの繁殖地だから'],c:0,
+      e:'鵜の山は、カワウの繁殖地として国の天然記念物に指定されています。',h:'「鵜の山」という名前が大きなヒントです。'
+    },
+    {
+      name:'南知多ビーチランド入口',gps:'beachlandConvenience',compactTitle:true,arrivalSub:'コンビニ休憩地点',
+      cheer:'補給ポイント到達！ここで給水・補給を済ませて、脚を整えよう。知多奥田はもうすぐだ！',
+      word:'ここでしっかり補給。次はいよいよSECTION 2のゴールへ。',next:'知多奥田駅',
+      q:'美浜町を東西に横断する「オレンジライン」。全長は約何km？',a:['約7.2km','約9.4km','約11.1km','約14.8km'],c:2,
+      e:'美浜オレンジラインは、全長約11.1kmのコースとして紹介されています。',h:'10kmより少し長いコースです。'
+    },
+    {
+      name:'知多奥田駅',gps:'chitaOkuda',
+      cheer:'STAGE 2 COMPLETE！東の海から丘を越え、ついに伊勢湾側へ。ここから最後の「歴史と海」へ入る。',
+      word:'次は歴史と海。最後の物語を取りにいこう。',next:'法山寺',terminal:true
+    }
+  ]
+},
+
+{
+  name:'SECTION 3',route:'知多奥田 → 内海・GOAL',
+  points:[
+    {
+      name:'法山寺',gps:'hozanji',
+      cheer:'ここから旅ランは歴史の世界へ。平治の乱から続く、源義朝の最期の物語をたどる。',
+      word:'走っている道の下には、何百年もの物語が眠っている。',next:'野間大坊',
+      q:'法山寺近くに残る「湯殿跡」で、最期を迎えたと伝わる武将は？',a:['源頼朝','源義朝','平清盛','織田信孝'],c:1,
+      e:'伝承では、平治の乱に敗れた源義朝は法山寺近くの湯殿で入浴中に襲われたとされています。',h:'源頼朝の父です。'
+    },
+    {
+      name:'野間大坊',gps:'nomaDaibo',
+      cheer:'義朝の物語を追って野間大坊へ到着。ここは旅ランの中でも歴史の密度が違う。',
+      word:'「我れに木太刀の一本なりともあれば」と伝わる義朝の最期。その悔恨から木太刀奉納の物語が続く。',
+      credit:'源義朝最期の言葉として伝わる伝承。表現には諸説があります。',next:'野間灯台',
+      q:'源義朝の墓に、現在も数多く奉納されているものは？',a:['木で作られた太刀','白い扇子','銅製の鏡','鉄製の兜'],c:0,
+      e:'「太刀が一本あれば」という義朝の最期の伝承から、多くの木太刀が奉納されています。',h:'義朝が襲われた時に手元になかった武器です。',extra:true
+    },
+    {
+      name:'野間灯台',gps:'nomaLighthouse',
+      cheer:'海が大きく開いた！白い灯台まで到達。ここからは伊勢湾を横に見ながら海岸ラン。',
+      word:'海まで来た。ゴールは確実に近づいている。',next:'小野浦海岸',
+      q:'この先の小野浦で、海水を利用して伝えられている産業は何？',a:['塩づくり','真珠養殖','製鉄','和紙づくり'],c:0,
+      e:'小野浦では海水を利用した塩づくりが伝えられています。',h:'海水を濃くし、さらに煮詰めて作ります。'
+    },
+    {
+      name:'小野浦海岸',gps:'onoura',
+      cheer:'海岸まで到達！でも旅ランは簡単には終わらない。音吉の世界史と、最後の峠が待っている。',
+      word:'海を見たら終わりではない。最後の峠を越えてこそ旅ラン。',next:'内海峠',
+      q:'1832年、小野浦出身の音吉らが乗り、遭難した千石船の名前は？',a:['宝順丸','咸臨丸','開陽丸','観光丸'],c:0,
+      e:'音吉は千石船「宝順丸」に乗って江戸へ向かう途中に遭難し、長い漂流を経験しました。',h:'名前に「宝」が入ります。'
+    },
+    {
+      name:'内海峠',gps:'utsumiPass',
+      cheer:'FINAL CLIMB CLEAR！40km近く走ってからの最後の上りを突破。あとは海へ下るだけ！',
+      word:'最後の一歩まで、旅の一部。',next:'GOAL｜内海・いち豆',
+      q:'ゴール側の内海にある「千鳥ヶ浜」は、何に選ばれている？',a:['日本の渚百選','日本の滝百選','日本の名水百選','日本の棚田百選'],c:0,
+      e:'内海の千鳥ヶ浜は「日本の渚百選」に選ばれた白砂の海岸です。',h:'美しい海岸に関する百選です。'
+    },
+    {
+      name:'GOAL｜内海・いち豆',gps:'goal',
+      cheer:'知多半島を一本につないだ。街、運河、工場、丘、歴史、灯台、海岸、峠――すべて走破！',
+      word:'距離だけではない。1300年以上の時間を走り抜けた。',next:'FINISH',terminal:true,goal:true
+    }
+  ]
+}
+];
+
+const POWER=[
+  ['ナイス到達！まだまだいける！','その調子！次は補給ポイントへ！','ここでしっかり給水・補給！河和口へ向けて再スタート！','SECTION 1 走破！よくここまで来た！'],
+  ['丘へ突入！一歩ずつ進めば必ず抜ける！','オレンジラインの奥まで来た！次は補給ポイントへ！','ここでしっかり給水・補給！知多奥田までもうすぐ！','SECTION 2 走破！半島を横断した！'],
+  ['歴史ステージ突入！ここから物語が濃くなる！','野間の核心まで来た！次はいよいよ海だ！','海へ出た！ゴールが見えてきた！','海岸攻略！最後の峠へ向かえ！','FINAL CLIMB CLEAR！あとはゴールへ！','GOAL到達！本当におめでとう！']
+];
+
+const historyQ=[
+  ['源義朝が野間で命を落としたと伝わる状況は？',['合戦中に討たれた','船で逃亡中に襲われた','入浴中に襲われた','野間大坊で切腹した'],2,'義朝は法山寺近くの湯殿で入浴中に襲われたと伝えられています。'],
+  ['野間大坊の「血の池」の由来として伝わるものは？',['源義朝の首を洗った','源平の兵士が大量に戦死した','織田信孝が切腹した','池の水が常に赤かった'],0,'義朝の首を洗った池と伝えられています。'],
+  ['野間大坊の「お砂踏み」に納められているものは？',['知多四国だけの砂','京都の寺院の砂','本四国八十八ヶ所の砂','義朝の墓周辺の砂'],2,'本四国八十八ヶ所の各霊場の砂が納められていると案内されています。'],
+  ['池禅尼は源頼朝に何をした人物として知られる？',['頼朝を捕らえた','頼朝の助命に関わった','頼朝と野間で戦った','頼朝を野間へ連れてきた'],1,'池禅尼は捕らえられた頼朝の助命に関わった人物として知られます。'],
+  ['野間大坊に墓がある織田信孝は、織田信長の何男？',['長男','次男','三男','四男'],2,'織田信孝は信長の三男です。'],
+  ['野間大坊の客殿は、何に関係する建物と伝えられている？',['名古屋城','伏見桃山城','鶴岡八幡宮','二条城'],1,'伏見桃山城の一部を移築したものと伝えられています。']
+];
+
+const starts=[
+  ['阿久比町役場','SECTION 1 → 2 → 3｜全行程',0],
+  ['河和口','途中参加｜SECTION 2 → 3',1],
+  ['知多奥田駅','途中参加｜SECTION 3のみ',2]
+];
+
+/* ========================= STATE ========================= */
+function fresh(){
+  return{
+    started:false,start:0,stage:0,point:0,phase:'stage',stamps:0,arrivalMethod:'',
+    done:stages.map(s=>s.points.map(()=>false)),
+    history:{status:'none',index:0}
+  };
+}
+
+function load(){
+  try{
+    const x=JSON.parse(localStorage.getItem(SAVE));
+    if(x&&x.done)return x;
+  }catch(e){}
+  return fresh();
+}
+
+let state=load();
+
+function save(){localStorage.setItem(SAVE,JSON.stringify(state));}
+function startName(){return (starts.find(x=>x[2]===state.start)||starts[0])[0];}
+
+function reset(){
+  if(!confirm('進行状況をリセットしますか？'))return;
+  localStorage.removeItem(SAVE);
+  localStorage.removeItem(LAST_GPS);
+  state=fresh();
+  gpsCurrent=null;gpsLast=null;gpsDistance=null;gpsAutoLock=false;
+  stopBgm();
+  finalPlayed=false;finishPrimed=false;
+  render();scrollTo(0,0);
+}
+
+/* ========================= GPS ========================= */
+function currentPoint(){
+  if(!state.started||state.stage>=stages.length)return null;
+  return stages[state.stage]?.points?.[state.point]||null;
+}
+
+function currentGpsTarget(){
+  const p=currentPoint();
+  if(!p||!p.gps)return null;
+  return GPS_POINTS[p.gps]||null;
+}
+
+function rad(v){return v*Math.PI/180;}
+
+function haversine(a,b){
+  const R=6371000;
+  const p1=rad(a.lat),p2=rad(b.lat);
+  const dp=rad(b.lat-a.lat),dl=rad(b.lng-a.lng);
+  const h=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;
+  return 2*R*Math.asin(Math.sqrt(h));
+}
+
+/* 小範囲を平面近似し、点と線分の最短距離をmで求める */
+function pointToSegmentMeters(target,a,b){
+  const R=6371000;
+  const lat0=rad(target.lat);
+  const project=p=>({
+    x:rad(p.lng-target.lng)*Math.cos(lat0)*R,
+    y:rad(p.lat-target.lat)*R
+  });
+  const A=project(a),B=project(b);
+  const vx=B.x-A.x,vy=B.y-A.y;
+  const len2=vx*vx+vy*vy;
+  if(len2===0)return Math.hypot(A.x,A.y);
+  let t=-(A.x*vx+A.y*vy)/len2;
+  t=Math.max(0,Math.min(1,t));
+  const x=A.x+t*vx,y=A.y+t*vy;
+  return Math.hypot(x,y);
+}
+
+function readSavedGps(){
+  try{
+    const x=JSON.parse(localStorage.getItem(LAST_GPS));
+    if(x&&Number.isFinite(x.lat)&&Number.isFinite(x.lng)&&x.time)return x;
+  }catch(e){}
+  return null;
+}
+
+function persistGps(p){
+  localStorage.setItem(LAST_GPS,JSON.stringify(p));
+}
+
+function gpsStateLabel(){
+  if(gpsPermissionDenied)return '位置情報が許可されていません';
+  if(gpsStatus==='watching')return 'GPS自動通過判定中';
+  if(gpsStatus==='searching')return '現在地を取得中…';
+  if(gpsStatus==='error')return gpsMessage;
+  return 'GPS判定待機中';
+}
+
+function gpsPulseClass(){
+  if(gpsPermissionDenied||gpsStatus==='error')return 'off';
+  if(gpsCurrent&&gpsCurrent.accuracy<=120)return 'good';
+  return '';
+}
+
+function gpsDistanceText(){
+  if(gpsDistance==null)return '---';
+  if(gpsDistance<1000)return Math.round(gpsDistance)+'m';
+  return (gpsDistance/1000).toFixed(2)+'km';
+}
+
+function updateGpsUi(){
+  const d=document.getElementById('gpsDistance');
+  const s=document.getElementById('gpsStatusText');
+  const m=document.getElementById('gpsMeta');
+  const pulse=document.getElementById('gpsPulse');
+  const target=currentGpsTarget();
+
+  if(d)d.innerHTML=gpsDistanceText()+'<br><small>CHECKPOINTまで</small>';
+  if(s)s.textContent=gpsStateLabel();
+  if(pulse)pulse.className='gpsPulse '+gpsPulseClass();
+
+  if(m&&target){
+    const acc=gpsCurrent?Math.round(gpsCurrent.accuracy)+'m':'---';
+    m.innerHTML=
+      'GPS精度 '+acc+
+      ' ／ 判定半径 '+target.radius+'m'+
+      '<br>判定点 '+target.lat.toFixed(6)+', '+target.lng.toFixed(6);
+  }
+}
+
+function evaluateGpsPosition(pos,isResume=false){
+  if(!state.started||state.stage>=stages.length)return;
+
+  const p=currentPoint();
+  const target=currentGpsTarget();
+
+  if(!p||!target||state.phase!=='arrival')return;
+
+  const now={
+    lat:pos.coords.latitude,
+    lng:pos.coords.longitude,
+    accuracy:Number.isFinite(pos.coords.accuracy)?pos.coords.accuracy:999,
+    time:pos.timestamp||Date.now()
+  };
+
+  const stored=readSavedGps();
+  const prev=gpsCurrent||gpsLast||stored;
+
+  gpsLast=prev;
+  gpsCurrent=now;
+
+  persistGps(now);
+
+  gpsDistance=haversine(now,target);
+
+  gpsStatus='watching';
+  gpsMessage='GPS自動通過判定中';
+
+  updateGpsUi();
+
+  /*
+    GPS精度が極端に悪い時は、
+    誤判定を防ぐため自動CLEARしない
+  */
+  const goodAccuracy=now.accuracy<=220;
+
+  /*
+    ① 現在地が判定半径内
+  */
+  if(goodAccuracy&&gpsDistance<=target.radius){
+    autoArrive('GPS AUTO CHECK-IN');
+    return;
+  }
+
+  /*
+    ② 通過判定
+
+    前回位置 → 現在位置の線分が、
+    チェックポイント判定円を横切った場合。
+
+    Google Mapsなどから戻った時にも働く。
+
+    誤判定防止：
+    ・前回位置から3時間以内
+    ・移動距離20km以内
+    ・双方のGPS精度250m以内
+  */
+  if(prev&&Number.isFinite(prev.lat)&&Number.isFinite(prev.lng)){
+    const dt=Math.abs(now.time-prev.time);
+    const moved=haversine(prev,now);
+    const prevAcc=Number.isFinite(prev.accuracy)?prev.accuracy:999;
+
+    if(
+      dt<=3*60*60*1000 &&
+      moved<=20000 &&
+      now.accuracy<=250 &&
+      prevAcc<=250
+    ){
+      const segDist=pointToSegmentMeters(target,prev,now);
+
+      if(segDist<=target.radius){
+        autoArrive(
+          isResume
+          ?
+          'GPS PASS-THROUGH CHECK'
+          :
+          'GPS PASS-THROUGH CHECK'
+        );
+      }
+    }
+  }
+}
+
+function gpsError(err){
+  gpsStatus='error';
+
+  if(err&&err.code===1){
+    gpsPermissionDenied=true;
+    gpsMessage=
+      '位置情報がOFFです。手動到着はそのまま使えます。';
+  }
+  else if(err&&err.code===2){
+    gpsMessage=
+      '現在地を取得できません。手動到着も利用できます。';
+  }
+  else if(err&&err.code===3){
+    gpsMessage=
+      'GPS取得がタイムアウトしました。再試行できます。';
+  }
+  else{
+    gpsMessage=
+      'GPSを取得できません。';
+  }
+
+  updateGpsUi();
+}
+
+function startGps(force=false){
+  if(!('geolocation' in navigator)){
+    gpsStatus='error';
+    gpsMessage=
+      'このブラウザではGPSを利用できません。';
+    updateGpsUi();
+    return;
+  }
+
+  if(gpsWatchId!==null&&!force){
+    gpsStatus='watching';
+    updateGpsUi();
+    return;
+  }
+
+  if(gpsWatchId!==null&&force){
+    navigator.geolocation.clearWatch(gpsWatchId);
+    gpsWatchId=null;
+  }
+
+  gpsPermissionDenied=false;
+  gpsStatus='searching';
+  gpsMessage='現在地を取得中…';
+
+  updateGpsUi();
+
+  /*
+    まず現在地を1回取得。
+    Google Maps等から戻った時の
+    通過判定にも使用。
+  */
+  navigator.geolocation.getCurrentPosition(
+    pos=>evaluateGpsPosition(pos,true),
+    gpsError,
+    {
+      enableHighAccuracy:true,
+      timeout:12000,
+      maximumAge:3000
+    }
+  );
+
+  /*
+    その後、継続監視。
+  */
+  gpsWatchId=
+    navigator.geolocation.watchPosition(
+      pos=>evaluateGpsPosition(pos,false),
+      gpsError,
+      {
+        enableHighAccuracy:true,
+        timeout:20000,
+        maximumAge:4000
+      }
+    );
+}
+
+function autoArrive(method){
+  if(
+    gpsAutoLock ||
+    state.phase!=='arrival'
+  ){
+    return;
+  }
+
+  gpsAutoLock=true;
+
+  state.arrivalMethod=method;
+
+  sArrival();
+
+  state.phase='reached';
+
+  save();
+
+  setTimeout(
+    ()=>{
+      render();
+      scrollTo(0,0);
+      confetti(90);
+      shake();
+
+      gpsAutoLock=false;
+    },
+    260
+  );
+}
+
+function manualArrive(){
+  state.arrivalMethod=
+    'MANUAL CHECK-IN';
+
+  sArrival();
+
+  state.phase='reached';
+
+  save();
+
+  setTimeout(
+    ()=>{
+      render();
+      scrollTo(0,0);
+    },
+    220
+  );
+}
+
+function retryGps(){
+  startGps(true);
+}
+
+/* ========================= BGM ========================= */
+
+function desiredBgm(){
+  if(!state.started)return null;
+
+  if(
+    [
+      'stageClear',
+      'stampReady',
+      'stampShow'
+    ].includes(state.phase)
+  ){
+    return null;
+  }
+
+  if(state.stage>=3){
+    return 'finish';
+  }
+
+  if(state.stage<=1){
+    return 'bright';
+  }
+
+  if(state.point<2){
+    return 'history';
+  }
+
+  return 'sea';
+}
+
+function trackName(){
+  const k=desiredBgm();
+
+  return k
+    ?
+    BGM_NAME[k]
+    :
+    '';
+}
+
+function showResume(){
+  if(
+    document.getElementById('resumeBgm') ||
+    !soundOn ||
+    !state.started
+  ){
+    return;
+  }
+
+  const b=document.createElement('button');
+
+  b.id='resumeBgm';
+
+  b.textContent=
+    '▶ BGMを再開';
+
+  b.onclick=()=>{
+    bgmUnlocked=true;
+
+    audio();
+
+    syncBgm(true);
+
+    b.remove();
+  };
+
+  document.body.appendChild(b);
+}
+
+function removeResume(){
+  document
+    .getElementById('resumeBgm')
+    ?.remove();
+}
+
+function stopBgm(){
+  const a=
+    document.getElementById('bgm');
+
+  if(a){
+    a.pause();
+  }
+
+  removeResume();
+}
+
+function fadeBgm(
+  target,
+  step=.003,
+  interval=45
+){
+  const a=
+    document.getElementById('bgm');
+
+  if(!a){
+    return;
+  }
+
+  clearInterval(a._fade);
+
+  a._fade=
+    setInterval(
+      ()=>{
+        a.volume=
+          Math.min(
+            target,
+            a.volume+step
+          );
+
+        if(a.volume>=target){
+          clearInterval(a._fade);
+        }
+      },
+      interval
+    );
+}
+
+function syncBgm(force=false){
+  const key=desiredBgm();
+  const a=document.getElementById('bgm');
+
+  if(
+    !key ||
+    !soundOn ||
+    !bgmUnlocked ||
+    !a
+  ){
+    return;
+  }
+
+  const changed=
+    bgmKey!==key;
+
+  if(changed){
+    bgmKey=key;
+
+    a.pause();
+
+    a.src=BGM[key];
+
+    a.loop=
+      key!=='finish';
+
+    a.volume=0;
+
+    try{
+      a.load();
+    }
+    catch(e){}
+  }
+
+  if(
+    changed ||
+    force ||
+    a.paused
+  ){
+    const p=a.play();
+
+    if(p&&p.then){
+      p
+      .then(
+        ()=>{
+          removeResume();
+
+          fadeBgm(
+            BGM_VOL[key]
+          );
+        }
+      )
+      .catch(
+        showResume
+      );
+    }
+  }
+}
+
+/*
+  通常SEではBGMを下げる。
+  FINISH BGMには適用しない。
+*/
+function duck(ms=1400){
+  const a=
+    document.getElementById('bgm');
+
+  if(
+    !a ||
+    a.paused ||
+    !bgmKey ||
+    bgmKey==='finish'
+  ){
+    return;
+  }
+
+  clearTimeout(
+    duckTimer
+  );
+
+  const base=
+    BGM_VOL[bgmKey]
+    ||
+    .010;
+
+  a.volume=.0005;
+
+  duckTimer=
+    setTimeout(
+      ()=>{
+        if(!a.paused){
+          a.volume=base;
+        }
+      },
+      ms
+    );
+}
+
+/* ========================= EFFECT SOUND ========================= */
+
+function audio(){
+  if(!soundOn){
+    return null;
+  }
+
+  try{
+    if(!ctx){
+      ctx=
+        new(
+          window.AudioContext
+          ||
+          window.webkitAudioContext
+        )();
+    }
+
+    if(ctx.state==='suspended'){
+      ctx.resume();
+    }
+
+    return ctx;
+  }
+  catch(e){
+    return null;
+  }
+}
+
+function tone(
+  f,
+  t,
+  d,
+  type='sine',
+  v=.18
+){
+  const c=audio();
+
+  if(!c){
+    return;
+  }
+
+  const o=
+    c.createOscillator();
+
+  const g=
+    c.createGain();
+
+  o.type=type;
+
+  o.frequency
+    .setValueAtTime(
+      f,
+      t
+    );
+
+  g.gain
+    .setValueAtTime(
+      .0001,
+      t
+    );
+
+  g.gain
+    .exponentialRampToValueAtTime(
+      v,
+      t+.012
+    );
+
+  g.gain
+    .exponentialRampToValueAtTime(
+      .0001,
+      t+d
+    );
+
+  o.connect(g);
+
+  g.connect(
+    c.destination
+  );
+
+  o.start(t);
+
+  o.stop(
+    t+d+.04
+  );
+}
+
+function impact(strength=.28){
+  const c=audio();
+
+  if(!c){
+    return;
+  }
+
+  const t=c.currentTime;
+
+  const o=
+    c.createOscillator();
+
+  const g=
+    c.createGain();
+
+  o.type='sine';
+
+  o.frequency
+    .setValueAtTime(
+      115,
+      t
+    );
+
+  o.frequency
+    .exponentialRampToValueAtTime(
+      48,
+      t+.24
+    );
+
+  g.gain
+    .setValueAtTime(
+      strength,
+      t
+    );
+
+  g.gain
+    .exponentialRampToValueAtTime(
+      .0001,
+      t+.28
+    );
+
+  o.connect(g);
+
+  g.connect(
+    c.destination
+  );
+
+  o.start(t);
+
+  o.stop(
+    t+.3
+  );
+}
+
+function noiseHit(
+  strength=.12,
+  duration=.12
+){
+  const c=audio();
+
+  if(!c){
+    return;
+  }
+
+  const size=
+    Math.floor(
+      c.sampleRate*
+      duration
+    );
+
+  const buffer=
+    c.createBuffer(
+      1,
+      size,
+      c.sampleRate
+    );
+
+  const data=
+    buffer.getChannelData(0);
+
+  for(
+    let i=0;
+    i<size;
+    i++
+  ){
+    data[i]=
+      (
+        Math.random()*2-1
+      )
+      *
+      (
+        1-i/size
+      );
+  }
+
+  const src=
+    c.createBufferSource();
+
+  const filter=
+    c.createBiquadFilter();
+
+  const gain=
+    c.createGain();
+
+  src.buffer=buffer;
+
+  filter.type='lowpass';
+
+  filter.frequency.value=950;
+
+  gain.gain.value=strength;
+
+  src.connect(filter);
+
+  filter.connect(gain);
+
+  gain.connect(
+    c.destination
+  );
+
+  src.start();
+}
+
+function sArrival(){
+  duck(1600);
+
+  const c=audio();
+
+  if(!c){
+    return;
+  }
+
+  const t=c.currentTime;
+
+  impact(.18);
+
+  tone(
+    392,
+    t,
+    .16,
+    'triangle',
+    .18
+  );
+
+  tone(
+    587,
+    t+.10,
+    .22,
+    'sine',
+    .21
+  );
+
+  tone(
+    784,
+    t+.21,
+    .30,
+    'triangle',
+    .23
+  );
+
+  tone(
+    1175,
+    t+.35,
+    .37,
+    'sine',
+    .20
+  );
+}
+
+function sGood(){
+  duck(1400);
+
+  const c=audio();
+
+  if(!c){
+    return;
+  }
+
+  const t=c.currentTime;
+
+  tone(
+    523,
+    t,
+    .20,
+    'triangle',
+    .19
+  );
+
+  tone(
+    659,
+    t+.08,
+    .22,
+    'triangle',
+    .20
+  );
+
+  tone(
+    880,
+    t+.17,
+    .28,
+    'sine',
+    .23
+  );
+
+  tone(
+    1047,
+    t+.28,
+    .34,
+    'triangle',
+    .25
+  );
+}
+
+function sBad(){
+  duck(950);
+
+  const c=audio();
+
+  if(!c){
+    return;
+  }
+
+  const t=c.currentTime;
+
+  impact(.18);
+
+  tone(
+    190,
+    t,
+    .16,
+    'square',
+    .15
+  );
+
+  tone(
+    140,
+    t+.12,
+    .22,
+    'square',
+    .13
+  );
+}
+
+function sStamp(){
+  const c=audio();
+
+  if(!c){
+    return;
+  }
+
+  const t=c.currentTime;
+
+  impact(.38);
+
+  noiseHit(
+    .19,
+    .15
+  );
+
+  tone(
+    76,
+    t,
+    .23,
+    'square',
+    .22
+  );
+
+  tone(
+    392,
+    t+.16,
+    .18,
+    'triangle',
+    .16
+  );
+
+  tone(
+    587,
+    t+.28,
+    .22,
+    'sine',
+    .19
+  );
+
+  tone(
+    880,
+    t+.40,
+    .35,
+    'triangle',
+    .23
+  );
+}
+
+function sSecret(){
+  duck(1450);
+
+  const c=audio();
+
+  if(!c){
+    return;
+  }
+
+  const t=c.currentTime;
+
+  tone(
+    110,
+    t,
+    .34,
+    'sawtooth',
+    .08
+  );
+
+  tone(
+    220,
+    t+.13,
+    .36,
+    'triangle',
+    .11
+  );
+
+  tone(
+    440,
+    t+.30,
+    .32,
+    'sine',
+    .13
+  );
+
+  tone(
+    880,
+    t+.47,
+    .24,
+    'triangle',
+    .15
+  );
+}
+
+function sHistory(){
+  duck(1450);
+
+  const c=audio();
+
+  if(!c){
+    return;
+  }
+
+  const t=c.currentTime;
+
+  [
+    330,
+    440,
+    587,
+    784,
+    988
+  ]
+  .forEach(
+    (f,i)=>
+      tone(
+        f,
+        t+i*.10,
+        .30,
+        'triangle',
+        .14
+      )
+  );
+}
+
+function sStageClear(){
+  stopBgm();
+
+  const c=audio();
+
+  if(!c){
+    return;
+  }
+
+  const t=c.currentTime;
+
+  impact(.32);
+
+  noiseHit(
+    .12,
+    .13
+  );
+
+  tone(
+    196,
+    t,
+    .22,
+    'square',
+    .18
+  );
+
+  tone(
+    392,
+    t+.12,
+    .28,
+    'triangle',
+    .21
+  );
+
+  tone(
+    523,
+    t+.27,
+    .30,
+    'sine',
+    .24
+  );
+
+  tone(
+    659,
+    t+.42,
+    .34,
+    'triangle',
+    .26
+  );
+
+  tone(
+    784,
+    t+.58,
+    .38,
+    'sine',
+    .27
+  );
+
+  tone(
+    1047,
+    t+.76,
+    .55,
+    'triangle',
+    .30
+  );
+}
+
+function sFinalFanfare(){
+  const c=audio();
+
+  if(!c){
+    return;
+  }
+
+  const t=c.currentTime;
+
+  impact(.35);
+
+  [
+    262,
+    330,
+    392,
+    523,
+    659,
+    784,
+    1047,
+    1319,
+    1568
+  ]
+  .forEach(
+    (f,i)=>
+      tone(
+        f,
+        t+i*.11,
+        .38,
+        i>5
+        ?
+        'triangle'
+        :
+        'sine',
+        .19+i*.009
+      )
+  );
+}
+
+function sMedalClink(){
+  const c=audio();
+
+  if(!c){
+    return;
+  }
+
+  const t=c.currentTime;
+
+  impact(.16);
+
+  tone(
+    1320,
+    t,
+    .16,
+    'triangle',
+    .19
+  );
+
+  tone(
+    1760,
+    t+.025,
+    .21,
+    'sine',
+    .15
+  );
+
+  tone(
+    2640,
+    t+.055,
+    .25,
+    'sine',
+    .10
+  );
+}
+
+function toggleSound(){
+  soundOn=
+    !soundOn;
+
+  localStorage.setItem(
+    SOUND,
+    soundOn
+    ?
+    'on'
+    :
+    'off'
+  );
+
+  if(soundOn){
+    bgmUnlocked=true;
+
+    audio();
+
+    syncBgm(true);
+
+    sGood();
+  }
+  else{
+    stopBgm();
+  }
+
+  render();
+}
+
+/* ========================= FX ========================= */
+
+function confetti(n=80){
+  const root=
+    document.getElementById('fx');
+
+  const colors=[
+    '#ff4b22',
+    '#0873bb',
+    '#f5ba32',
+    '#5ac87c',
+    '#6dd1ee',
+    '#fff'
+  ];
+
+  for(
+    let i=0;
+    i<n;
+    i++
+  ){
+    const e=
+      document.createElement('i');
+
+    e.className='conf';
+
+    e.style.left=
+      Math.random()*100+
+      'vw';
+
+    e.style.background=
+      colors[
+        Math.floor(
+          Math.random()*
+          colors.length
+        )
+      ];
+
+    e.style.setProperty(
+      '--d',
+      (
+        1.8+
+        Math.random()*1.8
+      )
+      +
+      's'
+    );
+
+    e.style.setProperty(
+      '--x',
+      (
+        -100+
+        Math.random()*200
+      )
+      +
+      'px'
+    );
+
+    root.appendChild(e);
+
+    setTimeout(
+      ()=>e.remove(),
+      4000
+    );
+  }
+}
+
+function fire(x,y){
+  const e=
+    document.createElement('i');
+
+  e.className='fire';
+
+  e.style.left=
+    x+'vw';
+
+  e.style.top=
+    y+'vh';
+
+  document.body.appendChild(e);
+
+  setTimeout(
+    ()=>e.remove(),
+    1000
+  );
+}
+
+function shake(){
+  const a=
+    document.getElementById('app');
+
+  a.classList.add(
+    'shake'
+  );
+
+  setTimeout(
+    ()=>a.classList.remove(
+      'shake'
+    ),
+    500
+  );
+}
+
+/* ========================= HEADER ========================= */
+
+function header(){
+  const s=
+    stages[
+      Math.min(
+        state.stage,
+        2
+      )
+    ];
+
+  let slots='';
+
+  for(
+    let i=0;
+    i<3;
+    i++
+  ){
+    const skip=
+      i<state.start;
+
+    const on=
+      !skip
+      &&
+      i<
+      state.start+
+      state.stamps;
+
+    slots+=`
+      <div class="slot ${skip?'skip':''} ${on?'on':''}">
+        <img src="${LOGO}">
+        <small>${i+1}</small>
+      </div>
+    `;
+  }
+
+  return`
+    <header class="s${state.stage+1}">
+      <div class="head">
+        <div>
+          <div class="brand">
+            CHITA TABIRUN QUEST
+          </div>
+
+          <div class="title">
+            旅ラン QUEST
+          </div>
+        </div>
+
+        <div class="hr">
+          ${s.name}
+          <br>
+          ${s.route}
+          <br>
+
+          <button
+            class="sound"
+            onclick="toggleSound()"
+          >
+            ${
+              soundOn
+              ?
+              '🔊 BGM+SE'
+              :
+              '🔇 MUTE'
+            }
+          </button>
+
+          <div class="track">
+            ${
+              trackName()
+              ?
+              '♫ '+trackName()
+              :
+              'BGM STOP'
+            }
+          </div>
+        </div>
+      </div>
+
+      <div class="stamps">
+        ${slots}
+
+        <div class="count">
+          ${state.stamps} STAMPS
+          <br>
+          START ${startName()}
+        </div>
+      </div>
+    </header>
+  `;
+}
+
+function progress(){
+  const s=
+    stages[
+      state.stage
+    ];
+
+  return`
+    <div class="progress">
+      <div class="progressTitle">
+        ${s.name} CHECK LIST
+      </div>
+
+      ${
+        s.points
+        .map(
+          (p,i)=>`
+            <div class="row">
+              <span class="box ${state.done[state.stage][i]?'done':''} ${i===state.point?'now':''}">
+                ${state.done[state.stage][i]?'✓':''}
+              </span>
+
+              ${p.name}
+            </div>
+          `
+        )
+        .join('')
+      }
+    </div>
+  `;
+}
+
+/* ========================= START ========================= */
+
+function renderStart(){
+  document.getElementById('app').innerHTML=`
+  <section class="cover">
+    <img
+      class="logo"
+      src="${LOGO}"
+    >
+
+    <div class="kick">
+      CHITA TABIRUN
+      2026.9.22
+      /
+      V17 GPS
+    </div>
+
+    <h1>
+      旅ラン
+      <span>
+        QUEST
+      </span>
+    </h1>
+
+    <div class="coverCopy">
+      チェックポイントを
+      <b>GPSで自動通過判定</b>。
+
+      <br>
+
+      取りこぼした場合も
+      手動で進めます。
+
+      <br><br>
+
+      <b>
+        GPS PASS
+        →
+        QUEST
+        →
+        STAGE CLEAR
+        →
+        STAMP GET！
+      </b>
+    </div>
+
+    <div class="how">
+      📍 GPS自動判定：
+      アプリ表示中は継続監視
+
+      <br>
+
+      ↗️ Google Mapsから戻った時：
+      前回位置→現在位置で通過判定
+
+      <br>
+
+      ✋ GPSが反応しない時：
+      手動CHECK-IN
+
+      <br><br>
+
+      🎵 STAGE 1・2：
+      快晴・爽快・冒険
+
+      <br>
+
+      ⚔ 法山寺〜野間大坊：
+      和風ロックBGM
+
+      <br>
+
+      🌊 野間灯台〜GOAL：
+      潮風と渚
+
+      <br>
+
+      🏅 FINISH：
+      遥かなる大地
+    </div>
+
+    <div class="startTitle">
+      START POINT
+    </div>
+
+    ${
+      starts
+      .map(
+        x=>`
+          <button
+            class="start"
+            onclick="begin(${x[2]})"
+          >
+            <b>
+              ${x[0]}からSTART
+            </b>
+
+            <span>
+              ${x[1]}
+            </span>
+          </button>
+        `
+      )
+      .join('')
+    }
+
+    <button
+      class="btn secondary"
+      onclick="toggleSound()"
+    >
+      ${
+        soundOn
+        ?
+        '🔊 BGM + 効果音 ON'
+        :
+        '🔇 音なし'
+      }
+    </button>
+
+    <div class="note">
+      位置情報はQUESTの
+      通過判定のみに使用します。
+
+      <br>
+
+      GPSが取得できなくても
+      手動進行できます。
+    </div>
+
+    <button
+      class="btn secondary"
+      onclick="reset()"
+    >
+      進行データをリセット
+    </button>
+  </section>
+  `;
+}
+
+function begin(n){
+  state=fresh();
+
+  state.started=true;
+  state.start=n;
+  state.stage=n;
+  state.phase='stage';
+
+  save();
+
+  bgmUnlocked=true;
+
+  audio();
+
+  syncBgm(true);
+
+  /*
+    STARTタップを利用して
+    位置情報許可を要求
+  */
+  startGps(true);
+
+  render();
+
+  scrollTo(
+    0,
+    0
+  );
+}
+
+/* ========================= STAGE ========================= */
+
+function renderStage(){
+  const s=
+    stages[
+      state.stage
+    ];
+
+  const m=
+    stageInfo[
+      state.stage
+    ];
+
+  document.getElementById('main').innerHTML=`
+    <div class="card stage s${state.stage+1}">
+      <div class="stageNo">
+        STAGE ${state.stage+1} / 3
+      </div>
+
+      <div class="stageIcon">
+        ${m[0]}
+      </div>
+
+      <h2>
+        ${m[1]}
+      </h2>
+
+      <div class="stageSub">
+        ${m[2]}
+      </div>
+
+      <div class="route">
+        ${s.route}
+        <br>
+        CHECKPOINT ${s.points.length}
+      </div>
+
+      <div class="mission">
+        ${m[3]}
+
+        <br><br>
+
+        📍 このSTAGEも
+        GPS自動通過判定が有効です。
+      </div>
+
+      <button
+        class="btn"
+        onclick="stageStart()"
+      >
+        STAGE ${state.stage+1} START →
+      </button>
+    </div>
+  `;
+}
+
+function stageStart(){
+  sGood();
+
+  state.phase='arrival';
+
+  state.arrivalMethod='';
+
+  gpsAutoLock=false;
+
+  save();
+
+  render();
+
+  scrollTo(
+    0,
+    0
+  );
+
+  startGps(false);
+}
+
+/* ========================= ARRIVAL ========================= */
+
+function renderArrival(){
+  const p=
+    currentPoint();
+
+  const target=
+    currentGpsTarget();
+
+  if(
+    gpsCurrent
+    &&
+    target
+  ){
+    gpsDistance=
+      haversine(
+        gpsCurrent,
+        target
+      );
+  }
+
+  document.getElementById('main').innerHTML=`
+    <div class="card arrival">
+
+      <div class="arriveTop">
+        <div class="eyebrow">
+          CHECKPOINT
+          ${state.point+1}
+        </div>
+
+        <div class="place ${p.compactTitle?'compactTitle':''}">
+          ${p.name}
+        </div>
+
+        <div class="arriveText">
+          この画面を開いておけば、
+          チェックポイント付近を
+
+          <b>
+            通過するだけで自動判定
+          </b>
+
+          します。
+        </div>
+      </div>
+
+      <div class="gpsPanel">
+
+        <div class="gpsTop">
+
+          <div
+            id="gpsPulse"
+            class="gpsPulse ${gpsPulseClass()}"
+          >
+            ◎
+          </div>
+
+          <div>
+            <div class="gpsTitle">
+              GPS AUTO CHECK
+            </div>
+
+            <div
+              id="gpsStatusText"
+              class="gpsStatus"
+            >
+              ${gpsStateLabel()}
+            </div>
+          </div>
+
+        </div>
+
+        <div
+          id="gpsDistance"
+          class="gpsDistance"
+        >
+          ${gpsDistanceText()}
+
+          <br>
+
+          <small>
+            CHECKPOINTまで
+          </small>
+        </div>
+
+        <div
+          id="gpsMeta"
+          class="gpsMeta"
+        >
+          GPS精度
+          ${
+            gpsCurrent
+            ?
+            Math.round(
+              gpsCurrent.accuracy
+            )+'m'
+            :
+            '---'
+          }
+
+          ／
+
+          判定半径
+          ${
+            target
+            ?
+            target.radius
+            :
+            '---'
+          }m
+
+          <br>
+
+          ${
+            target
+            ?
+            '判定点 '+
+            target.lat.toFixed(6)+
+            ', '+
+            target.lng.toFixed(6)
+            :
+            ''
+          }
+        </div>
+
+        <div class="gpsActions">
+
+          <button
+            class="gpsMini"
+            onclick="retryGps()"
+          >
+            📡 GPS再取得
+          </button>
+
+          <button
+            class="gpsMini"
+            onclick="showGpsHelp()"
+          >
+            ？ 判定方法
+          </button>
+
+        </div>
+
+      </div>
+
+      <div class="autoHint">
+
+        <b>
+          押し忘れ対策
+        </b>
+
+        <br>
+
+        判定円の中に入った場合だけでなく、
+        前回位置→現在位置が判定地点を
+        横切った場合も
+        「通過」と判定します。
+
+      </div>
+
+      <div class="manualWrap">
+
+        <button
+          class="manualBtn"
+          onclick="manualArrive()"
+        >
+          GPSが反応しない場合は
+          手動で到着
+
+          <span>
+            MANUAL CHECK-IN
+            ／
+            GPS失敗時もQUESTは止まりません
+          </span>
+        </button>
+
+      </div>
+
+    </div>
+
+    ${progress()}
+  `;
+
+  updateGpsUi();
+
+  setTimeout(
+    ()=>startGps(false),
+    120
+  );
+}
+
+function showGpsHelp(){
+  alert(
+    'GPS自動判定は、①判定地点の半径内に入る、または②前回位置から現在位置までの移動線が判定エリアを横切る、のどちらかでCHECKPOINT FOUNDになります。位置情報が取れない場合は手動CHECK-INを使えます。'
+  );
+}
+
+/* ========================= REACHED ========================= */
+
+function renderReached(){
+  syncBgm(true);
+
+  const p=
+    currentPoint();
+
+  const power=
+    (
+      POWER[state.stage]
+      &&
+      POWER[state.stage][state.point]
+    )
+    ||
+    'ここまで来た！次へ進もう！';
+
+  const arrivedTitle=
+    p.arrivalSub
+    ?
+    `
+      ${p.name}
+      <br>
+      <span class="arrivalSub">
+        ${p.arrivalSub}
+      </span>
+      <br>
+      到達！
+    `
+    :
+    `
+      ${p.name}
+      <br>
+      到達！
+    `;
+
+  const nextClass=
+    p.nextCompact
+    ?
+    'destMain compactDest'
+    :
+    'destMain';
+
+  const nextTitle=
+    p.goal
+    ?
+    'ついにGOAL！'
+    :
+    p.nextSub
+    ?
+    `
+      次の目的地は
+      <br>
+
+      <span class="${nextClass}">
+        ${p.next}
+      </span>
+
+      <span class="destSub">
+        ${p.nextSub}
+      </span>
+    `
+    :
+    `
+      次の目的地は
+      <br>
+
+      <span class="${nextClass}">
+        ${p.next}
+      </span>
+
+      だ！
+    `;
+
+  document.getElementById('app').innerHTML=`
+    <section class="reached s${state.stage+1}">
+
+      <div class="clearKicker">
+        CHECKPOINT CLEAR
+      </div>
+
+      <div class="clearBadge">
+        ✓
+      </div>
+
+      <div class="congrats">
+        🎉 おめでとう！
+      </div>
+
+      <h2 class="${p.compactTitle?'compactTitle':''}">
+        ${arrivedTitle}
+      </h2>
+
+      <div class="checkMethod">
+        ${state.arrivalMethod||'CHECK-IN'}
+      </div>
+
+      <div class="power">
+        🔥 ${power}
+      </div>
+
+      <div class="cheer">
+        ${p.cheer}
+      </div>
+
+      <div class="word">
+        <small>
+          ${
+            p.credit
+            ?
+            '歴史に伝わる言葉'
+            :
+            'TABIRUN MESSAGE'
+          }
+        </small>
+
+        <div>
+          ${p.word}
+        </div>
+
+        ${
+          p.credit
+          ?
+          `
+            <div style="
+              font-size:9px;
+              opacity:.72;
+              margin-top:6px
+            ">
+              ${p.credit}
+            </div>
+          `
+          :
+          ''
+        }
+      </div>
+
+      <div class="next">
+        <small>
+          NEXT DESTINATION
+        </small>
+
+        <b>
+          ${nextTitle}
+        </b>
+      </div>
+
+      <button
+        class="btn gold"
+        style="margin-top:18px"
+        onclick="reachedNext()"
+      >
+        ${
+          p.terminal
+          ?
+          'STAGE CLEARへ →'
+          :
+          'この地点のQUESTへ →'
+        }
+      </button>
+
+      <button
+        class="btn secondary"
+        onclick="backArrival()"
+      >
+        ← 到着画面へ戻る
+      </button>
+
+    </section>
+  `;
+
+  setTimeout(
+    ()=>{
+      confetti(65);
+      shake();
+    },
+    170
+  );
+}
+
+function backArrival(){
+  state.phase='arrival';
+
+  state.arrivalMethod='';
+
+  save();
+
+  render();
+
+  scrollTo(
+    0,
+    0
+  );
+}
+
+function reachedNext(){
+  const p=
+    currentPoint();
+
+  if(p.terminal){
+    state.done[state.stage][state.point]=true;
+
+    stopBgm();
+
+    state.phase='stageClear';
+  }
+  else{
+    state.phase='quiz';
+  }
+
+  save();
+
+  render();
+
+  scrollTo(
+    0,
+    0
+  );
+}
+
+/* ========================= QUIZ ========================= */
+
+function renderQuiz(){
+  const p=
+    currentPoint();
+
+  document.getElementById('main').innerHTML=`
+    <div class="card">
+
+      <div class="quizHead">
+        <span class="tag">
+          旅ランガイド QUIZ
+        </span>
+
+        <span class="qplace">
+          ${p.name}
+        </span>
+      </div>
+
+      <div class="question">
+        ${p.q}
+      </div>
+
+      ${
+        p.a
+        .map(
+          (x,i)=>`
+            <button
+              class="choice"
+              onclick="answer(${i})"
+            >
+              <span class="letter">
+                ${String.fromCharCode(65+i)}
+              </span>
+
+              <span>
+                ${x}
+              </span>
+            </button>
+          `
+        )
+        .join('')
+      }
+
+      <button
+        class="btn hint"
+        onclick='alert(${JSON.stringify(p.h)})'
+      >
+        📖 攻略ヒント
+      </button>
+
+      <button
+        class="btn secondary"
+        onclick="returnReached()"
+      >
+        ← 到着メッセージへ戻る
+      </button>
+
+      ${progress()}
+
+    </div>
+  `;
+}
+
+function returnReached(){
+  state.phase='reached';
+
+  save();
+
+  render();
+
+  scrollTo(
+    0,
+    0
+  );
+}
+
+function showResult(
+  ok,
+  title,
+  text,
+  fn,
+  label='NEXT →'
+){
+  const o=
+    document.createElement('div');
+
+  o.className='overlay';
+
+  o.innerHTML=`
+    <div class="result ${ok?'ok':'ng'}">
+
+      <div class="resultIcon">
+        ${ok?'⭕':'❌'}
+      </div>
+
+      <div class="resultBig">
+        ${title}
+      </div>
+
+      <div class="resultText">
+        ${text}
+      </div>
+
+      <button class="btn">
+        ${label}
+      </button>
+
+    </div>
+  `;
+
+  document.body.appendChild(o);
+
+  if(ok){
+    confetti(45);
+  }
+
+  o
+    .querySelector('button')
+    .onclick=
+      ()=>{
+        o.remove();
+
+        if(fn){
+          fn();
+        }
+      };
+}
+
+function answer(i){
+  const p=
+    currentPoint();
+
+  if(i!==p.c){
+    sBad();
+
+    showResult(
+      false,
+      'MISS！',
+      '旅ランガイドやヒントを確認して、もう一度挑戦してください。',
+      null,
+      '再挑戦'
+    );
+
+    return;
+  }
+
+  sGood();
+
+  state.done[state.stage][state.point]=true;
+
+  save();
+
+  showResult(
+    true,
+    '正解！',
+    p.e,
+    ()=>{
+      if(p.extra){
+        state.phase='secret';
+      }
+      else{
+        state.point++;
+
+        state.phase='arrival';
+
+        state.arrivalMethod='';
+
+        gpsAutoLock=false;
+      }
+
+      save();
+
+      render();
+
+      scrollTo(
+        0,
+        0
+      );
+
+      setTimeout(
+        ()=>startGps(false),
+        120
+      );
+    }
+  );
+}
+
+/* ========================= HISTORY EXTRA ========================= */
+
+function renderSecret(){
+  document.getElementById('main').innerHTML=`
+    <div class="card secret">
+
+      <small>
+        SECRET ROUTE FOUND
+      </small>
+
+      <h2>
+        ⚔ HISTORY EXTRA
+      </h2>
+
+      <p>
+        野間大坊には、
+        源義朝だけではない歴史が
+        眠っています。
+
+        <br><br>
+
+        血の池、
+        池禅尼、
+        四国八十八ヶ所、
+        織田信孝、
+        伏見桃山城。
+
+        <br>
+
+        全6問の秘密ステージへ。
+      </p>
+
+      <button
+        class="btn"
+        onclick="historyStart()"
+      >
+        EXTRA STAGEに挑戦
+      </button>
+
+      <button
+        class="btn secondary"
+        onclick="historySkip()"
+      >
+        通常QUESTへ戻る
+      </button>
+
+    </div>
+  `;
+
+  sSecret();
+}
+
+function historyStart(){
+  state.history={
+    status:'play',
+    index:0
+  };
+
+  state.phase='history';
+
+  save();
+
+  render();
+
+  scrollTo(
+    0,
+    0
+  );
+}
+
+function historySkip(){
+  state.history.status='skip';
+
+  state.point++;
+
+  state.phase='arrival';
+
+  state.arrivalMethod='';
+
+  gpsAutoLock=false;
+
+  save();
+
+  render();
+
+  scrollTo(
+    0,
+    0
+  );
+
+  setTimeout(
+    ()=>startGps(false),
+    120
+  );
+}
+
+function renderHistory(){
+  const i=
+    state.history.index;
+
+  const q=
+    historyQ[i];
+
+  document.getElementById('main').innerHTML=`
+    <div class="card">
+
+      <div class="quizHead">
+        <span class="tag">
+          HISTORY EXTRA
+        </span>
+
+        <span class="qplace">
+          ${i+1} / ${historyQ.length}
+        </span>
+      </div>
+
+      <div class="hp">
+        <div style="
+          width:${i/historyQ.length*100}%
+        ">
+        </div>
+      </div>
+
+      <div class="question">
+        ${q[0]}
+      </div>
+
+      ${
+        q[1]
+        .map(
+          (x,n)=>`
+            <button
+              class="choice"
+              onclick="historyAnswer(${n})"
+            >
+              <span class="letter">
+                ${String.fromCharCode(65+n)}
+              </span>
+
+              <span>
+                ${x}
+              </span>
+            </button>
+          `
+        )
+        .join('')
+      }
+
+    </div>
+  `;
+}
+
+function historyAnswer(n){
+  const q=
+    historyQ[
+      state.history.index
+    ];
+
+  if(n!==q[2]){
+    sBad();
+
+    showResult(
+      false,
+      'MISS！',
+      'もう一度選んでください。',
+      null,
+      '再挑戦'
+    );
+
+    return;
+  }
+
+  sGood();
+
+  showResult(
+    true,
+    '正解！',
+    q[3],
+    ()=>{
+      state.history.index++;
+
+      if(
+        state.history.index>=
+        historyQ.length
+      ){
+        state.history.status='clear';
+
+        state.phase='historyClear';
+      }
+
+      save();
+
+      render();
+
+      scrollTo(
+        0,
+        0
+      );
+    }
+  );
+}
+
+function renderHistoryClear(){
+  document.getElementById('main').innerHTML=`
+    <div
+      class="card secret"
+      style="text-align:center"
+    >
+
+      <div style="font-size:55px">
+        🏯
+      </div>
+
+      <small>
+        HISTORY QUEST COMPLETE
+      </small>
+
+      <h2>
+        ALL 6 CLEAR！
+      </h2>
+
+      <p>
+        源平から戦国、
+        四国遍路まで攻略しました。
+      </p>
+
+      <button
+        class="btn"
+        onclick="historyFinish()"
+      >
+        通常QUESTへ戻る →
+      </button>
+
+    </div>
+  `;
+
+  confetti(80);
+
+  sHistory();
+}
+
+function historyFinish(){
+  state.point++;
+
+  state.phase='arrival';
+
+  state.arrivalMethod='';
+
+  gpsAutoLock=false;
+
+  save();
+
+  render();
+
+  scrollTo(
+    0,
+    0
+  );
+
+  setTimeout(
+    ()=>startGps(false),
+    120
+  );
+}
+
+/* ========================= STAGE CLEAR ========================= */
+
+function renderStageClear(){
+  const s=
+    stages[
+      state.stage
+    ];
+
+  stopBgm();
+
+  document.getElementById('app').innerHTML=`
+    <section class="stageClearScreen">
+
+      <div class="stageClearTop">
+        SPECIAL CLEAR EVENT
+      </div>
+
+      <div class="stageClearHuge">
+        STAGE
+        <br>
+        CLEAR！
+
+        <span>
+          SECTION ${state.stage+1} COMPLETE
+        </span>
+      </div>
+
+      <div class="stageClearIcon">
+        🏁
+      </div>
+
+      <div class="stageClearRoute">
+        <b>
+          ${s.route}
+        </b>
+
+        <br>
+
+        この区間を走り切りました。
+      </div>
+
+      <div class="stageClearCall">
+        🎉 おめでとう！
+
+        <br>
+
+        ${
+          state.stage===0
+          ?
+          '街・運河・武豊工業地帯を攻略！'
+          :
+          state.stage===1
+          ?
+          '丘・自然・補給ポイントを越えて知多奥田まで攻略！'
+          :
+          '歴史・灯台・海岸・峠を攻略！'
+        }
+      </div>
+
+      <button
+        class="btn"
+        onclick="goStampReady()"
+      >
+        旅ランスタンプを押す →
+      </button>
+
+    </section>
+  `;
+
+  setTimeout(
+    ()=>{
+      confetti(165);
+
+      shake();
+
+      sStageClear();
+    },
+    140
+  );
+
+  setTimeout(
+    ()=>{
+      fire(
+        20,
+        23
+      );
+
+      fire(
+        80,
+        20
+      );
+    },
+    650
+  );
+}
+
+function goStampReady(){
+  state.phase='stampReady';
+
+  save();
+
+  render();
+
+  scrollTo(
+    0,
+    0
+  );
+}
+
+/* ========================= STAMP ========================= */
+
+function renderStampReady(){
+  const s=
+    stages[
+      state.stage
+    ];
+
+  document.getElementById('main').innerHTML=`
+    <div class="card stampReady">
+
+      <div class="eyebrow">
+        STAGE ${state.stage+1} COMPLETE
+      </div>
+
+      <h2>
+        スタンプ獲得！
+      </h2>
+
+      <p>
+        ${s.route}
+
+        <br>
+
+        この区間を走り切りました。
+
+        <br><br>
+
+        <b>
+          自分の手で
+          旅ランスタンプを
+          押してください。
+        </b>
+      </p>
+
+      <div class="pad">
+        <img src="${LOGO}">
+      </div>
+
+      <button
+        class="btn orange"
+        onclick="pressStamp()"
+      >
+        スタンプを押す！
+
+        <br>
+
+        <small>
+          PRESS THE TABIRUN STAMP
+        </small>
+      </button>
+
+    </div>
+  `;
+}
+
+function pressStamp(){
+  sStamp();
+
+  shake();
+
+  state.stamps++;
+
+  state.phase='stampShow';
+
+  save();
+
+  setTimeout(
+    ()=>{
+      render();
+
+      scrollTo(
+        0,
+        0
+      );
+    },
+    220
+  );
+}
+
+function renderStampShow(){
+  const s=
+    stages[
+      state.stage
+    ];
+
+  document.getElementById('main').innerHTML=`
+    <div class="card stampShow">
+
+      <div class="eyebrow">
+        STAGE ${state.stage+1} COMPLETE
+      </div>
+
+      <h2>
+        STAMP GET！
+      </h2>
+
+      <div class="don">
+        ドン！
+      </div>
+
+      <div class="bigStamp">
+        <img src="${LOGO}">
+
+        <div class="ribbon">
+          STAGE ${state.stage+1} CLEAR
+        </div>
+      </div>
+
+      <div class="desc">
+        <b>
+          ${s.route}
+        </b>
+
+        <br>
+
+        旅ランスタンプを押しました！
+
+        <br><br>
+
+        <b>
+          ${state.stamps} / 3 STAMPS
+        </b>
+      </div>
+
+      <button
+        class="btn primary"
+        style="margin-top:17px"
+        onclick="nextStage()"
+      >
+        ${
+          state.stage===2
+          ?
+          '㊗️ 完走セレモニーへ →'
+          :
+          '次のSTAGEを解放 →'
+        }
+      </button>
+
+    </div>
+  `;
+
+  setTimeout(
+    ()=>{
+      shake();
+
+      confetti(110);
+    },
+    350
+  );
+}
+
+/* ========================= FINISH BGM ========================= */
+
+function primeFinishBgm(){
+  if(!soundOn){
+    return;
+  }
+
+  const a=
+    document.getElementById('bgm');
+
+  if(!a){
+    return;
+  }
+
+  bgmUnlocked=true;
+
+  bgmKey='finish';
+
+  a.pause();
+
+  a.src=BGM.finish;
+
+  a.loop=false;
+
+  a.volume=0;
+
+  try{
+    a.load();
+  }
+  catch(e){}
+
+  const p=a.play();
+
+  if(p&&p.then){
+    p
+    .then(
+      ()=>{
+        finishPrimed=true;
+
+        removeResume();
+
+        fadeBgm(
+          BGM_VOL.finish,
+          .004,
+          40
+        );
+      }
+    )
+    .catch(
+      ()=>{
+        finishPrimed=false;
+
+        showResume();
+      }
+    );
+  }
+}
+
+function nextStage(){
+  const goingFinish=
+    state.stage===2;
+
+  if(goingFinish){
+    primeFinishBgm();
+  }
+
+  state.stage++;
+
+  state.point=0;
+
+  state.phase='stage';
+
+  state.arrivalMethod='';
+
+  gpsAutoLock=false;
+
+  save();
+
+  if(!goingFinish){
+    syncBgm(true);
+  }
+
+  render();
+
+  scrollTo(
+    0,
+    0
+  );
+}
+
+/* ========================= DIGITAL MEDAL ========================= */
+
+function downloadMedal(){
+  const c=
+    document.createElement('canvas');
+
+  c.width=1400;
+  c.height=1650;
+
+  const x=
+    c.getContext('2d');
+
+  x.clearRect(
+    0,
+    0,
+    c.width,
+    c.height
+  );
+
+  const ribbon=
+    x.createLinearGradient(
+      400,
+      0,
+      1000,
+      0
+    );
+
+  ribbon.addColorStop(0,'#0d416e');
+  ribbon.addColorStop(.31,'#0d416e');
+  ribbon.addColorStop(.37,'#efe7d5');
+  ribbon.addColorStop(.42,'#e94b25');
+  ribbon.addColorStop(.58,'#e94b25');
+  ribbon.addColorStop(.63,'#efe7d5');
+  ribbon.addColorStop(.69,'#0d416e');
+  ribbon.addColorStop(1,'#0d416e');
+
+  x.fillStyle=ribbon;
+
+  x.beginPath();
+  x.moveTo(470,25);
+  x.lineTo(625,25);
+  x.lineTo(745,680);
+  x.lineTo(575,680);
+  x.closePath();
+  x.fill();
+
+  x.beginPath();
+  x.moveTo(775,25);
+  x.lineTo(930,25);
+  x.lineTo(825,680);
+  x.lineTo(655,680);
+  x.closePath();
+  x.fill();
+
+  x.save();
+
+  x.shadowColor=
+    'rgba(0,0,0,.5)';
+
+  x.shadowBlur=45;
+
+  x.shadowOffsetY=24;
+
+  const metal=
+    x.createRadialGradient(
+      575,
+      760,
+      20,
+      700,
+      1010,
+      435
+    );
+
+  metal.addColorStop(0,'#fff3ac');
+  metal.addColorStop(.2,'#dfb13d');
+  metal.addColorStop(.46,'#8a5808');
+  metal.addColorStop(.68,'#efce64');
+  metal.addColorStop(1,'#563200');
+
+  x.fillStyle=metal;
+
+  x.beginPath();
+
+  x.arc(
+    700,
+    1010,
+    430,
+    0,
+    Math.PI*2
+  );
+
+  x.fill();
+
+  x.restore();
+
+  x.fillStyle='#06263a';
+
+  x.beginPath();
+
+  x.arc(
+    700,
+    1010,
+    365,
+    0,
+    Math.PI*2
+  );
+
+  x.fill();
+
+  x.strokeStyle='#e2b945';
+
+  x.lineWidth=16;
+
+  x.stroke();
+
+  x.textAlign='center';
+
+  x.fillStyle='#efce64';
+
+  x.font=
+    '900 31px sans-serif';
+
+  x.fillText(
+    'CHITA TABIRUN 2026',
+    700,
+    765
+  );
+
+  x.fillStyle='#fff2b2';
+
+  x.font=
+    '900 70px sans-serif';
+
+  x.fillText(
+    '知多',
+    700,
+    895
+  );
+
+  x.fillStyle='#e14819';
+
+  x.font=
+    '900 120px sans-serif';
+
+  x.fillText(
+    '旅',
+    620,
+    1020
+  );
+
+  x.fillStyle='#2b66a0';
+
+  x.fillText(
+    'ラン',
+    790,
+    1020
+  );
+
+  x.fillStyle='#f0cf66';
+
+  x.font=
+    '900 66px sans-serif';
+
+  x.fillText(
+    'FINISHER',
+    700,
+    1155
+  );
+
+  x.font=
+    '900 39px sans-serif';
+
+  x.fillText(
+    '2026.9.22',
+    700,
+    1245
+  );
+
+  const plate=
+    x.createLinearGradient(
+      430,
+      0,
+      970,
+      0
+    );
+
+  plate.addColorStop(0,'#a86b08');
+  plate.addColorStop(.5,'#f5db76');
+  plate.addColorStop(1,'#a86b08');
+
+  x.fillStyle=plate;
+
+  const px=430;
+  const py=1460;
+  const pw=540;
+  const ph=85;
+  const r=42;
+
+  x.beginPath();
+
+  x.moveTo(
+    px+r,
+    py
+  );
+
+  x.lineTo(
+    px+pw-r,
+    py
+  );
+
+  x.quadraticCurveTo(
+    px+pw,
+    py,
+    px+pw,
+    py+r
+  );
+
+  x.lineTo(
+    px+pw,
+    py+ph-r
+  );
+
+  x.quadraticCurveTo(
+    px+pw,
+    py+ph,
+    px+pw-r,
+    py+ph
+  );
+
+  x.lineTo(
+    px+r,
+    py+ph
+  );
+
+  x.quadraticCurveTo(
+    px,
+    py+ph,
+    px,
+    py+ph-r
+  );
+
+  x.lineTo(
+    px,
+    py+r
+  );
+
+  x.quadraticCurveTo(
+    px,
+    py,
+    px+r,
+    py
+  );
+
+  x.closePath();
+
+  x.fill();
+
+  x.fillStyle='#302000';
+
+  x.font=
+    '900 30px sans-serif';
+
+  x.fillText(
+    'AGUI  →  UTSUMI',
+    700,
+    1515
+  );
+
+  x.fillStyle='#efce64';
+
+  x.font=
+    '900 22px sans-serif';
+
+  x.fillText(
+    '3 STAGES COMPLETE',
+    700,
+    1600
+  );
+
+  const shine=
+    x.createLinearGradient(
+      350,
+      620,
+      1030,
+      1360
+    );
+
+  shine.addColorStop(
+    .43,
+    'rgba(255,255,255,0)'
+  );
+
+  shine.addColorStop(
+    .49,
+    'rgba(255,255,255,.22)'
+  );
+
+  shine.addColorStop(
+    .55,
+    'rgba(255,255,255,0)'
+  );
+
+  x.fillStyle=shine;
+
+  x.beginPath();
+
+  x.arc(
+    700,
+    1010,
+    405,
+    0,
+    Math.PI*2
+  );
+
+  x.fill();
+
+  c.toBlob(
+    b=>{
+      const u=
+        URL.createObjectURL(b);
+
+      const a=
+        document.createElement('a');
+
+      a.href=u;
+
+      a.download=
+        '知多半島旅ラン_FINISHER_MEDAL_2026-9-22.png';
+
+      a.click();
+
+      setTimeout(
+        ()=>URL.revokeObjectURL(u),
+        1000
+      );
+    },
+    'image/png'
+  );
+}
+
+/* ========================= FINAL ========================= */
+
+function finalFX(full=true){
+  if(finalPlayed){
+    return;
+  }
+
+  finalPlayed=true;
+
+  /*
+    4曲目には一切触れない。
+    止めない。
+    巻き戻さない。
+    ほぼ無音にも落とさない。
+  */
+  const a=
+    document.getElementById('bgm');
+
+  if(
+    soundOn &&
+    a &&
+    a.paused &&
+    !finishPrimed
+  ){
+    const p=a.play();
+
+    if(p&&p.catch){
+      p.catch(
+        showResume
+      );
+    }
+  }
+
+  setTimeout(
+    ()=>{
+      sFinalFanfare();
+
+      confetti(
+        full
+        ?
+        200
+        :
+        155
+      );
+
+      shake();
+    },
+    100
+  );
+
+  setTimeout(
+    ()=>{
+      fire(
+        18,
+        19
+      );
+
+      fire(
+        82,
+        19
+      );
+    },
+    520
+  );
+
+  setTimeout(
+    ()=>{
+      fire(
+        50,
+        26
+      );
+
+      confetti(
+        full
+        ?
+        130
+        :
+        95
+      );
+    },
+    1050
+  );
+
+  if(full){
+    setTimeout(
+      ()=>{
+        sMedalClink();
+
+        shake();
+      },
+      1450
+    );
+  }
+
+  setTimeout(
+    ()=>{
+      fire(
+        18,
+        43
+      );
+
+      fire(
+        82,
+        41
+      );
+    },
+    1750
+  );
+}
+
+function renderFinish(){
+  const full=
+    state.start===0
+    &&
+    state.stamps===3;
+
+  if(full){
+    document.getElementById('app').innerHTML=`
+      <section class="final">
+
+        <div class="finalInner">
+
+          <div class="finalKick">
+            ALL 3 STAGES COMPLETE
+          </div>
+
+          <h1>
+            ㊗️ 完走おめでとう！
+          </h1>
+
+          <div class="finalLead">
+            阿久比から内海まで、
+            知多半島を一本につないだ。
+
+            <br>
+
+            3つの旅ランスタンプが
+            揃いました！
+          </div>
+
+          <div class="medalArea">
+
+            <div class="medalRibbonL">
+            </div>
+
+            <div class="medalRibbonR">
+            </div>
+
+            <div class="medalLoop">
+            </div>
+
+            <div class="premiumMedal">
+
+              <div class="medalContent">
+
+                <div class="medalTop">
+                  CHITA · 2026
+                </div>
+
+                <img
+                  class="medalLogo"
+                  src="${LOGO}"
+                >
+
+                <div class="medalFinisher">
+                  FINISHER
+                </div>
+
+                <div class="medalDate">
+                  2026.9.22
+                </div>
+
+              </div>
+
+            </div>
+
+            <div class="medalRoutePlate">
+              AGUI → UTSUMI
+            </div>
+
+          </div>
+
+          <div class="finishBox">
+
+            <b>
+              知多半島
+              旅ラン
+              COMPLETE！
+            </b>
+
+            <br>
+
+            街、
+            運河、
+            武豊工業地帯、
+            丘陵、
+            歴史、
+            灯台、
+            海岸、
+            峠。
+
+            <br>
+
+            今日つないだすべてが、
+            あなたの完走ルートです。
+
+          </div>
+
+          <button
+            class="btn gold"
+            style="margin-top:13px"
+            onclick="downloadMedal()"
+          >
+            🏅 デジタル完走メダルを保存
+          </button>
+
+          <button
+            class="btn secondary"
+            onclick="reset()"
+          >
+            最初から見る
+          </button>
+
+        </div>
+
+      </section>
+    `;
+
+    setTimeout(
+      ()=>finalFX(true),
+      100
+    );
+
+    return;
+  }
+
+  const sectionText=
+    state.start===1
+    ?
+    'SECTION 2 + 3 COMPLETE'
+    :
+    'FINAL SECTION COMPLETE';
+
+  const startLabel=
+    startName();
+
+  document.getElementById('app').innerHTML=`
+    <section class="partialFinal">
+
+      <div class="partialFinalInner">
+
+        <div class="partialKick">
+          YOUR TABIRUN FINISH
+        </div>
+
+        <div class="partialIcon">
+          🏁
+        </div>
+
+        <h1>
+          ㊗️ GOAL！
+        </h1>
+
+        <h2>
+          参加区間 COMPLETE！
+        </h2>
+
+        <div class="partialRoute">
+          ${startLabel}
+
+          <span>
+            →
+          </span>
+
+          内海・いち豆
+        </div>
+
+        <div class="partialBadge">
+          ${sectionText}
+        </div>
+
+        <p>
+          ${startLabel}
+          からゴールまで、
+          あなたが選んだ旅ラン区間を
+          走破しました。
+
+          <br><br>
+
+          <b>
+            ${state.stamps}
+            STAMP${state.stamps===1?'':'S'}
+            GET！
+          </b>
+        </p>
+
+        <div class="partialMusic">
+          🎵 FINISH BGM
+
+          <br>
+
+          「遥かなる大地」
+        </div>
+
+        <button
+          class="btn secondary"
+          onclick="reset()"
+        >
+          最初から見る
+        </button>
+
+      </div>
+
+    </section>
+  `;
+
+  setTimeout(
+    ()=>finalFX(false),
+    100
+  );
+}
+
+/* ========================= RENDER ========================= */
+
+function render(){
+  if(!state.started){
+    renderStart();
+    return;
+  }
+
+  if(
+    state.stage>=
+    stages.length
+  ){
+    renderFinish();
+    return;
+  }
+
+  if(
+    state.phase===
+    'stageClear'
+  ){
+    renderStageClear();
+    return;
+  }
+
+  syncBgm();
+
+  if(
+    state.phase===
+    'reached'
+  ){
+    renderReached();
+    return;
+  }
+
+  document.getElementById('app').innerHTML=`
+    ${header()}
+    <main id="main"></main>
+  `;
+
+  if(
+    state.phase===
+    'stage'
+  ){
+    renderStage();
+  }
+  else if(
+    state.phase===
+    'arrival'
+  ){
+    renderArrival();
+  }
+  else if(
+    state.phase===
+    'quiz'
+  ){
+    renderQuiz();
+  }
+  else if(
+    state.phase===
+    'secret'
+  ){
+    renderSecret();
+  }
+  else if(
+    state.phase===
+    'history'
+  ){
+    renderHistory();
+  }
+  else if(
+    state.phase===
+    'historyClear'
+  ){
+    renderHistoryClear();
+  }
+  else if(
+    state.phase===
+    'stampReady'
+  ){
+    renderStampReady();
+  }
+  else if(
+    state.phase===
+    'stampShow'
+  ){
+    renderStampShow();
+  }
+}
+
+/* ========================= iPHONE / VISIBILITY ========================= */
+
+document.addEventListener(
+  'pointerdown',
+  ()=>{
+    if(soundOn){
+      const c=audio();
+
+      if(
+        c &&
+        c.state===
+        'suspended'
+      ){
+        c.resume();
+      }
+    }
+
+    /*
+      保存状態から開いた場合、
+      最初のユーザー操作で
+      GPSも再開
+    */
+    if(
+      state.started &&
+      gpsWatchId===null &&
+      !gpsPermissionDenied
+    ){
+      startGps(false);
+    }
+  },
+  {
+    capture:true
+  }
+);
+
+document.addEventListener(
+  'click',
+  ()=>{
+    if(
+      state.started &&
+      !bgmUnlocked
+    ){
+      bgmUnlocked=true;
+
+      audio();
+
+      syncBgm(true);
+    }
+  },
+  {
+    capture:true
+  }
+);
+
+document.addEventListener(
+  'visibilitychange',
+  ()=>{
+    const a=
+      document.getElementById('bgm');
+
+    if(a){
+      if(document.hidden){
+        a.dataset.resume=
+          !a.paused
+          ?
+          '1'
+          :
+          '0';
+
+        a.pause();
+      }
+      else if(
+        a.dataset.resume==='1'
+        &&
+        soundOn
+      ){
+        const p=a.play();
+
+        if(
+          p &&
+          p.catch
+        ){
+          p.catch(
+            showResume
+          );
+        }
+      }
+    }
+
+    if(
+      !document.hidden &&
+      state.started
+    ){
+      /*
+        Google Maps等から戻った直後に
+        現在地を再取得し、
+        前回位置との通過判定を行う
+      */
+      if(
+        'geolocation'
+        in navigator
+      ){
+        navigator.geolocation.getCurrentPosition(
+          pos=>
+            evaluateGpsPosition(
+              pos,
+              true
+            ),
+          gpsError,
+          {
+            enableHighAccuracy:true,
+            timeout:12000,
+            maximumAge:0
+          }
+        );
+      }
+
+      startGps(false);
+    }
+  }
+);
+
+document
+  .getElementById('bgm')
+  .addEventListener(
+    'error',
+    showResume
+  );
+
+/*
+  保存済み進行で
+  ページを再読込した場合
+*/
+const savedGpsAtBoot=
+  readSavedGps();
+
+if(savedGpsAtBoot){
+  gpsLast=
+    savedGpsAtBoot;
+}
+
+render();
+
+if(state.started){
+  setTimeout(
+    ()=>startGps(false),
+    350
+  );
+}
+</script>
+</body>
+</html>
