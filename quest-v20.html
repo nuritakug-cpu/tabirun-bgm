@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#062637">
+<title>知多半島 旅ラン QUEST｜V20 GPS</title>
+
+<style>
+html,body{
+  margin:0;
+  min-height:100%;
+  background:#031b27;
+  color:#fff;
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",Meiryo,sans-serif;
+}
+
+.loading{
+  min-height:100vh;
+  display:grid;
+  place-items:center;
+  text-align:center;
+  padding:24px;
+  box-sizing:border-box;
+}
+
+.loading b{
+  display:block;
+  font-size:24px;
+  margin-bottom:10px;
+}
+
+.loading span{
+  font-size:12px;
+  line-height:1.8;
+  color:#bdd6df;
+}
+</style>
+</head>
+
+<body>
+
+<div class="loading" id="loader">
+  <div>
+    <b>旅ラン QUEST V20</b>
+    <span>GPS・サウンド調整版を読み込んでいます…</span>
+  </div>
+</div>
+
+<script>
+(async()=>{
+
+  const res=await fetch(
+    './quest-v19.html?v=20260829-v20-nowav',
+    {
+      cache:'no-store'
+    }
+  );
+
+  if(!res.ok){
+    throw new Error(
+      'V19 base load failed: '+res.status
+    );
+  }
+
+  let html=await res.text();
+
+
+  const swap=(oldText,newText,label)=>{
+
+    if(!html.includes(oldText)){
+      throw new Error(
+        label+' の置換箇所が見つかりません'
+      );
+    }
+
+    html=html.replace(
+      oldText,
+      newText
+    );
+
+  };
+
+
+  /* ===========================
+     VERSION
+  =========================== */
+
+  html=html.replaceAll(
+    'V19 GPS',
+    'V20 GPS'
+  );
+
+  html=html.replaceAll(
+    'tabirunQuestV19',
+    'tabirunQuestV20'
+  );
+
+  html=html.replaceAll(
+    'tabirunSoundV19',
+    'tabirunSoundV20'
+  );
+
+  html=html.replaceAll(
+    'tabirunLastGpsV19',
+    'tabirunLastGpsV20'
+  );
+
+
+  /* ===========================
+     BGM音量
+
+     1曲目 0.010
+     2曲目 0.00045
+     3曲目 0.120
+     4曲目 0.075
+  =========================== */
+
+  swap(
+
+    'const BGM_VOL={bright:.010,history:.0010,sea:.055,finish:.075};',
+
+    'const BGM_VOL={bright:.010,history:.00045,sea:.120,finish:.075};',
+
+    'BGM音量'
+
+  );
+
+
+  /* ===========================
+     SECTION 2
+
+     美浜オレンジライン
+       ↓
+     オレンジ広場
+  =========================== */
+
+  swap(
+
+    "next:'美浜オレンジライン',terminal:true",
+
+    "next:'オレンジ広場',terminal:true",
+
+    '河和口NEXT'
+
+  );
+
+
+  swap(
+
+    "{name:'美浜オレンジライン',gps:'orangeLine',cheer:'ロードから緑の世界へ。旅ラン中盤戦に突入！アップダウンも、この旅の景色のひとつ。',word:'上りは永遠には続かない。越えれば景色が変わる。',next:'鵜の池'",
+
+    "{name:'オレンジ広場',gps:'orangeLine',cheer:'オレンジ広場まで到達！ここからオレンジラインの中盤へ。アップダウンも、この旅の景色のひとつ。',word:'上りは永遠には続かない。越えれば景色が変わる。',next:'鵜の池'",
+
+    'オレンジ広場'
+
+  );
+
+
+  /* ===========================
+     iPhone Safari
+     AudioContext安定化
+  =========================== */
+
+  swap(
+
+    "function audio(){if(!soundOn)return null;try{if(!ctx)ctx=new(window.AudioContext||window.webkitAudioContext)();if(ctx.state==='suspended')ctx.resume();return ctx}catch(e){return null}}",
+
+`function audio(){
+
+  if(!soundOn){
+    return null;
+  }
+
+  try{
+
+    if(!ctx){
+
+      ctx=new(
+        window.AudioContext
+        ||
+        window.webkitAudioContext
+      )();
+
+    }
+
+    return ctx;
+
+  }
+  catch(e){
+
+    return null;
+
+  }
+
+}
+
+
+function withAudioReady(fn){
+
+  const c=audio();
+
+  if(!c){
+    return;
+  }
+
+  try{
+
+    if(c.state==='suspended'){
+
+      const p=c.resume();
+
+      if(
+        p
+        &&
+        p.then
+      ){
+
+        p
+          .then(
+            ()=>fn(c)
+          )
+          .catch(
+            ()=>{}
+          );
+
+        return;
+
+      }
+
+    }
+
+    fn(c);
+
+  }
+  catch(e){}
+
+}
+
+
+function unlockAudio(){
+
+  const c=audio();
+
+  if(!c){
+    return;
+  }
+
+  try{
+
+    if(c.state==='suspended'){
+
+      const p=c.resume();
+
+      if(
+        p
+        &&
+        p.catch
+      ){
+
+        p.catch(
+          ()=>{}
+        );
+
+      }
+
+    }
+
+  }
+  catch(e){}
+
+}`,
+
+    'AudioContext'
+
+  );
+
+
+  /* ===========================
+     STAGE CLEAR
+
+     大きな衝撃
+       ↓
+     上昇ファンファーレ
+
+     SECTION1〜3共通
+  =========================== */
+
+  swap(
+
+    "function playStageClearNow(){stopBgm();const c=audio();if(!c)return;const t=c.currentTime;impact(.50);noiseHit(.23,.18);tone(98,t,.28,'square',.26);tone(196,t+.06,.24,'square',.26);tone(392,t+.16,.30,'triangle',.29);tone(523,t+.31,.34,'sine',.32);tone(659,t+.47,.38,'triangle',.34);tone(784,t+.64,.42,'sine',.36);tone(1047,t+.84,.62,'triangle',.40)}",
+
+`function playStageClearNow(){
+
+  /*
+    STAGE CLEARでは
+    BGMを完全停止
+  */
+
+  stopBgm();
+
+
+  /*
+    iPhoneでAudioContextが
+    suspendedの場合は
+    復帰完了後に鳴らす
+  */
+
+  withAudioReady(
+    c=>{
+
+      const t=c.currentTime;
+
+
+      /*
+        最初の「ドン！」
+      */
+
+      impact(
+        .78
+      );
+
+      noiseHit(
+        .38,
+        .20
+      );
+
+
+      /*
+        低音の衝撃
+      */
+
+      tone(
+        82,
+        t,
+        .34,
+        'square',
+        .42
+      );
+
+      tone(
+        123,
+        t+.025,
+        .30,
+        'sine',
+        .35
+      );
+
+
+      /*
+        CLEARファンファーレ
+      */
+
+      tone(
+        392,
+        t+.12,
+        .30,
+        'triangle',
+        .34
+      );
+
+      tone(
+        523,
+        t+.25,
+        .34,
+        'sine',
+        .38
+      );
+
+      tone(
+        659,
+        t+.39,
+        .38,
+        'triangle',
+        .41
+      );
+
+      tone(
+        784,
+        t+.55,
+        .43,
+        'sine',
+        .44
+      );
+
+      tone(
+        1047,
+        t+.76,
+        .72,
+        'triangle',
+        .48
+      );
+
+      tone(
+        1319,
+        t+.90,
+        .54,
+        'sine',
+        .36
+      );
+
+    }
+  );
+
+}`,
+
+    'STAGE CLEAR SE'
+
+  );
+
+
+  /* ===========================
+     STAMP
+
+     強い「ドン！」
+       ↓
+     印面衝撃
+       ↓
+     STAMP GET音
+  =========================== */
+
+  swap(
+
+    "function playStampNow(){const c=audio();if(!c)return;const t=c.currentTime;impact(.68);noiseHit(.38,.20);tone(62,t,.30,'square',.38);tone(92,t+.025,.26,'sine',.31);tone(392,t+.18,.20,'triangle',.22);tone(587,t+.30,.25,'sine',.28);tone(880,t+.44,.42,'triangle',.33)}",
+
+`function playStampNow(){
+
+  withAudioReady(
+    c=>{
+
+      const t=c.currentTime;
+
+
+      /*
+        印鑑を押した瞬間の
+        大きな「ドン！」
+      */
+
+      impact(
+        .95
+      );
+
+      noiseHit(
+        .55,
+        .18
+      );
+
+
+      /*
+        低音
+      */
+
+      tone(
+        55,
+        t,
+        .34,
+        'square',
+        .52
+      );
+
+      tone(
+        82,
+        t+.02,
+        .30,
+        'sine',
+        .42
+      );
+
+      tone(
+        110,
+        t+.055,
+        .24,
+        'triangle',
+        .30
+      );
+
+
+      /*
+        STAMP GET
+      */
+
+      tone(
+        392,
+        t+.18,
+        .22,
+        'triangle',
+        .28
+      );
+
+      tone(
+        587,
+        t+.30,
+        .28,
+        'sine',
+        .34
+      );
+
+      tone(
+        880,
+        t+.43,
+        .44,
+        'triangle',
+        .42
+      );
+
+      tone(
+        1175,
+        t+.57,
+        .38,
+        'sine',
+        .30
+      );
+
+    }
+  );
+
+}`,
+
+    'STAMP SE'
+
+  );
+
+
+  /* ===========================
+     最初のタップで
+     AudioContextを解放
+
+     WAV等は一切不要
+  =========================== */
+
+  swap(
+
+    "document.addEventListener('pointerdown',()=>{if(soundOn){const c=audio();if(c&&c.state==='suspended')c.resume()}if(state.started&&gpsWatchId===null&&!gpsPermissionDenied)startGps(false)},{capture:true});",
+
+    "document.addEventListener('pointerdown',()=>{if(soundOn)unlockAudio();if(state.started&&gpsWatchId===null&&!gpsPermissionDenied)startGps(false)},{capture:true});",
+
+    'pointerdown unlock'
+
+  );
+
+
+  /* ===========================
+     V20表示
+  =========================== */
+
+  document.open();
+
+  document.write(
+    html
+  );
+
+  document.close();
+
+
+})()
+.catch(
+  err=>{
+
+    console.error(
+      err
+    );
+
+    document
+      .getElementById(
+        'loader'
+      )
+      .innerHTML=
+        '<div>'
+        +
+        '<b>V20を読み込めませんでした</b>'
+        +
+        '<span>'
+        +
+        'quest-v19.html が同じ場所に残っていることを確認してください。'
+        +
+        '<br>'
+        +
+        String(
+          err.message
+          ||
+          err
+        )
+        +
+        '</span>'
+        +
+        '</div>';
+
+  }
+);
+</script>
+
+</body>
+</html>
