@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#062637">
+<title>知多半島 旅ラン QUEST｜V18 GPS</title>
+<style>
+html,body{
+  margin:0;
+  min-height:100%;
+  background:#031b27;
+  color:#fff;
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",Meiryo,sans-serif;
+}
+.loading{
+  min-height:100vh;
+  display:grid;
+  place-items:center;
+  text-align:center;
+  padding:24px;
+  box-sizing:border-box;
+}
+.loading b{
+  display:block;
+  font-size:24px;
+  margin-bottom:10px;
+}
+.loading span{
+  font-size:12px;
+  line-height:1.8;
+  color:#bdd6df;
+}
+</style>
+</head>
+
+<body>
+
+<div class="loading" id="loader">
+  <div>
+    <b>旅ラン QUEST V18</b>
+    <span>GPS版を読み込んでいます…</span>
+  </div>
+</div>
+
+<script>
+(async()=>{
+
+  const res=
+    await fetch(
+      './quest-v17.html?v=20260829-1',
+      {
+        cache:'no-store'
+      }
+    );
+
+  if(!res.ok){
+    throw new Error(
+      'V17 base load failed: '+
+      res.status
+    );
+  }
+
+  let html=
+    await res.text();
+
+
+  /* =========================================
+     V18 表示・保存領域
+  ========================================= */
+
+  html=
+    html.replaceAll(
+      'V17 GPS',
+      'V18 GPS'
+    );
+
+  html=
+    html.replaceAll(
+      'V17 GPS VERSION',
+      'V18 GPS VERSION'
+    );
+
+  html=
+    html.replaceAll(
+      'tabirunQuestV17',
+      'tabirunQuestV18'
+    );
+
+  html=
+    html.replaceAll(
+      'tabirunSoundV17',
+      'tabirunSoundV18'
+    );
+
+  html=
+    html.replaceAll(
+      'tabirunLastGpsV17',
+      'tabirunLastGpsV18'
+    );
+
+  html=
+    html.replace(
+      '/* 実機調整 V17 */',
+      '/* 実機調整 V18 */'
+    );
+
+
+  /* =========================================
+     BGM V18
+
+     1曲目 0.010
+     2曲目 0.0015
+     3曲目 0.040
+     4曲目 0.075
+  ========================================= */
+
+  html=
+    html.replace(
+      'history:.0023,',
+      'history:.0015,'
+    );
+
+  html=
+    html.replace(
+      'sea:.028,',
+      'sea:.040,'
+    );
+
+
+  /* =========================================
+     GPS説明用CSS追加
+  ========================================= */
+
+  html=
+    html.replace(
+      '</style>',
+      `
+.gpsDistanceNote{
+  margin-top:8px;
+  font-size:10px;
+  line-height:1.55;
+  font-weight:800;
+  color:#a35b21;
+  background:#fff3db;
+  border:1px solid #f0d3a1;
+  border-radius:10px;
+  padding:7px 9px;
+}
+
+.gpsExplain{
+  margin:13px 18px 0;
+  padding:13px 14px;
+  border-radius:15px;
+  background:#eef8fb;
+  border:1px solid #d6e5ea;
+  color:#36515c;
+  font-size:11px;
+  line-height:1.75;
+}
+
+.gpsExplain b{
+  color:#075d8c;
+}
+</style>
+      `
+    );
+
+
+  /* =========================================
+     GPS距離表示
+     「直線距離」であることを常時明記
+  ========================================= */
+
+  html=
+    html.replace(
+      "if(d)d.innerHTML=gpsDistanceText()+'<br><small>CHECKPOINTまで</small>';",
+      "if(d)d.innerHTML=gpsDistanceText()+'<br><small>GPS判定ポイントまで（直線距離）</small><div class=\"gpsDistanceNote\">※道路に沿った残り距離ではありません</div>';"
+    );
+
+
+  /* =========================================
+     到着画面の説明
+  ========================================= */
+
+  html=
+    html.replace(
+`          この画面を開いておけば、
+          チェックポイント付近を
+
+          <b>
+            通過するだけで自動判定
+          </b>
+
+          します。`,
+`          GPSで現在地を確認し、
+          チェックポイント付近を
+
+          <b>
+            通過すると自動でCLEAR
+          </b>
+
+          します。到着ボタンを押し忘れても、
+          通過判定で拾えるようにしています。`
+    );
+
+
+  /* =========================================
+     初期表示時の距離表記
+  ========================================= */
+
+  html=
+    html.replace(
+`          <small>
+            CHECKPOINTまで
+          </small>`,
+`          <small>
+            GPS判定ポイントまで（直線距離）
+          </small>
+
+          <div class="gpsDistanceNote">
+            ※道路に沿った残り距離ではありません
+          </div>`
+    );
+
+
+  /* =========================================
+     GPS説明ボックスを強化
+  ========================================= */
+
+  html=
+    html.replace(
+`      <div class="autoHint">
+
+        <b>
+          押し忘れ対策
+        </b>
+
+        <br>
+
+        判定円の中に入った場合だけでなく、
+        前回位置→現在位置が判定地点を
+        横切った場合も
+        「通過」と判定します。
+
+      </div>`,
+`      <div class="gpsExplain">
+
+        <b>
+          この距離について
+        </b>
+
+        <br>
+
+        表示している距離は、
+        現在地からGPS判定ポイントまでの
+
+        <b>
+          直線距離
+        </b>
+
+        です。
+
+        実際に道路を走る残り距離とは
+        異なります。
+
+      </div>
+
+
+      <div class="autoHint">
+
+        <b>
+          📍 押し忘れ対策
+        </b>
+
+        <br>
+
+        GPS判定エリアに入ると
+        自動CLEARします。
+
+        さらに、位置情報の
+        前回記録と今回記録を結んだ線が
+        判定エリアを横切った場合も
+        「通過」として判定します。
+
+        <br><br>
+
+        GPSがずれる・取得できない場合は、
+        下の
+
+        <b>
+          「手動で到着」
+        </b>
+
+        からそのまま進めます。
+
+      </div>`
+    );
+
+
+  /* =========================================
+     「判定方法」ボタンの説明
+  ========================================= */
+
+  html=
+    html.replace(
+      "'GPS自動判定は、①判定地点の半径内に入る、または②前回位置から現在位置までの移動線が判定エリアを横切る、のどちらかでCHECKPOINT FOUNDになります。位置情報が取れない場合は手動CHECK-INを使えます。'",
+      "'表示距離は現在地からGPS判定ポイントまでの直線距離で、道路に沿った残り距離ではありません。GPS自動判定は、①判定地点の半径内に入る、または②前回と今回の位置情報を結んだ線が判定エリアを横切る、のどちらかでCHECKPOINT FOUNDになります。位置情報が取れない場合は手動CHECK-INを使えます。'"
+    );
+
+
+  /* =========================================
+     スタンプ押印音 V18
+
+     「ドン！」を大幅強化
+     紙面への衝撃
+     ＋獲得音
+  ========================================= */
+
+  html=
+    html.replace(
+
+      /function sStamp\(\)\{[\s\S]*?\n\}\n\nfunction sSecret\(\)\{/,
+
+`function sStamp(){
+
+  const c=
+    audio();
+
+  if(!c){
+    return;
+  }
+
+  const t=
+    c.currentTime;
+
+
+  /*
+    押印の「ドン！」
+    V17より大幅に強化
+  */
+
+  impact(
+    .58
+  );
+
+
+  /*
+    印面が紙に当たる
+    短い衝撃音
+  */
+
+  noiseHit(
+    .30,
+    .18
+  );
+
+
+  /*
+    低いスタンプ押印音
+  */
+
+  tone(
+    70,
+    t,
+    .28,
+    'square',
+    .32
+  );
+
+  tone(
+    105,
+    t+.035,
+    .22,
+    'sine',
+    .24
+  );
+
+
+  /*
+    STAMP GETの上昇音
+  */
+
+  tone(
+    392,
+    t+.17,
+    .20,
+    'triangle',
+    .22
+  );
+
+  tone(
+    587,
+    t+.29,
+    .25,
+    'sine',
+    .26
+  );
+
+  tone(
+    880,
+    t+.42,
+    .40,
+    'triangle',
+    .30
+  );
+
+}
+
+
+function sSecret(){`
+
+    );
+
+
+  /* =========================================
+     V18としてページを表示
+  ========================================= */
+
+  document.open();
+
+  document.write(
+    html
+  );
+
+  document.close();
+
+})()
+.catch(
+  err=>{
+
+    console.error(
+      err
+    );
+
+    document
+      .getElementById(
+        'loader'
+      )
+      .innerHTML=`
+
+        <div>
+
+          <b>
+            V18を読み込めませんでした
+          </b>
+
+          <span>
+
+            通信状態を確認して
+            再読み込みしてください。
+
+            <br>
+
+            ${
+              String(
+                err.message
+                ||
+                err
+              )
+            }
+
+          </span>
+
+        </div>
+
+      `;
+
+  }
+);
+</script>
+
+</body>
+</html>
