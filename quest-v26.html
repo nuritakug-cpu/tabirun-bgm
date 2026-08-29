@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#062637">
+<title>知多半島 旅ラン QUEST｜V26 GPS</title>
+<style>
+html,body{margin:0;min-height:100%;background:#031b27;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",Meiryo,sans-serif}
+#boot{min-height:100vh;display:grid;place-items:center;text-align:center;padding:24px;box-sizing:border-box}
+#boot b{display:block;font-size:25px;margin-bottom:10px}
+#boot span{font-size:12px;line-height:1.8;color:#bdd6df}
+</style>
+</head>
+<body>
+<div id="boot"><div><b>旅ラン QUEST V26</b><span>Chrome / Safari / Android GPS対応版を読み込んでいます…</span></div></div>
+
+<script>
+(async()=>{
+try{
+  let raw=await fetch('./quest-v25.html?v=20260829-v26',{cache:'no-store'}).then(r=>{
+    if(!r.ok)throw new Error('V25 '+r.status);
+    return r.text();
+  });
+
+  raw=raw
+    .replaceAll('V25 GPS','V26 GPS')
+    .replaceAll('tabirunQuestV25','tabirunQuestV26')
+    .replaceAll('tabirunSoundV25','tabirunSoundV26')
+    .replaceAll('tabirunLastGpsV25','tabirunLastGpsV26');
+
+  const d=new DOMParser().parseFromString(raw,'text/html');
+  document.title=d.title;
+
+  d.head.querySelectorAll('style').forEach(s=>document.head.appendChild(s.cloneNode(true)));
+
+  const extraStyle=document.createElement('style');
+  extraStyle.textContent=`
+    .gpsStartBtn{width:100%;margin-top:12px;border:0;border-radius:14px;padding:14px 12px;background:linear-gradient(135deg,#0875b8,#0b9abb);color:#fff;font-size:13px;font-weight:1000;box-shadow:0 8px 18px rgba(8,117,184,.18)}
+    .gpsStartBtn:active{transform:scale(.985)}
+    .gpsStartBtn.on{background:linear-gradient(135deg,#157653,#25a477)}
+    .gpsPermission{margin-top:9px;padding:9px 10px;border-radius:11px;background:#fff;border:1px solid #dbe6e8;color:#53676f;font-size:9px;line-height:1.55;text-align:center}
+    .gpsPermission strong{color:#075d8c}
+    .gpsTroubleBtn{width:100%;margin-top:8px;border:1px solid #d5dee1;border-radius:11px;padding:9px;background:#fff;color:#47616b;font-size:9px;font-weight:900}
+  `;
+  document.head.appendChild(extraStyle);
+
+  const scripts=[...d.body.querySelectorAll('script')].map(s=>s.textContent);
+  d.body.querySelectorAll('script').forEach(s=>s.remove());
+  document.body.innerHTML=d.body.innerHTML;
+
+  for(const code of scripts){
+    const s=document.createElement('script');
+    s.textContent=code;
+    document.body.appendChild(s);
+  }
+
+  const patch=document.createElement('script');
+  patch.textContent=`
+/* =======================================
+   V26 GPS
+   Chrome / Safari / Android 共通
+======================================= */
+
+let gpsUserStartedV26=false;
+let gpsPermissionStateV26='unknown';
+let gpsStartingV26=false;
+
+function browserGpsGuideV26(){
+  const ua=navigator.userAgent||'';
+
+  if(/CriOS/i.test(ua)){
+    return 'iPhone版Chromeです。位置情報が出ない場合は、iPhoneの「設定」→「プライバシーとセキュリティ」→「位置情報サービス」→「Chrome」で位置情報を許可し、「正確な位置情報」をONにしてください。その後このページへ戻り「GPSを開始する」を押してください。';
+  }
+
+  if(/iPhone|iPad|iPod/i.test(ua)){
+    return 'iPhone / iPadです。位置情報が出ない場合は、端末の「設定」→「プライバシーとセキュリティ」→「位置情報サービス」で使用中のブラウザの位置情報を許可し、「正確な位置情報」をONにしてください。';
+  }
+
+  if(/Android/i.test(ua)){
+    return 'Androidです。端末の位置情報をONにし、Chromeのサイト設定でこのページの「位置情報」を許可してください。その後「GPSを開始する」を押してください。';
+  }
+
+  return '端末とブラウザの位置情報をONにし、このサイトへの位置情報アクセスを許可してから「GPSを開始する」を押してください。';
+}
+
+async function refreshGpsPermissionV26(){
+  gpsPermissionStateV26='unknown';
+
+  if(!navigator.permissions||!navigator.permissions.query){
+    updateGpsUi();
+    return;
+  }
+
+  try{
+    const p=await navigator.permissions.query({name:'geolocation'});
+    gpsPermissionStateV26=p.state||'unknown';
+
+    if(p.state==='denied'){
+      gpsPermissionDenied=true;
+      gpsStatus='error';
+      gpsMessage='位置情報が拒否されています';
+    }
+    else if(p.state==='granted'){
+      gpsPermissionDenied=false;
+    }
+
+    p.onchange=()=>{
+      gpsPermissionStateV26=p.state||'unknown';
+      if(p.state!=='denied')gpsPermissionDenied=false;
+      updateGpsUi();
+    };
+  }
+  catch(e){
+    gpsPermissionStateV26='unknown';
+  }
+
+  updateGpsUi();
+}
+
+function gpsPermissionLabelV26(){
+  if(gpsPermissionStateV26==='granted')return'許可済み';
+  if(gpsPermissionStateV26==='prompt')return'許可確認待ち';
+  if(gpsPermissionStateV26==='denied')return'拒否されています';
+  return'ブラウザで確認';
+}
+
+function gpsButtonLabelV26(){
+  if(gpsStartingV26)return'📡 GPS接続中…';
+  if(gpsStatus==='watching')return'✓ GPS接続 OK｜再取得する';
+  if(gpsUserStartedV26)return'📍 GPSを再開・再取得する';
+  return'📍 GPSを開始する';
+}
+
+function showGpsTroubleV26(){
+  alert(browserGpsGuideV26());
+}
+
+/* 初回は必ずこのボタンタップから位置情報を要求 */
+function userStartGpsV26(){
+  gpsUserStartedV26=true;
+  gpsStartingV26=true;
+  gpsPermissionDenied=false;
+  gpsStatus='searching';
+  gpsMessage='現在地を取得中…';
+  updateGpsUi();
+  refreshGpsPermissionV26();
+  startGps(true,true);
+}
+
+gpsStateLabel=function(){
+  if(gpsPermissionDenied)return'位置情報が許可されていません';
+  if(gpsStatus==='watching')return'GPS接続 OK｜自動通過判定中';
+  if(gpsStatus==='searching')return'現在地を取得中…';
+  if(gpsStatus==='error')return gpsMessage;
+  if(!gpsUserStartedV26)return'GPS開始ボタンを押してください';
+  return'GPS判定待機中';
+};
+
+const evaluateGpsPositionV25=evaluateGpsPosition;
+
+evaluateGpsPosition=function(pos){
+  gpsStartingV26=false;
+  gpsPermissionStateV26='granted';
+  gpsPermissionDenied=false;
+
+  evaluateGpsPositionV25(pos);
+
+  if(gpsStatus==='watching'){
+    gpsMessage='GPS接続 OK｜自動通過判定中';
+  }
+
+  updateGpsUi();
+};
+
+gpsError=function(err){
+  gpsStartingV26=false;
+  gpsStatus='error';
+
+  if(err&&err.code===1){
+    gpsPermissionDenied=true;
+    gpsPermissionStateV26='denied';
+    gpsMessage='位置情報が拒否されています';
+  }
+  else if(err&&err.code===2){
+    gpsMessage='現在地を取得できません。端末の位置情報を確認してください';
+  }
+  else if(err&&err.code===3){
+    gpsMessage='GPS取得がタイムアウトしました。もう一度お試しください';
+  }
+  else{
+    gpsMessage='GPSを取得できません';
+  }
+
+  updateGpsUi();
+};
+
+startGps=function(force=false,fromUser=false){
+
+  if(!('geolocation' in navigator)){
+    gpsStartingV26=false;
+    gpsStatus='error';
+    gpsMessage='このブラウザではGPSを利用できません';
+    updateGpsUi();
+    return;
+  }
+
+  /*
+    初回は自動では位置情報を要求しない。
+    必ず参加者本人の
+    「GPSを開始する」タップから開始。
+  */
+  if(!gpsUserStartedV26&&!fromUser){
+    gpsStatus='idle';
+    gpsMessage='GPS開始ボタンを押してください';
+    updateGpsUi();
+    return;
+  }
+
+  if(fromUser){
+    gpsUserStartedV26=true;
+  }
+
+  if(gpsWatchId!==null&&!force){
+    gpsStatus='watching';
+    gpsStartingV26=false;
+    updateGpsUi();
+    return;
+  }
+
+  if(gpsWatchId!==null&&force){
+    try{
+      navigator.geolocation.clearWatch(gpsWatchId);
+    }
+    catch(e){}
+
+    gpsWatchId=null;
+  }
+
+  gpsPermissionDenied=false;
+  gpsStartingV26=true;
+  gpsStatus='searching';
+  gpsMessage='現在地を取得中…';
+
+  updateGpsUi();
+
+  const oneShotOptions={
+    enableHighAccuracy:true,
+    timeout:20000,
+    maximumAge:0
+  };
+
+  const watchOptions={
+    enableHighAccuracy:true,
+    timeout:30000,
+    maximumAge:3000
+  };
+
+  /*
+    まず現在地を1回取得。
+    成功後に継続監視を開始。
+  */
+  navigator.geolocation.getCurrentPosition(
+
+    pos=>{
+
+      evaluateGpsPosition(pos);
+
+      if(gpsWatchId===null){
+
+        gpsWatchId=
+          navigator.geolocation.watchPosition(
+            evaluateGpsPosition,
+            gpsError,
+            watchOptions
+          );
+
+      }
+
+    },
+
+    err=>{
+
+      gpsError(err);
+
+      /*
+        権限拒否ではなく一時的な取得失敗なら
+        watchPositionも試す。
+      */
+      if(
+        !(err&&err.code===1)
+        &&
+        gpsWatchId===null
+      ){
+
+        try{
+
+          gpsWatchId=
+            navigator.geolocation.watchPosition(
+              evaluateGpsPosition,
+              gpsError,
+              watchOptions
+            );
+
+        }
+        catch(e){}
+
+      }
+
+    },
+
+    oneShotOptions
+  );
+};
+
+retryGps=function(){
+  userStartGpsV26();
+};
+
+showGpsHelp=function(){
+
+  alert(
+    '表示距離は現在地からGPS判定ポイントまでの直線距離です。'
+    +
+    '道路に沿った残り距離ではありません。'
+    +
+    '最初に「GPSを開始する」を押して位置情報を許可してください。'
+    +
+    '接続後は、①判定半径内に入る、または②前回位置と今回位置を結んだ線が判定エリアを横切る、'
+    +
+    'のどちらかで自動CLEARします。'
+    +
+    'GPSを取得できない場合は手動判定を使えます。'
+  );
+
+};
+
+updateGpsUi=function(){
+
+  const d=
+    document.getElementById(
+      'gpsDistance'
+    );
+
+  const s=
+    document.getElementById(
+      'gpsStatusText'
+    );
+
+  const m=
+    document.getElementById(
+      'gpsMeta'
+    );
+
+  const pulse=
+    document.getElementById(
+      'gpsPulse'
+    );
+
+  const startBtn=
+    document.getElementById(
+      'gpsStartButtonV26'
+    );
+
+  const perm=
+    document.getElementById(
+      'gpsPermissionTextV26'
+    );
+
+  const target=
+    currentGpsTarget();
+
+
+  if(d){
+
+    d.innerHTML=
+      gpsDistanceText()
+      +
+      '<br><small>GPS判定ポイントまで（直線距離）</small>'
+      +
+      '<div class="gpsDistanceNote">※道路に沿った残り距離ではありません</div>';
+
+  }
+
+
+  if(s){
+    s.textContent=
+      gpsStateLabel();
+  }
+
+
+  if(pulse){
+
+    pulse.className=
+      'gpsPulse '
+      +
+      gpsPulseClass();
+
+  }
+
+
+  if(startBtn){
+
+    startBtn.textContent=
+      gpsButtonLabelV26();
+
+    startBtn.className=
+      'gpsStartBtn '
+      +
+      (
+        gpsStatus==='watching'
+        ?
+        'on'
+        :
+        ''
+      );
+
+    startBtn.disabled=
+      gpsStartingV26;
+
+  }
+
+
+  if(perm){
+
+    perm.innerHTML=
+      '<strong>位置情報：</strong>'
+      +
+      gpsPermissionLabelV26();
+
+  }
+
+
+  if(
+    m
+    &&
+    target
+  ){
+
+    const acc=
+      gpsCurrent
+      ?
+      Math.round(
+        gpsCurrent.accuracy
+      )
+      +
+      'm'
+      :
+      '---';
+
+    m.innerHTML=
+      'GPS精度 '
+      +
+      acc
+      +
+      ' ／ 判定半径 '
+      +
+      target.radius
+      +
+      'm'
+      +
+      '<br>判定点 '
+      +
+      target.lat.toFixed(
+        6
+      )
+      +
+      ', '
+      +
+      target.lng.toFixed(
+        6
+      );
+
+  }
+
+};
+
+gpsPanelHtml=function(){
+
+  const target=
+    currentGpsTarget();
+
+
+  return(
+    '<div class="gpsPanel">'
+
+      +
+
+      '<div class="gpsTop">'
+
+        +
+
+        '<div id="gpsPulse" class="gpsPulse '
+        +
+        gpsPulseClass()
+        +
+        '">◎</div>'
+
+        +
+
+        '<div>'
+        +
+        '<div class="gpsTitle">GPS AUTO CHECK</div>'
+        +
+        '<div id="gpsStatusText" class="gpsStatus">'
+        +
+        gpsStateLabel()
+        +
+        '</div>'
+        +
+        '</div>'
+
+      +
+
+      '</div>'
+
+
+      +
+
+      '<button id="gpsStartButtonV26" class="gpsStartBtn '
+      +
+      (
+        gpsStatus==='watching'
+        ?
+        'on'
+        :
+        ''
+      )
+      +
+      '" onclick="userStartGpsV26()">'
+      +
+      gpsButtonLabelV26()
+      +
+      '</button>'
+
+
+      +
+
+      '<div id="gpsPermissionTextV26" class="gpsPermission">'
+      +
+      '<strong>位置情報：</strong>'
+      +
+      gpsPermissionLabelV26()
+      +
+      '</div>'
+
+
+      +
+
+      '<div id="gpsDistance" class="gpsDistance">'
+      +
+      gpsDistanceText()
+      +
+      '<br>'
+      +
+      '<small>GPS判定ポイントまで（直線距離）</small>'
+      +
+      '<div class="gpsDistanceNote">'
+      +
+      '※道路に沿った残り距離ではありません'
+      +
+      '</div>'
+      +
+      '</div>'
+
+
+      +
+
+      '<div id="gpsMeta" class="gpsMeta">'
+      +
+      'GPS精度 '
+      +
+      (
+        gpsCurrent
+        ?
+        Math.round(
+          gpsCurrent.accuracy
+        )
+        +
+        'm'
+        :
+        '---'
+      )
+      +
+      ' ／ 判定半径 '
+      +
+      (
+        target
+        ?
+        target.radius
+        :
+        '---'
+      )
+      +
+      'm'
+      +
+      '<br>'
+      +
+      (
+        target
+        ?
+        '判定点 '
+        +
+        target.lat.toFixed(
+          6
+        )
+        +
+        ', '
+        +
+        target.lng.toFixed(
+          6
+        )
+        :
+        ''
+      )
+      +
+      '</div>'
+
+
+      +
+
+      '<div class="gpsActions">'
+      +
+      '<button class="gpsMini" onclick="retryGps()">📡 GPS再取得</button>'
+      +
+      '<button class="gpsMini" onclick="showGpsHelp()">？ 判定方法</button>'
+      +
+      '</div>'
+
+
+      +
+
+      '<button class="gpsTroubleBtn" onclick="showGpsTroubleV26()">'
+      +
+      '位置情報が出ない場合の設定を見る'
+      +
+      '</button>'
+
+
+    +
+
+    '</div>'
+  );
+
+};
+
+
+/* =======================================
+   START
+======================================= */
+
+const beginV25=
+  begin;
+
+
+begin=function(n){
+
+  gpsUserStartedV26=false;
+  gpsStartingV26=false;
+  gpsPermissionStateV26='unknown';
+
+  gpsPermissionDenied=false;
+  gpsStatus='idle';
+  gpsMessage='GPS開始ボタンを押してください';
+
+
+  beginV25(
+    n
+  );
+
+
+  /*
+    V25が呼ぶ自動GPSは
+    V26のstartGps側で停止する。
+  */
+
+  refreshGpsPermissionV26();
+
+};
+
+
+renderStartCheck=function(){
+
+  const s=
+    START_GPS[
+      state.start
+    ];
+
+
+  if(
+    gpsCurrent
+  ){
+
+    gpsDistance=
+      haversine(
+        gpsCurrent,
+        s
+      );
+
+  }
+
+
+  document
+    .getElementById(
+      'app'
+    )
+    .innerHTML=
+
+      '<section class="startCheck">'
+
+      +
+
+      '<div class="eyebrow">'
+      +
+      'START POINT CHECK'
+      +
+      '</div>'
+
+      +
+
+      '<h1>'
+      +
+      s.name
+      +
+      '</h1>'
+
+      +
+
+      '<div class="startCheckLead">'
+      +
+      '① 下の「GPSを開始する」を押す'
+      +
+      '<br>'
+      +
+      '② ブラウザの位置情報を「許可」'
+      +
+      '<br>'
+      +
+      '③ GPS接続OKになると自動判定を開始します'
+      +
+      '</div>'
+
+      +
+
+      gpsPanelHtml()
+
+      +
+
+      '<div class="gpsExplain">'
+      +
+      '<b>Chrome / Safari / Android 共通</b>'
+      +
+      '<br>'
+      +
+      'GPSは自動起動に頼らず、参加者本人のタップで開始します。'
+      +
+      '表示距離はGPS判定ポイントまでの直線距離です。'
+      +
+      '</div>'
+
+      +
+
+      '<div class="autoHint">'
+      +
+      '<b>GPSが取得できなくてもQUESTは止まりません。</b>'
+      +
+      '<br>'
+      +
+      '権限や電波状況で取得できない場合は、下の手動確認で進めます。'
+      +
+      '</div>'
+
+      +
+
+      '<div class="manualWrap">'
+      +
+      '<button class="manualBtn" onclick="manualStartCheck()">'
+      +
+      'GPSが反応しない場合は手動でスタート地点確認'
+      +
+      '<span>MANUAL START CHECK</span>'
+      +
+      '</button>'
+      +
+      '</div>'
+
+      +
+
+      '</section>';
+
+
+  updateGpsUi();
+
+  refreshGpsPermissionV26();
+
+};
+
+
+/* =======================================
+   START画面説明
+======================================= */
+
+const renderStartV25=
+  renderStart;
+
+
+renderStart=function(){
+
+  renderStartV25();
+
+
+  const how=
+    document.querySelector(
+      '.how'
+    );
+
+
+  if(how){
+
+    how.innerHTML=
+      '📍 阿久比町役場・河和口・知多奥田駅もGPSチェック'
+      +
+      '<br>'
+      +
+      '👆 GPSはスタート地点で「GPSを開始する」をタップ'
+      +
+      '<br>'
+      +
+      '✋ GPSが反応しない場合は手動確認可能'
+      +
+      '<br>'
+      +
+      '📏 距離表示はGPS判定点までの直線距離'
+      +
+      '<br><br>'
+      +
+      '🎵 BGM・効果音あり';
+
+  }
+
+};
+
+
+/* =======================================
+   現在表示をV26仕様へ
+======================================= */
+
+if(
+  state.started
+  &&
+  state.phase==='startCheck'
+){
+
+  gpsUserStartedV26=false;
+
+  gpsStatus='idle';
+
+  gpsMessage=
+    'GPS開始ボタンを押してください';
+
+}
+
+
+render();
+
+refreshGpsPermissionV26();
+
+`;
+
+  document.body.appendChild(patch);
+
+}
+catch(e){
+
+  console.error(e);
+
+  const boot=
+    document.getElementById(
+      'boot'
+    );
+
+  if(boot){
+
+    boot.innerHTML=
+      '<div>'
+      +
+      '<b>V26を読み込めませんでした</b>'
+      +
+      '<span>'
+      +
+      String(
+        e.message
+        ||
+        e
+      )
+      +
+      '</span>'
+      +
+      '</div>';
+
+  }
+
+}
+
+})();
+</script>
+
+</body>
+</html>
