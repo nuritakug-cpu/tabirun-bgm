@@ -1,0 +1,1485 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#062637">
+<title>知多半島 旅ラン QUEST｜V23 GPS</title>
+<style>
+html,body{margin:0;min-height:100%;background:#031b27;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",Meiryo,sans-serif}
+.loading{min-height:100vh;display:grid;place-items:center;text-align:center;padding:24px;box-sizing:border-box}
+.loading b{display:block;font-size:24px;margin-bottom:10px}
+.loading span{font-size:12px;line-height:1.8;color:#bdd6df}
+</style>
+</head>
+<body>
+
+<div class="loading" id="loader">
+  <div>
+    <b>旅ラン QUEST V23</b>
+    <span>GPS・サウンド・メダル保存対応版を読み込んでいます…</span>
+  </div>
+</div>
+
+<script>
+(async()=>{
+
+  try{
+
+    const res=await fetch(
+      './quest-v19.html?v=20260829-v23',
+      {cache:'no-store'}
+    );
+
+    if(!res.ok){
+      throw new Error(
+        'V19 base load failed: '+res.status
+      );
+    }
+
+    let html=await res.text();
+
+    html=html.replaceAll(
+      'V19 GPS',
+      'V23 GPS'
+    );
+
+    html=html.replaceAll(
+      'tabirunQuestV19',
+      'tabirunQuestV23'
+    );
+
+    html=html.replaceAll(
+      'tabirunSoundV19',
+      'tabirunSoundV23'
+    );
+
+    html=html.replaceAll(
+      'tabirunLastGpsV19',
+      'tabirunLastGpsV23'
+    );
+
+    html=html.replaceAll(
+      "next:'美浜オレンジライン'",
+      "next:'オレンジ広場'"
+    );
+
+    html=html.replaceAll(
+      "name:'美浜オレンジライン'",
+      "name:'オレンジ広場'"
+    );
+
+    html=html.replaceAll(
+      'ロードから緑の世界へ。旅ラン中盤戦に突入！アップダウンも、この旅の景色のひとつ。',
+      'オレンジ広場まで到達！ここからオレンジラインの中盤へ。アップダウンも、この旅の景色のひとつ。'
+    );
+
+
+    const patch=`
+
+/* =====================================
+   V23
+   iPhone / Android 共通サウンド対策
+   WAV不要
+===================================== */
+
+try{
+  BGM_VOL.history=.00035;
+  BGM_VOL.sea=.160;
+}catch(e){}
+
+
+/* -------------------------------------
+   AudioContextを安全に起動
+------------------------------------- */
+
+function questAudioRun(fn){
+
+  if(!soundOn){
+    return;
+  }
+
+  try{
+
+    if(!ctx){
+
+      ctx=new(
+        window.AudioContext
+        ||
+        window.webkitAudioContext
+      )();
+
+    }
+
+    const run=()=>{
+
+      try{
+        fn(ctx);
+      }
+      catch(e){}
+
+    };
+
+
+    if(
+      ctx.state==='running'
+    ){
+
+      run();
+
+      return;
+    }
+
+
+    const p=
+      ctx.resume();
+
+
+    if(
+      p
+      &&
+      p.then
+    ){
+
+      p
+        .then(
+          run
+        )
+        .catch(
+          ()=>{}
+        );
+
+    }
+    else{
+
+      setTimeout(
+        run,
+        0
+      );
+
+    }
+
+  }
+  catch(e){}
+
+}
+
+
+function questAudioUnlock(){
+
+  if(!soundOn){
+    return;
+  }
+
+  try{
+
+    if(!ctx){
+
+      ctx=new(
+        window.AudioContext
+        ||
+        window.webkitAudioContext
+      )();
+
+    }
+
+
+    if(
+      ctx.state==='suspended'
+    ){
+
+      const p=
+        ctx.resume();
+
+
+      if(
+        p
+        &&
+        p.catch
+      ){
+
+        p.catch(
+          ()=>{}
+        );
+
+      }
+
+    }
+
+  }
+  catch(e){}
+
+}
+
+
+/* =====================================
+   STAGE CLEAR
+
+   BGM停止
+   ↓
+   大きな衝撃音
+   ↓
+   CLEARファンファーレ
+===================================== */
+
+playStageClearNow=function(){
+
+  stopBgm();
+
+
+  questAudioRun(
+    c=>{
+
+      const t=
+        c.currentTime;
+
+
+      impact(
+        1.10
+      );
+
+
+      noiseHit(
+        .76,
+        .24
+      );
+
+
+      tone(
+        58,
+        t,
+        .42,
+        'square',
+        .72
+      );
+
+
+      tone(
+        87,
+        t+.018,
+        .38,
+        'sine',
+        .60
+      );
+
+
+      tone(
+        174,
+        t+.07,
+        .30,
+        'square',
+        .42
+      );
+
+
+      tone(
+        392,
+        t+.15,
+        .34,
+        'triangle',
+        .50
+      );
+
+
+      tone(
+        523,
+        t+.29,
+        .40,
+        'sine',
+        .56
+      );
+
+
+      tone(
+        659,
+        t+.45,
+        .45,
+        'triangle',
+        .60
+      );
+
+
+      tone(
+        784,
+        t+.63,
+        .50,
+        'sine',
+        .64
+      );
+
+
+      tone(
+        1047,
+        t+.84,
+        .80,
+        'triangle',
+        .72
+      );
+
+
+      tone(
+        1319,
+        t+1.02,
+        .62,
+        'sine',
+        .52
+      );
+
+    }
+  );
+
+};
+
+
+/* =====================================
+   STAMP
+
+   強い「ドン！」
+===================================== */
+
+playStampNow=function(){
+
+  questAudioRun(
+    c=>{
+
+      const t=
+        c.currentTime;
+
+
+      impact(
+        1.30
+      );
+
+
+      noiseHit(
+        .88,
+        .24
+      );
+
+
+      tone(
+        42,
+        t,
+        .44,
+        'square',
+        .82
+      );
+
+
+      tone(
+        64,
+        t+.018,
+        .40,
+        'sine',
+        .70
+      );
+
+
+      tone(
+        96,
+        t+.05,
+        .32,
+        'triangle',
+        .50
+      );
+
+
+      tone(
+        392,
+        t+.20,
+        .25,
+        'triangle',
+        .40
+      );
+
+
+      tone(
+        587,
+        t+.32,
+        .31,
+        'sine',
+        .48
+      );
+
+
+      tone(
+        880,
+        t+.47,
+        .52,
+        'triangle',
+        .62
+      );
+
+
+      tone(
+        1175,
+        t+.64,
+        .44,
+        'sine',
+        .48
+      );
+
+    }
+  );
+
+};
+
+
+/* =====================================
+   SOUND CHECK
+===================================== */
+
+function soundCheckV23(){
+
+  questAudioRun(
+    c=>{
+
+      const t=
+        c.currentTime;
+
+
+      impact(
+        .85
+      );
+
+
+      noiseHit(
+        .42,
+        .15
+      );
+
+
+      tone(
+        392,
+        t+.04,
+        .20,
+        'triangle',
+        .34
+      );
+
+
+      tone(
+        587,
+        t+.15,
+        .22,
+        'sine',
+        .38
+      );
+
+
+      tone(
+        880,
+        t+.27,
+        .32,
+        'triangle',
+        .44
+      );
+
+    }
+  );
+
+
+  const b=
+    document.getElementById(
+      'soundCheckV23'
+    );
+
+
+  if(b){
+
+    const old=
+      b.textContent;
+
+
+    b.textContent=
+      '✓ 音が聞こえれば準備OK';
+
+
+    setTimeout(
+      ()=>{
+
+        if(b){
+          b.textContent=old;
+        }
+
+      },
+      1800
+    );
+
+  }
+
+}
+
+
+function addSoundCheckV23(){
+
+  const cover=
+    document.querySelector(
+      '.cover'
+    );
+
+
+  if(
+    !cover
+    ||
+    document.getElementById(
+      'soundCheckV23'
+    )
+  ){
+
+    return;
+
+  }
+
+
+  const title=
+    document.createElement(
+      'div'
+    );
+
+
+  title.style.cssText=
+    'margin-top:16px;font-size:10px;letter-spacing:.13em;font-weight:950;color:#ffd89b';
+
+
+  title.textContent=
+    'SOUND CHECK';
+
+
+  const b=
+    document.createElement(
+      'button'
+    );
+
+
+  b.id=
+    'soundCheckV23';
+
+
+  b.className=
+    'btn gold';
+
+
+  b.style.marginTop=
+    '8px';
+
+
+  b.textContent=
+    '🔊 音声チェック（参加前に1回）';
+
+
+  b.onclick=
+    soundCheckV23;
+
+
+  const note=
+    document.createElement(
+      'div'
+    );
+
+
+  note.style.cssText=
+    'margin-top:7px;text-align:center;font-size:9px;line-height:1.55;color:#d4e2e6';
+
+
+  note.textContent=
+    'iPhone・Android共通。最初に一度タップして、BGM・効果音を有効にします。';
+
+
+  const startTitle=
+    cover.querySelector(
+      '.startTitle'
+    );
+
+
+  if(startTitle){
+
+    cover.insertBefore(
+      title,
+      startTitle
+    );
+
+
+    cover.insertBefore(
+      b,
+      startTitle
+    );
+
+
+    cover.insertBefore(
+      note,
+      startTitle
+    );
+
+  }
+  else{
+
+    cover.appendChild(
+      title
+    );
+
+
+    cover.appendChild(
+      b
+    );
+
+
+    cover.appendChild(
+      note
+    );
+
+  }
+
+}
+
+
+/* START画面が再表示されても追加 */
+
+try{
+
+  const originalRenderStart=
+    renderStart;
+
+
+  renderStart=function(){
+
+    originalRenderStart();
+
+    addSoundCheckV23();
+
+  };
+
+}
+catch(e){}
+
+
+/* STARTボタンでも音声を起動 */
+
+try{
+
+  const originalBegin=
+    begin;
+
+
+  begin=function(n){
+
+    questAudioUnlock();
+
+    originalBegin(n);
+
+  };
+
+}
+catch(e){}
+
+
+/* iPhone / Android 共通 */
+
+document.addEventListener(
+  'pointerdown',
+  questAudioUnlock,
+  {
+    capture:true,
+    passive:true
+  }
+);
+
+
+document.addEventListener(
+  'touchstart',
+  questAudioUnlock,
+  {
+    capture:true,
+    passive:true
+  }
+);
+
+
+/* =====================================
+   完走メダル
+
+   iPhone / Android
+   保存方法を複数用意
+===================================== */
+
+let medalBlobV23=null;
+let medalUrlV23='';
+let medalDataV23='';
+
+
+function buildMedalCanvasV23(){
+
+  const c=
+    document.createElement(
+      'canvas'
+    );
+
+
+  c.width=
+    1400;
+
+
+  c.height=
+    1650;
+
+
+  const x=
+    c.getContext(
+      '2d'
+    );
+
+
+  x.fillStyle=
+    '#06263a';
+
+
+  x.fillRect(
+    0,
+    0,
+    c.width,
+    c.height
+  );
+
+
+  const metal=
+    x.createRadialGradient(
+      575,
+      620,
+      20,
+      700,
+      900,
+      430
+    );
+
+
+  metal.addColorStop(
+    0,
+    '#fff3ac'
+  );
+
+
+  metal.addColorStop(
+    .2,
+    '#dfb13d'
+  );
+
+
+  metal.addColorStop(
+    .46,
+    '#8a5808'
+  );
+
+
+  metal.addColorStop(
+    .68,
+    '#efce64'
+  );
+
+
+  metal.addColorStop(
+    1,
+    '#563200'
+  );
+
+
+  x.fillStyle=
+    metal;
+
+
+  x.beginPath();
+
+
+  x.arc(
+    700,
+    820,
+    430,
+    0,
+    Math.PI*2
+  );
+
+
+  x.fill();
+
+
+  x.fillStyle=
+    '#06263a';
+
+
+  x.beginPath();
+
+
+  x.arc(
+    700,
+    820,
+    360,
+    0,
+    Math.PI*2
+  );
+
+
+  x.fill();
+
+
+  x.strokeStyle=
+    '#e2b945';
+
+
+  x.lineWidth=
+    16;
+
+
+  x.stroke();
+
+
+  x.textAlign=
+    'center';
+
+
+  x.fillStyle=
+    '#efce64';
+
+
+  x.font=
+    '900 34px sans-serif';
+
+
+  x.fillText(
+    'CHITA TABIRUN 2026',
+    700,
+    590
+  );
+
+
+  x.fillStyle=
+    '#fff2b2';
+
+
+  x.font=
+    '900 105px sans-serif';
+
+
+  x.fillText(
+    '旅ラン',
+    700,
+    790
+  );
+
+
+  x.fillStyle=
+    '#f0cf66';
+
+
+  x.font=
+    '900 72px sans-serif';
+
+
+  x.fillText(
+    'FINISHER',
+    700,
+    950
+  );
+
+
+  x.font=
+    '900 42px sans-serif';
+
+
+  x.fillText(
+    '2026.9.22',
+    700,
+    1040
+  );
+
+
+  x.font=
+    '900 30px sans-serif';
+
+
+  x.fillText(
+    'AGUI  →  UTSUMI',
+    700,
+    1160
+  );
+
+
+  x.font=
+    '900 24px sans-serif';
+
+
+  x.fillText(
+    '3 STAGES COMPLETE',
+    700,
+    1210
+  );
+
+
+  x.fillStyle=
+    '#fff';
+
+
+  x.font=
+    '900 48px sans-serif';
+
+
+  x.fillText(
+    '知多半島 旅ラン',
+    700,
+    1430
+  );
+
+
+  return c;
+
+}
+
+
+function dataUrlToBlobV23(
+  dataUrl
+){
+
+  const parts=
+    dataUrl.split(
+      ','
+    );
+
+
+  const mime=
+    (
+      parts[0]
+      .match(
+        /:(.*?);/
+      )
+      ||
+      []
+    )[1]
+    ||
+    'image/png';
+
+
+  const bytes=
+    atob(
+      parts[1]
+    );
+
+
+  const arr=
+    new Uint8Array(
+      bytes.length
+    );
+
+
+  for(
+    let i=0;
+    i<bytes.length;
+    i++
+  ){
+
+    arr[i]=
+      bytes.charCodeAt(
+        i
+      );
+
+  }
+
+
+  return new Blob(
+    [arr],
+    {
+      type:mime
+    }
+  );
+
+}
+
+
+function closeMedalV23(){
+
+  document
+    .getElementById(
+      'medalSaveOverlayV23'
+    )
+    ?.remove();
+
+}
+
+
+function saveMedalFileV23(){
+
+  if(
+    !medalBlobV23
+    &&
+    medalDataV23
+  ){
+
+    medalBlobV23=
+      dataUrlToBlobV23(
+        medalDataV23
+      );
+
+  }
+
+
+  if(
+    !medalBlobV23
+  ){
+
+    return;
+
+  }
+
+
+  if(
+    medalUrlV23
+  ){
+
+    URL.revokeObjectURL(
+      medalUrlV23
+    );
+
+  }
+
+
+  medalUrlV23=
+    URL.createObjectURL(
+      medalBlobV23
+    );
+
+
+  const a=
+    document.createElement(
+      'a'
+    );
+
+
+  a.href=
+    medalUrlV23;
+
+
+  a.download=
+    '知多半島旅ラン_FINISHER_MEDAL_2026-9-22.png';
+
+
+  a.rel=
+    'noopener';
+
+
+  document.body
+    .appendChild(
+      a
+    );
+
+
+  a.click();
+
+
+  a.remove();
+
+}
+
+
+async function shareMedalV23(){
+
+  if(
+    !medalBlobV23
+    &&
+    medalDataV23
+  ){
+
+    medalBlobV23=
+      dataUrlToBlobV23(
+        medalDataV23
+      );
+
+  }
+
+
+  if(
+    !medalBlobV23
+  ){
+
+    return;
+
+  }
+
+
+  try{
+
+    const file=
+      new File(
+        [
+          medalBlobV23
+        ],
+        '知多半島旅ラン_FINISHER_MEDAL_2026-9-22.png',
+        {
+          type:'image/png'
+        }
+      );
+
+
+    if(
+      navigator.share
+      &&
+      (
+        !navigator.canShare
+        ||
+        navigator.canShare(
+          {
+            files:[
+              file
+            ]
+          }
+        )
+      )
+    ){
+
+      await navigator.share(
+        {
+          title:
+            '知多半島 旅ラン FINISHER',
+
+          text:
+            '知多半島 旅ラン 完走メダル',
+
+          files:[
+            file
+          ]
+        }
+      );
+
+
+      return;
+
+    }
+
+  }
+  catch(e){
+
+    if(
+      e
+      &&
+      e.name==='AbortError'
+    ){
+
+      return;
+
+    }
+
+  }
+
+
+  saveMedalFileV23();
+
+}
+
+
+function showMedalOverlayV23(){
+
+  closeMedalV23();
+
+
+  const o=
+    document.createElement(
+      'div'
+    );
+
+
+  o.id=
+    'medalSaveOverlayV23';
+
+
+  o.style.cssText=
+    'position:fixed;inset:0;z-index:20000;background:rgba(1,14,22,.96);overflow:auto;padding:calc(18px + env(safe-area-inset-top)) 16px calc(30px + env(safe-area-inset-bottom));color:#fff;text-align:center';
+
+
+  o.innerHTML=`
+
+    <div style="
+      max-width:430px;
+      margin:auto
+    ">
+
+      <div style="
+        font-size:10px;
+        letter-spacing:.18em;
+        color:#e8c75c;
+        font-weight:950
+      ">
+        FINISHER MEDAL
+      </div>
+
+
+      <h2 style="
+        font-size:27px;
+        margin:7px 0 12px
+      ">
+        完走メダルを保存
+      </h2>
+
+
+      <img
+        src="${medalDataV23}"
+        alt="知多半島旅ラン完走メダル"
+        style="
+          display:block;
+          width:100%;
+          border-radius:18px;
+          background:#06263a;
+          box-shadow:0 18px 40px rgba(0,0,0,.45);
+          -webkit-touch-callout:default
+        "
+      >
+
+
+      <div style="
+        margin-top:13px;
+        padding:12px;
+        border-radius:14px;
+        background:rgba(255,255,255,.08);
+        font-size:11px;
+        line-height:1.75;
+        color:#e4eef1
+      ">
+
+        <b>
+          iPhone：
+        </b>
+
+        「共有・保存」を押すか、
+        画像を長押しして保存
+
+        <br>
+
+
+        <b>
+          Android：
+        </b>
+
+        「画像をダウンロード」を押すか、
+        画像を長押しして保存
+
+      </div>
+
+
+      <button
+        class="btn gold"
+        style="margin-top:13px"
+        onclick="shareMedalV23()"
+      >
+        共有・保存
+      </button>
+
+
+      <button
+        class="btn primary"
+        style="margin-top:9px"
+        onclick="saveMedalFileV23()"
+      >
+        画像をダウンロード
+      </button>
+
+
+      <button
+        class="btn secondary"
+        style="margin-top:9px"
+        onclick="closeMedalV23()"
+      >
+        閉じる
+      </button>
+
+    </div>
+
+  `;
+
+
+  document.body
+    .appendChild(
+      o
+    );
+
+}
+
+
+/* 元のdownload処理を置き換える */
+
+downloadMedal=function(){
+
+  try{
+
+    const c=
+      buildMedalCanvasV23();
+
+
+    medalDataV23=
+      c.toDataURL(
+        'image/png'
+      );
+
+
+    medalBlobV23=
+      null;
+
+
+    if(
+      c.toBlob
+    ){
+
+      c.toBlob(
+        b=>{
+
+          if(b){
+            medalBlobV23=b;
+          }
+
+        },
+        'image/png'
+      );
+
+    }
+
+
+    /*
+      必ずまず画像を表示する。
+      「押しても何も起きない」
+      状態をなくす。
+    */
+
+    showMedalOverlayV23();
+
+  }
+  catch(e){
+
+    alert(
+      'メダル画像を作成できませんでした。画面を再読み込みして、もう一度お試しください。'
+    );
+
+  }
+
+};
+
+
+/* 完走画面のボタン表記変更 */
+
+try{
+
+  const originalRenderFinish=
+    renderFinish;
+
+
+  renderFinish=function(){
+
+    originalRenderFinish();
+
+
+    const buttons=[
+      ...document.querySelectorAll(
+        'button'
+      )
+    ];
+
+
+    const medalButton=
+      buttons.find(
+        b=>
+          b.textContent
+            .includes(
+              'デジタル完走メダル'
+            )
+      );
+
+
+    if(
+      medalButton
+    ){
+
+      medalButton.innerHTML=
+        '🏅 デジタル完走メダルを表示・保存';
+
+    }
+
+  };
+
+}
+catch(e){}
+
+
+/* 最初の画面にも反映 */
+
+addSoundCheckV23();
+
+`;
+
+
+    if(
+      !html.includes(
+        '</body>'
+      )
+    ){
+
+      throw new Error(
+        'V19 HTML end tag not found'
+      );
+
+    }
+
+
+    html=html.replace(
+      '</body>',
+      '<script>'
+      +
+      patch.replaceAll(
+        '</scr'+'ipt>',
+        '<\\/script>'
+      )
+      +
+      '<\\/script></body>'
+    );
+
+
+    document.open();
+
+    document.write(
+      html
+    );
+
+    document.close();
+
+  }
+  catch(err){
+
+    console.error(
+      err
+    );
+
+
+    document
+      .getElementById(
+        'loader'
+      )
+      .innerHTML=
+        '<div>'
+        +
+        '<b>V23を読み込めませんでした</b>'
+        +
+        '<span>'
+        +
+        'quest-v19.html が同じ場所にあることを確認してください。'
+        +
+        '<br>'
+        +
+        String(
+          err.message
+          ||
+          err
+        )
+        +
+        '</span>'
+        +
+        '</div>';
+
+  }
+
+})();
+</script>
+
+</body>
+</html>
