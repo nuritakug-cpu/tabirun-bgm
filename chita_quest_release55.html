@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>知多半島 旅ランQUEST release55</title>
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#071f2b}
+#quest54{position:fixed;inset:0;width:100%;height:100%;border:0;background:#fff}
+#boot{
+  position:fixed;inset:0;z-index:999999;display:grid;place-items:center;
+  background:#071f2b;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;
+  text-align:center;padding:24px
+}
+#boot b{display:block;font-size:18px;margin-bottom:8px}
+#boot span{font-size:12px;opacity:.78;line-height:1.7}
+#boot.hide{display:none}
+</style>
+</head>
+<body>
+<div id="boot"><div><b>旅ランQUEST release55</b><span>release54を読み込み、SECTION 1の指定ルートを適用しています…</span></div></div>
+<iframe id="quest54" src="./chita_quest_release54.html" allow="geolocation; autoplay; fullscreen"></iframe>
+
+<script>
+const PATCH = String.raw`
+(() => {
+  const STAGE1_GPS = new Set(['handaBrick','handaCanal','taketoyoFamilymart','mihamaFuttoSeven','kowaguchi']);
+
+  const stage1Route = {
+    from:'阿久比町役場',
+    to:'河和口駅',
+    origin:{lat:34.9328950,lng:136.9152500},
+    destination:{lat:34.7977370,lng:136.9192940},
+    mapsUrl:'https://maps.app.goo.gl/kRZKYKwvm2cVBjseA?g_st=com.openai.chat.ShareExtension',
+    intermediates:[
+      {lat:34.9132500,lng:136.9127778},
+      {lat:34.9096944,lng:136.9136389},
+      {lat:34.9011944,lng:136.9290556},
+      {lat:34.9010833,lng:136.9312500},
+      {lat:34.8990833,lng:136.9318333},
+      {lat:34.8919810,lng:136.9347100},
+      {lat:34.8783611,lng:136.9375000},
+      {lat:34.8583056,lng:136.9248056},
+      {lat:34.8583889,lng:136.9251389},
+      {lat:34.8348333,lng:136.9218611},
+      {lat:34.8172222,lng:136.9214444},
+      {lat:34.8058056,lng:136.9213611},
+      {lat:34.7986389,lng:136.9189722}
+    ],
+    points:[
+      {kind:'START',title:'阿久比町役場',text:'SECTION 1のスタート地点です。',position:{lat:34.9328950,lng:136.9152500}},
+      {kind:'CHECK',title:'半田赤レンガ建物',text:'旅ラン最初の主要チェックポイント。',position:{lat:34.9016044,lng:136.9283617}},
+      {kind:'CHECK',title:'半田運河',text:'半田運河を通過して武豊方面へ進みます。',position:{lat:34.8919811,lng:136.9347103}},
+      {kind:'CHECK',title:'武豊工業地帯',text:'工業地帯を抜けて南へ進みます。',position:{lat:34.8449736,lng:136.9247824}},
+      {kind:'CHECK',title:'河和口海岸',text:'海岸・補給ポイント。河和口駅はもうすぐです。',position:{lat:34.8038742,lng:136.9190097}},
+      {kind:'GOAL',title:'河和口駅',text:'SECTION 1の終点です。',position:{lat:34.7977370,lng:136.9192940}}
+    ]
+  };
+
+  ROUTE_GUIDES.stage1Full = stage1Route;
+
+  routeGuideForPoint = function(p){
+    if(p && STAGE1_GPS.has(p.gps)) return ROUTE_GUIDES.stage1Full;
+    return p && ROUTE_GUIDES[p.gps] ? ROUTE_GUIDES[p.gps] : null;
+  };
+
+  routeGuideButtonHtml = function(p){
+    if(!p) return '';
+    const key = STAGE1_GPS.has(p.gps) ? 'stage1Full' : p.gps;
+    const g = ROUTE_GUIDES[key];
+    if(!g) return '';
+    return '<button class="routeGuideBtn" onclick="openRouteGuide(\\''+key+'\\')" aria-label="ルートと注意点を見る">'
+      +'<div class="routeGuideIcon">🗺️</div>'
+      +'<div class="routeGuideCopy"><div class="routeGuideKickerBtn">ROUTE GUIDE <em>安全確認</em></div>'
+      +'<strong>ルート・注意点を見る</strong><span>'+g.from+' → '+g.to+'</span></div>'
+      +'<div class="routeGuideArrow">›</div></button>';
+  };
+
+  routeGuideMapsUrl = function(g){
+    if(g && g.mapsUrl) return g.mapsUrl;
+    return 'https://www.google.com/maps/dir/?api=1&origin='
+      +encodeURIComponent(g.origin.lat+','+g.origin.lng)
+      +'&destination='+encodeURIComponent(g.destination.lat+','+g.destination.lng)
+      +'&travelmode=walking';
+  };
+
+  openRouteGuide = function(key){
+    const g=ROUTE_GUIDES[key];if(!g)return;
+    closeRouteGuide();routeGuideActiveKey=key;document.body.style.overflow='hidden';
+    const o=document.createElement('div');o.id='routeGuideOverlay';o.className='routeGuideOverlay';
+    o.innerHTML='<section class="routeGuideSheet">'
+      +'<div class="routeGuideHead"><div class="routeGuideHeadTop"><div><div class="routeGuideKicker">ROUTE GUIDE / SAFETY CHECK</div></div>'
+      +'<button class="routeGuideClose" onclick="closeRouteGuide()" aria-label="閉じる">×</button></div>'
+      +'<h2>'+g.from+' → '+g.to+'</h2><p>地図・進行方向・注意ポイントをここで確認します。</p></div>'
+      +'<div class="routeGuideBody"><div class="routeGuideMapWrap"><div id="routeGuideMap" class="routeGuideMap"></div>'
+      +'<div id="routeGuideMapFallback" class="routeGuideMapFallback"><div><b>Googleマップを準備中</b>APIキー設定後、この場所に実際のGoogleマップと動く進行矢印を表示します。</div></div></div>'
+      +'<div id="routeGuideMapStatus" class="routeGuideMapStatus"><strong>ルート読み込み待ち</strong></div>'
+      +'<div class="routeGuideNotice"><b>⚠️ SECTION 1 ベースルート</b><br>'
+      +'現在は13個の経由地点で大枠を固定しています。横断歩道・歩道の左右・危険箇所は、現地確認後にポイントを追加して細かく修正できます。</div>'
+      +'<div id="routeGuidePointNav" class="routeGuidePointNav">'
+      +g.points.map((x,i)=>'<button class="routeGuidePointBtn '+(i===0?'active':'')+'" onclick="focusRouteGuidePoint('+i+')"><b>'+x.kind+'</b>'+x.title+'</button>').join('')
+      +'</div><div id="routeGuidePointInfo" class="routeGuidePointInfo"><div class="level">'+g.points[0].kind+'</div><h3>'+g.points[0].title+'</h3><p>'+g.points[0].text+'</p></div>'
+      +'<div class="routeGuideLegend"><span>▶ 動く矢印＝進行方向</span><span>🚸 横断地点は後から追加可能</span><span>📍 13経由地で大枠固定</span></div>'
+      +'<div class="routeGuideActions"><button class="routeGuideAction map" onclick="openRouteGuideInGoogleMaps()">Googleマップで開く</button>'
+      +'<button class="routeGuideAction close" onclick="closeRouteGuide()">QUESTへ戻る</button></div>'
+      +routeGuideSetupHtml()+'</div></section>';
+    o.addEventListener('click',e=>{if(e.target===o)closeRouteGuide()});document.body.appendChild(o);
+    loadRouteGuideGoogle().then(()=>initRouteGuideMap(g)).catch(err=>{
+      const status=document.getElementById('routeGuideMapStatus');
+      if(status)status.innerHTML=err.message==='API_KEY_REQUIRED'
+        ?'<strong>APIキー未設定</strong>｜Googleマップで開くボタンは利用できます。'
+        :'<strong>地図を読み込めませんでした</strong>｜API設定を確認してください。';
+    });
+  };
+
+  initRouteGuideMap = async function(g){
+    if(!document.getElementById('routeGuideMap')||routeGuideActiveKey==='')return;
+    const mapDiv=document.getElementById('routeGuideMap');
+    document.getElementById('routeGuideMapFallback')?.classList.add('hidden');
+    routeGuideMap=new google.maps.Map(mapDiv,{
+      center:g.origin,zoom:13,mapTypeControl:false,streetViewControl:false,
+      fullscreenControl:false,clickableIcons:false,gestureHandling:'greedy'
+    });
+
+    try{
+      const {Route}=await google.maps.importLibrary('routes');
+      const req={
+        origin:g.origin,
+        destination:g.destination,
+        travelMode:'WALKING',
+        polylineQuality:'HIGH_QUALITY',
+        fields:['path','viewport','distanceMeters','warnings']
+      };
+      if(g.intermediates&&g.intermediates.length){
+        req.intermediates=g.intermediates.map(location=>({location,via:true}));
+      }
+
+      const result=await Route.computeRoutes(req);
+      const route=result.routes&&result.routes[0];
+      if(!route||!route.path||route.path.length<2)throw new Error('NO_ROUTE');
+
+      const path=route.path.map(p=>({lat:p.lat,lng:p.lng}));
+      const arrow={
+        path:google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+        scale:3.1,strokeColor:'#ffffff',strokeWeight:1.6,
+        fillColor:'#ffffff',fillOpacity:1
+      };
+      routeGuidePolyline=new google.maps.Polyline({
+        map:routeGuideMap,path,
+        strokeColor:'#087990',strokeOpacity:.95,strokeWeight:7,
+        icons:[{icon:arrow,offset:'0px',repeat:'75px'}]
+      });
+
+      const bounds=new google.maps.LatLngBounds();
+      path.forEach(p=>bounds.extend(p));
+      routeGuideMap.fitBounds(bounds,34);
+
+      let offset=0;
+      routeGuideArrowTimer=setInterval(()=>{
+        if(!routeGuidePolyline)return;
+        offset=(offset+1)%75;
+        const icons=routeGuidePolyline.get('icons');
+        icons[0].offset=offset+'px';
+        routeGuidePolyline.set('icons',icons);
+      },55);
+
+      routeGuideMarkers=g.points.map((x,i)=>new google.maps.Marker({
+        map:routeGuideMap,position:x.position,
+        label:{text:String(i+1),color:'#fff',fontWeight:'900'},title:x.title
+      }));
+
+      const status=document.getElementById('routeGuideMapStatus');
+      if(status){
+        const km=route.distanceMeters?((route.distanceMeters/1000).toFixed(2)+'km'):'距離取得中';
+        status.innerHTML='<strong>SECTION 1 指定ルート '+km+'</strong>｜13経由地を順番に通過します。';
+      }
+    }catch(err){
+      console.error('release55 route error',err);
+      const status=document.getElementById('routeGuideMapStatus');
+      if(status)status.innerHTML='<strong>ルート計算エラー</strong>｜Routes APIとAPIキー設定を確認してください。';
+      new google.maps.Marker({map:routeGuideMap,position:g.origin,label:'S',title:g.from});
+      new google.maps.Marker({map:routeGuideMap,position:g.destination,label:'G',title:g.to});
+      const bounds=new google.maps.LatLngBounds();
+      bounds.extend(g.origin);bounds.extend(g.destination);
+      routeGuideMap.fitBounds(bounds,50);
+    }
+  };
+
+  try{ if(typeof render==='function') render(); }
+  catch(e){ console.warn('release55 rerender skipped',e); }
+
+  console.log('release55 route patch loaded');
+})();
+`;
+
+const frame = document.getElementById('quest54');
+const boot = document.getElementById('boot');
+
+frame.addEventListener('load', () => {
+  try{
+    const doc = frame.contentDocument;
+    const s = doc.createElement('script');
+    s.textContent = PATCH;
+    (doc.body || doc.documentElement).appendChild(s);
+    setTimeout(()=>boot.classList.add('hide'),350);
+  }catch(err){
+    console.error(err);
+    boot.innerHTML='<div><b>release55 読み込みエラー</b><span>GitHub Pages上で開いてください。release54とrelease55は同じフォルダに置きます。</span></div>';
+  }
+});
+</script>
+</body>
+</html>
