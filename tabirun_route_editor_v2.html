@@ -1,0 +1,778 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>旅ラン・ルート編集専用ページ v2</title>
+<style>
+:root{
+  --bg:#081d27;--panel:#0f2b36;--card:#ffffff;--ink:#16333d;--muted:#6c7d83;
+  --accent:#087990;--warn:#c56a1a;--danger:#b64343;--ok:#2d7b59;--line:#087990;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;color:#fff}
+body{min-height:100vh}
+header{padding:14px 14px 10px;background:#071f2b;position:sticky;top:0;z-index:20;border-bottom:1px solid rgba(255,255,255,.08)}
+header h1{font-size:17px;margin:0 0 4px;font-weight:900}
+header p{font-size:11px;line-height:1.55;margin:0;color:#c9d6da}
+main{max-width:980px;margin:0 auto;padding:10px}
+.grid{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(290px,.75fr);gap:10px}
+@media(max-width:760px){.grid{grid-template-columns:1fr}.side{order:2}.mapCard{order:1}}
+.card{background:var(--card);color:var(--ink);border-radius:16px;overflow:hidden}
+.mapTop{padding:10px 11px;background:#f4f7f8;border-bottom:1px solid #dbe4e7}
+.mapTop strong{display:block;font-size:13px}.mapTop span{font-size:10px;color:var(--muted)}
+#map{height:64vh;min-height:430px;background:#dfe5e7}
+@media(max-width:760px){#map{height:58vh;min-height:390px}}
+.toolbar{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:8px;background:#fff;border-top:1px solid #e1e6e8}
+.toolbar button,.actions button,.apiBox button,.miniBtn{
+  border:0;border-radius:10px;min-height:42px;padding:8px 7px;font-size:11px;font-weight:900
+}
+.toolbar button{background:#e9eff1;color:#23414a}
+.toolbar button.active{background:var(--accent);color:#fff}
+.toolbar button.warn.active{background:var(--warn)}
+.toolbar button.cp.active{background:var(--ok)}
+.toolbar button.del.active{background:var(--danger)}
+.side{display:flex;flex-direction:column;gap:10px}
+.panel{background:#fff;color:var(--ink);border-radius:16px;padding:12px}
+.panel h2{font-size:13px;margin:0 0 9px}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.metric{background:#f2f6f7;border-radius:12px;padding:9px}
+.metric b{display:block;font-size:17px;line-height:1.1}
+.metric span{font-size:9px;color:var(--muted)}
+.metric.wide{grid-column:1/-1}
+.label{display:block;font-size:10px;font-weight:900;margin:9px 0 4px}
+input,select,textarea{
+  width:100%;border:1px solid #cfdadd;border-radius:10px;padding:10px;font-size:16px;background:#fff;color:#173640
+}
+textarea{min-height:90px;resize:vertical}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}
+.actions button{background:#eaf0f2;color:#25424a}
+.actions .primary{background:var(--accent);color:#fff}
+.actions .danger{background:#f7e8e8;color:#8d3535}
+.actions .ok{background:#e7f2ec;color:#296848}
+.note{font-size:10px;color:var(--muted);line-height:1.6;margin-top:8px}
+.list{display:flex;flex-direction:column;gap:6px;max-height:210px;overflow:auto}
+.item{border:1px solid #dfe7e9;border-radius:10px;padding:8px;font-size:10px;line-height:1.45}
+.item strong{font-size:11px}.item .meta{color:var(--muted)}
+.item button{float:right;border:0;background:#f3e8e8;color:#8b3535;border-radius:8px;padding:5px 7px;font-weight:900}
+.apiBox{background:#fff8e7;border:1px solid #efdca8;border-radius:12px;padding:10px;font-size:10px;line-height:1.55}
+.apiBox button{margin-top:7px;background:#8a6715;color:#fff;width:100%}
+.status{position:absolute;z-index:5;left:10px;right:10px;top:10px;pointer-events:none}
+.status div{display:inline-block;background:rgba(7,31,43,.9);color:#fff;border-radius:10px;padding:8px 10px;font-size:10px;line-height:1.45}
+.mapWrap{position:relative}
+.modeHelp{padding:8px 10px;background:#edf5f7;color:#24505b;font-size:10px;line-height:1.55}
+footer{padding:12px 3px 22px;color:#b9c8cd;font-size:10px;line-height:1.7}
+</style>
+</head>
+<body>
+<header>
+  <h1>旅ラン・ルート編集専用ページ v2</h1>
+  <p>Googleに道を選ばせず、旅ランの正規ルートを座標列として固定します。オレンジライン等の徒歩ルート非認識区間も同じ方式で編集できます。</p>
+</header>
+
+<main>
+<div class="grid">
+  <section class="card mapCard">
+    <div class="mapTop">
+      <strong id="routeTitleView">SECTION 1 / ルート未作成</strong>
+      <span>地図を背景として使用。青線そのものがQUESTの正規ルートになります。</span>
+    </div>
+    <div class="mapWrap">
+      <div id="map"></div>
+      <div class="status"><div id="statusText">APIキーを確認しています…</div></div>
+    </div>
+    <div class="modeHelp" id="modeHelp">移動モード：地図を自由に拡大・移動できます。</div>
+    <div class="toolbar">
+      <button type="button" id="modePan" class="active">移動</button>
+      <button type="button" id="modeRoute">ルート点</button>
+      <button type="button" id="modeWarn" class="warn">⚠ 注意点</button>
+      <button type="button" id="modeCp" class="cp">📍 CP</button>
+      <button type="button" id="modeDelete" class="del">点削除</button>
+      <button type="button" id="undoBtn">↶ 1点戻す</button>
+      <button type="button" id="gpsBtn">◎ GPS</button>
+      <button type="button" id="fitBtn">全体表示</button>
+    </div>
+  </section>
+
+  <aside class="side">
+    <section class="panel">
+      <h2>距離プレビュー</h2>
+      <div class="metrics">
+        <div class="metric"><b id="totalKm">0.00 km</b><span>ルート総距離</span></div>
+        <div class="metric"><b id="gpsAccuracy">--</b><span>GPS精度</span></div>
+        <div class="metric"><b id="straightKm">--</b><span>目標まで直線距離</span></div>
+        <div class="metric"><b id="routeRemainKm">--</b><span>目標までルート残り</span></div>
+        <div class="metric wide"><b id="segmentKm">--</b><span>選択CPの区間目安距離</span></div>
+      </div>
+      <label class="label" for="targetCp">距離計算の目標チェックポイント</label>
+      <select id="targetCp"><option value="">未選択</option></select>
+      <div class="note">GPS現在地が取得できると、「今の直線距離」と「正規ルート上の残り距離」を同時に確認できます。</div>
+    </section>
+
+
+    <section class="panel">
+      <h2>自動下書き</h2>
+      <div class="note" style="margin-top:0">
+        通常道路はGoogleの徒歩ルートを使って<strong>下書きだけ</strong>作ります。
+        下書き後は青線をドラッグして旅ランの正規ルートへ修正します。
+        オレンジライン等の徒歩ルート非認識区間は手動でつなぎます。
+      </div>
+      <div class="actions">
+        <button type="button" id="draftS1Btn" class="primary">SECTION 1 下書き生成</button>
+        <button type="button" id="manualS2Btn">SECTION 2 手動開始</button>
+      </div>
+      <div class="note">
+        SECTION 1は保存済みの13経由地を使って下書きを作ります。<br>
+        SECTION 2（オレンジライン）はGoogleに再計算させず、固定ルートとして編集します。
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>ルート設定</h2>
+      <label class="label" for="sectionName">SECTION</label>
+      <select id="sectionName">
+        <option>SECTION 1</option><option>SECTION 2</option><option>SECTION 3</option>
+      </select>
+      <label class="label" for="routeName">ルート名</label>
+      <input id="routeName" value="阿久比町役場 → 河和口駅">
+      <div class="actions">
+        <button type="button" id="saveLocalBtn" class="ok">端末保存</button>
+        <button type="button" id="loadLocalBtn">端末から復元</button>
+        <button type="button" id="exportBtn" class="primary">JSON保存</button>
+        <button type="button" id="importBtn">JSON読込</button>
+        <button type="button" id="clearRouteBtn" class="danger">ルート全消去</button>
+        <button type="button" id="clearAllBtn" class="danger">全データ消去</button>
+      </div>
+      <input type="file" id="fileInput" accept=".json,application/json" hidden>
+      <div class="note">青線は <b>editable</b> です。表示される頂点をドラッグして道路・横断歩道・遊歩道に正確に合わせられます。中間ハンドルを動かすと新しい頂点を追加できます。</div>
+    </section>
+
+    <section class="panel">
+      <h2>⚠ 注意点を追加</h2>
+      <div class="row">
+        <div>
+          <label class="label" for="warningType">種類</label>
+          <select id="warningType">
+            <option value="crosswalk">🚸 横断歩道</option>
+            <option value="intersection">⚠ 危険交差点</option>
+            <option value="sidewalk">↔ 歩道左右指定</option>
+            <option value="narrow">⚠ 狭路</option>
+            <option value="turn">↪ 曲がり注意</option>
+            <option value="coast">🌊 海岸出入口</option>
+            <option value="other">⚠ その他</option>
+          </select>
+        </div>
+        <div>
+          <label class="label" for="warningRadius">事前通知</label>
+          <select id="warningRadius">
+            <option value="50">50m前</option>
+            <option value="100" selected>100m前</option>
+            <option value="150">150m前</option>
+            <option value="200">200m前</option>
+          </select>
+        </div>
+      </div>
+      <label class="label" for="warningTitle">見出し</label>
+      <input id="warningTitle" placeholder="例：ここで東側へ横断">
+      <label class="label" for="warningNote">説明</label>
+      <textarea id="warningNote" placeholder="例：信号のある横断歩道を渡り、その後は東側歩道を南下"></textarea>
+      <div class="note">「⚠ 注意点」モードにして地図をタップすると、この内容で注意ポイントを置きます。</div>
+      <div class="list" id="warningList"></div>
+    </section>
+
+    <section class="panel">
+      <h2>📍 チェックポイント</h2>
+      <label class="label" for="cpName">チェックポイント名</label>
+      <input id="cpName" placeholder="例：半田赤レンガ建物">
+      <div class="note">「📍 CP」モードにして地図をタップすると追加します。ルート上の最寄り位置を自動計算し、区間距離・残り距離計算に使います。</div>
+      <div class="list" id="cpList"></div>
+    </section>
+
+    <section class="panel" id="apiPanel">
+      <div class="apiBox">
+        <b>Google Maps APIキー</b><br>
+        QUESTと同じ <code>tabirun_google_maps_api_key</code> を使用します。GitHub Pagesの同じドメインなら、現在の設定をそのまま利用できます。
+        <button type="button" id="apiBtn">APIキーをこの端末に設定</button>
+      </div>
+    </section>
+  </aside>
+</div>
+
+<footer>
+この編集ページは「ルート計算アプリ」ではありません。Googleマップは背景地図としてのみ使い、QUESTで使う正規ルート・注意点・チェックポイントを手動で確定するためのページです。
+</footer>
+</main>
+
+<script>
+(() => {
+'use strict';
+
+const STORAGE_KEY='tabirun_route_editor_v2';
+const API_KEY_STORAGE='tabirun_google_maps_api_key';
+
+let map=null;
+let routeLine=null;
+let mode='pan';
+let route=[];
+let warnings=[];
+let checkpoints=[];
+let gpsWatchId=null;
+let gpsPos=null;
+let gpsMarker=null;
+let gpsAccuracyCircle=null;
+let warningMarkers=[];
+let cpMarkers=[];
+
+const SECTION1_DRAFT={
+  section:'SECTION 1',
+  routeName:'阿久比町役場 → 河和口駅',
+  origin:{lat:34.9328950,lng:136.9152500},
+  destination:{lat:34.7977370,lng:136.9192940},
+  intermediates:[
+    {lat:34.9132500,lng:136.9127778},
+    {lat:34.9096944,lng:136.9136389},
+    {lat:34.9011944,lng:136.9290556},
+    {lat:34.9010833,lng:136.9312500},
+    {lat:34.8990833,lng:136.9318333},
+    {lat:34.8919810,lng:136.9347100},
+    {lat:34.8783611,lng:136.9375000},
+    {lat:34.8583056,lng:136.9248056},
+    {lat:34.8583889,lng:136.9251389},
+    {lat:34.8348333,lng:136.9218611},
+    {lat:34.8172222,lng:136.9214444},
+    {lat:34.8058056,lng:136.9213611},
+    {lat:34.7986389,lng:136.9189722}
+  ],
+  checkpoints:[
+    {name:'阿久比町役場',lat:34.9328950,lng:136.9152500},
+    {name:'半田赤レンガ建物',lat:34.9016044,lng:136.9283617},
+    {name:'半田運河',lat:34.8919811,lng:136.9347103},
+    {name:'武豊工業地帯',lat:34.8449736,lng:136.9247824},
+    {name:'河和口海岸',lat:34.8038742,lng:136.9190097},
+    {name:'河和口駅',lat:34.7977370,lng:136.9192940}
+  ]
+};
+
+const $=id=>document.getElementById(id);
+
+function setStatus(msg){$('statusText').textContent=msg}
+
+function haversine(a,b){
+  const R=6371008.8, rad=Math.PI/180;
+  const p1=a.lat*rad,p2=b.lat*rad,dp=(b.lat-a.lat)*rad,dl=(b.lng-a.lng)*rad;
+  const h=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;
+  return 2*R*Math.asin(Math.min(1,Math.sqrt(h)));
+}
+
+function cumulative(path){
+  const c=[0];
+  for(let i=1;i<path.length;i++) c.push(c[i-1]+haversine(path[i-1],path[i]));
+  return c;
+}
+
+function routeLength(){const c=cumulative(route);return c.length?c[c.length-1]:0}
+
+function projectToSegment(p,a,b){
+  const lat0=p.lat*Math.PI/180;
+  const mx=111320*Math.cos(lat0), my=110540;
+  const ax=(a.lng-p.lng)*mx, ay=(a.lat-p.lat)*my;
+  const bx=(b.lng-p.lng)*mx, by=(b.lat-p.lat)*my;
+  const dx=bx-ax, dy=by-ay;
+  const den=dx*dx+dy*dy;
+  let t=den?-(ax*dx+ay*dy)/den:0;
+  t=Math.max(0,Math.min(1,t));
+  const x=ax+t*dx, y=ay+t*dy;
+  return {
+    t,
+    distance:Math.hypot(x,y),
+    point:{lat:a.lat+(b.lat-a.lat)*t,lng:a.lng+(b.lng-a.lng)*t}
+  };
+}
+
+function nearestOnRoute(p){
+  if(route.length===0) return null;
+  if(route.length===1) return {point:route[0],distance:haversine(p,route[0]),along:0,segment:0,t:0};
+  const c=cumulative(route);
+  let best=null;
+  for(let i=0;i<route.length-1;i++){
+    const pr=projectToSegment(p,route[i],route[i+1]);
+    const along=c[i]+haversine(route[i],pr.point);
+    if(!best||pr.distance<best.distance) best={...pr,along,segment:i};
+  }
+  return best;
+}
+
+function refreshAttachments(){
+  checkpoints.forEach(cp=>{
+    const n=nearestOnRoute(cp);
+    cp.routeAlong=n?n.along:null;
+    cp.offRoute=n?n.distance:null;
+  });
+  warnings.forEach(w=>{
+    const n=nearestOnRoute(w);
+    w.routeAlong=n?n.along:null;
+    w.offRoute=n?n.distance:null;
+  });
+}
+
+function syncRouteFromPolyline(){
+  if(!routeLine) return;
+  const p=routeLine.getPath();
+  route=[];
+  for(let i=0;i<p.getLength();i++){
+    const x=p.getAt(i);
+    route.push({lat:x.lat(),lng:x.lng()});
+  }
+  refreshAttachments();
+  renderAll();
+  autosave();
+}
+
+function buildRouteLine(){
+  if(routeLine) routeLine.setMap(null);
+  routeLine=new google.maps.Polyline({
+    map,
+    path:route,
+    strokeColor:'#087990',
+    strokeOpacity:.95,
+    strokeWeight:7,
+    editable:true,
+    clickable:true,
+    geodesic:false,
+    icons:[{
+      icon:{path:google.maps.SymbolPath.FORWARD_CLOSED_ARROW,scale:2.4,strokeColor:'#fff',fillColor:'#fff',fillOpacity:1},
+      offset:'35px',repeat:'90px'
+    }]
+  });
+  const path=routeLine.getPath();
+  ['insert_at','remove_at','set_at'].forEach(ev=>path.addListener(ev,syncRouteFromPolyline));
+}
+
+function modeHelp(){
+  const map={
+    pan:'移動モード：地図を自由に拡大・移動できます。',
+    route:'ルート点モード：正規ルート上を順番にタップ。青線の頂点は後からドラッグで微調整できます。',
+    warning:'注意点モード：横断歩道・危険箇所を置きたい場所をタップします。',
+    cp:'チェックポイントモード：目的地・補給地点を置きたい場所をタップします。',
+    delete:'点削除モード：削除したいルート頂点の近くをタップします。'
+  };
+  $('modeHelp').textContent=map[mode];
+}
+
+function setMode(next){
+  mode=next;
+  [['modePan','pan'],['modeRoute','route'],['modeWarn','warning'],['modeCp','cp'],['modeDelete','delete']]
+    .forEach(([id,m])=>$(id).classList.toggle('active',m===mode));
+  modeHelp();
+}
+
+function warningIcon(type){
+  return ({crosswalk:'🚸',intersection:'⚠',sidewalk:'↔',narrow:'⚠',turn:'↪',coast:'🌊',other:'⚠'})[type]||'⚠';
+}
+
+function clearMarkers(arr){arr.forEach(m=>m.setMap(null));arr.length=0}
+
+function renderMarkers(){
+  clearMarkers(warningMarkers);clearMarkers(cpMarkers);
+  warnings.forEach((w,i)=>{
+    const m=new google.maps.Marker({map,position:w,label:warningIcon(w.type),title:w.title||'注意点',draggable:true});
+    m.addListener('dragend',e=>{
+      w.lat=e.latLng.lat();w.lng=e.latLng.lng();refreshAttachments();renderAll();autosave();
+    });
+    warningMarkers.push(m);
+  });
+  checkpoints.forEach((cp,i)=>{
+    const m=new google.maps.Marker({
+      map,position:cp,label:{text:String(i+1),color:'#fff',fontWeight:'900'},
+      title:cp.name||'チェックポイント',draggable:true
+    });
+    m.addListener('dragend',e=>{
+      cp.lat=e.latLng.lat();cp.lng=e.latLng.lng();refreshAttachments();renderAll();autosave();
+    });
+    cpMarkers.push(m);
+  });
+}
+
+function fmtKm(m){return Number.isFinite(m)?(m/1000).toFixed(2)+' km':'--'}
+
+function renderMetrics(){
+  $('totalKm').textContent=fmtKm(routeLength());
+  $('gpsAccuracy').textContent=gpsPos&&Number.isFinite(gpsPos.accuracy)?Math.round(gpsPos.accuracy)+' m':'--';
+
+  const cpIndex=Number($('targetCp').value);
+  if(!Number.isInteger(cpIndex)||!checkpoints[cpIndex]){
+    $('straightKm').textContent='--';$('routeRemainKm').textContent='--';$('segmentKm').textContent='--';return;
+  }
+  const cp=checkpoints[cpIndex];
+
+  if(cpIndex===0){
+    $('segmentKm').textContent=Number.isFinite(cp.routeAlong)?fmtKm(cp.routeAlong):'--';
+  }else{
+    const prev=checkpoints[cpIndex-1];
+    $('segmentKm').textContent=(Number.isFinite(cp.routeAlong)&&Number.isFinite(prev.routeAlong))
+      ?fmtKm(Math.abs(cp.routeAlong-prev.routeAlong)):'--';
+  }
+
+  if(gpsPos){
+    $('straightKm').textContent=fmtKm(haversine(gpsPos,cp));
+    const here=nearestOnRoute(gpsPos);
+    if(here&&Number.isFinite(cp.routeAlong)){
+      const rem=cp.routeAlong-here.along;
+      $('routeRemainKm').textContent=rem>=0?fmtKm(rem):'通過済み';
+    }else $('routeRemainKm').textContent='--';
+  }else{
+    $('straightKm').textContent='--';$('routeRemainKm').textContent='--';
+  }
+}
+
+function renderLists(){
+  const wl=$('warningList');wl.innerHTML='';
+  warnings.forEach((w,i)=>{
+    const d=document.createElement('div');d.className='item';
+    d.innerHTML='<button type="button">削除</button><strong>'+warningIcon(w.type)+' '+escapeHtml(w.title||'注意点')+'</strong><div>'+escapeHtml(w.note||'')+'</div><div class="meta">通知 '+w.radius+'m前 / ルートから '+(Number.isFinite(w.offRoute)?Math.round(w.offRoute)+'m':'--')+'</div>';
+    d.querySelector('button').addEventListener('click',()=>{warnings.splice(i,1);renderAll();autosave()});
+    wl.appendChild(d);
+  });
+
+  const cl=$('cpList');cl.innerHTML='';
+  checkpoints.forEach((cp,i)=>{
+    const d=document.createElement('div');d.className='item';
+    d.innerHTML='<button type="button">削除</button><strong>'+(i+1)+'. '+escapeHtml(cp.name||'チェックポイント')+'</strong><div class="meta">ルート位置 '+(Number.isFinite(cp.routeAlong)?fmtKm(cp.routeAlong):'--')+' / ルートから '+(Number.isFinite(cp.offRoute)?Math.round(cp.offRoute)+'m':'--')+'</div>';
+    d.querySelector('button').addEventListener('click',()=>{checkpoints.splice(i,1);refreshAttachments();renderAll();autosave()});
+    cl.appendChild(d);
+  });
+
+  const sel=$('targetCp');const old=sel.value;sel.innerHTML='<option value="">未選択</option>';
+  checkpoints.forEach((cp,i)=>{
+    const o=document.createElement('option');o.value=i;o.textContent=(i+1)+'. '+(cp.name||'チェックポイント');sel.appendChild(o);
+  });
+  if(old!==''&&checkpoints[Number(old)]) sel.value=old;
+}
+
+function renderAll(){
+  $('routeTitleView').textContent=$('sectionName').value+' / '+$('routeName').value;
+  if(routeLine){
+    const p=routeLine.getPath();
+    const now=[];
+    for(let i=0;i<p.getLength();i++){const x=p.getAt(i);now.push({lat:x.lat(),lng:x.lng()})}
+    route=now;
+  }
+  refreshAttachments();
+  renderMarkers();
+  renderLists();
+  renderMetrics();
+}
+
+function escapeHtml(s){
+  return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+}
+
+function addRoutePoint(latLng){
+  routeLine.getPath().push(latLng);
+  setStatus('ルート点を追加しました。頂点はドラッグで修正できます。');
+}
+
+function deleteNearestVertex(latLng){
+  const path=routeLine.getPath();
+  if(path.getLength()===0)return;
+  const p={lat:latLng.lat(),lng:latLng.lng()};
+  let best=-1,bestD=Infinity;
+  for(let i=0;i<path.getLength();i++){
+    const q=path.getAt(i),d=haversine(p,{lat:q.lat(),lng:q.lng()});
+    if(d<bestD){bestD=d;best=i}
+  }
+  if(bestD>80){setStatus('削除対象の頂点から遠すぎます。頂点の近くをタップしてください。');return}
+  path.removeAt(best);
+  setStatus('ルート頂点を1点削除しました。');
+}
+
+function addWarning(latLng){
+  const title=$('warningTitle').value.trim()||$('warningType').selectedOptions[0].text;
+  warnings.push({
+    lat:latLng.lat(),lng:latLng.lng(),
+    type:$('warningType').value,
+    title,
+    note:$('warningNote').value.trim(),
+    radius:Number($('warningRadius').value)||100
+  });
+  refreshAttachments();renderAll();autosave();
+  setStatus('注意ポイントを追加しました。');
+}
+
+function addCheckpoint(latLng){
+  const name=$('cpName').value.trim();
+  if(!name){setStatus('先にチェックポイント名を入力してください。');return}
+  checkpoints.push({lat:latLng.lat(),lng:latLng.lng(),name});
+  $('cpName').value='';
+  refreshAttachments();renderAll();autosave();
+  setStatus('チェックポイントを追加しました。');
+}
+
+function onMapClick(e){
+  if(mode==='route') addRoutePoint(e.latLng);
+  else if(mode==='warning') addWarning(e.latLng);
+  else if(mode==='cp') addCheckpoint(e.latLng);
+  else if(mode==='delete') deleteNearestVertex(e.latLng);
+}
+
+function fitAll(){
+  if(!map)return;
+  const b=new google.maps.LatLngBounds();
+  let any=false;
+  route.forEach(p=>{b.extend(p);any=true});
+  warnings.forEach(p=>{b.extend(p);any=true});
+  checkpoints.forEach(p=>{b.extend(p);any=true});
+  if(gpsPos){b.extend(gpsPos);any=true}
+  if(any)map.fitBounds(b,36);
+}
+
+function startGps(){
+  if(!navigator.geolocation){setStatus('このブラウザは位置情報に対応していません。');return}
+  if(gpsWatchId!==null){
+    navigator.geolocation.clearWatch(gpsWatchId);gpsWatchId=null;
+    $('gpsBtn').classList.remove('active');setStatus('GPS表示を停止しました。');return;
+  }
+  setStatus('GPS現在地を取得しています…');
+  gpsWatchId=navigator.geolocation.watchPosition(pos=>{
+    gpsPos={lat:pos.coords.latitude,lng:pos.coords.longitude,accuracy:pos.coords.accuracy};
+    if(!gpsMarker){
+      gpsMarker=new google.maps.Marker({map,position:gpsPos,title:'現在地',zIndex:999});
+      gpsAccuracyCircle=new google.maps.Circle({map,center:gpsPos,radius:gpsPos.accuracy,strokeOpacity:.35,fillOpacity:.08});
+    }else{
+      gpsMarker.setPosition(gpsPos);
+      gpsAccuracyCircle.setCenter(gpsPos);gpsAccuracyCircle.setRadius(gpsPos.accuracy);
+    }
+    $('gpsBtn').classList.add('active');renderMetrics();
+    setStatus('GPS現在地を表示中。精度 '+Math.round(pos.coords.accuracy)+'m');
+  },err=>{
+    setStatus('GPSを取得できません：'+err.message);
+  },{enableHighAccuracy:true,maximumAge:3000,timeout:15000});
+}
+
+function dataObject(){
+  syncRouteSnapshotOnly();
+  return {
+    format:'tabirun-route-v2',
+    savedAt:new Date().toISOString(),
+    section:$('sectionName').value,
+    routeName:$('routeName').value,
+    route,
+    warnings,
+    checkpoints
+  };
+}
+
+function syncRouteSnapshotOnly(){
+  if(!routeLine)return;
+  const p=routeLine.getPath();route=[];
+  for(let i=0;i<p.getLength();i++){const x=p.getAt(i);route.push({lat:x.lat(),lng:x.lng()})}
+  refreshAttachments();
+}
+
+function autosave(){
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(dataObject()))}catch(e){}
+}
+
+function applyData(d){
+  if(!d||d.format!=='tabirun-route-v2') throw new Error('対応していないデータ形式です。');
+  route=Array.isArray(d.route)?d.route.map(p=>({lat:Number(p.lat),lng:Number(p.lng)})).filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lng)):[];
+  warnings=Array.isArray(d.warnings)?d.warnings:[];
+  checkpoints=Array.isArray(d.checkpoints)?d.checkpoints:[];
+  if(d.section)$('sectionName').value=d.section;
+  if(d.routeName)$('routeName').value=d.routeName;
+  buildRouteLine();refreshAttachments();renderAll();fitAll();
+}
+
+function saveLocal(){
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(dataObject()));
+  setStatus('この端末にルートデータを保存しました。');
+}
+
+function loadLocal(){
+  const raw=localStorage.getItem(STORAGE_KEY);
+  if(!raw){setStatus('保存データがありません。');return}
+  try{applyData(JSON.parse(raw));setStatus('端末保存データを復元しました。')}catch(e){setStatus('復元失敗：'+e.message)}
+}
+
+function exportJson(){
+  const d=dataObject();
+  const blob=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  const safe=($('sectionName').value+'_'+$('routeName').value).replace(/[\\/:*?"<>|\s]+/g,'_');
+  a.download='tabirun_'+safe+'.json';
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  setStatus('ルートJSONを書き出しました。');
+}
+
+function readFile(file){
+  const r=new FileReader();
+  r.onload=()=>{
+    try{applyData(JSON.parse(r.result));autosave();setStatus('JSONを読み込みました。')}
+    catch(e){setStatus('JSON読込失敗：'+e.message)}
+  };
+  r.readAsText(file);
+}
+
+function setApiKey(){
+  const current=localStorage.getItem(API_KEY_STORAGE)||'';
+  const v=window.prompt('Google Maps APIキーを入力してください\\n※ この端末のブラウザにだけ保存します。',current);
+  if(v===null)return;
+  const key=v.trim();if(!key)return;
+  localStorage.setItem(API_KEY_STORAGE,key);
+  alert('APIキーを保存しました。ページを再読み込みします。');
+  location.reload();
+}
+
+
+async function generateSection1Draft(){
+  if(!window.google||!google.maps){
+    setStatus('Googleマップがまだ読み込まれていません。');
+    return;
+  }
+
+  if(route.length && !confirm('現在の青線をSECTION 1の自動下書きで置き換えますか？')){
+    return;
+  }
+
+  setStatus('SECTION 1の徒歩ルート下書きを生成しています…');
+
+  try{
+    const lib=await google.maps.importLibrary('routes');
+    const result=await lib.Route.computeRoutes({
+      origin:SECTION1_DRAFT.origin,
+      destination:SECTION1_DRAFT.destination,
+      travelMode:'WALKING',
+      polylineQuality:'HIGH_QUALITY',
+      fields:['path','distanceMeters','warnings'],
+      intermediates:SECTION1_DRAFT.intermediates.map(location=>({location,via:true}))
+    });
+
+    const r=result.routes&&result.routes[0];
+    if(!r||!r.path||r.path.length<2) throw new Error('NO_ROUTE');
+
+    route=r.path.map(p=>({lat:p.lat,lng:p.lng}));
+    warnings=[];
+    checkpoints=SECTION1_DRAFT.checkpoints.map(x=>({...x}));
+    $('sectionName').value=SECTION1_DRAFT.section;
+    $('routeName').value=SECTION1_DRAFT.routeName;
+
+    buildRouteLine();
+    refreshAttachments();
+    renderAll();
+    fitAll();
+    autosave();
+
+    setMode('pan');
+    setStatus('下書きを作成しました。青線が違う場所だけ頂点をドラッグして修正してください。');
+  }catch(err){
+    console.error('SECTION 1 draft error',err);
+
+    // Fallback: preserve the exact known control points as a coarse editable line.
+    route=[
+      SECTION1_DRAFT.origin,
+      ...SECTION1_DRAFT.intermediates,
+      SECTION1_DRAFT.destination
+    ].map(x=>({...x}));
+    checkpoints=SECTION1_DRAFT.checkpoints.map(x=>({...x}));
+    warnings=[];
+    $('sectionName').value=SECTION1_DRAFT.section;
+    $('routeName').value=SECTION1_DRAFT.routeName;
+
+    buildRouteLine();
+    refreshAttachments();
+    renderAll();
+    fitAll();
+    autosave();
+
+    setMode('route');
+    setStatus('自動下書きは生成できませんでした。13経由地の骨格線を表示しました。必要な場所だけ点を追加・修正してください。');
+  }
+}
+
+function startSection2Manual(){
+  if((route.length||warnings.length||checkpoints.length) &&
+     !confirm('現在の編集内容を消して、SECTION 2（オレンジライン）の手動編集を開始しますか？')){
+    return;
+  }
+
+  route=[];warnings=[];checkpoints=[];
+  $('sectionName').value='SECTION 2';
+  $('routeName').value='河和口駅 → 知多奥田駅（オレンジライン）';
+  buildRouteLine();
+  renderAll();
+  setMode('route');
+  autosave();
+  setStatus('SECTION 2手動編集を開始しました。オレンジライン上を順番にタップしてください。');
+}
+
+
+function initMap(){
+  map=new google.maps.Map($('map'),{
+    center:{lat:34.9135,lng:136.9190},
+    zoom:14,
+    mapTypeControl:false,
+    streetViewControl:false,
+    fullscreenControl:false,
+    gestureHandling:'greedy',
+    clickableIcons:false
+  });
+  buildRouteLine();
+  map.addListener('click',onMapClick);
+  loadLocal();
+  renderAll();
+  setStatus('準備完了。通常道路は「SECTION 1 下書き生成」から開始できます。');
+}
+
+function loadGoogle(){
+  const key=(localStorage.getItem(API_KEY_STORAGE)||'').trim();
+  if(!key){
+    setStatus('Google Maps APIキーが未設定です。右側の「APIキーをこの端末に設定」を押してください。');
+    return;
+  }
+  const cb='tabirunRouteEditorReady_'+Date.now();
+  window[cb]=()=>{delete window[cb];initMap()};
+  const s=document.createElement('script');
+  s.src='https://maps.googleapis.com/maps/api/js?key='+encodeURIComponent(key)+'&v=weekly&language=ja&region=JP&callback='+cb;
+  s.async=true;s.defer=true;
+  s.onerror=()=>setStatus('Googleマップを読み込めませんでした。APIキー設定を確認してください。');
+  document.head.appendChild(s);
+}
+
+$('modePan').addEventListener('click',()=>setMode('pan'));
+$('modeRoute').addEventListener('click',()=>setMode('route'));
+$('modeWarn').addEventListener('click',()=>setMode('warning'));
+$('modeCp').addEventListener('click',()=>setMode('cp'));
+$('modeDelete').addEventListener('click',()=>setMode('delete'));
+$('undoBtn').addEventListener('click',()=>{
+  if(!routeLine)return;const p=routeLine.getPath();if(p.getLength())p.removeAt(p.getLength()-1);
+});
+$('gpsBtn').addEventListener('click',startGps);
+$('fitBtn').addEventListener('click',fitAll);
+$('targetCp').addEventListener('change',renderMetrics);
+$('sectionName').addEventListener('change',()=>{renderAll();autosave()});
+$('routeName').addEventListener('input',()=>{renderAll();autosave()});
+$('saveLocalBtn').addEventListener('click',saveLocal);
+$('loadLocalBtn').addEventListener('click',loadLocal);
+$('exportBtn').addEventListener('click',exportJson);
+$('importBtn').addEventListener('click',()=>$('fileInput').click());
+$('fileInput').addEventListener('change',e=>{if(e.target.files&&e.target.files[0])readFile(e.target.files[0]);e.target.value=''});
+$('clearRouteBtn').addEventListener('click',()=>{
+  if(!confirm('青いルート線だけを全消去しますか？'))return;
+  route=[];buildRouteLine();refreshAttachments();renderAll();autosave();setStatus('ルート線を消去しました。');
+});
+$('clearAllBtn').addEventListener('click',()=>{
+  if(!confirm('ルート・注意点・チェックポイントをすべて消去しますか？'))return;
+  route=[];warnings=[];checkpoints=[];buildRouteLine();renderAll();autosave();setStatus('全データを消去しました。');
+});
+$('apiBtn').addEventListener('click',setApiKey);
+$('draftS1Btn').addEventListener('click',generateSection1Draft);
+$('manualS2Btn').addEventListener('click',startSection2Manual);
+
+loadGoogle();
+})();
+</script>
+</body>
+</html>
