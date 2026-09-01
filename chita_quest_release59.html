@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>知多半島 旅ランQUEST release59</title>
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#071f2b}
+#quest54{position:fixed;inset:0;width:100%;height:100%;border:0;background:#fff}
+#boot{position:fixed;inset:0;z-index:999999;display:grid;place-items:center;background:#071f2b;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;text-align:center;padding:24px}
+#boot b{display:block;font-size:18px;margin-bottom:8px}
+#boot span{font-size:12px;opacity:.78;line-height:1.7}
+#boot.hide{display:none}
+</style>
+</head>
+<body>
+<div id="boot"><div><b>旅ランQUEST release59</b><span>指定済みSECTION 1ルートを読み込んでいます…</span></div></div>
+<iframe id="quest54" src="./chita_quest_release54.html" allow="geolocation; autoplay; fullscreen"></iframe>
+<script>
+const PATCH = String.raw`
+(() => {
+  const CANONICAL_MAPS_URL='https://maps.app.goo.gl/kRZKYKwvm2cVBjseA?g_st=com.openai.chat.ShareExtension';
+
+  const FULL = {
+    origin:{lat:34.9328950,lng:136.9152500},
+    destination:{lat:34.7977370,lng:136.9192940},
+    intermediates:[
+      {lat:34.9132500,lng:136.9127778},
+      {lat:34.9096944,lng:136.9136389},
+      {lat:34.9011944,lng:136.9290556},
+      {lat:34.9010833,lng:136.9312500},
+      {lat:34.8990833,lng:136.9318333},
+      {lat:34.8919810,lng:136.9347100},
+      {lat:34.8783611,lng:136.9375000},
+      {lat:34.8583056,lng:136.9248056},
+      {lat:34.8583889,lng:136.9251389},
+      {lat:34.8348333,lng:136.9218611},
+      {lat:34.8172222,lng:136.9214444},
+      {lat:34.8058056,lng:136.9213611},
+      {lat:34.7986389,lng:136.9189722}
+    ]
+  };
+
+  const checkpoints=[
+    {key:'start',name:'阿久比町役場',pos:{lat:34.9328950,lng:136.9152500}},
+    {key:'handaBrick',name:'半田赤レンガ建物',pos:{lat:34.9016044,lng:136.9283617}},
+    {key:'handaCanal',name:'半田運河',pos:{lat:34.8919811,lng:136.9347103}},
+    {key:'taketoyoFamilymart',name:'武豊工業地帯',pos:{lat:34.8449736,lng:136.9247824}},
+    {key:'mihamaFuttoSeven',name:'河和口海岸',pos:{lat:34.8038742,lng:136.9190097}},
+    {key:'kowaguchi',name:'河和口駅',pos:{lat:34.7977370,lng:136.9192940}}
+  ];
+
+  function makeGuide(index){
+    const a=checkpoints[index], b=checkpoints[index+1];
+    return {
+      from:a.name,to:b.name,origin:a.pos,destination:b.pos,
+      mapsUrl:CANONICAL_MAPS_URL,
+      stage1Segment:index,
+      points:[
+        {kind:'START',title:a.name,text:a.name+'から指定ルートに沿って進みます。',position:a.pos},
+        {kind:'GOAL',title:b.name,text:b.name+'のチェックポイントです。',position:b.pos}
+      ]
+    };
+  }
+
+  ROUTE_GUIDES.handaBrick=makeGuide(0);
+  ROUTE_GUIDES.handaCanal=makeGuide(1);
+  ROUTE_GUIDES.taketoyoFamilymart=makeGuide(2);
+  ROUTE_GUIDES.mihamaFuttoSeven=makeGuide(3);
+  ROUTE_GUIDES.kowaguchi=makeGuide(4);
+
+  routeGuideForPoint=function(p){
+    return p&&ROUTE_GUIDES[p.gps]?ROUTE_GUIDES[p.gps]:null;
+  };
+
+  routeGuideMapsUrl=function(g){
+    if(g&&Number.isInteger(g.stage1Segment)) return CANONICAL_MAPS_URL;
+    if(g&&g.mapsUrl) return g.mapsUrl;
+    return 'https://www.google.com/maps/dir/?api=1&origin='+
+      encodeURIComponent(g.origin.lat+','+g.origin.lng)+
+      '&destination='+encodeURIComponent(g.destination.lat+','+g.destination.lng)+
+      '&travelmode=walking';
+  };
+
+  let stage1FullRoutePromise=null;
+  async function getStage1FullRoute(){
+    if(stage1FullRoutePromise) return stage1FullRoutePromise;
+
+    stage1FullRoutePromise=new Promise((resolve,reject)=>{
+      try{
+        const service=new google.maps.DirectionsService();
+
+        const request={
+          origin:FULL.origin,
+          destination:FULL.destination,
+          travelMode:google.maps.TravelMode.WALKING,
+          optimizeWaypoints:false,
+          provideRouteAlternatives:false,
+          waypoints:FULL.intermediates.map(location=>({
+            location:new google.maps.LatLng(location.lat,location.lng),
+            stopover:false
+          }))
+        };
+
+        service.route(request,(result,status)=>{
+          if(status!==google.maps.DirectionsStatus.OK || !result || !result.routes || !result.routes[0]){
+            reject(new Error('DIRECTIONS_'+status));
+            return;
+          }
+
+          const r=result.routes[0];
+          const path=[];
+
+          if(r.overview_path && r.overview_path.length){
+            r.overview_path.forEach(p=>path.push({lat:p.lat(),lng:p.lng()}));
+          }else if(r.legs){
+            r.legs.forEach(leg=>{
+              (leg.steps||[]).forEach(step=>{
+                (step.path||[]).forEach(p=>path.push({lat:p.lat(),lng:p.lng()}));
+              });
+            });
+          }
+
+          if(path.length<2){
+            reject(new Error('NO_ROUTE'));
+            return;
+          }
+
+          resolve({
+            path,
+            distanceMeters:(r.legs||[]).reduce((s,leg)=>s+(leg.distance?.value||0),0),
+            raw:r
+          });
+        });
+      }catch(err){
+        reject(err);
+      }
+    });
+
+    return stage1FullRoutePromise;
+  }
+
+  function segmentFromFull(path,segmentIndex){
+    const idx=[0];
+    let cursor=0;
+    for(let i=1;i<checkpoints.length-1;i++){
+      cursor=nearestIndex(path,checkpoints[i].pos,cursor);
+      idx.push(cursor);
+    }
+    idx.push(path.length-1);
+    const a=idx[segmentIndex], b=idx[segmentIndex+1];
+    const seg=path.slice(a,Math.max(a+2,b+1));
+    return seg.length>=2?seg:path;
+  }
+
+  initRouteGuideMap=async function(g){
+    if(!document.getElementById('routeGuideMap')||routeGuideActiveKey==='')return;
+    const mapDiv=document.getElementById('routeGuideMap');
+    const fallback=document.getElementById('routeGuideMapFallback');
+    if(fallback) fallback.classList.add('hidden');
+
+    routeGuideMap=new google.maps.Map(mapDiv,{
+      center:g.origin,zoom:15,mapTypeControl:false,streetViewControl:false,
+      fullscreenControl:false,clickableIcons:false,gestureHandling:'greedy'
+    });
+
+    try{
+      let path=[];
+      if(Number.isInteger(g.stage1Segment)){
+        const full=await getStage1FullRoute();
+        path=segmentFromFull(full.path,g.stage1Segment);
+      }else{
+        const lib=await google.maps.importLibrary('routes');
+        const result=await lib.Route.computeRoutes({
+          origin:g.origin,destination:g.destination,travelMode:'WALKING',
+          polylineQuality:'HIGH_QUALITY',fields:['path','viewport','distanceMeters','warnings']
+        });
+        const r=result.routes&&result.routes[0];
+        if(!r||!r.path||r.path.length<2) throw new Error('NO_ROUTE');
+        path=r.path.map(p=>({lat:p.lat,lng:p.lng}));
+      }
+
+      const arrow={path:google.maps.SymbolPath.FORWARD_CLOSED_ARROW,scale:3.1,strokeColor:'#ffffff',strokeWeight:1.6,fillColor:'#ffffff',fillOpacity:1};
+      routeGuidePolyline=new google.maps.Polyline({
+        map:routeGuideMap,path,strokeColor:'#087990',strokeOpacity:.95,strokeWeight:7,
+        icons:[{icon:arrow,offset:'0px',repeat:'75px'}]
+      });
+
+      const bounds=new google.maps.LatLngBounds();
+      path.forEach(p=>bounds.extend(p));
+      bounds.extend(g.origin);bounds.extend(g.destination);
+      routeGuideMap.fitBounds(bounds,34);
+
+      let offset=0;
+      routeGuideArrowTimer=setInterval(()=>{
+        if(!routeGuidePolyline)return;
+        offset=(offset+1)%75;
+        const icons=routeGuidePolyline.get('icons');
+        icons[0].offset=offset+'px';
+        routeGuidePolyline.set('icons',icons);
+      },55);
+
+      routeGuideMarkers=g.points.map((x,i)=>new google.maps.Marker({
+        map:routeGuideMap,position:x.position,
+        label:{text:String(i+1),color:'#fff',fontWeight:'900'},title:x.title
+      }));
+
+      const status=document.getElementById('routeGuideMapStatus');
+      if(status) status.innerHTML='<strong>'+g.from+' → '+g.to+'</strong>｜Google Maps徒歩ルート＋指定13経由地から、この区間だけを表示しています。';
+    }catch(err){
+      console.error('release59 route error',err);
+      const status=document.getElementById('routeGuideMapStatus');
+      if(status) status.innerHTML='<strong>ルート計算エラー</strong>｜Routes APIとAPIキー設定を確認してください。';
+      new google.maps.Marker({map:routeGuideMap,position:g.origin,label:'S',title:g.from});
+      new google.maps.Marker({map:routeGuideMap,position:g.destination,label:'G',title:g.to});
+      const bounds=new google.maps.LatLngBounds();bounds.extend(g.origin);bounds.extend(g.destination);routeGuideMap.fitBounds(bounds,50);
+    }
+  };
+
+  try{if(typeof render==='function')render();}catch(e){console.warn('release59 rerender skipped',e);}
+  console.log('release59 DirectionsService SECTION 1 route patch loaded');
+})();
+`;
+
+const frame=document.getElementById('quest54');
+const boot=document.getElementById('boot');
+frame.addEventListener('load',()=>{
+  try{
+    const doc=frame.contentDocument;
+    const s=doc.createElement('script');
+    s.textContent=PATCH;
+    (doc.body||doc.documentElement).appendChild(s);
+    setTimeout(()=>boot.classList.add('hide'),350);
+  }catch(err){
+    console.error(err);
+    boot.innerHTML='<div><b>release59 読み込みエラー</b><span>GitHub Pages上で開いてください。release54とrelease59は同じフォルダに置きます。</span></div>';
+  }
+});
+</script>
+</body>
+</html>
