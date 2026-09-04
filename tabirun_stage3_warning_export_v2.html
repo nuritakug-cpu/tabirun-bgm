@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>STAGE3 注意点データ確認 v2</title>
+<style>
+body{margin:0;background:#082331;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:760px;margin:auto;padding:24px 16px 50px}
+h1{font-size:25px;margin:0 0 10px}
+.lead{line-height:1.7;color:#d7e7ec}
+.card{background:#fff;color:#17313b;border-radius:20px;padding:18px;margin-top:16px}
+.ok{font-size:21px;font-weight:900;color:#0b6c55}
+.ng{font-size:20px;font-weight:900;color:#a53a2a}
+.info{font-size:14px;color:#5f747e;line-height:1.6;margin-top:8px}
+.item{border:1px solid #d7e1e5;border-radius:14px;padding:12px;margin-top:12px;background:#f8fbfc}
+.item b{display:block;font-size:16px}
+button{width:100%;border:0;border-radius:14px;padding:15px 12px;font-size:16px;font-weight:900;margin-top:10px;background:#ffd45e;color:#382b00}
+button.secondary{background:#e9f3f6;color:#0c566a}
+textarea{width:100%;min-height:260px;box-sizing:border-box;border:1px solid #ccd9de;border-radius:12px;padding:11px;margin-top:10px;font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace}
+details{margin-top:14px}
+summary{font-weight:800;cursor:pointer}
+.key{font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-all;color:#45616d}
+</style>
+</head>
+<body>
+<main>
+<h1>STAGE3 注意点データ確認 v2</h1>
+<div class="lead">
+このページは、Safari内の保存データを全部調べて、<b>「warnings（注意点）」が入っているデータを一覧表示</b>します。<br>
+SECTION番号が壊れていても探します。
+</div>
+
+<div class="card">
+  <div id="status">確認中…</div>
+  <div id="summary" class="info"></div>
+  <div id="candidates"></div>
+  <details>
+    <summary>保存キー一覧を表示</summary>
+    <div id="keys"></div>
+  </details>
+</div>
+</main>
+
+<script>
+(async()=>{
+  const status=document.getElementById('status');
+  const summary=document.getElementById('summary');
+  const candidates=document.getElementById('candidates');
+  const keysEl=document.getElementById('keys');
+
+  const entries=[];
+  const seen=new Set();
+
+  function addEntry(store,key,raw){
+    if(raw==null)return;
+    const sig=store+'|'+key+'|'+raw;
+    if(seen.has(sig))return;
+    seen.add(sig);
+    entries.push({store,key,raw});
+  }
+
+  try{
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      addEntry('localStorage',k,localStorage.getItem(k));
+    }
+  }catch(e){}
+  try{
+    for(let i=0;i<sessionStorage.length;i++){
+      const k=sessionStorage.key(i);
+      addEntry('sessionStorage',k,sessionStorage.getItem(k));
+    }
+  }catch(e){}
+
+  // 履歴の raw の中も掘る
+  const expanded=[...entries];
+  for(const e of entries){
+    let v;
+    try{v=JSON.parse(e.raw)}catch(err){continue}
+    if(Array.isArray(v)){
+      v.forEach((x,idx)=>{
+        if(x && typeof x.raw==='string'){
+          expanded.push({store:e.store,key:e.key+'[history '+idx+']',raw:x.raw});
+        }
+      });
+    }else if(v && typeof v.raw==='string'){
+      expanded.push({store:e.store,key:e.key+'[raw]',raw:v.raw});
+    }
+  }
+
+  function deepFindWarnings(obj,path='$',out=[]){
+    if(!obj || typeof obj!=='object')return out;
+    if(Array.isArray(obj.warnings)){
+      out.push({path,obj});
+    }
+    if(Array.isArray(obj)){
+      obj.forEach((v,i)=>deepFindWarnings(v,path+'['+i+']',out));
+    }else{
+      for(const [k,v] of Object.entries(obj)){
+        if(k==='warnings')continue;
+        if(v && typeof v==='object')deepFindWarnings(v,path+'.'+k,out);
+      }
+    }
+    return out;
+  }
+
+  function looksStage3(o, key){
+    const text=JSON.stringify({
+      key,
+      section:o.section,
+      title:o.title,
+      checkpoints:o.checkpoints,
+      routeOverviews:o.routeOverviews
+    });
+    return Number(o.section)===3 ||
+      /section\s*3|section3|stage\s*3|stage3/i.test(String(key)) ||
+      /知多奥田|法山寺|野間大坊|冨具崎公園|野間灯台|小野浦海岸|内海峠/.test(text);
+  }
+
+  const found=[];
+  for(const e of expanded){
+    let v;
+    try{v=JSON.parse(e.raw)}catch(err){continue}
+    const groups=deepFindWarnings(v);
+    for(const g of groups){
+      found.push({
+        store:e.store,
+        key:e.key,
+        path:g.path,
+        obj:g.obj,
+        warnings:g.obj.warnings,
+        stage3:looksStage3(g.obj,e.key)
+      });
+    }
+  }
+
+  const nonEmpty=found.filter(x=>x.warnings.length>0);
+  const stage3=nonEmpty.filter(x=>x.stage3);
+
+  // 保存キー一覧
+  if(entries.length===0){
+    keysEl.innerHTML='<div class="info">保存データ自体が0件です。</div>';
+  }else{
+    keysEl.innerHTML=entries.map(e=>`<div class="item"><div class="key">${esc(e.store)}｜${esc(e.key)}</div><div class="info">${e.raw.length.toLocaleString()}文字</div></div>`).join('');
+  }
+
+  if(stage3.length){
+    status.className='ok';
+    status.textContent='✅ STAGE3の注意点データを検出しました';
+    summary.textContent=`STAGE3候補 ${stage3.length}件／注意点入りデータ ${nonEmpty.length}件／保存キー ${entries.length}件`;
+    render(stage3);
+  }else if(nonEmpty.length){
+    status.className='ng';
+    status.textContent='⚠ 注意点データは見つかりましたが、STAGE3判定できません';
+    summary.textContent=`注意点入りデータ ${nonEmpty.length}件／保存キー ${entries.length}件。下の候補を確認してください。`;
+    render(nonEmpty);
+  }else{
+    status.className='ng';
+    status.textContent='❌ 注意点データを検出できませんでした';
+    summary.innerHTML=`保存キーは <b>${entries.length}件</b> あります。<br>下の「保存キー一覧を表示」を開いてください。`;
+  }
+
+  function render(list){
+    candidates.innerHTML='';
+    list.forEach((x,idx)=>{
+      const box=document.createElement('div');
+      box.className='item';
+      const saved=x.obj.savedAt||'日時不明';
+      box.innerHTML=`
+        <b>候補 ${idx+1}｜注意点 ${x.warnings.length}件 ${x.stage3?'（STAGE3候補）':''}</b>
+        <div class="info">保存元：${esc(x.store)} / ${esc(x.key)}<br>保存日時：${esc(String(saved))}</div>
+        <textarea readonly>${esc(JSON.stringify(x.warnings,null,2))}</textarea>
+        <button>この注意点JSONをコピー</button>
+      `;
+      box.querySelector('button').onclick=async()=>{
+        const payload={
+          sourceStore:x.store,
+          sourceKey:x.key,
+          sourcePath:x.path,
+          savedAt:x.obj.savedAt||null,
+          section:x.obj.section??null,
+          title:x.obj.title??null,
+          warnings:x.warnings
+        };
+        const text=JSON.stringify(payload,null,2);
+        try{
+          await navigator.clipboard.writeText(text);
+          alert('コピーしました。このままChatGPTへ貼り付けてください。');
+        }catch(e){
+          const ta=box.querySelector('textarea');
+          ta.value=text; ta.focus(); ta.select();
+          try{document.execCommand('copy');alert('コピーしました。このままChatGPTへ貼り付けてください。');}
+          catch(_){alert('コピーできませんでした。表示されたJSONを長押ししてコピーしてください。');}
+        }
+      };
+      candidates.appendChild(box);
+    });
+  }
+
+  function esc(s){
+    return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+})();
+</script>
+</body>
+</html>
