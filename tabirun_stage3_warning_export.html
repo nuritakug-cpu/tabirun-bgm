@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>STAGE3 注意点データ確認</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0;background:#082331;color:#fff}
+main{max-width:760px;margin:auto;padding:28px 18px 50px}
+h1{font-size:26px;margin:0 0 10px}
+p{line-height:1.7;color:#d7e7ec}
+.card{background:#fff;color:#17313b;border-radius:20px;padding:18px;margin-top:18px}
+.status{font-weight:800;font-size:18px}
+textarea{width:100%;min-height:320px;box-sizing:border-box;border:1px solid #ccd9de;border-radius:12px;padding:12px;font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace}
+button{width:100%;border:0;border-radius:14px;padding:15px 12px;font-size:17px;font-weight:800;margin-top:12px;background:#ffd45e;color:#3b2d00}
+small{display:block;margin-top:10px;color:#647982;line-height:1.6}
+</style>
+</head>
+<body>
+<main>
+<h1>STAGE3 注意点データ確認</h1>
+<p>このページは、同じブラウザ内に保存されているSTAGE3ルートエディタの注意点だけを読み出します。推測データは作りません。</p>
+<div class="card">
+<div id="status" class="status">確認中…</div>
+<small id="detail"></small>
+<textarea id="out" readonly></textarea>
+<button id="copy">注意点JSONをコピー</button>
+</div>
+</main>
+<script>
+(()=>{
+  const found=[];
+  const add=(key,d,atHint=0)=>{
+    if(!d||typeof d!=='object')return;
+    const keyLooks=/section\s*3|section3|stage\s*3|stage3/i.test(String(key||''));
+    if(Number(d.section)!==3&&!keyLooks)return;
+    if(!Array.isArray(d.warnings)||!d.warnings.length)return;
+    found.push({key,data:d,at:Date.parse(d.savedAt||'')||Number(atHint)||0});
+  };
+  try{
+    for(let i=0;i<localStorage.length;i++){
+      const key=localStorage.key(i),raw=localStorage.getItem(key);
+      if(!raw||raw.length<20)continue;
+      let parsed;try{parsed=JSON.parse(raw)}catch(e){continue}
+      if(Array.isArray(parsed)){
+        parsed.forEach(item=>{
+          if(!item)return;
+          if(typeof item.raw==='string'){try{add(key,JSON.parse(item.raw),Date.parse(item.at||'')||0)}catch(e){}}
+          else add(key,item,Date.parse(item.at||'')||0);
+        });
+      }else{
+        add(key,parsed,0);
+        if(typeof parsed.raw==='string'){try{add(key,JSON.parse(parsed.raw),Date.parse(parsed.at||'')||0)}catch(e){}}
+      }
+    }
+  }catch(e){}
+  found.sort((a,b)=>b.at-a.at);
+  const best=found[0];
+  const status=document.getElementById('status');
+  const detail=document.getElementById('detail');
+  const out=document.getElementById('out');
+  if(!best){
+    status.textContent='STAGE3の注意点データは見つかりませんでした';
+    detail.textContent='このブラウザには、注意点入りのSTAGE3エディタ保存データがありません。';
+    out.value='';
+  }else{
+    const payload={
+      sourceKey:best.key,
+      savedAt:best.data.savedAt||null,
+      section:best.data.section||3,
+      warnings:best.data.warnings
+    };
+    status.textContent=`STAGE3 注意点 ${best.data.warnings.length}件を検出`;
+    detail.textContent=`保存元: ${best.key}`;
+    out.value=JSON.stringify(payload,null,2);
+  }
+  document.getElementById('copy').onclick=async()=>{
+    if(!out.value)return;
+    try{await navigator.clipboard.writeText(out.value);alert('コピーしました');}
+    catch(e){out.focus();out.select();document.execCommand('copy');alert('コピーしました');}
+  };
+})();
+</script>
+</body>
+</html>
