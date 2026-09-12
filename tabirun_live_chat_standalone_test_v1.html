@@ -36,7 +36,7 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
 <div class="app">
 <header>
   <div class="brand">STANDALONE / NO QUEST CORE MODIFICATION</div>
-  <h1>旅ラン LIVE / CHAT 独立テスト v1</h1>
+  <h1>旅ラン LIVE / CHAT 独立テスト v1</h1><div style="font-size:9px;opacity:.75;margin-top:3px">CONNECT FIX 2026-09-13</div>
 </header>
 <main>
   <div class="card">
@@ -220,6 +220,17 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
   function $all(sel, root=document){ return [...root.querySelectorAll(sel)]; }
   function esc(v){ return String(v ?? '').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])); }
   function hasQuestLogin(){ try{return localStorage.getItem(QUEST_AUTH_KEY)===QUEST_AUTH_TOKEN}catch{return false} }
+  function bootStatus(message){
+    const el=document.querySelector('#tlc-boot-loading .tlc-loading');
+    if(el)el.textContent=message;
+  }
+  function withTimeout(promise,ms,label){
+    let timer;
+    return Promise.race([
+      Promise.resolve(promise),
+      new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(label)),ms)})
+    ]).finally(()=>clearTimeout(timer));
+  }
   function eventPath(child=''){ return `events/${EVENT_ID}${child?'/'+child:''}`; }
   function memberPath(){ return `members/${EVENT_ID}/${state.user.uid}`; }
 
@@ -296,11 +307,12 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
   }
 
   async function importFirebase(){
-    const [app,auth,db]=await Promise.all([
+    bootStatus('Firebaseライブラリを読み込んでいます…');
+    const [app,auth,db]=await withTimeout(Promise.all([
       import('https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js'),
       import('https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js'),
       import('https://www.gstatic.com/firebasejs/12.18.0/firebase-database.js')
-    ]);
+    ]),15000,'Firebaseライブラリ読込が15秒で完了しませんでした');
     return{app,auth,db};
   }
 
@@ -360,10 +372,13 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
     if(state.firebasePromise)return state.firebasePromise;
 
     state.firebasePromise=(async()=>{
-      if(!hasQuestLogin())throw new Error('QUEST login required');
-      const fb=await importFirebase(); state.firebase=fb;
+      if(!hasQuestLogin())throw new Error('テストログインがOFFです');
 
-      const appName='tabirun-live-v2';
+      const fb=await importFirebase();
+      state.firebase=fb;
+
+      bootStatus('Firebase認証を開始しています…');
+      const appName='tabirun-live-test-v1';
       let firebaseApp=fb.app.getApps().find(a=>a.name===appName);
       if(!firebaseApp)firebaseApp=fb.app.initializeApp(FIREBASE_CONFIG,appName);
 
@@ -374,26 +389,42 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
           fb.auth.browserSessionPersistence,
           fb.auth.inMemoryPersistence
         ]});
-      }catch{auth=fb.auth.getAuth(firebaseApp)}
-      state.auth=auth; state.db=fb.db.getDatabase(firebaseApp);
+      }catch{
+        auth=fb.auth.getAuth(firebaseApp);
+      }
 
-      const user=await new Promise((resolve,reject)=>{
-        let settled=false;
-        const unsub=fb.auth.onAuthStateChanged(auth,async u=>{
-          if(settled)return;
-          try{
-            if(u){settled=true;unsub();resolve(u)}
-            else await fb.auth.signInAnonymously(auth);
-          }catch(e){settled=true;unsub();reject(e)}
-        },reject);
-        setTimeout(()=>{if(!settled&&!auth.currentUser)fb.auth.signInAnonymously(auth).catch(reject)},300);
-      });
+      state.auth=auth;
+      state.db=fb.db.getDatabase(firebaseApp);
 
+      let user=auth.currentUser;
+      if(!user){
+        const cred=await withTimeout(
+          fb.auth.signInAnonymously(auth),
+          15000,
+          'Firebase匿名認証が15秒で完了しませんでした'
+        );
+        user=cred?.user||auth.currentUser;
+      }
+      if(!user)throw new Error('Firebase匿名認証ユーザーを取得できませんでした');
       state.user=user;
-      await ensureMembership();
+
+      bootStatus('テストイベントへ接続しています…');
+      await withTimeout(
+        ensureMembership(),
+        15000,
+        'テストイベントへの参加処理が15秒で完了しませんでした'
+      );
+
       state.firebaseReady=true;
       state.chatLastSeen=getChatSeen();
-      await loadOwnProfile();
+
+      bootStatus('参加者情報を確認しています…');
+      await withTimeout(
+        loadOwnProfile(),
+        10000,
+        '参加者情報の読込が10秒で完了しませんでした'
+      );
+
       startChatListener();
 
       if(isExpired()){
@@ -405,12 +436,16 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
         const p=getQuestGps();
         if(p)await writePosition(p,true);
       }
+
+      bootStatus('LIVE / CHATを開いています…');
       return user;
     })().catch(err=>{
-      state.firebasePromise=null; state.firebaseReady=false;
-      console.error('[TABIRUN LIVE] Firebase init failed',err);
+      state.firebasePromise=null;
+      state.firebaseReady=false;
+      console.error('[TABIRUN LIVE TEST] Firebase init failed',err);
       throw err;
     });
+
     return state.firebasePromise;
   }
 
@@ -539,7 +574,15 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
       $('#tlc-owner-card',root).hidden=!state.owner;
       switchView(view);
     }catch(e){
-      loading.remove(); console.error(e); toast('LIVE / CHATに接続できません'); setTimeout(closeOverlay,2200);
+      console.error(e);
+      const msg=(e&&e.message)?e.message:String(e||'不明なエラー');
+      loading.innerHTML=`<div class="tlc-modal">
+        <h3>LIVE / CHATに接続できませんでした</h3>
+        <div class="tlc-small" style="margin-top:8px;line-height:1.7">${esc(msg)}</div>
+        <div class="tlc-notice">QUEST本体には触れていません。この独立テスト内の接続エラーです。</div>
+        <button type="button" class="tlc-btn tlc-primary" id="tlc-boot-close" style="width:100%;margin-top:12px">閉じる</button>
+      </div>`;
+      $('#tlc-boot-close',loading)?.addEventListener('click',()=>{loading.remove();closeOverlay()});
     }
   }
 
