@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,user-scalable=yes,viewport-fit=cover">
+<meta name="theme-color" content="#062f42">
+<title>旅ランQUEST｜FOLLOW安定版</title>
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#061f2b}
+#inner{display:block;width:100%;height:100%;border:0;background:#061f2b}
+</style>
+</head>
+<body>
+<iframe id="inner" title="旅ランQUEST FOLLOW MAP" allow="geolocation"></iframe>
+<script>
+(()=>{
+'use strict';
+const INNER_FOLLOW='chita_quest_follow201_single_gps_smoothrotate.html';
+const frame=document.getElementById('inner');
+const qs=new URLSearchParams(location.search);
+qs.set('v','204');
+frame.src=INNER_FOLLOW+'?'+qs.toString();
+
+window.r150CloseExternalMap=function(){
+  try{
+    if(window.parent&&window.parent!==window&&typeof window.parent.r150CloseExternalMap==='function'){
+      window.parent.r150CloseExternalMap();return;
+    }
+  }catch(e){}
+  try{window.parent.postMessage({type:'tabirun-map150-close'},location.origin)}catch(e){}
+};
+
+function injectFollowPatch(){
+  try{
+    const w=frame.contentWindow,d=frame.contentDocument;
+    if(!w||!d||!String(w.location.pathname||'').includes('follow201'))return;
+    if(w.__TABIRUN_FOLLOW202_PATCHED__)return;
+    const s=d.createElement('script');
+    s.textContent=String.raw`
+(()=>{
+'use strict';
+if(window.__TABIRUN_FOLLOW202_PATCHED__)return;
+window.__TABIRUN_FOLLOW202_PATCHED__=true;
+
+smoothHeading=function(next){
+  next=norm(next);
+  const now=(window.performance&&performance.now)?performance.now():Date.now();
+  if(!Number.isFinite(lastHeading)){lastHeading=next;lastHeadingAt=now;return next}
+  const d=delta(lastHeading,next),ad=Math.abs(d);
+  if(ad<4.5)return lastHeading;
+  const dt=Math.max(80,Math.min(1800,lastHeadingAt?now-lastHeadingAt:450));
+  const alpha=1-Math.exp(-dt/620);
+  let step=d*alpha;
+  const rate=ad>=90?78:ad>=45?68:56;
+  const cap=rate*(dt/1000);
+  if(Math.abs(step)>cap)step=Math.sign(step)*cap;
+  lastHeading=norm(lastHeading+step);
+  lastHeadingAt=now;
+  return lastHeading
+};
+
+candidateHeading=function(coords,q,rv){
+  const acc=Math.max(1,Number(coords.accuracy)||999),now=Date.now();
+  const native=Number(coords.heading),speed=Number(coords.speed);
+  let motion=null;
+  const minMove=acc<=15?2.0:acc<=25?2.8:4.3;
+  if(lastBearingPos){
+    const d=hav(lastBearingPos,q),age=now-lastBearingAt;
+    if(d>=minMove&&age<=8500&&acc<=45)motion=bearing(lastBearingPos,q)
+  }
+  if(!lastBearingPos||hav(lastBearingPos,q)>=minMove||now-lastBearingAt>6500){
+    lastBearingPos={lat:q.lat,lng:q.lng};lastBearingAt=now
+  }
+
+  let sensor=null;
+  if(Number.isFinite(native)&&native>=0&&Number.isFinite(speed)&&speed>=.70&&acc<=38){
+    sensor=norm(native)
+  }else if(Number.isFinite(motion)){
+    sensor=motion
+  }
+
+  let h=null;
+  if(rv&&Number.isFinite(rv.heading)&&rv.distance<=28){
+    const routeH=norm(rv.heading);
+    if(!Number.isFinite(lastHeading)){
+      h=routeH
+    }else{
+      const jump=Math.abs(delta(lastHeading,routeH));
+      const support=Number.isFinite(sensor)?Math.abs(delta(routeH,sensor)):999;
+      if(jump<=58)h=routeH;
+      else if(support<=42)h=routeH;
+      else if(jump<=82&&Number.isFinite(sensor)&&Math.abs(delta(lastHeading,sensor))>=24)h=routeH;
+      else h=lastHeading
+    }
+    if(Number.isFinite(sensor)&&Math.abs(delta(h,sensor))<32){
+      h=norm(h+delta(h,sensor)*.10)
+    }
+  }else if(Number.isFinite(sensor)){
+    h=sensor
+  }
+  return h==null?(Number.isFinite(lastHeading)?lastHeading:null):smoothHeading(h)
+};
+
+visualPoint=function(raw,rv,accuracy,fixAt,force){
+  const acc=Math.max(1,Number(accuracy)||50);
+  let out={lat:raw.lat,lng:raw.lng};
+  if(rv&&rv.pos&&Number.isFinite(rv.distance)){
+    const corridor=Math.min(24,Math.max(9,acc*.72));
+    if(rv.distance<=corridor){
+      const strength=acc<=9?.42:acc<=16?.62:acc<=28?.76:.84;
+      out={
+        lat:raw.lat+(rv.pos.lat-raw.lat)*strength,
+        lng:raw.lng+(rv.pos.lng-raw.lng)*strength
+      }
+    }
+  }
+  lastVisualPos=out;
+  return out
+};
+
+r201BearingTick=function(ts){
+  r201BearingRaf=0;
+  if(!Number.isFinite(r201TargetBearing)||!Number.isFinite(r201VisualBearing))return;
+  if(!r201LastFrame)r201LastFrame=ts;
+  const dt=Math.max(.016,Math.min(.08,(ts-r201LastFrame)/1000));r201LastFrame=ts;
+  const diff=r201TargetBearing-r201VisualBearing,ad=Math.abs(diff);
+  if(ad<.12){
+    r201VisualBearing=r201TargetBearing;r201RenderBearing(r201VisualBearing);r201LastFrame=0;return
+  }
+  const tau=ad>=70?.46:ad>=30?.40:.34;
+  let step=diff*(1-Math.exp(-dt/tau));
+  const maxRate=ad>=70?92:ad>=30?82:66;
+  const cap=maxRate*dt;
+  if(Math.abs(step)>cap)step=Math.sign(step)*cap;
+  r201VisualBearing+=step;
+  if(!r201BearingTick._lastPaint||ts-r201BearingTick._lastPaint>=28){
+    r201BearingTick._lastPaint=ts;r201RenderBearing(r201VisualBearing)
+  }
+  r201BearingRaf=requestAnimationFrame(r201BearingTick)
+};
+
+followPosition=function(q,h,force,accuracy,fixAt){
+  if(userBusy||!map)return;
+  try{if(Number.isFinite(h))applyBearing(h)}catch(e){}
+  const now=(window.performance&&performance.now)?performance.now():Date.now();
+  if(Number.isFinite(fixAt)&&lastFixAt){
+    const dt=Math.max(250,Math.min(2400,fixAt-lastFixAt));
+    lastFixInterval=lastFixInterval*.55+dt*.45
+  }
+  if(Number.isFinite(fixAt))lastFixAt=fixAt;
+  const moved=lastCameraPos?hav(lastCameraPos,q):Infinity;
+  const acc=Math.max(1,Number(accuracy)||50);
+  const threshold=acc<=12?.28:acc<=25?.48:.78;
+  if(!force&&moved<threshold)return;
+
+  lastCameraAt=now;lastCameraPos={lat:q.lat,lng:q.lng};
+  let dur=force?0:Math.max(.18,Math.min(.46,(lastFixInterval/1000)*.34));
+  if(!force&&moved>18)dur=.20;
+  try{
+    if(force)map.setView([q.lat,q.lng],Math.max(16,map.getZoom()),{animate:false});
+    else map.panTo([q.lat,q.lng],{animate:true,duration:dur,easeLinearity:1,noMoveStart:true})
+  }catch(e){
+    try{map.setView([q.lat,q.lng],Math.max(16,map.getZoom()),{animate:false})}catch(_){}
+  }
+};
+
+window.__TABIRUN_FOLLOW202__={
+  base:'follow201',
+  camera:'fast-settle',
+  visualRouteMagnet:'mild / display only',
+  heading:'large-flip guard + lower angular rate',
+  arrivalJudgement:'unchanged'
+};
+console.log('FOLLOW202 stability patch loaded');
+})();`;
+    d.documentElement.appendChild(s);
+  }catch(e){console.warn('FOLLOW202 patch injection failed',e)}
+}
+
+window.addEventListener('message',e=>{
+  if(e.origin!==location.origin||!e.data)return;
+  try{
+    if(e.source===window.parent){
+      frame.contentWindow?.postMessage(e.data,location.origin);
+      return;
+    }
+    if(e.source===frame.contentWindow){
+      if(e.data.type==='tabirun-map161-ready')injectFollowPatch();
+      window.parent?.postMessage(e.data,location.origin);
+    }
+  }catch(_){}
+});
+
+frame.addEventListener('load',()=>setTimeout(injectFollowPatch,0));
+})();
+</script>
+</body>
+</html>
