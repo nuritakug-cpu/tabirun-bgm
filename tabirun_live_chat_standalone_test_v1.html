@@ -1,0 +1,828 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#07384c">
+<title>旅ラン LIVE / CHAT 独立テスト v1</title>
+<style>
+:root{--ink:#17313b;--muted:#6d7d83;--line:#dfe5e2;--navy:#07384c;--teal:#0b7285;--gold:#d9a624;--ok:#19865f;--bad:#a93a2d}
+*{box-sizing:border-box}
+html,body{margin:0;background:#f3f5f3;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",Meiryo,sans-serif}
+.app{max-width:680px;margin:auto;min-height:100vh;background:#fffdf9}
+header{position:sticky;top:0;z-index:5000;padding:calc(12px + env(safe-area-inset-top)) 14px 12px;background:linear-gradient(135deg,#062d42,#08758f);color:#fff}
+.brand{font-size:9px;letter-spacing:.13em;font-weight:900;opacity:.75}
+h1{font-size:21px;margin:4px 0 0}
+main{padding:14px 12px 80px}
+.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:12px;box-shadow:0 8px 22px rgba(8,45,66,.05)}
+.eyebrow{font-size:9px;letter-spacing:.13em;font-weight:950;color:#8a6817}
+h2{font-size:20px;margin:4px 0 8px}
+p,.desc{font-size:12px;line-height:1.75;color:var(--muted)}
+.btn{width:100%;border:0;border-radius:14px;padding:13px 12px;margin-top:9px;font-weight:950;font-size:14px;touch-action:manipulation}
+.primary{background:linear-gradient(135deg,#073c54,#087b8f);color:#fff}
+.secondary{background:#edf1ef;color:#17313b}
+.gold{background:linear-gradient(135deg,#b27d13,#d4a32a);color:#fff}
+.good{background:#e8f5ef;color:#106d4d}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.status{padding:10px 12px;border-radius:12px;background:#f3f6f5;font-size:11px;line-height:1.65;margin-top:10px}
+.status.ok{background:#e9f6f0;color:#126c4d}
+.status.bad{background:#fff0ed;color:#96372c}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
+.small{font-size:10px;color:var(--muted)}
+@media(max-width:480px){.row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="brand">STANDALONE / NO QUEST CORE MODIFICATION</div>
+  <h1>旅ラン LIVE / CHAT 独立テスト v1</h1>
+</header>
+<main>
+  <div class="card">
+    <div class="eyebrow">TEST SCOPE</div>
+    <h2>本体へ入れる前の独立試験</h2>
+    <div class="desc">
+      このページはrelease300本体を変更しません。Firebase認証・参加者名・位置共有・LIVE MAP・CHATだけを、
+      QUEST側の接続口を模擬して確認します。テストデータは本番9/22イベントとは別IDです。
+    </div>
+    <div class="status" id="testStatus">準備中…</div>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">STEP 1</div>
+    <h2>QUESTログインを模擬</h2>
+    <div class="desc">本番のログイン情報とは別のテスト専用キーを使います。</div>
+    <button class="btn primary" id="testLogin">テストログイン ON</button>
+    <button class="btn secondary" id="testLogout">テストログイン OFF</button>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">STEP 2</div>
+    <h2>位置情報を用意</h2>
+    <div class="desc">本番ではQUEST既存GPSを使います。ここではその値だけを模擬します。</div>
+    <div class="row">
+      <button class="btn secondary" data-mock="agui">阿久比町役場付近</button>
+      <button class="btn secondary" data-mock="utsumi">内海付近</button>
+    </div>
+    <button class="btn gold" id="realGps">この端末のGPSを1回だけ取得</button>
+    <div class="status" id="gpsStatus">GPS未設定</div>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">STEP 3</div>
+    <h2>LIVE / CHATを開く</h2>
+    <div class="row">
+      <button class="btn primary" id="openLive">LIVE MAP</button>
+      <button class="btn primary" id="openChat">CHAT</button>
+    </div>
+    <div class="small" style="margin-top:9px">
+      初回のみ表示名を登録します。表示名登録だけでは位置共有は開始しません。
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">CHECK</div>
+    <h2>今回確認する項目</h2>
+    <div class="desc">
+      ① Firebase接続　② 表示名登録　③ 位置共有ON/OFF　④ 2端末で地図同期　
+      ⑤ CHAT送受信　⑥ 停止/更新途絶表示　⑦ 画面を閉じてもQUEST本体側へ干渉しないこと。
+    </div>
+    <div class="status" id="adapterStatus">アダプター状態：読込待ち</div>
+  </div>
+</main>
+</div>
+
+<script>
+(() => {
+  'use strict';
+  const AUTH_KEY='tabirun_live_chat_test_auth_v1';
+  const AUTH_TOKEN='ok:v1';
+  let gps=null;
+  let ctx={stage:1,phase:'test',nextPointName:'半田赤レンガ建物',lastPointName:'阿久比町役場',lastPointAt:Date.now()-60000};
+
+  const $=s=>document.querySelector(s);
+  function setStatus(msg,ok=null){
+    const el=$('#testStatus');el.textContent=msg;el.className='status'+(ok===true?' ok':ok===false?' bad':'');
+  }
+  function setGps(p,label){
+    gps={...p,time:Date.now()};
+    $('#gpsStatus').textContent=`${label} / lat ${gps.lat.toFixed(6)} / lng ${gps.lng.toFixed(6)} / ±${Math.round(gps.accuracy)}m`;
+    if(typeof window.tabirunLiveGpsUpdate==='function')window.tabirunLiveGpsUpdate(gps);
+  }
+
+  window.tabirunGetQuestGps=()=>gps;
+  window.tabirunGetQuestLiveContext=()=>ctx;
+  window.tabirunRequestQuestGps=()=>{ if(gps&&typeof window.tabirunLiveGpsUpdate==='function')window.tabirunLiveGpsUpdate(gps); };
+  window.tabirunSetChatUnread=(n)=>{ document.title=n>0?`(${n}) 旅ラン LIVE / CHAT 独立テスト v1`:'旅ラン LIVE / CHAT 独立テスト v1'; };
+
+  $('#testLogin').addEventListener('click',()=>{
+    try{localStorage.setItem(AUTH_KEY,AUTH_TOKEN);setStatus('テストログイン ON。LIVE / CHATを開けます。',true)}catch(e){setStatus('テストログイン保存に失敗しました。',false)}
+  });
+  $('#testLogout').addEventListener('click',()=>{
+    try{localStorage.removeItem(AUTH_KEY);setStatus('テストログイン OFF。',null)}catch(e){setStatus('ログアウト処理に失敗しました。',false)}
+  });
+  document.querySelectorAll('[data-mock]').forEach(btn=>btn.addEventListener('click',()=>{
+    if(btn.dataset.mock==='agui')setGps({lat:34.93265,lng:136.91540,accuracy:8},'阿久比町役場付近');
+    else setGps({lat:34.74270,lng:136.87220,accuracy:8},'内海付近');
+  }));
+  $('#realGps').addEventListener('click',()=>{
+    if(!navigator.geolocation){$('#gpsStatus').textContent='この端末では位置情報を使えません';return}
+    $('#gpsStatus').textContent='GPS取得中…';
+    navigator.geolocation.getCurrentPosition(
+      pos=>setGps({lat:pos.coords.latitude,lng:pos.coords.longitude,accuracy:pos.coords.accuracy},'端末GPS'),
+      err=>$('#gpsStatus').textContent=`GPS取得失敗：${err.message||err.code}`,
+      {enableHighAccuracy:true,timeout:15000,maximumAge:0}
+    );
+  });
+  $('#openLive').addEventListener('click',()=>{
+    if(typeof window.tabirunOpenLiveMap==='function')window.tabirunOpenLiveMap();
+    else setStatus('LIVEアダプターがまだ準備できていません。',false);
+  });
+  $('#openChat').addEventListener('click',()=>{
+    if(typeof window.tabirunOpenChat==='function')window.tabirunOpenChat();
+    else setStatus('CHATアダプターがまだ準備できていません。',false);
+  });
+
+  const timer=setInterval(()=>{
+    const a=window.__TABIRUN_LIVE_CHAT__;
+    if(!a)return;
+    clearInterval(timer);
+    $('#adapterStatus').textContent=`アダプター状態：${a.version} / TEST EVENT ${a.eventId}`;
+    setStatus(localStorage.getItem(AUTH_KEY)===AUTH_TOKEN?'テストログイン済み。LIVE / CHATを開けます。':'テストログインをONにしてください。',localStorage.getItem(AUTH_KEY)===AUTH_TOKEN);
+  },300);
+})();
+</script>
+
+<script>
+// TABIRUN QUEST LIVE + CHAT ADAPTER v2
+// Target: chita_quest_release301_live_chat.html
+// Scope: Firebase membership/profile/LIVE/CHAT only. QUEST core, GPS, BGM, stamps, quizzes and route logic stay authoritative.
+(() => {
+  'use strict';
+
+  const VERSION = 'tabirun-live-chat-adapter-test-v1';
+  const EVENT_ID = 'dev-tabirun-live-chat-test-01';
+  const EVENT_NAME = '【TEST】旅ラン LIVE / CHAT';
+  const EVENT_END_MS = Date.parse('2099-12-31T23:59:59+09:00');
+  // The QUEST login verifier already ships this digest. Reuse the digest as the Firebase event join token;
+  // the visible six-digit QUEST code is never stored here.
+  const QUEST_JOIN_TOKEN = 'test-live-chat-join-token-v1';
+  const QUEST_AUTH_KEY = 'tabirun_live_chat_test_auth_v1';
+  const QUEST_AUTH_TOKEN = 'ok:v1';
+
+  const DEFAULT_CENTER = [34.84, 136.92];
+  const DEFAULT_ZOOM = 10;
+  const STALE_MS = 2 * 60 * 1000;
+  const STOP_MS = 5 * 60 * 1000;
+  const WRITE_INTERVAL_MS = 5000;
+  const MOVE_THRESHOLD_M = 20;
+  const CHAT_LIMIT = 100;
+
+  const ROUTE_FILES = [
+    './tabirun_route_section1_v15.json',
+    './tabirun_route_section2_v15.json',
+    './tabirun_route_section3_v15.json'
+  ];
+
+  const FIREBASE_CONFIG = {
+    apiKey: 'AIzaSyB0DLoOQa5MQ67jGj6GmqO7XgwrbvQnLl4',
+    authDomain: 'sports-live-hub-aichi.firebaseapp.com',
+    databaseURL: 'https://sports-live-hub-aichi-default-rtdb.asia-southeast1.firebasedatabase.app',
+    projectId: 'sports-live-hub-aichi',
+    storageBucket: 'sports-live-hub-aichi.firebasestorage.app',
+    messagingSenderId: '931508195062',
+    appId: '1:931508195062:web:90881ea409003f909c66d7',
+    measurementId: 'G-0TGNM4W9XF'
+  };
+
+  const state = {
+    firebase:null, auth:null, db:null, user:null,
+    member:false, owner:false, profile:null,
+    participants:{}, live:{}, messages:[],
+    root:null, activeView:null,
+    map:null, markers:new Map(), routeLayers:[], routesLoaded:false,
+    liveUnsubs:[], chatUnsub:null,
+    sharing:false, lastWriteAt:0, lastSentPos:null, lastMoveAt:0,
+    firebaseReady:false, firebasePromise:null, leafletPromise:null,
+    ticker:null, chatLastSeen:0, bootstrapTried:false
+  };
+
+  const READ_KEY = `tabirun_chat_seen_${EVENT_ID}`;
+  const SHARE_DB = 'tabirun_live_test_pref_v1';
+  const SHARE_STORE = 'prefs';
+  const SHARE_KEY = `${EVENT_ID}:sharing`;
+
+  const PROFILE_COLORS = ['#0b7285','#7b5bbd','#c45b32','#2f7d4a','#aa7b18','#3e68a8','#a83e69','#56733a','#7a4b2c','#286b78'];
+
+  function now(){ return Date.now(); }
+  function $(sel, root=document){ return root.querySelector(sel); }
+  function $all(sel, root=document){ return [...root.querySelectorAll(sel)]; }
+  function esc(v){ return String(v ?? '').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])); }
+  function hasQuestLogin(){ try{return localStorage.getItem(QUEST_AUTH_KEY)===QUEST_AUTH_TOKEN}catch{return false} }
+  function eventPath(child=''){ return `events/${EVENT_ID}${child?'/'+child:''}`; }
+  function memberPath(){ return `members/${EVENT_ID}/${state.user.uid}`; }
+
+  function uidColor(uid=''){
+    let h=0; for(let i=0;i<uid.length;i++)h=((h<<5)-h+uid.charCodeAt(i))|0;
+    return PROFILE_COLORS[Math.abs(h)%PROFILE_COLORS.length];
+  }
+  function fmtTime(ts){
+    const n=typeof ts==='number'?ts:Date.parse(ts||'');
+    if(!Number.isFinite(n))return'—';
+    return new Date(n).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'});
+  }
+  function ageText(ts){
+    const n=typeof ts==='number'?ts:Date.parse(ts||'');
+    if(!Number.isFinite(n))return'更新なし';
+    const s=Math.max(0,Math.floor((now()-n)/1000));
+    if(s<10)return'たった今'; if(s<60)return`${s}秒前`;
+    const m=Math.floor(s/60); if(m<60)return`${m}分前`;
+    const h=Math.floor(m/60); return`${h}時間前`;
+  }
+  function haversine(a,b){
+    if(!a||!b)return Infinity;
+    const R=6371000,rad=x=>x*Math.PI/180,dLat=rad(b.lat-a.lat),dLng=rad(b.lng-a.lng);
+    const x=Math.sin(dLat/2)**2+Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dLng/2)**2;
+    return 2*R*Math.asin(Math.sqrt(x));
+  }
+  function isExpired(){ return Number.isFinite(EVENT_END_MS)&&now()>=EVENT_END_MS; }
+
+  function openPrefDb(){
+    return new Promise((resolve,reject)=>{
+      if(!window.indexedDB){reject(new Error('indexedDB unavailable'));return}
+      const r=indexedDB.open(SHARE_DB,1);
+      r.onupgradeneeded=()=>{ if(!r.result.objectStoreNames.contains(SHARE_STORE))r.result.createObjectStore(SHARE_STORE); };
+      r.onsuccess=()=>resolve(r.result); r.onerror=()=>reject(r.error||new Error('indexedDB open failed'));
+    });
+  }
+  async function prefGet(){
+    try{
+      const db=await openPrefDb();
+      return await new Promise((resolve,reject)=>{
+        const tx=db.transaction(SHARE_STORE,'readonly'),q=tx.objectStore(SHARE_STORE).get(SHARE_KEY);
+        q.onsuccess=()=>resolve(q.result===true); q.onerror=()=>reject(q.error);
+      });
+    }catch{
+      try{return sessionStorage.getItem(SHARE_KEY)==='1'}catch{return false}
+    }
+  }
+  async function prefSet(v){
+    try{
+      const db=await openPrefDb();
+      await new Promise((resolve,reject)=>{
+        const tx=db.transaction(SHARE_STORE,'readwrite');
+        tx.objectStore(SHARE_STORE).put(!!v,SHARE_KEY);
+        tx.oncomplete=resolve; tx.onerror=()=>reject(tx.error);
+      });
+    }catch{
+      try{sessionStorage.setItem(SHARE_KEY,v?'1':'0')}catch{}
+    }
+  }
+
+  function setUnread(n){
+    if(typeof window.tabirunSetChatUnread==='function')window.tabirunSetChatUnread(Math.max(0,Number(n)||0));
+  }
+  function getChatSeen(){
+    try{
+      const v=sessionStorage.getItem(READ_KEY); if(v)return Number(v)||0;
+      const t=now(); sessionStorage.setItem(READ_KEY,String(t)); return t;
+    }catch{return now()}
+  }
+  function markChatSeen(){
+    state.chatLastSeen=now();
+    try{sessionStorage.setItem(READ_KEY,String(state.chatLastSeen))}catch{}
+    setUnread(0);
+  }
+
+  async function importFirebase(){
+    const [app,auth,db]=await Promise.all([
+      import('https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js'),
+      import('https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js'),
+      import('https://www.gstatic.com/firebasejs/12.18.0/firebase-database.js')
+    ]);
+    return{app,auth,db};
+  }
+
+  async function ensureMembership(){
+    if(state.member)return true;
+    const {ref,set,get,update}=state.firebase.db;
+
+    // Normal path: the 9/22 event already exists, so this single membership write succeeds.
+    try{
+      await set(ref(state.db,memberPath()),QUEST_JOIN_TOKEN);
+      state.member=true;
+    }catch(firstError){
+      // First device only: create the fixed 9/22 event. If another device wins the race,
+      // the create is denied and we simply retry the membership write.
+      if(!state.bootstrapTried){
+        state.bootstrapTried=true;
+        try{
+          await set(ref(state.db,`eventSecrets/${EVENT_ID}`),{
+            ownerUid:state.user.uid,
+            joinCode:QUEST_JOIN_TOKEN,
+            createdAt:now()
+          });
+          state.owner=true;
+          await set(ref(state.db,memberPath()),QUEST_JOIN_TOKEN);
+          state.member=true;
+          await set(ref(state.db,eventPath('meta')),{
+            name:EVENT_NAME,
+            routeMode:'multi',
+            start:'2026-09-22T05:00:00+09:00',
+            end:'2026-09-23T00:00:00+09:00',
+            createdAt:now(),
+            ownerUid:state.user.uid,
+            source:'TABIRUN QUEST release301'
+          });
+        }catch(createError){
+          try{
+            await set(ref(state.db,memberPath()),QUEST_JOIN_TOKEN);
+            state.member=true;
+          }catch(retryError){
+            console.error('[TABIRUN LIVE] membership failed',firstError,createError,retryError);
+            throw retryError;
+          }
+        }
+      }else throw firstError;
+    }
+
+    // Only the owner is allowed to read eventSecrets under the current rules.
+    try{
+      const own=await get(ref(state.db,`eventSecrets/${EVENT_ID}/ownerUid`));
+      state.owner=own.exists()&&own.val()===state.user.uid;
+    }catch{}
+    return true;
+  }
+
+  async function ensureFirebase(){
+    if(state.firebaseReady&&state.user&&state.member)return state.user;
+    if(state.firebasePromise)return state.firebasePromise;
+
+    state.firebasePromise=(async()=>{
+      if(!hasQuestLogin())throw new Error('QUEST login required');
+      const fb=await importFirebase(); state.firebase=fb;
+
+      const appName='tabirun-live-v2';
+      let firebaseApp=fb.app.getApps().find(a=>a.name===appName);
+      if(!firebaseApp)firebaseApp=fb.app.initializeApp(FIREBASE_CONFIG,appName);
+
+      let auth;
+      try{
+        auth=fb.auth.initializeAuth(firebaseApp,{persistence:[
+          fb.auth.indexedDBLocalPersistence,
+          fb.auth.browserSessionPersistence,
+          fb.auth.inMemoryPersistence
+        ]});
+      }catch{auth=fb.auth.getAuth(firebaseApp)}
+      state.auth=auth; state.db=fb.db.getDatabase(firebaseApp);
+
+      const user=await new Promise((resolve,reject)=>{
+        let settled=false;
+        const unsub=fb.auth.onAuthStateChanged(auth,async u=>{
+          if(settled)return;
+          try{
+            if(u){settled=true;unsub();resolve(u)}
+            else await fb.auth.signInAnonymously(auth);
+          }catch(e){settled=true;unsub();reject(e)}
+        },reject);
+        setTimeout(()=>{if(!settled&&!auth.currentUser)fb.auth.signInAnonymously(auth).catch(reject)},300);
+      });
+
+      state.user=user;
+      await ensureMembership();
+      state.firebaseReady=true;
+      state.chatLastSeen=getChatSeen();
+      await loadOwnProfile();
+      startChatListener();
+
+      if(isExpired()){
+        await prefSet(false);
+        await removeOwnLiveSilently();
+      }else if(await prefGet()){
+        state.sharing=true;
+        requestQuestGps();
+        const p=getQuestGps();
+        if(p)await writePosition(p,true);
+      }
+      return user;
+    })().catch(err=>{
+      state.firebasePromise=null; state.firebaseReady=false;
+      console.error('[TABIRUN LIVE] Firebase init failed',err);
+      throw err;
+    });
+    return state.firebasePromise;
+  }
+
+  async function loadOwnProfile(){
+    if(!state.member)return null;
+    const {ref,get}=state.firebase.db;
+    const snap=await get(ref(state.db,eventPath(`participants/${state.user.uid}`)));
+    state.profile=snap.exists()?snap.val():null;
+    return state.profile;
+  }
+
+  function injectStyles(){
+    if($('#tlc-style'))return;
+    const s=document.createElement('style'); s.id='tlc-style';
+    s.textContent=`
+      #tlc-root{position:fixed;inset:0;z-index:2147483000;background:#f4f6f5;color:#17313b;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",Meiryo,sans-serif;display:none;overflow:hidden}
+      #tlc-root.tlc-open{display:flex;flex-direction:column}#tlc-root *{box-sizing:border-box}
+      .tlc-head{flex:none;background:linear-gradient(135deg,#062d42,#08758f);color:#fff;padding:calc(10px + env(safe-area-inset-top)) 12px 10px;box-shadow:0 4px 18px rgba(0,0,0,.18);position:relative;z-index:2000}
+      .tlc-headrow{display:flex;align-items:center;gap:10px}.tlc-title{min-width:0;flex:1}.tlc-eyebrow{font-size:9px;letter-spacing:.12em;font-weight:900;opacity:.72}.tlc-title b{display:block;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .tlc-close{border:0;border-radius:12px;background:rgba(255,255,255,.16);color:#fff;font-size:18px;width:42px;height:42px;font-weight:900}.tlc-tabs{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}.tlc-tabs button{border:0;border-radius:11px;padding:10px;background:rgba(255,255,255,.10);color:#fff;font-weight:900}.tlc-tabs button.on{background:#fff;color:#07384c}
+      .tlc-body{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;padding:12px 12px calc(18px + env(safe-area-inset-bottom))}.tlc-view{display:none}.tlc-view.on{display:block}
+      .tlc-card{background:#fff;border:1px solid #dfe5e2;border-radius:17px;padding:14px;margin-bottom:11px;box-shadow:0 7px 20px rgba(8,45,66,.05)}.tlc-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.tlc-between{justify-content:space-between}
+      .tlc-h2{font-size:18px;font-weight:950}.tlc-small{font-size:10px;color:#718087;line-height:1.55}.tlc-status{font-size:10px;font-weight:900;padding:5px 8px;border-radius:999px;background:#eef3f1;color:#456}.tlc-status.on{background:#e6f6ee;color:#126c4d}.tlc-status.warn{background:#fff2db;color:#8c5b0d}.tlc-status.bad{background:#ffebe7;color:#9b3025}
+      .tlc-btn{border:0;border-radius:12px;padding:11px 12px;font-weight:900;touch-action:manipulation}.tlc-primary{background:linear-gradient(135deg,#073c54,#087b8f);color:#fff}.tlc-secondary{background:#edf1ef;color:#17313b}.tlc-danger{background:#fff0ee;color:#9c2c23;border:1px solid #efc9c3}.tlc-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+      .tlc-mapwrap{position:relative;z-index:0;isolation:isolate}.tlc-map{height:min(48vh,410px);border:1px solid #dfe5e2;border-radius:15px;overflow:hidden;background:#e8edeb}.tlc-map .leaflet-container{z-index:0}.tlc-mapbuttons{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}.tlc-mapbuttons button{font-size:11px}
+      .tlc-member{display:grid;grid-template-columns:38px 1fr auto;gap:9px;align-items:center;padding:10px 0;border-bottom:1px solid #edf0ee}.tlc-member:last-child{border-bottom:0}.tlc-dot{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:11px;font-weight:950;border:2px solid #fff;box-shadow:0 0 0 1px #ccd8d5}.tlc-member b{display:block;font-size:13px}.tlc-member .meta{font-size:10px;color:#718087;line-height:1.45;margin-top:2px}.tlc-member .cp{font-size:9px;color:#315d68;line-height:1.45;margin-top:3px}
+      .tlc-empty{padding:18px;text-align:center;color:#718087;font-size:11px;background:#f7f8f6;border-radius:13px}.tlc-notice{font-size:10px;line-height:1.6;color:#6f7e84;margin-top:9px}
+      .tlc-chatlist{min-height:180px}.tlc-msg{padding:10px 12px;border-radius:14px;margin-top:8px;background:#f1f4f2}.tlc-msg.me{background:#e7f2f5}.tlc-msghead{font-size:9px;color:#718087}.tlc-msgtext{font-size:13px;line-height:1.55;margin-top:4px;white-space:pre-wrap;overflow-wrap:anywhere}
+      .tlc-compose{position:sticky;bottom:0;z-index:5;display:grid;grid-template-columns:1fr auto;gap:7px;background:#f4f6f5;padding:9px 0 calc(6px + env(safe-area-inset-bottom))}.tlc-compose input{min-width:0;border:1px solid #cbd8d5;border-radius:12px;padding:11px 12px;font-size:16px;background:#fff}
+      .tlc-toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#132f3a;color:#fff;padding:10px 14px;border-radius:999px;font-size:11px;font-weight:900;opacity:0;pointer-events:none;transition:.2s;z-index:2147483646;max-width:90%;text-align:center}.tlc-toast.show{opacity:1}
+      .tlc-modalback{position:fixed;inset:0;z-index:2147483645;background:rgba(3,18,27,.72);display:grid;place-items:center;padding:18px}.tlc-modal{width:min(420px,100%);background:#fff;color:#17313b;border-radius:20px;padding:18px;box-shadow:0 24px 60px rgba(0,0,0,.32)}.tlc-modal h3{margin:0 0 7px}.tlc-field{margin-top:11px}.tlc-field label{display:block;font-size:10px;font-weight:900;color:#4d626a;margin-bottom:5px}.tlc-field input{width:100%;border:1px solid #ccd8d5;border-radius:12px;padding:11px 12px;font-size:16px}.tlc-loading{text-align:center;font-weight:900;padding:20px 6px}
+      @media(max-width:430px){.tlc-actions{grid-template-columns:1fr}.tlc-map{height:42vh}.tlc-member{grid-template-columns:36px 1fr auto}}
+    `;
+    document.head.appendChild(s);
+  }
+
+  function buildRoot(){
+    if(state.root)return state.root;
+    injectStyles();
+    const root=document.createElement('div'); root.id='tlc-root';
+    root.innerHTML=`
+      <header class="tlc-head">
+        <div class="tlc-headrow"><div class="tlc-title"><div class="tlc-eyebrow">TABIRUN QUEST / EVENT LIVE</div><b>${esc(EVENT_NAME)}</b></div><button class="tlc-close" type="button" aria-label="閉じる">×</button></div>
+        <div class="tlc-tabs"><button type="button" data-tlc-view="live">📍 LIVE MAP</button><button type="button" data-tlc-view="chat">💬 CHAT</button></div>
+      </header>
+      <main class="tlc-body">
+        <section class="tlc-view" data-tlc-panel="live">
+          <div class="tlc-card">
+            <div class="tlc-row tlc-between"><div><div class="tlc-small">MY LIVE</div><div class="tlc-h2" id="tlc-myname">参加者</div></div><span class="tlc-status" id="tlc-share-pill">共有OFF</span></div>
+            <div class="tlc-small" id="tlc-share-detail">位置共有を開始すると、このイベントの参加者同士で現在地を確認できます。</div>
+            <div class="tlc-actions"><button class="tlc-btn tlc-primary" id="tlc-share-on" type="button">位置共有を開始</button><button class="tlc-btn tlc-danger" id="tlc-share-off" type="button">共有停止・位置削除</button></div>
+            <div class="tlc-notice">QUEST本体のGPSだけを使用します。LIVE用の別GPS監視は起動しません。ブラウザが停止すると位置は「更新途絶」として残り、最後に確認できた場所を表示します。共有ONはこのイベント内だけ記憶し、9/23 0:00以降は再開しません。</div>
+          </div>
+          <div class="tlc-card tlc-mapwrap">
+            <div class="tlc-map" id="tlc-map"></div>
+            <div class="tlc-mapbuttons"><button class="tlc-btn tlc-secondary" id="tlc-fit" type="button">全員表示</button><button class="tlc-btn tlc-secondary" id="tlc-me" type="button">自分へ</button></div>
+          </div>
+          <div class="tlc-card"><div class="tlc-row tlc-between"><div class="tlc-h2">参加者</div><div class="tlc-small" id="tlc-live-count">0人</div></div><div id="tlc-members"><div class="tlc-empty">参加者情報を読み込みます。</div></div></div>
+          <div class="tlc-card" id="tlc-owner-card" hidden><div class="tlc-h2">管理者</div><div class="tlc-small">打上げ終了後など、イベント全体のLIVE位置を削除できます。</div><button class="tlc-btn tlc-danger" id="tlc-clear-all" type="button" style="width:100%;margin-top:10px">全参加者のLIVE位置を削除</button></div>
+        </section>
+        <section class="tlc-view" data-tlc-panel="chat">
+          <div class="tlc-card"><div class="tlc-row tlc-between"><div class="tlc-h2">EVENT CHAT</div><span class="tlc-status on">参加者内</span></div><div class="tlc-small">旅ラン参加者全員で共有するテキストチャットです。</div></div>
+          <div class="tlc-card"><div class="tlc-chatlist" id="tlc-messages"><div class="tlc-empty">まだメッセージはありません。</div></div></div>
+          <div class="tlc-compose"><input id="tlc-chat-input" maxlength="500" placeholder="メッセージを入力"><button class="tlc-btn tlc-primary" id="tlc-send" type="button">送信</button></div>
+        </section>
+      </main>
+      <div class="tlc-toast" id="tlc-toast"></div>`;
+    document.body.appendChild(root); state.root=root;
+
+    $('.tlc-close',root).addEventListener('click',closeOverlay);
+    $all('[data-tlc-view]',root).forEach(b=>b.addEventListener('click',()=>switchView(b.dataset.tlcView)));
+    $('#tlc-share-on',root).addEventListener('click',startSharing);
+    $('#tlc-share-off',root).addEventListener('click',()=>stopSharing(true));
+    $('#tlc-fit',root).addEventListener('click',fitAll);
+    $('#tlc-me',root).addEventListener('click',centerOnMe);
+    $('#tlc-send',root).addEventListener('click',sendChat);
+    $('#tlc-clear-all',root).addEventListener('click',clearAllLive);
+    $('#tlc-chat-input',root).addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat()}});
+    state.ticker=setInterval(()=>{if(state.activeView==='live')renderMembers()},30000);
+    return root;
+  }
+
+  function toast(msg){
+    buildRoot(); const el=$('#tlc-toast',state.root); el.textContent=msg; el.classList.add('show');
+    clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove('show'),2400);
+  }
+
+  async function ensureProfile(){
+    await ensureFirebase();
+    if(state.profile?.name)return state.profile;
+    return new Promise(resolve=>{
+      const back=document.createElement('div'); back.className='tlc-modalback';
+      back.innerHTML=`<div class="tlc-modal"><h3>LIVE / CHAT 表示名</h3>
+        <div class="tlc-small">最初のQUEST参加コード認証はそのまま有効です。追加の参加コード入力はありません。ここでは地図とCHATに表示する名前だけ登録します。</div>
+        <div class="tlc-field"><label>表示名 *</label><input id="tlc-profile-name" maxlength="30" autocomplete="nickname" placeholder="例：たくろう"></div>
+        <div class="tlc-field"><label>所属・チーム（任意）</label><input id="tlc-profile-team" maxlength="40" placeholder="例：阿久比RC"></div>
+        <div class="tlc-actions"><button type="button" class="tlc-btn tlc-secondary" id="tlc-profile-cancel">閉じる</button><button type="button" class="tlc-btn tlc-primary" id="tlc-profile-save">登録して続ける</button></div>
+        <div class="tlc-notice">表示名登録だけでは位置情報は送信しません。「位置共有を開始」を押した時だけ共有します。</div></div>`;
+      document.body.appendChild(back);
+      const nameEl=$('#tlc-profile-name',back),teamEl=$('#tlc-profile-team',back);
+      setTimeout(()=>nameEl.focus(),80);
+      $('#tlc-profile-cancel',back).addEventListener('click',()=>{back.remove();resolve(null)});
+      $('#tlc-profile-save',back).addEventListener('click',async()=>{
+        const name=nameEl.value.trim(),team=teamEl.value.trim(); if(!name){nameEl.focus();return}
+        try{
+          const {ref,set,serverTimestamp}=state.firebase.db;
+          const profile={name,team,color:uidColor(state.user.uid),createdAt:serverTimestamp(),updatedAt:serverTimestamp()};
+          await set(ref(state.db,eventPath(`participants/${state.user.uid}`)),profile);
+          state.profile={...profile,createdAt:now(),updatedAt:now()};
+          back.remove(); resolve(state.profile);
+        }catch(e){console.error(e);toast('表示名を保存できません')}
+      });
+    });
+  }
+
+  async function openOverlay(view){
+    const root=buildRoot();
+    if(!hasQuestLogin()){root.classList.add('tlc-open');toast('最初のQUEST参加コード認証を完了してください');setTimeout(closeOverlay,1800);return}
+    root.classList.add('tlc-open'); document.documentElement.style.overscrollBehavior='none';
+    const loading=document.createElement('div'); loading.className='tlc-modalback'; loading.id='tlc-boot-loading';
+    loading.innerHTML='<div class="tlc-modal"><div class="tlc-loading">LIVE / CHATへ接続しています…</div></div>'; document.body.appendChild(loading);
+    try{
+      await ensureFirebase(); loading.remove();
+      const p=await ensureProfile(); if(!p){closeOverlay();return}
+      $('#tlc-myname',root).textContent=p.name||'参加者';
+      $('#tlc-owner-card',root).hidden=!state.owner;
+      switchView(view);
+    }catch(e){
+      loading.remove(); console.error(e); toast('LIVE / CHATに接続できません'); setTimeout(closeOverlay,2200);
+    }
+  }
+
+  function closeOverlay(){
+    if(!state.root)return;
+    state.root.classList.remove('tlc-open'); stopLiveListeners(); state.activeView=null; document.documentElement.style.overscrollBehavior='';
+  }
+
+  async function switchView(view){
+    state.activeView=view;
+    $all('[data-tlc-view]',state.root).forEach(b=>b.classList.toggle('on',b.dataset.tlcView===view));
+    $all('[data-tlc-panel]',state.root).forEach(p=>p.classList.toggle('on',p.dataset.tlcPanel===view));
+    if(view==='live'){
+      await ensureLeaflet(); startLiveListeners();
+      setTimeout(async()=>{initMap();state.map?.invalidateSize();await loadRoutesOnce();renderMarkers();renderMembers();fitAll()},80);
+    }else{
+      stopLiveListeners(); markChatSeen(); renderChat();
+      setTimeout(()=>{const body=$('.tlc-body',state.root);if(body)body.scrollTop=body.scrollHeight},50);
+    }
+  }
+
+  async function ensureLeaflet(){
+    if(window.L)return window.L;
+    if(state.leafletPromise)return state.leafletPromise;
+    state.leafletPromise=new Promise((resolve,reject)=>{
+      if(!document.querySelector('link[data-tlc-leaflet]')){
+        const link=document.createElement('link');link.rel='stylesheet';link.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';link.dataset.tlcLeaflet='1';document.head.appendChild(link);
+      }
+      const existing=document.querySelector('script[data-tlc-leaflet]');
+      if(existing){existing.addEventListener('load',()=>resolve(window.L),{once:true});existing.addEventListener('error',reject,{once:true});return}
+      const sc=document.createElement('script');sc.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';sc.dataset.tlcLeaflet='1';sc.onload=()=>resolve(window.L);sc.onerror=reject;document.head.appendChild(sc);
+    });
+    return state.leafletPromise;
+  }
+
+  function initMap(){
+    if(state.map||!window.L||!state.root)return;
+    const el=$('#tlc-map',state.root); if(!el)return;
+    state.map=L.map(el,{zoomControl:true,attributionControl:true,preferCanvas:true}).setView(DEFAULT_CENTER,DEFAULT_ZOOM);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(state.map);
+  }
+
+  function routeLatLngs(data){
+    const candidates=[data?.route,data?.points,data?.path,data?.polyline,data?.coordinates];
+    const arr=candidates.find(Array.isArray)||[];
+    return arr.map(p=>{
+      if(Array.isArray(p)&&p.length>=2)return[Number(p[0]),Number(p[1])];
+      return[Number(p?.lat??p?.latitude),Number(p?.lng??p?.lon??p?.longitude)];
+    }).filter(p=>Number.isFinite(p[0])&&Number.isFinite(p[1]));
+  }
+  async function loadRoutesOnce(){
+    if(state.routesLoaded||!state.map||!window.L)return;
+    state.routesLoaded=true;
+    const results=await Promise.allSettled(ROUTE_FILES.map(u=>fetch(u,{cache:'default'}).then(r=>{if(!r.ok)throw new Error(String(r.status));return r.json()})));
+    results.forEach((r,i)=>{
+      if(r.status!=='fulfilled')return;
+      const pts=routeLatLngs(r.value); if(pts.length<2)return;
+      const layer=L.polyline(pts,{weight:5,opacity:.62}).addTo(state.map);
+      try{layer.bindTooltip(`STAGE ${i+1}`,{sticky:true})}catch{}
+      state.routeLayers.push(layer);
+    });
+  }
+
+  function startLiveListeners(){
+    if(!state.db||state.liveUnsubs.length)return;
+    const {ref,onValue}=state.firebase.db;
+    state.liveUnsubs.push(onValue(ref(state.db,eventPath('participants')),snap=>{state.participants=snap.val()||{};renderMembers();renderMarkers()}));
+    state.liveUnsubs.push(onValue(ref(state.db,eventPath('live')),snap=>{state.live=snap.val()||{};renderMembers();renderMarkers();updateShareUI()}));
+  }
+  function stopLiveListeners(){state.liveUnsubs.forEach(fn=>{try{fn()}catch{}});state.liveUnsubs=[]}
+
+  function liveStatus(live){
+    if(!live||!Number.isFinite(Number(live.lat))||!Number.isFinite(Number(live.lng)))return{key:'off',label:'共有OFF',cls:'bad'};
+    const ts=Number(live.ts)||0;
+    if(!ts||now()-ts>STALE_MS||live.active===false)return{key:'stale',label:'更新途絶',cls:'bad'};
+    const lm=Number(live.lastMoveAt)||ts;
+    if(now()-lm>=STOP_MS||live.motion==='stopped')return{key:'stopped',label:'停止中',cls:'warn'};
+    return{key:'moving',label:'移動中',cls:'on'};
+  }
+
+  function cpText(l){
+    if(!l)return'';
+    const parts=[];
+    if(l.lastPointName)parts.push(`直近CP ${l.lastPointName}${l.lastPointAt?' '+fmtTime(Number(l.lastPointAt)):''}`);
+    else if(l.nextPointName)parts.push(`次 ${l.nextPointName}`);
+    if(l.stage)parts.push(`STAGE ${l.stage}`);
+    return parts.join(' / ');
+  }
+
+  function renderMembers(){
+    if(!state.root)return;
+    const wrap=$('#tlc-members',state.root); if(!wrap)return;
+    const ids=[...new Set([...Object.keys(state.participants),...Object.keys(state.live)])];
+    $('#tlc-live-count',state.root).textContent=`${ids.length}人`;
+    if(!ids.length){wrap.innerHTML='<div class="tlc-empty">まだ参加者はいません。</div>';return}
+    ids.sort((a,b)=>(state.participants[a]?.name||'').localeCompare(state.participants[b]?.name||'','ja'));
+    wrap.innerHTML=ids.map(uid=>{
+      const p=state.participants[uid]||{},l=state.live[uid],st=liveStatus(l);
+      const update=l?.ts?`最終更新 ${ageText(Number(l.ts))}`:'位置共有なし';
+      const acc=l?.accuracy?` / ±${Math.round(l.accuracy)}m`:'';
+      const stop=st.key==='stopped'&&l?.lastMoveAt?` / 停止 約${Math.max(1,Math.floor((now()-Number(l.lastMoveAt))/60000))}分`:'';
+      const me=uid===state.user?.uid?'（自分）':'',cp=cpText(l);
+      return `<div class="tlc-member" data-uid="${esc(uid)}"><div class="tlc-dot" style="background:${esc(p.color||uidColor(uid))}">${esc((p.name||'?').slice(0,1))}</div>
+        <div><b>${esc(p.name||'参加者')}${me}</b><div class="meta">${esc(p.team||'所属なし')} / ${esc(update+acc+stop)}</div>${cp?`<div class="cp">${esc(cp)}</div>`:''}</div><span class="tlc-status ${st.cls}">${esc(st.label)}</span></div>`;
+    }).join('');
+    $all('.tlc-member[data-uid]',wrap).forEach(row=>row.addEventListener('click',()=>{
+      const uid=row.dataset.uid,l=state.live[uid]; if(state.map&&l&&Number.isFinite(Number(l.lat)))state.map.setView([Number(l.lat),Number(l.lng)],16);
+    }));
+  }
+
+  function renderMarkers(){
+    if(!state.map||!window.L)return;
+    const present=new Set();
+    Object.entries(state.live).forEach(([uid,l])=>{
+      if(!Number.isFinite(Number(l?.lat))||!Number.isFinite(Number(l?.lng)))return;
+      present.add(uid);
+      const p=state.participants[uid]||{},color=p.color||uidColor(uid),st=liveStatus(l),latlng=[Number(l.lat),Number(l.lng)];
+      const cp=cpText(l);
+      const popup=`<b>${esc(p.name||'参加者')}</b><br>${esc(p.team||'所属なし')}<br>${esc(st.label)} / ${esc(ageText(Number(l.ts)||0))}${l.accuracy?`<br>GPS精度 ±${Math.round(Number(l.accuracy)||0)}m`:''}${cp?`<br>${esc(cp)}`:''}`;
+      let m=state.markers.get(uid);
+      if(!m){
+        const icon=L.divIcon({className:'',html:`<div style="width:30px;height:30px;border-radius:50%;background:${color};border:3px solid #fff;box-shadow:0 1px 8px rgba(0,0,0,.35);display:grid;place-items:center;color:#fff;font:900 10px system-ui">${esc((p.name||'?').slice(0,1))}</div>`,iconSize:[30,30],iconAnchor:[15,15]});
+        m=L.marker(latlng,{icon}).addTo(state.map).bindPopup(popup); state.markers.set(uid,m);
+      }else{m.setLatLng(latlng);m.setPopupContent(popup)}
+    });
+    for(const[uid,m]of state.markers)if(!present.has(uid)){try{state.map.removeLayer(m)}catch{}state.markers.delete(uid)}
+  }
+
+  function fitAll(){
+    if(!state.map||!window.L)return;
+    const pts=Object.values(state.live).filter(l=>Number.isFinite(Number(l?.lat))&&Number.isFinite(Number(l?.lng))).map(l=>[Number(l.lat),Number(l.lng)]);
+    if(!pts.length){
+      const routePts=[]; state.routeLayers.forEach(layer=>{try{routePts.push(...layer.getLatLngs())}catch{}});
+      if(routePts.length)state.map.fitBounds(L.latLngBounds(routePts),{padding:[24,24],maxZoom:13}); else state.map.setView(DEFAULT_CENTER,DEFAULT_ZOOM);
+      return;
+    }
+    if(pts.length===1){state.map.setView(pts[0],15);return}
+    state.map.fitBounds(L.latLngBounds(pts),{padding:[34,34],maxZoom:16});
+  }
+  function centerOnMe(){
+    const l=state.live[state.user?.uid]; if(state.map&&l&&Number.isFinite(Number(l.lat)))state.map.setView([Number(l.lat),Number(l.lng)],17); else toast('自分の位置共有を開始してください');
+  }
+
+  function getQuestGps(){
+    try{
+      const p=typeof window.tabirunGetQuestGps==='function'?window.tabirunGetQuestGps():null;
+      if(p&&Number.isFinite(Number(p.lat))&&Number.isFinite(Number(p.lng)))return{lat:Number(p.lat),lng:Number(p.lng),accuracy:Number(p.accuracy)||999,time:Number(p.time)||now()};
+    }catch{}
+    return null;
+  }
+  function getQuestContext(){
+    try{return typeof window.tabirunGetQuestLiveContext==='function'?(window.tabirunGetQuestLiveContext()||{}):{}}catch{return{}}
+  }
+  function requestQuestGps(){try{if(typeof window.tabirunRequestQuestGps==='function')window.tabirunRequestQuestGps()}catch{}}
+
+  function updateShareUI(){
+    if(!state.root)return;
+    const l=state.live[state.user?.uid],pill=$('#tlc-share-pill',state.root),detail=$('#tlc-share-detail',state.root);
+    const active=state.sharing||l?.active===true;
+    pill.textContent=active?'共有ON':'共有OFF';pill.className='tlc-status'+(active?' on':'');
+    if(isExpired())detail.textContent='9/22の共有期間は終了しています。';
+    else if(active&&l?.ts)detail.textContent=`位置共有中 / 最終更新 ${fmtTime(Number(l.ts))} / GPS精度 ±${Math.round(Number(l.accuracy)||0)}m`;
+    else if(state.sharing)detail.textContent='共有ON｜QUEST GPSの現在地取得を待っています。';
+    else detail.textContent='位置共有を開始すると、このイベントの参加者同士で現在地を確認できます。';
+  }
+
+  async function writePosition(sample,force=false){
+    if(!state.sharing||!state.user||!state.db||isExpired())return;
+    const t=now(),cur={lat:Number(sample.lat),lng:Number(sample.lng)};
+    if(!Number.isFinite(cur.lat)||!Number.isFinite(cur.lng))return;
+    const moved=!state.lastSentPos||haversine(state.lastSentPos,cur)>=MOVE_THRESHOLD_M;
+    if(!force&&t-state.lastWriteAt<WRITE_INTERVAL_MS&&!moved)return;
+    if(moved||!state.lastMoveAt)state.lastMoveAt=t;
+    state.lastSentPos=cur;state.lastWriteAt=t;
+    const ctx=getQuestContext();
+    const record={
+      lat:cur.lat,lng:cur.lng,accuracy:Number(sample.accuracy)||0,ts:t,
+      lastMoveAt:state.lastMoveAt,motion:(t-state.lastMoveAt)>=STOP_MS?'stopped':'moving',active:true,
+      stage:Number(ctx.stage)||null,phase:ctx.phase||'',nextPointName:ctx.nextPointName||'',
+      lastPointName:ctx.lastPointName||'',lastPointAt:Number(ctx.lastPointAt)||null
+    };
+    const {ref,set,onDisconnect}=state.firebase.db;
+    await set(ref(state.db,eventPath(`live/${state.user.uid}`)),record);
+    try{await onDisconnect(ref(state.db,eventPath(`live/${state.user.uid}`))).update({active:false,disconnectedAt:t})}catch{}
+  }
+
+  async function startSharing(){
+    try{
+      await ensureFirebase(); const p=await ensureProfile(); if(!p)return;
+      if(isExpired()){toast('9/22の位置共有期間は終了しています');return}
+      state.sharing=true; await prefSet(true); updateShareUI();
+      const current=getQuestGps();
+      if(current)await writePosition(current,true);
+      requestQuestGps();
+      toast(current?'位置共有を開始しました':'位置共有ON｜QUEST GPSを取得します');
+    }catch(e){console.error(e);state.sharing=false;await prefSet(false);updateShareUI();toast('位置共有を開始できません')}
+  }
+
+  async function removeOwnLiveSilently(){
+    if(!state.db||!state.user)return;
+    try{
+      const {ref,remove,onDisconnect}=state.firebase.db;
+      try{await onDisconnect(ref(state.db,eventPath(`live/${state.user.uid}`))).cancel()}catch{}
+      await remove(ref(state.db,eventPath(`live/${state.user.uid}`)));
+    }catch(e){console.warn(e)}
+  }
+  async function stopSharing(removeOwn=true){
+    state.sharing=false;state.lastWriteAt=0;state.lastSentPos=null;state.lastMoveAt=0;await prefSet(false);
+    if(removeOwn)await removeOwnLiveSilently();
+    updateShareUI();toast(removeOwn?'共有停止・自分の位置を削除しました':'位置共有を停止しました');
+  }
+
+  async function clearAllLive(){
+    if(!state.owner){toast('管理者のみ実行できます');return}
+    if(!confirm('全参加者のLIVE位置を削除します。よろしいですか？'))return;
+    try{
+      const {ref,remove}=state.firebase.db; await remove(ref(state.db,eventPath('live'))); toast('全参加者のLIVE位置を削除しました');
+    }catch(e){console.error(e);toast('LIVE位置を削除できません')}
+  }
+
+  function startChatListener(){
+    if(!state.db||state.chatUnsub)return;
+    const {ref,query,orderByChild,limitToLast,onValue}=state.firebase.db;
+    const q=query(ref(state.db,eventPath('chat')),orderByChild('createdAt'),limitToLast(CHAT_LIMIT));
+    state.chatUnsub=onValue(q,snap=>{
+      const v=snap.val()||{};
+      state.messages=Object.entries(v).map(([id,m])=>({id,...m})).sort((a,b)=>Number(a.createdAt||0)-Number(b.createdAt||0)).slice(-CHAT_LIMIT);
+      if(state.activeView==='chat'&&state.root?.classList.contains('tlc-open')){markChatSeen();renderChat()}
+      else{
+        const unread=state.messages.filter(m=>Number(m.createdAt||0)>state.chatLastSeen&&m.senderUid!==state.user?.uid).length;setUnread(unread);
+      }
+    },err=>console.warn('[TABIRUN CHAT]',err));
+  }
+
+  function renderChat(){
+    if(!state.root)return;
+    const wrap=$('#tlc-messages',state.root); if(!wrap)return;
+    if(!state.messages.length){wrap.innerHTML='<div class="tlc-empty">まだメッセージはありません。</div>';return}
+    wrap.innerHTML='';
+    state.messages.forEach(m=>{
+      const d=document.createElement('div');d.className='tlc-msg'+(m.senderUid===state.user?.uid?' me':'');
+      const h=document.createElement('div');h.className='tlc-msghead';h.textContent=`${m.senderName||'参加者'} / ${fmtTime(Number(m.createdAt)||0)}`;
+      const t=document.createElement('div');t.className='tlc-msgtext';t.textContent=m.text||'';d.append(h,t);wrap.appendChild(d);
+    });
+    setTimeout(()=>{const body=$('.tlc-body',state.root);if(body&&state.activeView==='chat')body.scrollTop=body.scrollHeight},20);
+  }
+
+  async function sendChat(){
+    try{
+      await ensureFirebase(); const p=await ensureProfile(); if(!p)return;
+      const input=$('#tlc-chat-input',state.root),text=input.value.trim().slice(0,500); if(!text)return;
+      const {ref,push,set,serverTimestamp}=state.firebase.db,mref=push(ref(state.db,eventPath('chat')));
+      await set(mref,{senderUid:state.user.uid,senderName:p.name,text,type:'chat',createdAt:serverTimestamp()});
+      input.value='';markChatSeen();
+    }catch(e){console.error(e);toast('メッセージを送信できません')}
+  }
+
+  // QUEST GPS bridge calls this on every existing GPS fix. No second watchPosition is used.
+  window.tabirunLiveGpsUpdate=(sample)=>{
+    if(!state.sharing)return;
+    const p=sample&&Number.isFinite(Number(sample.lat))?sample:getQuestGps();
+    if(p)writePosition(p).catch(e=>console.warn('[TABIRUN LIVE] GPS write',e));
+  };
+
+  // Replace the prepared release300 hooks only.
+  window.tabirunOpenLiveMap=()=>openOverlay('live');
+  window.tabirunOpenChat=()=>openOverlay('chat');
+
+  window.__TABIRUN_LIVE_CHAT__=Object.freeze({
+    version:VERSION,eventId:EVENT_ID,
+    get status(){return{firebaseReady:state.firebaseReady,signedIn:!!state.user,member:state.member,owner:state.owner,profile:!!state.profile,sharing:state.sharing,routesLoaded:state.routesLoaded}}
+  });
+
+  // The existing QUEST gate is authoritative. Firebase starts only after it has succeeded.
+  const loginWatcher=setInterval(()=>{
+    if(!hasQuestLogin())return;
+    clearInterval(loginWatcher);
+    ensureFirebase().catch(err=>console.warn('[TABIRUN LIVE] deferred init',err));
+  },800);
+
+  console.info(`[${VERSION}] ready for ${EVENT_ID}`);
+})();
+
+</script>
+</body>
+</html>
