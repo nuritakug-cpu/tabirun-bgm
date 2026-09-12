@@ -36,7 +36,7 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
 <div class="app">
 <header>
   <div class="brand">STANDALONE / NO QUEST CORE MODIFICATION</div>
-  <h1>旅ラン LIVE / CHAT 独立テスト v1</h1><div style="font-size:9px;opacity:.75;margin-top:3px">CONNECT FIX 2026-09-13</div>
+  <h1>旅ラン LIVE / CHAT 独立テスト v1</h1><div style="font-size:9px;opacity:.75;margin-top:3px">DB CHECK FIX 2026-09-13</div>
 </header>
 <main>
   <div class="card">
@@ -316,52 +316,134 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
     return{app,auth,db};
   }
 
+  async function waitForDatabaseConnection(){
+    const {ref,onValue}=state.firebase.db;
+    bootStatus('Realtime Databaseへ接続しています…');
+    return new Promise((resolve,reject)=>{
+      let done=false;
+      let unsubscribe=()=>{};
+      const timer=setTimeout(()=>{
+        if(done)return;
+        done=true;
+        try{unsubscribe()}catch{}
+        reject(new Error('Realtime Databaseへの接続が10秒で確立しませんでした'));
+      },10000);
+      try{
+        unsubscribe=onValue(
+          ref(state.db,'.info/connected'),
+          snap=>{
+            if(done)return;
+            if(snap.val()===true){
+              done=true;
+              clearTimeout(timer);
+              try{unsubscribe()}catch{}
+              resolve(true);
+            }
+          },
+          err=>{
+            if(done)return;
+            done=true;
+            clearTimeout(timer);
+            try{unsubscribe()}catch{}
+            reject(new Error(`Realtime Database接続エラー: ${err?.code||err?.message||err}`));
+          }
+        );
+      }catch(err){
+        if(done)return;
+        done=true;
+        clearTimeout(timer);
+        reject(err);
+      }
+    });
+  }
+
   async function ensureMembership(){
     if(state.member)return true;
-    const {ref,set,get,update}=state.firebase.db;
+    const {ref,set,get}=state.firebase.db;
 
-    // Normal path: the 9/22 event already exists, so this single membership write succeeds.
+    await waitForDatabaseConnection();
+
+    // First verify that authenticated access to the user's own membership path works.
+    bootStatus('参加状態を確認しています…');
+    let existing;
     try{
-      await set(ref(state.db,memberPath()),QUEST_JOIN_TOKEN);
-      state.member=true;
-    }catch(firstError){
-      // First device only: create the fixed 9/22 event. If another device wins the race,
-      // the create is denied and we simply retry the membership write.
-      if(!state.bootstrapTried){
-        state.bootstrapTried=true;
-        try{
-          await set(ref(state.db,`eventSecrets/${EVENT_ID}`),{
-            ownerUid:state.user.uid,
-            joinCode:QUEST_JOIN_TOKEN,
-            createdAt:now()
-          });
-          state.owner=true;
-          await set(ref(state.db,memberPath()),QUEST_JOIN_TOKEN);
-          state.member=true;
-          await set(ref(state.db,eventPath('meta')),{
-            name:EVENT_NAME,
-            routeMode:'multi',
-            start:'2026-09-22T05:00:00+09:00',
-            end:'2026-09-23T00:00:00+09:00',
-            createdAt:now(),
-            ownerUid:state.user.uid,
-            source:'TABIRUN QUEST release301'
-          });
-        }catch(createError){
-          try{
-            await set(ref(state.db,memberPath()),QUEST_JOIN_TOKEN);
-            state.member=true;
-          }catch(retryError){
-            console.error('[TABIRUN LIVE] membership failed',firstError,createError,retryError);
-            throw retryError;
-          }
-        }
-      }else throw firstError;
+      existing=await withTimeout(
+        get(ref(state.db,memberPath())),
+        8000,
+        '参加状態の読込が8秒で完了しませんでした'
+      );
+    }catch(err){
+      const code=err?.code?` [${err.code}]`:'';
+      throw new Error(`参加状態を読めません${code}: ${err?.message||String(err)}`);
     }
 
-    // Only the owner is allowed to read eventSecrets under the current rules.
+    if(existing.exists()){
+      state.member=true;
+    }else{
+      // Existing test event: join directly. New test event: create it, then join.
+      bootStatus('テストイベントへ参加しています…');
+      try{
+        await withTimeout(
+          set(ref(state.db,memberPath()),QUEST_JOIN_TOKEN),
+          8000,
+          'イベント参加書込が8秒で完了しませんでした'
+        );
+        state.member=true;
+      }catch(firstError){
+        const firstCode=String(firstError?.code||'');
+        if(!state.bootstrapTried && firstCode.includes('PERMISSION_DENIED')){
+          state.bootstrapTried=true;
+          bootStatus('テストイベントを初期化しています…');
+          try{
+            await withTimeout(
+              set(ref(state.db,`eventSecrets/${EVENT_ID}`),{
+                ownerUid:state.user.uid,
+                joinCode:QUEST_JOIN_TOKEN,
+                createdAt:now()
+              }),
+              8000,
+              'テストイベント初期化が8秒で完了しませんでした'
+            );
+            state.owner=true;
+
+            await withTimeout(
+              set(ref(state.db,memberPath()),QUEST_JOIN_TOKEN),
+              8000,
+              'イベント参加書込が8秒で完了しませんでした'
+            );
+            state.member=true;
+
+            await withTimeout(
+              set(ref(state.db,eventPath('meta')),{
+                name:EVENT_NAME,
+                routeMode:'multi',
+                start:'',
+                end:'',
+                createdAt:now(),
+                ownerUid:state.user.uid,
+                source:'standalone-test-v1'
+              }),
+              8000,
+              'テストイベント情報保存が8秒で完了しませんでした'
+            );
+          }catch(createError){
+            const code=createError?.code?` [${createError.code}]`:'';
+            throw new Error(`テストイベントを作成できません${code}: ${createError?.message||String(createError)}`);
+          }
+        }else{
+          const code=firstError?.code?` [${firstError.code}]`:'';
+          throw new Error(`イベント参加に失敗しました${code}: ${firstError?.message||String(firstError)}`);
+        }
+      }
+    }
+
+    // Owner lookup is optional; failure here must not block a normal participant.
     try{
-      const own=await get(ref(state.db,`eventSecrets/${EVENT_ID}/ownerUid`));
+      const own=await withTimeout(
+        get(ref(state.db,`eventSecrets/${EVENT_ID}/ownerUid`)),
+        5000,
+        'owner確認タイムアウト'
+      );
       state.owner=own.exists()&&own.val()===state.user.uid;
     }catch{}
     return true;
@@ -408,12 +490,8 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
       if(!user)throw new Error('Firebase匿名認証ユーザーを取得できませんでした');
       state.user=user;
 
-      bootStatus('テストイベントへ接続しています…');
-      await withTimeout(
-        ensureMembership(),
-        15000,
-        'テストイベントへの参加処理が15秒で完了しませんでした'
-      );
+      bootStatus('Realtime Databaseを確認しています…');
+      await ensureMembership();
 
       state.firebaseReady=true;
       state.chatLastSeen=getChatSeen();
