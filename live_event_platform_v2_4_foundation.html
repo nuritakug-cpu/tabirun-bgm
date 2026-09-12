@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#07384c">
+<title>LIVE EVENT PLATFORM v2.4 FOUNDATION</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<style>
+:root{--bg:#f3f5f3;--card:#fff;--ink:#17313b;--muted:#718087;--line:#dfe5e2;--navy:#07384c;--teal:#0b7285;--gold:#d9a624;--danger:#b83a2f;--ok:#19865f;--warn:#a96b10;--soft:#eef4f3}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",Meiryo,sans-serif}button,input,select,textarea{font:inherit}button{cursor:pointer}.app{max-width:760px;margin:auto;min-height:100vh;background:#fbfbf8;isolation:isolate}.top{position:sticky;top:0;z-index:2000;isolation:isolate;transform:translateZ(0);background:linear-gradient(135deg,#062d42,#08758f);color:#fff;padding:calc(10px + env(safe-area-inset-top)) 12px 10px;box-shadow:0 5px 20px rgba(0,0,0,.14)}.brand{font-size:9px;letter-spacing:.14em;font-weight:900;opacity:.75}.top h1{font-size:19px;margin:3px 0 0}.toprow{display:flex;align-items:center;gap:10px}.statusPill{margin-left:auto;font-size:9px;font-weight:900;padding:6px 9px;border-radius:999px;background:rgba(255,255,255,.14);white-space:nowrap}.statusPill.ok{background:#dff5e9;color:#0e6a49}.statusPill.bad{background:#ffe4df;color:#8d2b22}.nav{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:9px}.nav button{position:relative;border:0;border-radius:10px;padding:8px 3px;background:rgba(255,255,255,.09);color:#fff;font-size:9px;font-weight:900}.nav button.on{background:#fff;color:#07384c}.badge{position:absolute;top:2px;right:5px;min-width:16px;height:16px;border-radius:9px;background:#e5523b;color:#fff;font-size:8px;display:none;place-items:center;padding:0 4px}.badge.show{display:grid}.content{position:relative;z-index:1;padding:13px 12px 80px}.view{display:none}.view.on{display:block}.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:12px;box-shadow:0 8px 22px rgba(8,45,66,.05)}.admin{background:#fff8e8;border-color:#eedda8}.dangerCard{background:#fff2ef;border-color:#edc9c2}.eyebrow{font-size:9px;letter-spacing:.14em;font-weight:950;color:#8a6817}.h2{font-size:21px;font-weight:1000;margin:4px 0}.desc{font-size:12px;line-height:1.7;color:var(--muted)}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}.field{margin-top:10px}.field label{display:block;font-size:10px;font-weight:900;color:#4d626a;margin-bottom:5px}.field input,.field select,.field textarea{width:100%;border:1px solid #ccd8d5;border-radius:12px;padding:11px 12px;background:#fff;color:var(--ink);font-size:16px}.field textarea{min-height:105px;resize:vertical}.btn{width:100%;border:0;border-radius:13px;padding:12px 13px;font-weight:950;margin-top:10px}.primary{background:linear-gradient(135deg,#073c54,#087b8f);color:#fff}.secondary{background:#edf1ef;color:#17313b}.danger{background:#fff0ee;color:#9c2c23;border:1px solid #efc9c3}.good{background:#e8f5ef;color:#106d4d}.warn{background:#fff4df;color:#8b5b0c}.mini{width:auto;margin:0;padding:9px 11px;font-size:11px}.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.between{justify-content:space-between}.metric{background:#f6f8f6;border:1px solid var(--line);border-radius:14px;padding:11px}.metric b{display:block;font-size:20px}.metric span{font-size:10px;color:var(--muted)}.featureTags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.tag{font-size:9px;font-weight:900;border-radius:999px;padding:5px 8px;background:#eef4f2;border:1px solid #d9e5e1}.entry{border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:9px;background:#fff}.entryTitle{font-weight:950}.entryMeta{font-size:11px;color:var(--muted);line-height:1.55;margin-top:4px}.scheduleRow{display:grid;grid-template-columns:66px 1fr;gap:9px;padding:11px 0;border-bottom:1px solid #edf0ee}.scheduleRow:last-child{border-bottom:0}.time{font-size:16px;font-weight:1000;color:#0a6577}.who{font-size:11px;color:var(--muted);margin-top:4px}.map{position:relative;z-index:0;isolation:isolate;height:380px;border-radius:17px;overflow:hidden;border:1px solid var(--line);background:#e9eeec}.leaflet-container{z-index:0}.mapActions{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}.liveBanner{padding:12px;border-radius:14px;background:#eff7f4;border:1px solid #d4e9e1;font-size:11px;line-height:1.65}.liveBanner.off{background:#f5f1ee;border-color:#e6ddd6}.member{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #edf0ee}.member:last-child{border-bottom:0}.dot{width:36px;height:36px;flex:none;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:11px;font-weight:1000;border:3px solid #fff;box-shadow:0 0 0 1px #ccd8d5}.memberBody{min-width:0;flex:1}.memberBody b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.memberBody span{display:block;font-size:10px;color:var(--muted);margin-top:2px}.state{font-size:9px;font-weight:900;padding:5px 8px;border-radius:999px;background:#e9f6f0;color:#13714f;white-space:nowrap}.state.warn{background:#fff2db;color:#8c5b0d}.state.bad{background:#ffebe7;color:#9b3025}.msg{padding:10px 12px;border-radius:14px;margin-top:8px;background:#f1f4f2}.msg.me{background:#e8f3f5}.msg.support{border-left:4px solid #d9a624}.msgHead{font-size:9px;color:var(--muted)}.msgText{font-size:13px;margin-top:4px;line-height:1.55}.chatBox{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:10px}.chatBox input{border:1px solid #ccd8d5;border-radius:12px;padding:11px 12px;font-size:16px}.supportGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.supportGrid button{border:1px solid var(--line);background:#fff;border-radius:12px;padding:11px 8px;font-weight:900}.empty{padding:18px;text-align:center;color:var(--muted);font-size:12px;background:#f7f8f6;border-radius:14px}.notice{font-size:10px;line-height:1.6;color:#6f7e84;margin-top:8px}.hr{border:0;border-top:1px solid #edf0ee;margin:14px 0}.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#132f3a;color:#fff;padding:10px 14px;border-radius:999px;font-size:11px;font-weight:900;opacity:0;pointer-events:none;transition:.2s;z-index:9999;max-width:90%;text-align:center}.toast.show{opacity:1}.small{font-size:10px;color:var(--muted)}.setupStatus{padding:10px 12px;border-radius:12px;background:#f4f6f5;font-size:11px;line-height:1.55;margin-top:10px}.setupStatus.ok{background:#e9f6f0;color:#126c4d}.setupStatus.bad{background:#fff0ed;color:#96372c}.raceEditorRow{border:1px solid var(--line);border-radius:14px;padding:11px;margin-top:9px}.raceEditorRow .grid2{margin-top:0}.mapLegend{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.legendItem{font-size:9px;background:#f1f4f2;border-radius:999px;padding:5px 8px}.extensionSlot:empty{display:none}.extensionSlot:not(:empty){margin-top:12px}.ownerOnly{display:none}.ownerOnly.show{display:block}@media(max-width:480px){.grid2{grid-template-columns:1fr}.nav button{font-size:8px}.map{height:330px}.scheduleRow{grid-template-columns:58px 1fr}}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+<header class="top">
+  <div class="toprow"><div><div class="brand">GENERIC SPORTS / EVENT LIVE PLATFORM</div><h1 id="headerEvent">LIVE EVENT PLATFORM v2.4</h1></div><div class="statusPill" id="backendPill">未接続</div></div>
+  <div class="nav">
+    <button data-view="home" class="on">HOME</button>
+    <button data-view="me">参加登録</button>
+    <button data-view="live">LIVE</button>
+    <button data-view="schedule">予定</button>
+    <button data-view="chat">CHAT<span class="badge" id="chatBadge"></span></button>
+  </div>
+</header>
+<main class="content">
+<section class="view on" id="view-home">
+  <div class="card">
+    <div class="eyebrow">FOUNDATION BASE v2.4</div><div class="h2" id="eventNameHero">未接続</div>
+    <div class="desc">旅ランQUESTとは独立した汎用LIVE基盤です。ルートなし大会でも使え、参加者本人の登録、複数端末同期、LIVE位置、予定、CHAT、応援・見守りを同じイベントIDで共有します。</div>
+    <div class="featureTags"><span class="tag">SELF REGISTRATION</span><span class="tag">LIVE LOCATION</span><span class="tag">SCHEDULE</span><span class="tag">CHAT</span><span class="tag">ROUTE OPTIONAL</span></div>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">FOUNDATION REGISTRY</div>
+    <div class="h2">基盤モジュール固定</div>
+    <div class="desc">v2.3を基準版として固定。v2.4では <b>UI SHELL</b> の重なり制御だけを修正し、将来追加用の拡張スロットを予約しました。EVENT / PARTICIPANT / SCHEDULE / LIVE / CHAT / MAP / PERSISTENCE の既存ロジックは変更していません。</div>
+    <div class="featureTags"><span class="tag">BASE v2.3</span><span class="tag">UI SHELL v1.1</span><span class="tag">EXTENSION CONTRACT v1.0</span></div>
+  </div>
+
+  <div class="card admin" id="firebaseSetupCard">
+    <div class="eyebrow">ONE-TIME SETUP</div><div class="h2">Firebase接続設定</div>
+    <div class="desc">v2.3で確立した永続化をそのまま維持します。認証は IndexedDB → session → memory の順でフォールバックし、QUEST本体のlocalStorageには依存しません。</div>
+    <div class="field"><label>Firebase config（JSON形式）</label><textarea id="firebaseConfigInput" placeholder='{"apiKey":"...","authDomain":"...","databaseURL":"https://...","projectId":"...","appId":"..."}'></textarea></div>
+    <button class="btn secondary" id="saveFirebaseConfig">設定を保存して接続</button>
+    <div class="setupStatus" id="setupStatus">Firebase未接続です。</div>
+  </div>
+
+  <div class="card" id="eventGateCard">
+    <div class="eyebrow">EVENT ACCESS</div><div class="h2">イベントへ参加</div>
+    <div class="grid2">
+      <div class="field"><label>イベントID</label><input id="eventIdInput" placeholder="例：2026-09-22-tabirun"></div>
+      <div class="field"><label>参加コード</label><input id="joinCodeInput" type="password" placeholder="4文字以上"></div>
+    </div>
+    <div class="row"><button class="btn primary" id="joinEvent">既存イベントに参加</button><button class="btn secondary" id="createEvent">新規イベントを作成</button></div>
+    <div class="notice">新規作成した端末がイベント管理者になります。参加コードはDatabase Rulesで照合し、参加者一覧からは読めない場所に保存します。</div>
+  </div>
+
+  <div class="grid2">
+    <div class="metric"><b id="participantCount">0</b><span>登録参加者</span></div>
+    <div class="metric"><b id="nextRace">—</b><span>次の予定</span></div>
+  </div>
+
+  <div class="card" style="margin-top:12px">
+    <div class="row between"><div><div class="eyebrow">MY STATUS</div><div class="h2" id="myStatusName">未参加</div></div><span class="state" id="shareState">位置共有OFF</span></div>
+    <div class="desc" id="myStatusText">Firebase接続後、イベントに参加してください。</div>
+    <button class="btn primary" data-jump="me">参加情報を入力する</button>
+    <div class="extensionSlot" id="ext-home-status" data-extension-slot="home-status"></div>
+  </div>
+
+  <div class="card admin ownerOnly" id="ownerEventCard">
+    <div class="eyebrow">EVENT OWNER</div><div class="h2">イベント設定</div>
+    <div class="grid2"><div class="field"><label>イベント名</label><input id="eventNameInput"></div><div class="field"><label>ルートモード</label><select id="routeMode"><option value="none">none（ルートなし）</option><option value="single">single（単一ルート）</option><option value="multi">multi（複数ルート）</option></select></div></div>
+    <div class="grid2"><div class="field"><label>開始日時</label><input type="datetime-local" id="eventStart"></div><div class="field"><label>終了日時</label><input type="datetime-local" id="eventEnd"></div></div>
+    <button class="btn secondary" id="saveEvent">イベント設定を保存</button>
+    <button class="btn danger" id="clearAllLive">全参加者のLIVE位置データを削除</button>
+    <div class="notice">終了時刻を過ぎると、開いている各端末は自分のLIVE位置を削除します。管理者画面が開いていれば全LIVEデータも削除します。完全なサーバー側自動削除は後続版で別途実装します。</div>
+  </div>
+</section>
+
+<section class="view" id="view-me">
+  <div class="card">
+    <div class="eyebrow">SELF REGISTRATION</div><div class="h2">参加者本人が入力</div>
+    <div class="desc">自分のプロフィールと当日の出場予定だけを編集します。参加番号と表示色は初回登録時に自動割当します。</div>
+    <div class="grid2"><div class="field"><label>表示名 *</label><input id="pName" placeholder="例：山田 太郎"></div><div class="field"><label>所属</label><input id="pTeam" placeholder="例：○○クラブ"></div></div>
+    <div class="grid2"><div class="field"><label>ゼッケン / 番号</label><input id="pBib" placeholder="例：123"></div><div class="field"><label>参加番号 / 表示色</label><input id="pAuto" value="初回登録時に自動割当" readonly></div></div>
+    <button class="btn primary" id="saveProfile">プロフィールを保存</button>
+  </div>
+  <div class="card">
+    <div class="row between"><div><div class="eyebrow">MY RACES / SCHEDULE</div><div class="h2">当日の出場予定</div></div><button class="btn secondary mini" id="addRace">＋追加</button></div>
+    <div id="raceEditor"></div>
+    <button class="btn primary" id="saveRaces">出場予定を保存</button>
+    <div class="notice">将来は大会側の種目一覧を読み込み、自由入力ではなく「選択するだけ」に拡張できます。</div>
+    <div class="extensionSlot" id="ext-participant-extra" data-extension-slot="participant-extra"></div>
+  </div>
+</section>
+
+<section class="view" id="view-live">
+  <div class="card">
+    <div class="row between"><div><div class="eyebrow">LIVE LOCATION</div><div class="h2">位置共有・見守り</div></div><span class="state" id="liveStateTop">OFF</span></div>
+    <div class="liveBanner off" id="liveBanner">位置共有はOFFです。</div>
+    <div id="map" class="map" style="margin-top:10px"></div>
+    <div class="mapActions"><button class="btn primary mini" id="shareOn">位置共有を開始</button><button class="btn danger mini" id="shareOff">共有停止・自分のLIVE削除</button><button class="btn secondary mini" id="locateOnce">現在地を1回取得</button><button class="btn secondary mini" id="fitMembers">参加者を全体表示</button></div>
+    <div class="mapLegend"><span class="legendItem">● 走行/移動中</span><span class="legendItem">○ 停止中</span><span class="legendItem">灰 更新途絶</span></div>
+    <div class="notice">Web版は、iPhone/Androidでブラウザがバックグラウンド・終了状態になると継続GPSを保証できません。その場合は「最終更新」と「更新途絶」を区別して表示します。</div>
+    <div class="extensionSlot" id="ext-live-after-map" data-extension-slot="live-after-map"></div>
+  </div>
+  <div class="card"><div class="eyebrow">PARTICIPANTS</div><div class="h2">参加者一覧</div><div id="memberList"></div></div>
+</section>
+
+<section class="view" id="view-schedule">
+  <div class="card"><div class="eyebrow">TODAY</div><div class="h2">大会スケジュール / 出場予定</div><div class="desc">参加者本人が登録した予定を時刻順に集約します。ルートが存在しない大会でも独立して使えます。</div><div id="scheduleList"></div><div class="extensionSlot" id="ext-schedule-extra" data-extension-slot="schedule-extra"></div></div>
+</section>
+
+<section class="view" id="view-chat">
+  <div class="card"><div class="eyebrow">CHAT / SUPPORT</div><div class="h2">チャット・応援・見守り</div><div class="desc">同じイベント参加者へリアルタイム同期します。</div><div id="messages"></div><div class="chatBox"><input id="chatInput" placeholder="メッセージ"><button class="btn primary mini" id="sendChat">送信</button></div><div class="supportGrid"><button data-support="がんばって！">📣 がんばって！</button><button data-support="大丈夫？">👀 大丈夫？</button><button data-support="集合場所にいます">📍 集合場所にいます</button><button data-support="休憩しています">☕ 休憩しています</button></div><div class="extensionSlot" id="ext-chat-extra" data-extension-slot="chat-extra"></div></div>
+</section>
+</main>
+</div>
+<div class="toast" id="toast"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script type="module">
+import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js';
+import { initializeAuth, signInAnonymously, onAuthStateChanged, indexedDBLocalPersistence, browserSessionPersistence, inMemoryPersistence } from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js';
+import { getDatabase, ref, set, update, remove, push, onValue, get, runTransaction, onDisconnect, serverTimestamp } from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-database.js';
+
+const $=id=>document.getElementById(id), esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+const DEFAULT_FIREBASE_CONFIG={apiKey:'AIzaSyB0DLoOQa5MQ67jGj6GmqO7XgwrbvQnLl4',authDomain:'sports-live-hub-aichi.firebaseapp.com',databaseURL:'https://sports-live-hub-aichi-default-rtdb.asia-southeast1.firebasedatabase.app',projectId:'sports-live-hub-aichi',storageBucket:'sports-live-hub-aichi.firebasestorage.app',messagingSenderId:'931508195062',appId:'1:931508195062:web:90881ea409003f909c66d7',measurementId:'G-0TGNM4W9XF'};
+// ===== FOUNDATION REGISTRY / SOURCE OF TRUTH =====
+const FOUNDATION=Object.freeze({
+  platform:'LIVE_EVENT_PLATFORM',
+  version:'2.4.0',
+  base:'2.3.0',
+  modules:Object.freeze({
+    firebaseCore:'1.0.0',
+    persistence:'1.0.0',
+    event:'1.0.0',
+    participant:'1.0.0',
+    schedule:'1.0.0',
+    liveLocation:'1.0.0',
+    chatSupport:'1.0.0',
+    map:'1.0.0',
+    uiShell:'1.1.0',
+    extensionContract:'1.0.0'
+  })
+});
+
+const EXTENSION_CONTRACT=Object.freeze({
+  version:'1.0.0',
+  slots:Object.freeze([
+    'home-status',
+    'participant-extra',
+    'live-after-map',
+    'schedule-extra',
+    'chat-extra'
+  ]),
+  reservedDataNamespace:'events/{eventId}/extensions/{moduleKey}',
+  rule:'Core data paths and working modules must not be renamed or replaced by an extension.'
+});
+
+window.LiveEventFoundation=Object.freeze({FOUNDATION,EXTENSION_CONTRACT});
+
+// ===== PERSISTENCE MODULE =====
+// localStorageは使わない。専用IndexedDB → sessionStorage → memory の順で退避する。
+const StateStore=(()=>{
+  const DB_NAME='live_event_platform_state_v1', STORE='kv';
+  const mem=new Map();
+  let dbPromise=null, mode='indexeddb';
+
+  function openDb(){
+    if(dbPromise)return dbPromise;
+    dbPromise=new Promise((resolve,reject)=>{
+      if(!('indexedDB' in window)){reject(new Error('IndexedDB unavailable'));return}
+      const req=indexedDB.open(DB_NAME,1);
+      req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(STORE))db.createObjectStore(STORE)};
+      req.onsuccess=()=>resolve(req.result);
+      req.onerror=()=>reject(req.error||new Error('IndexedDB open failed'));
+    });
+    return dbPromise;
+  }
+  async function get(k){
+    try{
+      const db=await openDb();
+      const v=await new Promise((resolve,reject)=>{
+        const tx=db.transaction(STORE,'readonly'), req=tx.objectStore(STORE).get(k);
+        req.onsuccess=()=>resolve(req.result??null); req.onerror=()=>reject(req.error);
+      });
+      mode='indexeddb'; return v;
+    }catch(e){
+      try{const v=sessionStorage.getItem('lep:'+k);mode='session';return v}catch{}
+      mode='memory'; return mem.has(k)?mem.get(k):null;
+    }
+  }
+  async function set(k,v){
+    try{
+      const db=await openDb();
+      await new Promise((resolve,reject)=>{
+        const tx=db.transaction(STORE,'readwrite');
+        tx.objectStore(STORE).put(v,k);
+        tx.oncomplete=()=>resolve(); tx.onerror=()=>reject(tx.error); tx.onabort=()=>reject(tx.error);
+      });
+      mode='indexeddb'; return true;
+    }catch(e){
+      try{sessionStorage.setItem('lep:'+k,String(v));mode='session';return true}catch{}
+      mem.set(k,v);mode='memory';return false;
+    }
+  }
+  return {get,set,getMode:()=>mode};
+})();
+
+const palette=['#0b7285','#7b5bbd','#c45b32','#2f7d4a','#aa7b18','#3e68a8','#a83e69','#56733a','#7a4b2c','#286b78'];
+let firebaseApp=null, auth=null, db=null, user=null, eventId='', isMember=false, isOwner=false;
+let eventMeta={}, participants={}, entries={}, liveData={}, messages=[];
+let ownEntries=[], watchId=null, map=null, markers=new Map(), unsubscribers=[], connected=false, lastToastTimer=null;
+let lastChatSeen=0;
+const EVENT_KEY='eventId', LAST_CHAT_KEY='lastChatSeen';
+
+function toast(msg){$('toast').textContent=msg;$('toast').classList.add('show');clearTimeout(lastToastTimer);lastToastTimer=setTimeout(()=>$('toast').classList.remove('show'),2600)}
+function parseConfig(text){let t=text.trim();if(!t)throw new Error('Firebase configが空です');if(t.includes('const firebaseConfig')){t=t.substring(t.indexOf('{'),t.lastIndexOf('}')+1).replace(/([A-Za-z0-9_]+)\s*:/g,'"$1":').replace(/'/g,'"');}const c=JSON.parse(t);if(!c.apiKey||!c.projectId||!c.databaseURL)throw new Error('apiKey / projectId / databaseURL が必要です');return c}
+function clearListeners(){unsubscribers.forEach(fn=>{try{fn()}catch{}});unsubscribers=[]}
+function backendStatus(text,kind=''){$('backendPill').textContent=text;$('backendPill').className='statusPill'+(kind?' '+kind:'')}
+function setupStatus(text,kind=''){$('setupStatus').textContent=text;$('setupStatus').className='setupStatus'+(kind?' '+kind:'')}
+function memberPath(uid=user?.uid){return `members/${eventId}/${uid}`}
+function eventPath(sub=''){return `events/${eventId}${sub?'/'+sub:''}`}
+function formatTime(v){if(!v)return'—';const d=new Date(v);if(Number.isNaN(d.getTime()))return v;return d.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})}
+function formatDateTime(v){if(!v)return'—';const d=new Date(v);if(Number.isNaN(d.getTime()))return v;return d.toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}
+function toInputDT(v){if(!v)return'';const d=new Date(v);if(Number.isNaN(d.getTime()))return'';const p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`}
+function nowIso(){return new Date().toISOString()}
+function eventExpired(){return eventMeta.end&&Date.now()>new Date(eventMeta.end).getTime()}
+function haversine(a,b){if(!a||!b)return 999999;const R=6371000,rad=x=>x*Math.PI/180,dLat=rad(b.lat-a.lat),dLon=rad(b.lng-a.lng),la1=rad(a.lat),la2=rad(b.lat);const h=Math.sin(dLat/2)**2+Math.cos(la1)*Math.cos(la2)*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
+function ageMinutes(ts){if(!ts)return Infinity;return Math.max(0,(Date.now()-new Date(ts).getTime())/60000)}
+function liveStateFor(uid){const l=liveData[uid];if(!l||!l.ts)return{label:'位置なし',kind:'bad',stale:true};const age=ageMinutes(l.ts);if(age>=10)return{label:`更新途絶 ${Math.floor(age)}分`,kind:'bad',stale:true};if(age>=2)return{label:`更新 ${Math.floor(age)}分前`,kind:'warn',stale:false};const stop=ageMinutes(l.lastMoveAt||l.ts);if(stop>=5)return{label:`停止 ${Math.floor(stop)}分`,kind:'warn',stale:false};return{label:l.active===false?'接続なし':'移動中',kind:'',stale:false}}
+function saveLocalConfig(c){$('firebaseConfigInput').value=JSON.stringify(c,null,2)}
+
+async function connectFirebase(config){
+  try{
+    setupStatus('Firebaseへ接続中… / 永続化モジュール初期化');
+    if(!firebaseApp)firebaseApp=initializeApp(config);
+    if(!auth)auth=initializeAuth(firebaseApp,{persistence:[indexedDBLocalPersistence,browserSessionPersistence,inMemoryPersistence]});
+    if(!db)db=getDatabase(firebaseApp);
+    onAuthStateChanged(auth,async u=>{
+      user=u;
+      if(u){
+        backendStatus('Firebase接続','ok');
+        setupStatus(`Firebase接続済み / 匿名認証OK / STATE:${StateStore.getMode()}`,'ok');
+        if(eventId){$('eventIdInput').value=eventId;await restoreMembership()}
+      }
+    });
+    if(!auth.currentUser)await signInAnonymously(auth);
+  }catch(e){
+    console.error(e);backendStatus('接続エラー','bad');
+    const code=e?.code?` [${e.code}]`:'';
+    setupStatus('接続エラー'+code+': '+(e?.message||String(e)),'bad');
+    toast('Firebase接続に失敗しました');
+  }
+}
+
+async function restoreMembership(){if(!db||!user||!eventId)return;clearListeners();isMember=false;isOwner=false;const mem=await get(ref(db,memberPath()));isMember=mem.exists();const own=await get(ref(db,`eventSecrets/${eventId}/ownerUid`)).catch(()=>null);isOwner=!!(own&&own.exists()&&own.val()===user.uid);if(isMember){startEventListeners();toast('イベント接続を復元しました')}renderAll()}
+
+async function joinExisting(){if(!db||!user){toast('先にFirebaseへ接続してください');return}const id=$('eventIdInput').value.trim(),code=$('joinCodeInput').value.trim();if(!id||code.length<4){toast('イベントIDと参加コードを入力してください');return}eventId=id;await StateStore.set(EVENT_KEY,eventId);try{await set(ref(db,memberPath()),code);isMember=true;const own=await get(ref(db,`eventSecrets/${eventId}/ownerUid`)).catch(()=>null);isOwner=!!(own&&own.exists()&&own.val()===user.uid);$('joinCodeInput').value='';startEventListeners();toast('イベントに参加しました')}catch(e){console.error(e);toast('参加できません。イベントID / 参加コードを確認してください')}}
+
+async function createNewEvent(){if(!db||!user){toast('先にFirebaseへ接続してください');return}const id=$('eventIdInput').value.trim(),code=$('joinCodeInput').value.trim();if(!/^[A-Za-z0-9_-]{4,64}$/.test(id)){toast('イベントIDは英数字・-・_で4文字以上にしてください');return}if(code.length<4){toast('参加コードは4文字以上にしてください');return}eventId=id;await StateStore.set(EVENT_KEY,eventId);try{await set(ref(db,`eventSecrets/${eventId}`),{ownerUid:user.uid,joinCode:code,createdAt:Date.now()});await set(ref(db,memberPath()),code);isMember=true;isOwner=true;await set(ref(db,eventPath('meta')),{name:'新規イベント',routeMode:'none',start:'',end:'',createdAt:Date.now(),ownerUid:user.uid});$('joinCodeInput').value='';startEventListeners();toast('イベントを作成しました')}catch(e){console.error(e);toast('イベント作成に失敗しました。既存IDの可能性があります')}}
+
+function startEventListeners(){clearListeners();if(!db||!isMember)return;unsubscribers.push(onValue(ref(db,eventPath('meta')),s=>{eventMeta=s.val()||{};renderAll()}));unsubscribers.push(onValue(ref(db,eventPath('participants')),s=>{participants=s.val()||{};renderAll();renderMapMarkers()}));unsubscribers.push(onValue(ref(db,eventPath('entries')),s=>{entries=s.val()||{};ownEntries=Object.values(entries[user.uid]||{});renderAll()}));unsubscribers.push(onValue(ref(db,eventPath('live')),s=>{liveData=s.val()||{};renderAll();renderMapMarkers()}));unsubscribers.push(onValue(ref(db,eventPath('chat')),s=>{const v=s.val()||{};messages=Object.values(v).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));renderMessages();renderUnread()}));unsubscribers.push(onValue(ref(db,'.info/connected'),s=>{connected=!!s.val();if(connected&&watchId!==null)armDisconnect();renderAll()}));renderAll()}
+
+async function armDisconnect(){if(!db||!user||!eventId)return;try{await onDisconnect(ref(db,eventPath(`live/${user.uid}`))).update({active:false,disconnectedAt:serverTimestamp()})}catch(e){console.warn('onDisconnect',e)}}
+
+function renderAll(){
+  $('headerEvent').textContent=eventMeta.name||'LIVE EVENT PLATFORM v2.4';$('eventNameHero').textContent=isMember?(eventMeta.name||eventId):'未参加';$('participantCount').textContent=Object.keys(participants).length;
+  $('eventIdInput').value=eventId||$('eventIdInput').value;$('ownerEventCard').classList.toggle('show',isOwner);
+  const me=user?participants[user.uid]:null;$('myStatusName').textContent=me?.name|| (isMember?'参加情報未登録':'未参加');$('myStatusText').textContent=me?`${me.team||'所属なし'} / 参加番号 ${me.participantNo||'—'} / ${me.bib?`ゼッケン ${me.bib}`:'ゼッケン未登録'}`:(isMember?'「参加登録」から自分の情報を入力してください。':'Firebase接続後、イベントに参加してください。');
+  const myLive=user?liveData[user.uid]:null;$('shareState').textContent=myLive?.active?'位置共有ON':'位置共有OFF';$('liveStateTop').textContent=myLive?.active?'ON':'OFF';$('liveStateTop').className='state'+(myLive?.active?'':' bad');
+  $('liveBanner').className='liveBanner'+(myLive?.active?'':' off');$('liveBanner').textContent=myLive?.active?`位置共有中 / 最終更新 ${formatTime(myLive.ts)} / 精度 ±${Math.round(myLive.accuracy||0)}m${eventMeta.end?` / 終了 ${formatDateTime(eventMeta.end)}`:''}`:'位置共有はOFFです。開始するとFirebaseへ現在地を共有します。';
+  if(isOwner){$('eventNameInput').value=eventMeta.name||'';$('routeMode').value=eventMeta.routeMode||'none';$('eventStart').value=toInputDT(eventMeta.start);$('eventEnd').value=toInputDT(eventMeta.end)}
+  renderProfile(me);renderRaceEditor();renderMembers();renderSchedule();renderNextRace();renderMessages();renderUnread();
+}
+function renderProfile(me){if(!me)return;$('pName').value=me.name||'';$('pTeam').value=me.team||'';$('pBib').value=me.bib||'';$('pAuto').value=`No.${me.participantNo||'—'} / ${me.color||'—'}`}
+function renderRaceEditor(){const wrap=$('raceEditor');wrap.innerHTML='';const arr=ownEntries.length?ownEntries:[{id:'',event:'',heat:'',start:'',call:'',note:''}];arr.forEach((r,i)=>{const d=document.createElement('div');d.className='raceEditorRow';d.dataset.i=i;d.innerHTML=`<div class="grid2"><div class="field"><label>種目 / 予定</label><input data-k="event" value="${esc(r.event||'')}" placeholder="例：1500m"></div><div class="field"><label>組</label><input data-k="heat" value="${esc(r.heat||'')}" placeholder="例：第3組"></div></div><div class="grid2"><div class="field"><label>開始時刻</label><input data-k="start" type="datetime-local" value="${esc(r.start||'')}"></div><div class="field"><label>招集時刻</label><input data-k="call" type="datetime-local" value="${esc(r.call||'')}"></div></div><div class="field"><label>備考</label><input data-k="note" value="${esc(r.note||'')}" placeholder="集合場所など"></div><button class="btn danger mini" data-remove-race="${i}">削除</button>`;wrap.appendChild(d)});wrap.querySelectorAll('[data-remove-race]').forEach(b=>b.addEventListener('click',()=>{const i=Number(b.dataset.removeRace);ownEntries.splice(i,1);renderRaceEditor()}))}
+function readRaceEditor(){return [...document.querySelectorAll('.raceEditorRow')].map((row,i)=>{const v=k=>row.querySelector(`[data-k="${k}"]`).value.trim();return{id:'r'+Date.now()+'_'+i,event:v('event'),heat:v('heat'),start:v('start'),call:v('call'),note:v('note')}}).filter(r=>r.event||r.start||r.call||r.note)}
+function renderMembers(){const w=$('memberList'),ids=Object.keys(participants).sort((a,b)=>(participants[a].participantNo||9999)-(participants[b].participantNo||9999));if(!ids.length){w.innerHTML='<div class="empty">参加者はまだ登録されていません。</div>';return}w.innerHTML=ids.map(uid=>{const p=participants[uid],s=liveStateFor(uid),l=liveData[uid];return`<div class="member"><div class="dot" style="background:${esc(p.color||'#718087')}">${esc(p.participantNo||'')}</div><div class="memberBody"><b>${esc(p.name||'名称未登録')}</b><span>${esc(p.team||'所属なし')}${p.bib?` / #${esc(p.bib)}`:''}${l?.ts?` / 最終 ${esc(formatTime(l.ts))}`:''}</span></div><span class="state ${s.kind}">${esc(s.label)}</span></div>`}).join('')}
+function allEntryRows(){const rows=[];Object.entries(entries).forEach(([uid,obj])=>Object.values(obj||{}).forEach(r=>rows.push({...r,uid,name:participants[uid]?.name||'未登録'})));return rows.sort((a,b)=>{const aa=a.start?new Date(a.start).getTime():Infinity,bb=b.start?new Date(b.start).getTime():Infinity;return aa-bb})}
+function renderSchedule(){const rows=allEntryRows(),w=$('scheduleList');if(!rows.length){w.innerHTML='<div class="empty">出場予定はまだ登録されていません。</div>';return}w.innerHTML=rows.map(r=>`<div class="scheduleRow"><div class="time">${esc(r.start?formatTime(r.start):'—')}</div><div><div class="entryTitle">${esc(r.event||'予定')} ${esc(r.heat||'')}</div><div class="who">${esc(r.name)}${r.call?` / 招集 ${esc(formatTime(r.call))}`:''}${r.note?` / ${esc(r.note)}`:''}</div></div></div>`).join('')}
+function renderNextRace(){const now=Date.now(),rows=allEntryRows().filter(r=>r.start&&new Date(r.start).getTime()>=now);$('nextRace').textContent=rows.length?formatTime(rows[0].start):'—'}
+function renderMessages(){const w=$('messages');if(!messages.length){w.innerHTML='<div class="empty">まだメッセージはありません。</div>';return}w.innerHTML=messages.slice(-100).map(m=>`<div class="msg ${m.senderUid===user?.uid?'me':''} ${m.type==='support'?'support':''}"><div class="msgHead">${esc(m.senderName||'参加者')} / ${esc(formatTime(m.createdAt))}</div><div class="msgText">${esc(m.text||'')}</div></div>`).join('')}
+function renderUnread(){const n=messages.filter(m=>(m.createdAt||0)>lastChatSeen&&m.senderUid!==user?.uid).length;$('chatBadge').textContent=n>99?'99+':String(n);$('chatBadge').classList.toggle('show',n>0)}
+
+async function saveProfile(){if(!isMember||!user){toast('先にイベントへ参加してください');return}const name=$('pName').value.trim();if(!name){toast('表示名を入力してください');return}try{const pRef=ref(db,eventPath(`participants/${user.uid}`));const snap=await get(pRef);let no=snap.val()?.participantNo;if(!no){const tx=await runTransaction(ref(db,eventPath('counters/participantNo')),cur=>(Number(cur)||0)+1);no=tx.snapshot.val()}const color=palette[(Number(no)-1)%palette.length];await update(pRef,{name,team:$('pTeam').value.trim(),bib:$('pBib').value.trim(),participantNo:no,color,registrationState:'registered',updatedAt:Date.now()});toast('参加情報を保存しました')}catch(e){console.error(e);toast('保存に失敗しました')}}
+async function saveRaces(){if(!isMember||!user){toast('先にイベントへ参加してください');return}try{const arr=readRaceEditor(),obj={};arr.forEach(r=>obj[r.id]=r);await set(ref(db,eventPath(`entries/${user.uid}`)),obj);toast('出場予定を保存しました')}catch(e){console.error(e);toast('予定の保存に失敗しました')}}
+async function saveEvent(){if(!isOwner){toast('管理者のみ変更できます');return}try{await update(ref(db,eventPath('meta')),{name:$('eventNameInput').value.trim()||'イベント',routeMode:$('routeMode').value,start:$('eventStart').value?new Date($('eventStart').value).toISOString():'',end:$('eventEnd').value?new Date($('eventEnd').value).toISOString():'',updatedAt:Date.now()});toast('イベント設定を保存しました')}catch(e){console.error(e);toast('イベント設定の保存に失敗しました')}}
+
+async function handlePos(pos){if(!isMember||!user)return;if(eventExpired()){await stopShare(true);if(isOwner)await clearAllLive(true);toast('イベント終了時刻のため共有を停止しました');return}const prev=liveData[user.uid],cur={lat:pos.coords.latitude,lng:pos.coords.longitude};const moved=!prev||haversine({lat:prev.lat,lng:prev.lng},cur)>=20;const lastMoveAt=moved?nowIso():(prev?.lastMoveAt||nowIso());const stopMin=ageMinutes(lastMoveAt);try{await set(ref(db,eventPath(`live/${user.uid}`)),{...cur,accuracy:pos.coords.accuracy,ts:nowIso(),lastMoveAt,motion:stopMin>=5?'stopped':'moving',active:true,connected:true});await armDisconnect()}catch(e){console.error(e);toast('位置情報の送信に失敗しました')}}
+function startShare(){if(!isMember){toast('先にイベントへ参加してください');return}if(eventExpired()){toast('イベント終了時刻を過ぎています');return}if(!navigator.geolocation){toast('この端末では位置情報を使えません');return}if(watchId!==null)return;watchId=navigator.geolocation.watchPosition(handlePos,e=>{console.warn(e);toast('位置情報を取得できません')},{enableHighAccuracy:true,maximumAge:5000,timeout:15000});toast('位置共有を開始しました')}
+async function stopShare(clear=true){if(watchId!==null&&navigator.geolocation){navigator.geolocation.clearWatch(watchId);watchId=null}if(db&&user&&eventId&&clear){try{await remove(ref(db,eventPath(`live/${user.uid}`)))}catch(e){console.warn(e)}}toast(clear?'共有停止・自分のLIVE位置を削除しました':'共有停止')}
+function locateOnce(){if(!navigator.geolocation){toast('位置情報を使えません');return}navigator.geolocation.getCurrentPosition(handlePos,()=>toast('位置情報を取得できません'),{enableHighAccuracy:true,timeout:15000})}
+async function clearAllLive(silent=false){if(!isOwner){if(!silent)toast('管理者のみ実行できます');return}try{await remove(ref(db,eventPath('live')));if(!silent)toast('全LIVE位置データを削除しました')}catch(e){console.error(e);if(!silent)toast('LIVE削除に失敗しました')}}
+
+function initMap(){if(map)return;map=L.map('map',{zoomControl:true}).setView([35.0,136.9],10);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map)}
+function markerHtml(p,s){const bg=s.stale?'#7f8c8d':(p.color||'#0b7285');const ring=s.kind==='warn'?'#d9a624':s.kind==='bad'?'#a1a8aa':'#fff';return`<div style="width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:${bg};color:#fff;border:4px solid ${ring};box-shadow:0 0 0 1px #17313b55;font:900 11px -apple-system,sans-serif">${esc(p.participantNo||'')}</div>`}
+function renderMapMarkers(){if(!map)return;const activeIds=new Set();Object.entries(liveData).forEach(([uid,l])=>{if(!l||typeof l.lat!=='number'||typeof l.lng!=='number')return;activeIds.add(uid);const p=participants[uid]||{},s=liveStateFor(uid),icon=L.divIcon({className:'',html:markerHtml(p,s),iconSize:[34,34],iconAnchor:[17,17]});let m=markers.get(uid);if(m){m.setLatLng([l.lat,l.lng]);m.setIcon(icon)}else{m=L.marker([l.lat,l.lng],{icon}).addTo(map);markers.set(uid,m)}m.bindPopup(`<b>${esc(p.name||'参加者')}</b><br>${esc(s.label)}<br>最終更新 ${esc(formatTime(l.ts))}${p.team?`<br>${esc(p.team)}`:''}`)});[...markers.keys()].forEach(uid=>{if(!activeIds.has(uid)){map.removeLayer(markers.get(uid));markers.delete(uid)}})}
+function fitMembers(){initMap();const pts=Object.values(liveData).filter(l=>l&&typeof l.lat==='number'&&typeof l.lng==='number').map(l=>[l.lat,l.lng]);if(!pts.length){toast('表示できる位置情報がありません');return}if(pts.length===1)map.setView(pts[0],16);else map.fitBounds(pts,{padding:[30,30]})}
+
+async function sendMessage(text,type='chat'){text=(text||'').trim();if(!text)return;if(!isMember||!user){toast('イベントへ参加してください');return}const me=participants[user.uid];try{await push(ref(db,eventPath('chat')),{senderUid:user.uid,senderName:me?.name||'参加者',text,type,createdAt:Date.now()});$('chatInput').value=''}catch(e){console.error(e);toast('送信に失敗しました')}}
+
+function showView(v){document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('on',x.dataset.view===v));$('view-'+v).classList.add('on');if(v==='live'){setTimeout(()=>{initMap();map.invalidateSize();renderMapMarkers()},60)}if(v==='chat'){lastChatSeen=Date.now();StateStore.set(LAST_CHAT_KEY,String(lastChatSeen));renderUnread()}}
+
+document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));document.querySelectorAll('[data-jump]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.jump)));
+$('saveFirebaseConfig').addEventListener('click',async()=>{try{const c=parseConfig($('firebaseConfigInput').value);saveLocalConfig(c);await connectFirebase(c)}catch(e){setupStatus(e.message,'bad');toast('Firebase configを確認してください')}});
+$('joinEvent').addEventListener('click',joinExisting);$('createEvent').addEventListener('click',createNewEvent);$('saveProfile').addEventListener('click',saveProfile);$('saveRaces').addEventListener('click',saveRaces);$('saveEvent').addEventListener('click',saveEvent);$('addRace').addEventListener('click',()=>{ownEntries.push({id:'',event:'',heat:'',start:'',call:'',note:''});renderRaceEditor()});$('shareOn').addEventListener('click',startShare);$('shareOff').addEventListener('click',()=>stopShare(true));$('locateOnce').addEventListener('click',locateOnce);$('fitMembers').addEventListener('click',fitMembers);$('clearAllLive').addEventListener('click',()=>clearAllLive(false));$('sendChat').addEventListener('click',()=>sendMessage($('chatInput').value));$('chatInput').addEventListener('keydown',e=>{if(e.key==='Enter')sendMessage(e.target.value)});document.querySelectorAll('[data-support]').forEach(b=>b.addEventListener('click',()=>sendMessage(b.dataset.support,'support')));
+
+setInterval(async()=>{renderMembers();renderUnread();if(isMember&&eventExpired()){if(user&&liveData[user.uid])await stopShare(true);if(isOwner&&Object.keys(liveData).length)await clearAllLive(true)}},30000);
+
+async function bootFoundation(){
+  eventId=String((await StateStore.get(EVENT_KEY))||'');
+  lastChatSeen=Number((await StateStore.get(LAST_CHAT_KEY))||0);
+  const bootConfig=DEFAULT_FIREBASE_CONFIG;
+  $('firebaseConfigInput').value=JSON.stringify(bootConfig,null,2);
+  console.info('FOUNDATION',FOUNDATION,'STATE',StateStore.getMode());
+  await connectFirebase(bootConfig);
+}
+bootFoundation()
+</script>
+</body>
+</html>
