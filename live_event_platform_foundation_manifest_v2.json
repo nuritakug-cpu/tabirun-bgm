@@ -1,0 +1,153 @@
+{
+  "platform": "LIVE_EVENT_PLATFORM",
+  "foundation_version": "2.4.0",
+  "baseline": {
+    "version": "2.3.0",
+    "file": "live_event_platform_v2_3_foundation.html",
+    "status": "frozen_reference",
+    "reason": "Confirmed Firebase connection with persistence foundation."
+  },
+  "change_policy": {
+    "rule_1": "Do not rebuild the whole app to fix one module.",
+    "rule_2": "Freeze working modules and replace only the module under change.",
+    "rule_3": "Every release declares baseline, changed modules, unchanged modules, and regression checks.",
+    "rule_4": "Do not remove or rename an existing data path without a migration plan.",
+    "rule_5": "QUEST integration happens only after the standalone foundation is stable."
+  },
+  "modules": {
+    "firebaseCore": {
+      "version": "1.0.0",
+      "status": "unchanged",
+      "responsibility": "Firebase app/auth/database connection"
+    },
+    "persistence": {
+      "version": "1.0.0",
+      "status": "unchanged",
+      "responsibility": "Auth/session/app-state persistence",
+      "strategy": [
+        "Firebase indexedDBLocalPersistence",
+        "browserSessionPersistence",
+        "inMemoryPersistence"
+      ],
+      "app_state": [
+        "dedicated IndexedDB live_event_platform_state_v1",
+        "sessionStorage fallback",
+        "memory fallback"
+      ],
+      "forbidden_dependency": "localStorage"
+    },
+    "event": {
+      "version": "1.0.0",
+      "status": "unchanged",
+      "responsibility": "Event create/join/config; route mode none/single/multi"
+    },
+    "participant": {
+      "version": "1.0.0",
+      "status": "unchanged",
+      "responsibility": "Self registration; participant number; color"
+    },
+    "schedule": {
+      "version": "1.0.0",
+      "status": "unchanged",
+      "responsibility": "Participant-entered race/event schedule"
+    },
+    "liveLocation": {
+      "version": "1.0.0",
+      "status": "unchanged",
+      "responsibility": "Live position; stale/stopped states; cleanup"
+    },
+    "chatSupport": {
+      "version": "1.0.0",
+      "status": "unchanged",
+      "responsibility": "Chat/support/unread"
+    },
+    "map": {
+      "version": "1.0.0",
+      "status": "unchanged",
+      "responsibility": "Leaflet participant map; route optional"
+    },
+    "uiShell": {
+      "version": "1.1.0",
+      "status": "changed_in_2.4",
+      "responsibility": "Sticky header, view stacking and Leaflet layout boundary",
+      "fix": "Header isolated above Leaflet panes/controls; map kept in low stacking context."
+    },
+    "extensionContract": {
+      "version": "1.0.0",
+      "status": "added_in_2.4",
+      "responsibility": "Stable insertion points for future information/features without rebuilding core."
+    }
+  },
+  "data_contract": {
+    "eventSecrets": "eventSecrets/{eventId}",
+    "members": "members/{eventId}/{uid}",
+    "meta": "events/{eventId}/meta",
+    "participants": "events/{eventId}/participants/{uid}",
+    "entries": "events/{eventId}/entries/{uid}",
+    "live": "events/{eventId}/live/{uid}",
+    "chat": "events/{eventId}/chat/{messageId}"
+  },
+  "foundation_requirements": [
+    "Route is optional.",
+    "Participant self-entry is standard.",
+    "Location sharing, chat, support and monitoring work without a course.",
+    "Schedule/race-entry expansion remains possible.",
+    "LIVE ephemeral data stays separate from records/results.",
+    "Future QUEST integration uses an adapter; QUEST-specific logic does not enter the foundation core."
+  ],
+  "release_2_3": {
+    "changed_modules": [
+      "persistence"
+    ],
+    "unchanged_modules": [
+      "firebaseCore",
+      "event",
+      "participant",
+      "schedule",
+      "liveLocation",
+      "chatSupport",
+      "map"
+    ],
+    "purpose": "Keep the successful v2.2 Firebase connection while restoring reload/session continuity without using QUEST-shared localStorage."
+  },
+  "extension_contract": {
+    "slots": [
+      "home-status",
+      "participant-extra",
+      "live-after-map",
+      "schedule-extra",
+      "chat-extra"
+    ],
+    "reserved_data_namespace": "events/{eventId}/extensions/{moduleKey}",
+    "rules": [
+      "Extensions may add UI/data but must not rename existing core paths.",
+      "Each extension declares its own module key and version.",
+      "Only the changed module and integration points are modified in a release.",
+      "New Firebase write paths require an explicit Security Rules change before activation."
+    ]
+  },
+  "release_2_4": {
+    "changed_modules": [
+      "uiShell",
+      "extensionContract"
+    ],
+    "unchanged_modules": [
+      "firebaseCore",
+      "persistence",
+      "event",
+      "participant",
+      "schedule",
+      "liveLocation",
+      "chatSupport",
+      "map"
+    ],
+    "regression_checks": [
+      "Firebase connects",
+      "Event create/join unchanged",
+      "Authentication/session persistence unchanged",
+      "LIVE map remains below sticky header",
+      "Participant/schedule/chat/map behavior unchanged"
+    ],
+    "purpose": "Fix Leaflet/header overlap and make future additions attach to stable extension points instead of rebuilding the foundation."
+  }
+}
