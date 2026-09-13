@@ -36,7 +36,7 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
 <div class="app">
 <header>
   <div class="brand">STANDALONE / NO QUEST CORE MODIFICATION</div>
-  <h1>旅ラン LIVE / CHAT 独立テスト v1</h1><div style="font-size:9px;opacity:.75;margin-top:3px">DB CHECK FIX 2026-09-13</div>
+  <h1>旅ラン LIVE / CHAT 独立テスト v1</h1><div style="font-size:9px;opacity:.75;margin-top:3px">STATUS FIX 2026-09-13</div>
 </header>
 <main>
   <div class="card">
@@ -735,9 +735,15 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
   function liveStatus(live){
     if(!live||!Number.isFinite(Number(live.lat))||!Number.isFinite(Number(live.lng)))return{key:'off',label:'共有OFF',cls:'bad'};
     const ts=Number(live.ts)||0;
-    if(!ts||now()-ts>STALE_MS||live.active===false)return{key:'stale',label:'更新途絶',cls:'bad'};
+    const age=ts?Math.max(0,now()-ts):Infinity;
+
+    // active:false は一時的な回線切断でも入り得るため、
+    // 更新時刻が新しい間は即「更新途絶」にしない。
+    if(!ts||age>STALE_MS)return{key:'stale',label:'更新途絶',cls:'bad'};
+
     const lm=Number(live.lastMoveAt)||ts;
     if(now()-lm>=STOP_MS||live.motion==='stopped')return{key:'stopped',label:'停止中',cls:'warn'};
+
     return{key:'moving',label:'移動中',cls:'on'};
   }
 
