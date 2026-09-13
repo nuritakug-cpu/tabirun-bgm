@@ -18713,7 +18713,7 @@ window.tabirunGetQuestLiveContext=function(){
 window.__TABIRUN_RELEASE301_INTEGRATION_TEST__={
   base:'release300-map-follow-stability',
   eventId:'dev-tabirun-quest-integration-01',
-  scope:['tested LIVE/CHAT adapter','QUEST GPS bridge','post-run event standby UI'],
+  scope:['tested LIVE/CHAT adapter','QUEST GPS bridge','pre-run LIVE/CHAT participant registration','post-run event standby UI'],
   questCoreUnchanged:['BGM','MAP logic','GPS judgement','QUIZ','STAMPS','PROGRESS','AWARDS'],
   timing:'today-stop keeps existing r75CloseSession pause behavior'
 };
@@ -19504,8 +19504,10 @@ window.__TABIRUN_RELEASE301_INTEGRATION_TEST__={
   window.__TABIRUN_LIVE_CHAT__=Object.freeze({
     version:VERSION,eventId:EVENT_ID,
     get status(){return{firebaseReady:state.firebaseReady,signedIn:!!state.user,member:state.member,owner:state.owner,profile:!!state.profile,sharing:state.sharing,routesLoaded:state.routesLoaded}},
+    get profile(){return state.profile?{name:String(state.profile.name||''),team:String(state.profile.team||'')}:null},
     openLive(){return openOverlay('live')},
     openChat(){return openOverlay('chat')},
+    async registerProfile(){await ensureFirebase();return await ensureProfile()},
     async startSharing(){await startSharing();return state.sharing},
     async stopSharing(){await stopSharing(true);return !state.sharing}
   });
@@ -19611,6 +19613,196 @@ if(typeof renderResumeChoice==='function'){
 
 /* If this file was opened directly on an already-saved idle state, refresh the UI now. */
 try{if(String(state?.r168EndMode||'').startsWith('idle-')&&String(state?.phase||'')==='resumeChoice')render()}catch(e){console.warn('[standby] initial render',e)}
+})();
+</script>
+
+<style id="r302-prerun-live-profile-style">
+.r302LiveProfile{
+  margin:18px 0 16px;padding:16px 15px;border-radius:18px;
+  border:1px solid rgba(12,107,137,.22);
+  background:linear-gradient(145deg,#eef8f8,#f7fbfa);
+  color:#173b46;text-align:left;
+  box-shadow:0 8px 20px rgba(6,70,90,.06)
+}
+.r302LiveProfileHead{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.r302LiveProfileKick{font-size:9px;letter-spacing:.16em;font-weight:1000;color:#9b6c12}
+.r302LiveProfileTitle{margin-top:4px;font-size:18px;font-weight:1000;line-height:1.25}
+.r302LiveProfilePill{flex:none;border-radius:999px;padding:6px 9px;background:#eef1ef;color:#607077;font-size:9px;font-weight:1000}
+.r302LiveProfilePill.ok{background:#dff4e9;color:#176b4c}
+.r302LiveProfilePill.wait{background:#fff2db;color:#8c5b0d}
+.r302LiveProfileText{margin-top:9px;font-size:11px;line-height:1.65;color:#60757d}
+.r302LiveProfileName{margin-top:10px;padding:10px 11px;border-radius:12px;background:#fff;border:1px solid #dfe8e5;font-size:12px;font-weight:950}
+.r302LiveProfileBtn{width:100%;margin-top:10px;border:0;border-radius:13px;padding:12px 10px;background:linear-gradient(135deg,#073c54,#087b8f);color:#fff;font-size:12px;font-weight:1000}
+.r302LiveProfileBtn:disabled{opacity:.55}
+.r302LiveProfileNote{margin-top:8px;font-size:9px;line-height:1.55;color:#75858a}
+.r302StartLocked{opacity:.56!important}
+.r302StartHint{margin:8px 0 0;font-size:9px;line-height:1.5;color:#9a5d18;font-weight:850;text-align:center}
+</style>
+
+<script id="r302-prerun-live-profile">
+(()=>{
+'use strict';
+
+const R302_VERSION='release301-integration-profile-before-soundcheck';
+
+function r302Api(){return window.__TABIRUN_LIVE_CHAT__||null}
+
+function r302Profile(){
+  try{return r302Api()?.profile||null}catch(e){return null}
+}
+
+function r302ProfileCardHtml(){
+  return `<div class="r302LiveProfile" id="r302LiveProfile">
+    <div class="r302LiveProfileHead">
+      <div>
+        <div class="r302LiveProfileKick">STEP 1 / EVENT LIVE</div>
+        <div class="r302LiveProfileTitle">LIVE / CHAT 参加者登録</div>
+      </div>
+      <span class="r302LiveProfilePill wait" id="r302LiveProfilePill">確認中</span>
+    </div>
+    <div class="r302LiveProfileText">
+      走り始める前に、LIVE MAPとCHATに表示する名前を登録します。<br>
+      QUESTの6桁参加コード認証はそのまま使うため、追加の参加コードは不要です。
+    </div>
+    <div class="r302LiveProfileName" id="r302LiveProfileName">Firebase接続と登録状態を確認しています…</div>
+    <button class="r302LiveProfileBtn" id="r302LiveProfileBtn" type="button" onclick="r302RegisterLiveProfile()">参加者名を登録</button>
+    <div class="r302LiveProfileNote">ここでは名前だけ登録します。位置情報は「位置共有を開始」を押すまで送信しません。</div>
+  </div>`;
+}
+
+function r302FindStartButton(cover){
+  return [...cover.querySelectorAll('button')].find(b=>/STAGEを選んでSTART|開始地点を選ぶ/.test(String(b.textContent||'')));
+}
+
+function r302RefreshTopRegistration(){
+  const card=document.getElementById('r302LiveProfile');
+  if(!card)return;
+  const pill=document.getElementById('r302LiveProfilePill');
+  const name=document.getElementById('r302LiveProfileName');
+  const btn=document.getElementById('r302LiveProfileBtn');
+  const api=r302Api();
+  const p=r302Profile();
+
+  if(p?.name){
+    pill.textContent='登録済';pill.className='r302LiveProfilePill ok';
+    name.textContent=p.team?`${p.name} / ${p.team}`:p.name;
+    btn.textContent='登録済み';btn.disabled=true;
+  }else if(api?.status?.firebaseReady){
+    pill.textContent='未登録';pill.className='r302LiveProfilePill wait';
+    name.textContent='表示名の登録が必要です。';
+    btn.textContent='参加者名を登録';btn.disabled=false;
+  }else{
+    pill.textContent='接続中';pill.className='r302LiveProfilePill wait';
+    name.textContent='LIVE / CHATへ接続しています…';
+    btn.textContent='接続後に登録できます';btn.disabled=false;
+  }
+
+  const cover=document.querySelector('#app .cover');
+  const start=r302FindStartButton(cover||document);
+  if(start){
+    const ready=!!p?.name;
+    start.classList.toggle('r302StartLocked',!ready);
+    start.setAttribute('aria-disabled',ready?'false':'true');
+    start.title=ready?'':'先にLIVE / CHAT参加者名を登録してください';
+  }
+}
+
+window.r302RegisterLiveProfile=async function(){
+  const api=r302Api();
+  const btn=document.getElementById('r302LiveProfileBtn');
+  if(!api){
+    alert('LIVE / CHATの準備中です。数秒待ってからもう一度押してください。');
+    return null;
+  }
+  try{
+    if(btn){btn.disabled=true;btn.textContent='接続中…'}
+    const p=await api.registerProfile();
+    r302RefreshTopRegistration();
+    return p||null;
+  }catch(e){
+    console.warn('[r302] profile registration',e);
+    alert('LIVE / CHAT参加者登録に接続できませんでした。通信状態を確認してもう一度お試しください。');
+    r302RefreshTopRegistration();
+    return null;
+  }
+};
+
+window.r302OpenStartSelector=async function(){
+  const p=r302Profile();
+  if(p?.name){openCheckpointSelect(true);return}
+  const registered=await window.r302RegisterLiveProfile();
+  if(registered?.name)openCheckpointSelect(true);
+};
+
+function r302DecorateStart(){
+  const cover=document.querySelector('#app .cover');
+  if(!cover)return false;
+
+  if(!cover.querySelector('#r302LiveProfile')){
+    const titles=[...cover.querySelectorAll('.startTitle')];
+    const sound=titles.find(el=>/SOUND CHECK/i.test(String(el.textContent||'')));
+    if(sound){
+      sound.insertAdjacentHTML('beforebegin',r302ProfileCardHtml());
+      sound.textContent='STEP 2 / SOUND CHECK';
+    }
+    const stage=titles.find(el=>/STAGE SELECT/i.test(String(el.textContent||'')));
+    if(stage)stage.textContent='STEP 3 / STAGE SELECT';
+  }
+
+  const start=r302FindStartButton(cover);
+  if(start&&!start.dataset.r302Bound){
+    start.dataset.r302Bound='1';
+    start.onclick=()=>window.r302OpenStartSelector();
+    const hint=document.createElement('div');
+    hint.className='r302StartHint';
+    hint.textContent='LIVE / CHAT参加者登録が完了するとSTARTできます。';
+    start.insertAdjacentElement('afterend',hint);
+  }
+
+  r302RefreshTopRegistration();
+  return true;
+}
+
+function r302StartCoverTicker(){
+  clearInterval(window.__r302CoverTicker);
+  let ticks=0;
+  const tick=()=>{
+    const cover=document.querySelector('#app .cover');
+    if(!cover){
+      clearInterval(window.__r302CoverTicker);
+      window.__r302CoverTicker=null;
+      return;
+    }
+    r302DecorateStart();
+    ticks++;
+    if(r302Profile()?.name && ticks>4){
+      clearInterval(window.__r302CoverTicker);
+      window.__r302CoverTicker=null;
+    }
+  };
+  tick();
+  window.__r302CoverTicker=setInterval(tick,700);
+}
+
+if(typeof renderStart==='function'){
+  const oldRenderStart=renderStart;
+  renderStart=function(...args){
+    const out=oldRenderStart.apply(this,args);
+    requestAnimationFrame(r302StartCoverTicker);
+    return out;
+  };
+  window.renderStart=renderStart;
+}
+
+/* Current screen may already be the cover when this layer loads. */
+requestAnimationFrame(r302StartCoverTicker);
+
+window.__TABIRUN_RELEASE301_PROFILE_TOP__={
+  version:R302_VERSION,
+  order:['QUEST participant code','LIVE/CHAT participant name','SOUND CHECK','STAGE SELECT'],
+  startBlockedUntilProfile:true,
+  locationSharingAutoStart:false
+};
 })();
 </script>
 
