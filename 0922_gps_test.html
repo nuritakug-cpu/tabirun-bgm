@@ -20603,9 +20603,9 @@ function r304FixRescueUi(){
     const label=box.querySelector('.r252ManualLabel');
     const btn=box.querySelector('button');
     const small=box.querySelector('small');
-    if(label)label.textContent='GPS不調・チェック忘れ救済';
+    if(label)label.textContent='GPS不調・POINT通過後の救済';
     if(btn){
-      btn.innerHTML='「'+r304Esc(name)+'」到着を確認<span>ブラウザを閉じたまま通過した場合も、ここから復帰できます</span>';
+      btn.innerHTML='「'+r304Esc(name)+'」到着を確認<span>QUESTを開かずにこのPOINTを通過した場合も、ここから復帰できます</span>';
       btn.setAttribute('aria-label',name+'を通過済みとして到着確認');
     }
     if(small)small.textContent='本人確認の2段階操作です。GPS認定にはせず、通過記録として残します。';
@@ -20626,7 +20626,7 @@ try{
           const text=ov?.querySelector('.confirmText');
           const kicker=ov?.querySelector('.confirmKicker');
           if(kicker)kicker.textContent='RESCUE CHECK-IN / STEP 2';
-          if(text)text.innerHTML='GPSが反応しない場合、またはブラウザを閉じたままこのPOINTを通過してチェックできなかった場合の救済です。<br><b>「'+r304Esc(p?.name||'この地点')+'」を実際に通過した場合だけ確定してください。</b>';
+          if(text)text.innerHTML='GPSが反応しない場合、またはQUESTを開かずにこのPOINTを通過して到着操作ができなかった場合の救済です。<br><b>「'+r304Esc(p?.name||'この地点')+'」を実際に通過した場合だけ確定してください。</b>';
         }catch(e){}
       }
       return out;
@@ -20726,7 +20726,7 @@ function testNear(){const q=selected(),target=prepare(q.si,q.pi,true),p=offsetMe
 function testArrival(){const q=selected(),target=prepare(q.si,q.pi,true),t=Date.now();feed(target,10,t);feed(target,10,t+1000);render();setStatus(`到着圏内2回テスト｜${currentPoint()?.name}\n到着認定=${gpsArrivalReady?'ON（正常）':'OFF（要確認）'}\n距離表示部分が「目的地到着」へ変わることを画面で確認してください。`);hidePanel()}
 function testBadAccuracy(){const q=selected(),target=prepare(q.si,q.pi,true),t=Date.now();feed(target,80,t);feed(target,80,t+1000);render();setStatus(`GPS精度80mテスト｜${currentPoint()?.name}\n到着認定=${gpsArrivalReady?'ON（異常）':'OFF（正常）'}\n精度不良では認定しないことを確認。`);hidePanel()}
 function testPass(){const q=selected(),target=prepare(q.si,q.pi,true),t=Date.now(),a=offsetMeters(target,0,-60),b=offsetMeters(target,0,60);feed(a,10,t);feed(b,10,t+1200);render();setStatus(`通過判定テスト｜${currentPoint()?.name}\n60m手前→60m先を横切る疑似GPS\n到着認定=${gpsArrivalReady?'ON（正常）':'OFF（要確認）'}`);hidePanel()}
-function testRescue(){const q=selected();prepare(q.si,q.pi,true);setTimeout(()=>{const box=document.querySelector('.gpsPanel .r252ManualFinal');setStatus(`チェック忘れ救済UI｜${currentPoint()?.name}\n${box&&box.textContent.includes('ブラウザを閉じたまま通過')?'表示OK':'表示を確認してください'}`)},80);hidePanel()}
+function testRescue(){const q=selected();prepare(q.si,q.pi,true);hidePanel();setTimeout(()=>{const box=document.querySelector('.gpsPanel .r252ManualFinal');const name=currentPoint()?.name||'現在のPOINT';if(box){box.classList.add('r307RescueHighlight');try{box.scrollIntoView({behavior:'smooth',block:'center'})}catch(e){box.scrollIntoView()}}document.getElementById('r307TestHint')?.remove();const hint=document.createElement('div');hint.id='r307TestHint';hint.innerHTML='<b>🧪 チェック忘れ救済テスト</b><span>「'+esc(name)+'」を、QUESTを開かずに通過した状態を再現しています。<br>下の強調された救済ボタンから到着確認できることを確認してください。</span><button type="button">OK</button>';hint.querySelector('button')?.addEventListener('click',()=>hint.remove());document.body.appendChild(hint);setStatus(`チェック忘れ救済｜${name}\n${box&&box.textContent.includes('QUESTを開かずにこのPOINTを通過')?'表示OK':'表示を確認してください'}`)},120)}
 function testSpecial(i){enter();clearTestOverlays();state=freshTestState();state.phase='stage';state.stage=0;state.point=0;state.specialIcons=specialItems().map(()=>false);state.pendingSpecialIcon=null;resetGpsVars();const b=specialItems()[Number(i)];if(!b){setStatus('スペシャルアイコン情報を取得できません');return}feed(b,10,Date.now());setStatus(`スペシャルアイコン疑似到達｜${b.name}\n取得=${state.specialIcons?.[Number(i)]?'OK':'要確認'} / 判定半径 ${b.radius}m`);hidePanel()}
 function hidePanel(){document.getElementById('r305GpsTestOverlay')?.remove()}
 function resultsHtml(rows){return rows.map(r=>`<div class="r305Row"><span>${esc(r.name)}</span><b class="${r.ok?'r305Ok':'r305Ng'}">${r.ok?'OK':'NG'}</b></div>`).join('')}
@@ -20747,13 +20747,13 @@ async function runAll(){
  const specs=specialItems();for(let i=0;i<specs.length;i++){state=freshTestState();state.phase='stage';state.specialIcons=specs.map(()=>false);state.pendingSpecialIcon=null;resetGpsVars();feed(specs[i],10,Date.now());add(`SPECIAL｜${specs[i].name}`,state.specialIcons?.[i]===true)}
  /* Visual DOM integration: arrival replaces the distance hero, and rescue wording exists. */
  {const item=pointItems()[0],target=prepare(item.si,item.pi,true),t=Date.now();feed(target,10,t);feed(target,10,t+1000);render();await wait(80);const hero=document.getElementById('arrivalDistanceHero'),ready=document.getElementById('r71ArrivalReady');add('到着UI｜距離枠の中へ切替',!!hero&&!!ready&&ready.parentElement===hero);add('到着UI｜別カードを追加しない',!(ready&&ready.parentElement!==hero));}
- {const item=pointItems()[0];prepare(item.si,item.pi,true);await wait(80);const box=document.querySelector('.gpsPanel .r252ManualFinal');add('チェック忘れ救済｜常時表示',!!box&&box.textContent.includes('ブラウザを閉じたまま通過'));}
+ {const item=pointItems()[0];prepare(item.si,item.pi,true);await wait(80);const box=document.querySelector('.gpsPanel .r252ManualFinal');add('チェック忘れ救済｜常時表示',!!box&&box.textContent.includes('QUESTを開かずにこのPOINTを通過'));}
  const ok=rows.filter(r=>r.ok).length,ng=rows.length-ok;const box=document.getElementById('r305Results');if(box)box.innerHTML=`<div style="font-size:12px;font-weight:1000;margin-bottom:6px">${ok}/${rows.length} OK ${ng?`｜ NG ${ng}`:'｜ 全項目OK'}</div>`+resultsHtml(rows);setStatus(`自動GPS診断 完了｜${ok}/${rows.length} OK${ng?` / NG ${ng}`:' / 全項目OK'}\n実際の本番GPSと同じ evaluateGpsPosition() を使用しています。`);
 }
 function panel(){
  const opts=pointItems().map(x=>`<option value="${x.si}:${x.pi}">STAGE ${x.si+1}｜${esc(x.name)}</option>`).join('');
  const specs=specialItems().map((x,i)=>`<button class="special" type="button" onclick="r305TestSpecial(${i})">${esc(x.name)}</button>`).join('');
- return `<div id="r305GpsTestOverlay"><div class="r305Card"><div class="r305Head"><div><h2>GPS 判定テスト版</h2><p>release304を基準に、実際のGPS判定関数へ疑似座標を入力します。</p></div><button class="r305Close" onclick="r305HidePanel()">閉じる</button></div><div class="r305Safe">テスト中は保存処理を停止し、疑似GPSをLIVEへ送信しません。実GPS監視も一時停止します。終了ボタンで元の進行状態へ戻ります。</div><div class="r305Section"><h3>通常CHECKPOINT</h3><select id="r305PointSelect" class="r305Select">${opts}</select><div class="r305Grid"><button onclick="r305TestFar()">150m超｜圏外</button><button onclick="r305TestNear()">約90m｜まもなく到着</button><button class="primary" onclick="r305TestArrival()">到着圏内｜2回GPS</button><button class="warn" onclick="r305TestBadAccuracy()">精度80m｜認定不可</button><button onclick="r305TestPass()">通過救済｜60m→60m</button><button onclick="r305TestRescue()">ブラウザ閉じ忘れ救済UI</button></div></div><div class="r305Section"><h3>スペシャルアイコン</h3><div class="r305Grid">${specs}</div><div class="r305Mini">各ボタンはその座標へ疑似到達し、通常のスペシャルアイコン取得処理を通します。</div></div><div class="r305Section"><h3>自動診断</h3><button class="r305Wide primary" onclick="r305RunAll()">全GPS判定を一括チェック</button><div id="r305Results" class="r305Results"><div class="r305Mini">通常CP全地点・圏外・精度不良・通過救済・GOAL例外・EXTRA・スペシャル・到着UI・チェック忘れ救済を確認します。</div></div></div><div id="r305Status" class="r305Status">${esc(T.lastStatus)}</div><button class="r305Wide danger" onclick="r305Restore()">テスト終了｜元のQUEST状態へ戻す</button></div></div>`
+ return `<div id="r305GpsTestOverlay"><div class="r305Card"><div class="r305Head"><div><h2>GPS 判定テスト版</h2><p>release304を基準に、実際のGPS判定関数へ疑似座標を入力します。</p></div><button class="r305Close" onclick="r305HidePanel()">閉じる</button></div><div class="r305Safe">テスト中は保存処理を停止し、疑似GPSをLIVEへ送信しません。実GPS監視も一時停止します。終了ボタンで元の進行状態へ戻ります。</div><div class="r305Section"><h3>通常CHECKPOINT</h3><select id="r305PointSelect" class="r305Select">${opts}</select><div class="r305Grid"><button onclick="r305TestFar()">150m超｜圏外</button><button onclick="r305TestNear()">約90m｜まもなく到着</button><button class="primary" onclick="r305TestArrival()">到着圏内｜2回GPS</button><button class="warn" onclick="r305TestBadAccuracy()">精度80m｜認定不可</button><button onclick="r305TestPass()">通過救済｜60m→60m</button><button onclick="r305TestRescue()">チェック忘れ救済｜QUEST未表示</button></div></div><div class="r305Section"><h3>スペシャルアイコン</h3><div class="r305Grid">${specs}</div><div class="r305Mini">各ボタンはその座標へ疑似到達し、通常のスペシャルアイコン取得処理を通します。</div></div><div class="r305Section"><h3>自動診断</h3><button class="r305Wide primary" onclick="r305RunAll()">全GPS判定を一括チェック</button><div id="r305Results" class="r305Results"><div class="r305Mini">通常CP全地点・圏外・精度不良・通過救済・GOAL例外・EXTRA・スペシャル・到着UI・チェック忘れ救済を確認します。</div></div></div><div id="r305Status" class="r305Status">${esc(T.lastStatus)}</div><button class="r305Wide danger" onclick="r305Restore()">テスト終了｜元のQUEST状態へ戻す</button></div></div>`
 }
 function openPanel(){enter();document.getElementById('r305GpsTestOverlay')?.remove();document.body.insertAdjacentHTML('beforeend',panel())}
 const fab=document.createElement('button');fab.id='r305GpsTestFab';fab.type='button';fab.textContent='GPS TEST';fab.addEventListener('click',openPanel);document.body.appendChild(fab);
@@ -20764,6 +20764,11 @@ console.log(VERSION,'loaded');
 </script>
 
 
+<style id="r307-rescue-test-clarity-style">
+.r307RescueHighlight{outline:4px solid #f5a623!important;box-shadow:0 0 0 7px rgba(245,166,35,.22),0 12px 30px rgba(0,0,0,.18)!important;border-radius:16px!important}
+#r307TestHint{position:fixed;left:10px;right:10px;top:calc(74px + env(safe-area-inset-top));z-index:100060;max-width:620px;margin:0 auto;background:#fff4d8;color:#593b00;border:2px solid #f5a623;border-radius:14px;padding:10px 44px 10px 12px;box-shadow:0 8px 28px rgba(0,0,0,.28);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif}
+#r307TestHint b{display:block;font-size:12px;margin-bottom:4px}#r307TestHint span{display:block;font-size:10px;line-height:1.45;font-weight:800}#r307TestHint button{position:absolute;right:8px;top:8px;border:0;border-radius:999px;background:#593b00;color:#fff;font-size:9px;font-weight:1000;padding:7px 9px}
+</style>
 <style id="r306-gps-test-visible-style">
 #r305GpsTestFab{display:none!important}
 #r306GpsTestBar{position:fixed;left:0;right:0;top:0;z-index:100050;padding:calc(8px + env(safe-area-inset-top)) 10px 8px;background:#b83b22;color:#fff;box-shadow:0 4px 18px rgba(0,0,0,.28);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif}
@@ -20786,7 +20791,7 @@ function ensureBar(){
   if(bar)return bar;
   bar=document.createElement('div');
   bar.id='r306GpsTestBar';
-  bar.innerHTML='<div class="r306Inner"><div class="r306Text"><div class="r306Title">🧪 GPS判定 TEST MODE</div><div class="r306Sub">現地へ行かずに通常CP・通過救済・スペシャルアイコンを確認できます</div></div><button type="button" id="r306OpenGpsTest">GPSテストを開く</button></div>';
+  bar.innerHTML='<div class="r306Inner"><div class="r306Text"><div class="r306Title">🧪 GPS判定 TEST MODE</div><div class="r306Sub">現地へ行かずに通常CP・チェック忘れ救済・スペシャルアイコンを確認できます</div></div><button type="button" id="r306OpenGpsTest">GPSテストを開く</button></div>';
   document.body.appendChild(bar);
   bar.querySelector('#r306OpenGpsTest')?.addEventListener('click',()=>{try{window.r305OpenPanel?.();bar.classList.add('active');const t=bar.querySelector('.r306Title');if(t)t.textContent='🧪 GPS判定 TEST MODE｜ON'}catch(e){alert('GPSテスト画面を開けませんでした')}});
   return bar;
@@ -20797,6 +20802,264 @@ window.addEventListener('pageshow',()=>setTimeout(sync,30));
 window.addEventListener('focus',()=>setTimeout(sync,30));
 document.addEventListener('click',()=>setTimeout(sync,0));
 window.__TABIRUN_RELEASE306_TEST__={base:'release305',testOnly:true,visibleTopBar:true,originalGpsTest:'kept',questLogic:'unchanged'};
+console.log(VERSION,'loaded');
+})();
+</script>
+
+
+<script>window.__TABIRUN_RELEASE307_TEST__={base:'release306',testOnly:true,rescueWording:'QUESTを開かずにPOINT通過',rescueAutoScroll:true,rescueHighlight:true};</script>
+
+
+<!-- release308 TEST ONLY: route-based SPECIAL ICON passage simulator -->
+<style id="r308-special-pass-style">
+#r308SpecialTracker{
+  position:fixed;left:10px;right:10px;top:calc(78px + env(safe-area-inset-top));
+  z-index:100045;max-width:620px;margin:0 auto;background:#122f3a;color:#fff;
+  border:2px solid rgba(255,255,255,.32);border-radius:16px;padding:12px;
+  box-shadow:0 12px 34px rgba(0,0,0,.34);
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif
+}
+#r308SpecialTracker .r308Head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+#r308SpecialTracker h3{margin:0;font-size:15px;line-height:1.25}
+#r308SpecialTracker .r308Sub{margin-top:4px;font-size:10px;font-weight:850;opacity:.88;line-height:1.45}
+#r308SpecialTracker .r308Distance{margin:10px 0 4px;font-size:30px;font-weight:1000;letter-spacing:-.04em}
+#r308SpecialTracker .r308State{font-size:11px;font-weight:950;line-height:1.55}
+#r308SpecialTracker .r308Expected{margin-top:7px;padding:8px 9px;background:rgba(255,255,255,.1);border-radius:10px;font-size:10px;line-height:1.5;font-weight:850}
+#r308SpecialTracker .r308Btns{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
+#r308SpecialTracker button{border:0;border-radius:10px;min-height:40px;padding:8px;background:#fff;color:#16323d;font-size:10px;font-weight:1000}
+#r308SpecialTracker button.primary{background:#f5a623;color:#402600}
+#r308SpecialTracker button.danger{background:#b83b22;color:#fff}
+#r308SpecialTracker .r308Close{border:0;background:rgba(255,255,255,.16);color:#fff;border-radius:999px;min-height:32px;padding:6px 9px}
+.r308SpecialSelect{width:100%;min-height:44px;border:1px solid #cbdce1;border-radius:11px;background:#fff;padding:8px;font-size:12px;font-weight:850}
+.r308SpecialGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}
+.r308SpecialGrid button{border:0;border-radius:11px;min-height:46px;padding:9px 7px;font-size:10px;font-weight:1000}
+.r308SpecialGrid .primary{background:#70448b;color:#fff}
+.r308SpecialGrid .warn{background:#fff0db;color:#8d5313}
+#r308ResultBanner{
+  position:fixed;left:10px;right:10px;bottom:calc(16px + env(safe-area-inset-bottom));
+  z-index:100070;max-width:620px;margin:0 auto;background:#fff;color:#17323d;border:2px solid #d58c17;
+  border-radius:14px;padding:11px 44px 11px 12px;box-shadow:0 9px 30px rgba(0,0,0,.28);
+  font:850 10px/1.55 -apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif
+}
+#r308ResultBanner b{display:block;font-size:12px;margin-bottom:3px}
+#r308ResultBanner button{position:absolute;right:8px;top:8px;border:0;border-radius:999px;background:#17323d;color:#fff;padding:7px 9px;font-size:9px;font-weight:1000}
+</style>
+
+<script id="r308-special-pass-simulator">
+(()=>{
+'use strict';
+const VERSION='release308-special-pass-simulator-test';
+const S={badgeIndex:0,steps:[],step:-1};
+
+function badges(){
+  return Array.isArray(window.__TABIRUN_RELEASE181__?.specialIcons)
+    ? window.__TABIRUN_RELEASE181__.specialIcons : [];
+}
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function meters(a,b){
+  const R=6371000,rad=Math.PI/180;
+  const p1=Number(a.lat)*rad,p2=Number(b.lat)*rad;
+  const dp=(Number(b.lat)-Number(a.lat))*rad,dl=(Number(b.lng)-Number(a.lng))*rad;
+  const q=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;
+  return 2*R*Math.asin(Math.sqrt(q));
+}
+function fakePos(p,accuracy=10,t=Date.now()){
+  return {coords:{latitude:Number(p.lat),longitude:Number(p.lng),accuracy:Number(accuracy)},timestamp:Number(t)};
+}
+function routeForBadge(b){
+  try{
+    const stage=String(b.stage||'').match(/2/)?'s2':'s1';
+    const r=R126_DATA?.[stage]?.route;
+    return Array.isArray(r)?r:[];
+  }catch(e){return[]}
+}
+function nearestIndex(route,b){
+  let bi=0,bd=Infinity;
+  for(let i=0;i<route.length;i++){
+    const d=meters(route[i],b);
+    if(d<bd){bd=d;bi=i}
+  }
+  return bi;
+}
+function localPointAtDistance(route,b,idx,dir,target){
+  let best={p:route[idx],d:meters(route[idx],b),i:idx},travel=0,prev=route[idx];
+  for(let k=1;k<900;k++){
+    const i=idx+dir*k;
+    if(i<0||i>=route.length)break;
+    const p=route[i];
+    travel+=meters(prev,p); prev=p;
+    const d=meters(p,b);
+    if(Math.abs(d-target)<Math.abs(best.d-target))best={p,d,i};
+    if(travel>Math.max(450,target+260))break;
+  }
+  return best;
+}
+function stageIndex(b){return String(b.stage||'').match(/2/)?1:0}
+function clearSpecialUi(){
+  document.getElementById('specialIconOverlay')?.remove();
+  document.getElementById('r181SpecialOverlay')?.remove();
+}
+function resetSpecial(i){
+  try{window.r305OpenPanel?.()}catch(e){}
+  document.getElementById('r305GpsTestOverlay')?.remove();
+  clearSpecialUi();
+  const all=badges(),b=all[i];
+  if(!b)return null;
+  state.started=true;
+  state.phase='stage';
+  state.stage=stageIndex(b);
+  state.point=0;
+  state.specialIcons=all.map(()=>false);
+  state.pendingSpecialIcon=null;
+  try{
+    gpsCurrent=null;gpsLast=null;gpsDistance=null;gpsArrivalReady=false;gpsArrivalReadyMethod='';
+    gpsConfirmKey='';gpsConfirmCount=0;gpsConfirmLastSampleTime=0;
+  }catch(e){}
+  return b;
+}
+function feed(p,t=Date.now()){
+  evaluateGpsPosition(fakePos(p,10,t));
+}
+function buildSteps(i){
+  const b=badges()[i],route=routeForBadge(b);
+  if(!b||!route.length)return[];
+  const idx=nearestIndex(route,b);
+  const defs=[
+    {label:'約180m手前',dir:-1,target:180,expected:'まだ表示されない'},
+    {label:'約120m手前',dir:-1,target:120,expected:'まだ表示されない'},
+    {label:'約105m手前',dir:-1,target:105,expected:'100m外なら表示されない'},
+    {label:'約95m手前',dir:-1,target:95,expected:'ここで判定圏内。ICON GETが表示される'},
+    {label:'ほぼ通過地点',dir:-1,target:8,expected:'すでに取得済みの状態'},
+    {label:'約120m通過後',dir:1,target:120,expected:'取得したアイコンは保持される'},
+    {label:'約180m通過後',dir:1,target:180,expected:'取得したアイコンは保持される'}
+  ];
+  return defs.map(x=>{
+    const q=localPointAtDistance(route,b,idx,x.dir,x.target);
+    return {...x,p:q.p,d:q.d};
+  });
+}
+function trackerHtml(b){
+  return `<div id="r308SpecialTracker">
+    <div class="r308Head"><div><h3>🧪 ${esc(b.name)}｜実ルート疑似通過</h3>
+    <div class="r308Sub">保存ルート上を1段階ずつ移動します。実際のGPS判定関数へ座標を流します。</div></div>
+    <button class="r308Close" onclick="r308CloseTracker()">閉じる</button></div>
+    <div class="r308Distance" id="r308Distance">START</div>
+    <div class="r308State" id="r308State">まだ疑似GPSを送っていません</div>
+    <div class="r308Expected" id="r308Expected">「次の位置へ」を押してください。</div>
+    <div class="r308Btns">
+      <button class="primary" onclick="r308NextSpecialStep()">次の位置へ ▶</button>
+      <button onclick="r308RestartSpecial()">最初から</button>
+      <button class="danger" onclick="r308ClosedPassTest()">QUESTを閉じたまま通過 → 通過後に開く</button>
+      <button onclick="r305OpenPanel()">テスト一覧へ戻る</button>
+    </div>
+  </div>`;
+}
+function renderTracker(){
+  const b=badges()[S.badgeIndex];
+  document.getElementById('r308SpecialTracker')?.remove();
+  document.body.insertAdjacentHTML('beforeend',trackerHtml(b));
+}
+function updateTracker(step){
+  const got=!!state.specialIcons?.[S.badgeIndex];
+  const d=Math.round(step?.d??0);
+  const dist=document.getElementById('r308Distance');
+  const st=document.getElementById('r308State');
+  const ex=document.getElementById('r308Expected');
+  if(dist)dist.textContent=`${step.label}｜実距離 約${d}m`;
+  if(st)st.textContent=`スペシャルアイコン：${got?'取得済み':'未取得'}　／　判定半径：${badges()[S.badgeIndex].radius}m`;
+  if(ex)ex.innerHTML=`想定：${esc(step.expected)}<br>実判定：${got?'取得済み':'未取得'}`;
+}
+function start(i){
+  S.badgeIndex=Number(i)||0;
+  const b=resetSpecial(S.badgeIndex);
+  if(!b)return;
+  S.steps=buildSteps(S.badgeIndex);S.step=-1;
+  renderTracker();
+}
+function next(){
+  if(!S.steps.length)return;
+  if(S.step>=S.steps.length-1){
+    showResult('疑似通過 完了','100m外では未取得、保存ルート上で100m以内へ入るとICON GET、その後は取得状態が保持される流れを確認できます。');
+    return;
+  }
+  S.step++;
+  const step=S.steps[S.step];
+  feed(step.p,Date.now()+S.step*1000);
+  updateTracker(step);
+}
+function restart(){start(S.badgeIndex)}
+function showResult(title,text){
+  document.getElementById('r308ResultBanner')?.remove();
+  document.body.insertAdjacentHTML('beforeend',`<div id="r308ResultBanner"><b>${esc(title)}</b>${esc(text)}<button onclick="this.parentElement.remove()">OK</button></div>`);
+}
+function closedPass(){
+  const i=S.badgeIndex,b=resetSpecial(i);
+  if(!b)return;
+  S.steps=buildSteps(i);
+  renderTracker();
+  const before=S.steps[0],after=S.steps[S.steps.length-1];
+  /* Browser/QUEST is assumed unavailable while crossing the 100m zone:
+     only the last sample before closing and the first fresh sample after reopening are sent. */
+  feed(before.p,Date.now());
+  const gotBefore=!!state.specialIcons?.[i];
+  feed(after.p,Date.now()+8*60*1000);
+  const gotAfter=!!state.specialIcons?.[i];
+  const d1=Math.round(before.d),d2=Math.round(after.d);
+  const dist=document.getElementById('r308Distance');
+  const st=document.getElementById('r308State');
+  const ex=document.getElementById('r308Expected');
+  if(dist)dist.textContent=`約${d1}m手前 →（QUEST未表示）→ 約${d2}m通過後`;
+  if(st)st.textContent=`スペシャルアイコン：${gotAfter?'取得済み':'未取得'}`;
+  if(ex)ex.innerHTML=`100m圏内のGPSを1度も送らず、通過後にQUESTを開いた状態を再現。`;
+  if(!gotBefore&&!gotAfter){
+    showResult('重要｜現行仕様では未取得です',
+      `${b.name}をQUESTを開かずに通過し、100m圏を出てから開いた場合、現在のスペシャル判定だけでは取得できません。これはテスト不具合ではなく、現行ロジックの不足です。`);
+  }else{
+    showResult('通過後復帰でも取得されました',
+      `${b.name}は通過後の復帰処理で取得されています。`);
+  }
+}
+function closeTracker(){document.getElementById('r308SpecialTracker')?.remove()}
+
+function injectSpecialSimulator(){
+  const card=document.querySelector('#r305GpsTestOverlay .r305Card');
+  if(!card)return;
+  const sections=[...card.querySelectorAll('.r305Section')];
+  const sec=sections.find(x=>x.querySelector('h3')?.textContent.trim()==='スペシャルアイコン');
+  if(!sec)return;
+  const opts=badges().map((b,i)=>`<option value="${i}">${esc(b.stage)}｜${esc(b.name)}</option>`).join('');
+  sec.innerHTML=`<h3>スペシャルアイコン｜実ルート疑似通過</h3>
+    <select id="r308SpecialSelect" class="r308SpecialSelect">${opts}</select>
+    <div class="r308SpecialGrid">
+      <button class="primary" onclick="r308StartSpecialPass(Number(document.getElementById('r308SpecialSelect').value))">保存ルート上を疑似RUN</button>
+      <button class="warn" onclick="r308StartClosedPass(Number(document.getElementById('r308SpecialSelect').value))">閉じたまま通過 → 後で開く</button>
+    </div>
+    <div class="r305Mini">直接アイコンを出すテストではありません。実際の保存ルート上で「約180m手前 → 120m → 105m → 95m → 通過 → 通過後」とGPS位置を動かして確認します。</div>`;
+}
+
+const baseOpen=window.r305OpenPanel;
+if(typeof baseOpen==='function'){
+  window.r305OpenPanel=function(){
+    const out=baseOpen.apply(this,arguments);
+    setTimeout(injectSpecialSimulator,0);
+    return out;
+  };
+}
+window.r308StartSpecialPass=start;
+window.r308NextSpecialStep=next;
+window.r308RestartSpecial=restart;
+window.r308ClosedPassTest=closedPass;
+window.r308CloseTracker=closeTracker;
+window.r308StartClosedPass=function(i){start(i);setTimeout(closedPass,80)};
+
+window.__TABIRUN_RELEASE308_TEST__={
+  base:'release307',
+  testOnly:true,
+  specialPass:'saved-route step simulator',
+  thresholdView:'outside/inside 100m',
+  closedBrowserPass:'simulates no GPS samples inside special radius',
+  productionQuestLogic:'unchanged'
+};
 console.log(VERSION,'loaded');
 })();
 </script>
