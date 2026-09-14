@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d2832">
+<title>TABIRUN EVENT BASE - 大会試作</title>
+<link rel="preconnect" href="https://unpkg.com">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{
+  --ink:#17323b;--muted:#6f8086;--line:#d9e4e7;--paper:#f6f9fa;--card:#fff;
+  --brand:#0d6174;--brand2:#0a8090;--dark:#0d2832;--good:#19805f;--warn:#b77414;
+  --danger:#b93e45;--soft:#eaf4f6;--shadow:0 12px 30px rgba(15,54,66,.10);
+  --radius:22px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif}
+body{padding-bottom:92px;font-size:17px;line-height:1.55}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer}
+.hidden{display:none!important}
+.app{max-width:900px;margin:0 auto}
+.topbar{
+  position:sticky;top:0;z-index:800;background:rgba(13,40,50,.96);color:white;
+  padding:10px 14px calc(10px + env(safe-area-inset-top));backdrop-filter:blur(12px)
+}
+.topbarRow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brandMark{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,#29a5b6,#fff);display:grid;place-items:center;color:#0d2832;font-weight:1000}
+.brandText b{display:block;font-size:17px;letter-spacing:.02em}
+.brandText span{display:block;font-size:11px;color:#c8d8dd}
+.topActions{display:flex;gap:7px}
+.iconBtn{border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;border-radius:12px;padding:9px 10px;font-weight:900;min-width:44px}
+.iconBtn.on{background:#fff;color:var(--dark)}
+.hero{
+  position:relative;overflow:hidden;margin:0;background:
+  radial-gradient(circle at 80% 20%,rgba(255,255,255,.18),transparent 35%),
+  linear-gradient(135deg,#0a5569,#0d2832 60%,#0c7c83);
+  color:#fff;padding:24px 18px 20px;min-height:270px;
+}
+.heroImage{
+  position:absolute;inset:0;background-size:cover;background-position:center;opacity:.28;mix-blend-mode:screen
+}
+.hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,22,30,.04),rgba(5,22,30,.72))}
+.heroContent{position:relative;z-index:2}
+.kicker{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:1000;letter-spacing:.12em;background:rgba(255,255,255,.14);padding:7px 10px;border-radius:999px}
+.hero h1{font-size:31px;line-height:1.2;margin:14px 0 8px;letter-spacing:.01em}
+.heroMeta{display:flex;flex-wrap:wrap;gap:8px;color:#e6f4f6;font-size:14px}
+.heroMeta span{background:rgba(255,255,255,.11);padding:7px 9px;border-radius:10px}
+.countdown{margin-top:16px;display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+.countdown strong{font-size:27px}
+.countdown small{color:#d1e7ea}
+main{padding:14px}
+.section{margin:0 0 18px}
+.sectionHead{display:flex;justify-content:space-between;align-items:end;gap:10px;margin:0 3px 9px}
+.sectionHead h2{font-size:20px;margin:0}.sectionHead span{font-size:12px;color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.nextCard{padding:17px;background:linear-gradient(135deg,#fff,#f1f8f9)}
+.nextTop{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.nextLabel{font-size:12px;font-weight:1000;color:var(--brand);letter-spacing:.08em}
+.nextCard h3{font-size:24px;margin:4px 0 3px}
+.tag{display:inline-flex;border-radius:999px;padding:6px 9px;background:#e6f3ee;color:#155e47;font-size:12px;font-weight:900}
+.quickGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.quick{border:0;background:white;border-radius:18px;padding:16px;text-align:left;box-shadow:var(--shadow);min-height:105px}
+.quick b{display:block;font-size:18px;margin-top:6px}.quick span{display:block;color:var(--muted);font-size:13px;margin-top:3px}
+.quick .emoji{font-size:25px}
+.noticeList{display:grid;gap:10px}
+.notice{display:grid;grid-template-columns:72px 1fr;gap:12px;padding:12px;background:#fff;border:1px solid var(--line);border-radius:18px}
+.noticeThumb{width:72px;height:72px;border-radius:13px;background:#e8f1f3 center/cover no-repeat;display:grid;place-items:center;font-size:27px;color:#597079;overflow:hidden}
+.notice h3{font-size:17px;margin:0 0 3px}.notice p{margin:0;color:#526970;font-size:14px}
+.noticeMeta{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}.noticeMeta span{font-size:11px;padding:4px 7px;border-radius:999px;background:#eef4f5;color:#53676d}
+.linkBtn,.primaryBtn,.ghostBtn,.dangerBtn{
+  border:0;border-radius:14px;padding:12px 14px;font-weight:950;min-height:48px
+}
+.primaryBtn{background:var(--brand);color:#fff}.ghostBtn{background:#edf3f5;color:var(--ink)}.dangerBtn{background:#fff0f1;color:var(--danger);border:1px solid #f0c7ca}.linkBtn{background:#eaf5f7;color:var(--brand);display:inline-flex;align-items:center;gap:6px;margin-top:8px}
+.panel{padding:16px}
+.field{margin-bottom:13px}.field label{display:block;font-size:14px;font-weight:950;margin-bottom:6px}
+.field input,.field textarea,.field select{width:100%;border:1px solid #cbdadd;background:#fff;border-radius:14px;padding:13px;font-size:16px;min-height:50px}
+.field textarea{min-height:100px;resize:vertical}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.adminOnly{display:none}.adminMode .adminOnly{display:block}
+.adminMode .adminFlex{display:flex}
+.mapWrap{border-radius:20px;overflow:hidden;border:1px solid var(--line);background:#dfecee;box-shadow:var(--shadow)}
+#map{height:54vh;min-height:420px}
+.mapToolbar{padding:10px;background:#fff;display:flex;gap:8px;flex-wrap:wrap}
+.mapHint{padding:9px 12px;background:#f6fbfc;border-top:1px solid var(--line);font-size:13px;color:#52676e}
+.mapFallback{padding:20px;background:white;color:#52676e}
+.placeList{display:grid;gap:10px;margin-top:10px}
+.placeRow{display:grid;grid-template-columns:42px 1fr auto;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);padding:11px;border-radius:15px}
+.placeIcon{width:42px;height:42px;border-radius:12px;background:#e8f2f4;display:grid;place-items:center}
+.placeRow b{display:block}.placeRow span{font-size:12px;color:var(--muted)}
+.statusBox{padding:14px;border-radius:16px;background:#eef8f5;border:1px solid #cbe5dc}
+.statusBox.warn{background:#fff7e9;border-color:#edd9b6}
+.statusBox strong{display:block;font-size:18px}
+.personList{display:grid;gap:9px}
+.person{display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:center;padding:12px;background:#fff;border:1px solid var(--line);border-radius:16px}
+.avatar{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:#e5eff1;font-weight:1000}
+.person small{display:block;color:var(--muted)}
+.dot{width:11px;height:11px;border-radius:50%;background:#8ca0a6}.dot.on{background:#21a76f}
+.scheduleList{display:grid;gap:8px}
+.scheduleItem{display:grid;grid-template-columns:74px 1fr;gap:10px;padding:13px;background:#fff;border:1px solid var(--line);border-radius:15px}
+.scheduleTime{font-weight:1000;color:var(--brand)}
+.chatList{display:flex;flex-direction:column;gap:10px;margin-bottom:12px}
+.chatMsg{background:#fff;border:1px solid var(--line);border-radius:17px;padding:12px;box-shadow:0 6px 18px rgba(15,54,66,.05)}
+.chatMsg.mine{border-color:#a9d4da;background:#f5fbfc}.chatHead{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--muted)}
+.chatMsg b{color:var(--ink)}.chatMsg p{margin:6px 0 0;white-space:pre-wrap}
+.chatImg{width:100%;max-height:280px;object-fit:cover;border-radius:12px;margin-top:8px}
+.chatComposer{position:sticky;bottom:76px;z-index:100;background:rgba(246,249,250,.94);padding:10px 0 0;backdrop-filter:blur(10px)}
+.chatBox{background:#fff;border:1px solid var(--line);border-radius:18px;padding:10px}
+.chatBox textarea{width:100%;border:0;outline:0;min-height:74px;resize:none;font-size:16px}
+.chatTools{display:flex;gap:8px;align-items:center;justify-content:space-between}
+.chatTools .left{display:flex;gap:7px;flex-wrap:wrap}
+.fileChip{display:inline-flex;align-items:center;gap:5px;padding:9px 10px;border-radius:12px;background:#eef4f5;font-size:13px;font-weight:900}
+.tabPage{display:none}.tabPage.active{display:block}
+.bottomNav{
+  position:fixed;left:0;right:0;bottom:0;z-index:900;background:rgba(255,255,255,.96);
+  border-top:1px solid #d5e1e4;padding:7px 8px calc(7px + env(safe-area-inset-bottom));
+  display:grid;grid-template-columns:repeat(5,1fr);backdrop-filter:blur(15px)
+}
+.navBtn{border:0;background:none;color:#718289;padding:6px 2px;font-size:11px;font-weight:900}
+.navBtn i{display:block;font-style:normal;font-size:22px;line-height:1.2}.navBtn.on{color:var(--brand)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:105px;z-index:1200;background:#102d37;color:#fff;padding:12px 14px;border-radius:14px;box-shadow:var(--shadow);max-width:90%;font-size:14px}
+.modal{position:fixed;inset:0;z-index:1500;background:rgba(8,26,33,.56);display:grid;place-items:end center;padding:20px}
+.modalCard{width:min(720px,100%);max-height:88vh;overflow:auto;background:#fff;border-radius:24px;padding:18px;box-shadow:var(--shadow)}
+.modalCard h3{margin:0 0 12px;font-size:22px}
+.pillRow{display:flex;gap:7px;flex-wrap:wrap}.pill{border:1px solid #cbdadd;background:#fff;border-radius:999px;padding:8px 10px;font-size:13px;font-weight:900}.pill.on{background:var(--dark);color:#fff}
+.sep{height:1px;background:var(--line);margin:14px 0}
+.small{font-size:12px;color:var(--muted)}
+@media(min-width:720px){
+  body{font-size:18px}.quickGrid{grid-template-columns:repeat(4,1fr)}.hero{padding:34px 28px}.hero h1{font-size:40px}main{padding:20px}
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+<header class="topbar">
+  <div class="topbarRow">
+    <div class="brand">
+      <div class="brandMark">TR</div>
+      <div class="brandText"><b>TABIRUN EVENT BASE</b><span id="modeLabel">大会モード・試作 v1</span></div>
+    </div>
+    <div class="topActions">
+      <button class="iconBtn" id="adminBtn" title="管理者モード">⚙</button>
+      <button class="iconBtn" id="privacyBtn" title="位置共有">📍</button>
+    </div>
+  </div>
+</header>
+
+<section class="tabPage active" id="page-home">
+  <section class="hero">
+    <div class="heroImage" id="heroImage"></div>
+    <div class="heroContent">
+      <div class="kicker">COMPETITION DAY</div>
+      <h1 id="heroTitle">知多スポーツチャレンジ 2026</h1>
+      <div class="heroMeta">
+        <span>📅 2026.10.4（日）</span>
+        <span>🕧 12:30 START</span>
+        <span>🏁 終了時刻 未定</span>
+      </div>
+      <div class="countdown"><strong id="countdownText">開催まで</strong><small id="countdownSub">大会情報を準備中</small></div>
+    </div>
+  </section>
+
+  <main>
+    <section class="section">
+      <div class="sectionHead"><h2>いま確認すること</h2><span>当日の行動を最優先</span></div>
+      <div class="card nextCard">
+        <div class="nextTop">
+          <div>
+            <div class="nextLabel">NEXT</div>
+            <h3 id="nextActionTitle">会場・駐車場を確認</h3>
+            <div id="nextActionText">到着前に、会場と2か所の駐車場出入口を確認してください。</div>
+          </div>
+          <span class="tag" id="eventStateTag">開催前</span>
+        </div>
+        <div class="actions" style="margin-top:12px">
+          <button class="primaryBtn" data-go="map">MAPを開く</button>
+          <button class="ghostBtn" data-go="schedule">予定を見る</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="sectionHead"><h2>大会メニュー</h2><span>大きく・迷わない</span></div>
+      <div class="quickGrid">
+        <button class="quick" data-go="map"><span class="emoji">🗺️</span><b>会場MAP</b><span>会場・駐車場・拠点</span></button>
+        <button class="quick" data-go="schedule"><span class="emoji">⏱️</span><b>予定</b><span>開始・招集・競技情報</span></button>
+        <button class="quick" data-go="live"><span class="emoji">📡</span><b>LIVE</b><span>参加者・指導者の位置</span></button>
+        <button class="quick" data-go="chat"><span class="emoji">💬</span><b>CHAT</b><span>連絡・質問・画像共有</span></button>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="sectionHead"><h2>大会情報・掲示</h2><span>イベント終了後も残せます</span></div>
+      <div class="noticeList" id="noticeList"></div>
+      <div class="card panel adminOnly" style="margin-top:10px">
+        <b style="font-size:18px">＋ 掲示を追加</b>
+        <p class="small">大会要項・速報結果・お知らせ・旅ラン案内・合宿資料など、イベント種別を問わず使えます。掲示は管理者が削除するまで保持できます。</p>
+        <div class="actions"><button class="primaryBtn" id="addNoticeBtn">掲示を作成</button><button class="ghostBtn" id="heroImageBtn">ホーム画像を変更</button></div>
+        <input id="heroImageInput" type="file" accept="image/*" class="hidden">
+      </div>
+    </section>
+  </main>
+</section>
+
+<section class="tabPage" id="page-map">
+  <main>
+    <section class="section">
+      <div class="sectionHead"><h2>会場MAP</h2><span>タップ操作対応</span></div>
+      <div class="mapWrap">
+        <div id="map"></div>
+        <div id="mapFallback" class="mapFallback hidden">地図ライブラリを読み込めませんでした。通信状態を確認してください。</div>
+        <div class="mapToolbar">
+          <button class="primaryBtn" id="fitAllBtn">全体表示</button>
+          <button class="ghostBtn" id="locateBtn">現在地</button>
+          <button class="ghostBtn adminOnly" id="setBaseGpsBtn">現在地を拠点に設定</button>
+          <button class="ghostBtn adminOnly" id="setBaseTapBtn">地図タップで拠点設定</button>
+        </div>
+        <div class="mapHint" id="mapHint">会場・駐車場出入口を表示します。管理者モードでは拠点を現在地または地図タップで設定できます。</div>
+      </div>
+      <div class="placeList" id="placeList"></div>
+    </section>
+  </main>
+</section>
+
+<section class="tabPage" id="page-schedule">
+  <main>
+    <section class="section">
+      <div class="sectionHead"><h2>予定・競技情報</h2><span>未確定は未確定のまま表示</span></div>
+      <div class="scheduleList" id="scheduleList"></div>
+      <div class="card panel adminOnly" style="margin-top:10px">
+        <b>予定を追加</b>
+        <div class="field"><label>時刻</label><input id="scheduleTime" placeholder="例 13:10"></div>
+        <div class="field"><label>内容</label><input id="scheduleTitle" placeholder="例 5000m 第1組"></div>
+        <div class="actions"><button class="primaryBtn" id="addScheduleBtn">追加</button></div>
+      </div>
+    </section>
+  </main>
+</section>
+
+<section class="tabPage" id="page-live">
+  <main>
+    <section class="section">
+      <div class="sectionHead"><h2>LIVE・位置共有</h2><span>イベント時だけ</span></div>
+      <div class="statusBox" id="privacyStatus">
+        <strong>位置共有はOFFです</strong>
+        <div>必要な時間だけONにします。イベント終了処理で位置データは削除し、掲示は残せます。</div>
+      </div>
+      <div class="actions" style="margin:10px 0">
+        <button class="primaryBtn" id="toggleShareBtn">位置共有をON</button>
+        <button class="ghostBtn" data-go="map">MAPで確認</button>
+      </div>
+      <div class="personList" id="personList"></div>
+      <div class="card panel adminOnly" style="margin-top:10px">
+        <b style="font-size:18px">イベント終了処理</b>
+        <p class="small">CHATとLIVE位置情報を削除します。大会要項・速報結果・お知らせなどの掲示は残します。</p>
+        <button class="dangerBtn" id="closeEventBtn">イベント終了 → 一時データを削除</button>
+      </div>
+    </section>
+  </main>
+</section>
+
+<section class="tabPage" id="page-chat">
+  <main>
+    <section class="section">
+      <div class="sectionHead"><h2>CHAT・連絡</h2><span>画像・リンク対応</span></div>
+      <div class="pillRow" id="chatFilters">
+        <button class="pill on" data-filter="all">すべて</button>
+        <button class="pill" data-filter="運営">運営</button>
+        <button class="pill" data-filter="質問">質問</button>
+        <button class="pill" data-filter="応援">応援</button>
+        <button class="pill" data-filter="落とし物">落とし物</button>
+      </div>
+      <div class="chatList" id="chatList" style="margin-top:10px"></div>
+
+      <div class="chatComposer">
+        <div class="chatBox">
+          <textarea id="chatText" placeholder="メッセージを入力"></textarea>
+          <div class="field" style="margin:6px 0"><input id="chatLink" placeholder="外部リンク（任意）"></div>
+          <div class="chatTools">
+            <div class="left">
+              <select id="chatCategory" class="fileChip">
+                <option>運営</option><option>質問</option><option>応援</option><option>落とし物</option>
+              </select>
+              <label class="fileChip">📷 画像<input id="chatImage" type="file" accept="image/*" class="hidden"></label>
+            </div>
+            <button class="primaryBtn" id="sendChatBtn">送信</button>
+          </div>
+          <div class="small" id="chatImageName"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</section>
+
+<nav class="bottomNav">
+  <button class="navBtn on" data-tab="home"><i>⌂</i>HOME</button>
+  <button class="navBtn" data-tab="map"><i>🗺</i>MAP</button>
+  <button class="navBtn" data-tab="schedule"><i>⏱</i>予定</button>
+  <button class="navBtn" data-tab="live"><i>📡</i>LIVE</button>
+  <button class="navBtn" data-tab="chat"><i>💬</i>CHAT</button>
+</nav>
+</div>
+
+<div class="modal hidden" id="noticeModal">
+  <div class="modalCard">
+    <h3>掲示を作成</h3>
+    <div class="field"><label>種類</label><select id="noticeType"><option>大会要項</option><option>速報結果</option><option>お知らせ</option><option>連絡事項</option><option>資料</option><option>その他</option></select></div>
+    <div class="field"><label>タイトル</label><input id="noticeTitle" placeholder="例：大会要項"></div>
+    <div class="field"><label>説明</label><textarea id="noticeBody" placeholder="内容や補足"></textarea></div>
+    <div class="field"><label>外部リンク</label><input id="noticeLink" placeholder="https://..."></div>
+    <div class="field"><label>画像</label><input id="noticeImage" type="file" accept="image/*"></div>
+    <div class="field"><label>保持方法</label><select id="noticeRetention"><option value="persistent">管理者が削除するまで残す</option><option value="event">イベント終了時に削除</option></select></div>
+    <div class="actions"><button class="primaryBtn" id="saveNoticeBtn">保存</button><button class="ghostBtn" id="cancelNoticeBtn">キャンセル</button></div>
+  </div>
+</div>
+
+<div class="toast hidden" id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(() => {
+'use strict';
+
+/* =========================================================
+   BUILDERから将来差し替える「EVENT CONFIG」
+   ========================================================= */
+const EVENT = {
+  id:'demo-competition-2026-10-04',
+  kind:'competition',
+  title:'知多スポーツチャレンジ 2026',
+  startAt:'2026-10-04T12:30:00+09:00',
+  endAt:null,
+  venue:{name:'大会開催場所',lat:34.9947003,lng:136.9481809},
+  parking:[
+    {id:'p1',name:'駐車場出入口 A',lat:34.9962337,lng:136.9442297},
+    {id:'p2',name:'駐車場出入口 B',lat:35.0009999,lng:136.9488022}
+  ],
+  live:{radiusKm:3,beforeHours:3,afterHours:2,deleteAtEnd:true},
+  retention:{chat:'event',live:'event',noticeDefault:'persistent'}
+};
+
+const K = {
+  notices:'tabirun_proto_notices_v1',
+  schedule:'tabirun_proto_schedule_v1',
+  chat:'tabirun_proto_chat_v1',
+  base:'tabirun_proto_base_v1',
+  hero:'tabirun_proto_hero_v1',
+  share:'tabirun_proto_share_v1',
+  people:'tabirun_proto_people_v1',
+  eventClosed:'tabirun_proto_event_closed_v1'
+};
+
+const $=id=>document.getElementById(id);
+const load=(k,f)=>{try{const v=JSON.parse(localStorage.getItem(k));return v??f}catch(e){return f}};
+const save=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const fmtDate=d=>new Intl.DateTimeFormat('ja-JP',{month:'numeric',day:'numeric',weekday:'short',hour:'2-digit',minute:'2-digit'}).format(d);
+const now=()=>new Date();
+
+let admin=false, map=null, mapReady=false, baseMarker=null, myMarker=null, baseTapMode=false, watchId=null;
+let chatFilter='all', pendingChatImage='';
+
+let notices=load(K.notices,[
+  {id:'n1',type:'大会要項',title:'大会要項',body:'競技内容・注意事項・会場案内を掲載するための固定掲示です。',link:'',image:'',retention:'persistent',createdAt:Date.now()-10000},
+  {id:'n2',type:'速報結果',title:'速報結果',body:'大会当日は速報ページへの外部リンクをここに掲示できます。',link:'',image:'',retention:'persistent',createdAt:Date.now()-9000},
+  {id:'n3',type:'お知らせ',title:'会場・駐車場を事前に確認してください',body:'駐車場出入口は2か所あります。到着後、運営拠点を設定します。',link:'',image:'',retention:'persistent',createdAt:Date.now()-8000}
+]);
+let schedule=load(K.schedule,[
+  {id:'s1',time:'12:30',title:'大会開始'},
+  {id:'s2',time:'未定',title:'大会終了'}
+]);
+let messages=load(K.chat,[
+  {id:'c1',name:'運営',category:'運営',text:'大会用CHATの試作です。画像・外部リンクも投稿できます。',link:'',image:'',ts:Date.now()-60000}
+]);
+let base=load(K.base,null);
+let shareState=load(K.share,{on:false,last:null});
+let people=load(K.people,[
+  {id:'coachA',name:'指導者A',role:'指導者',status:'未共有',lat:null,lng:null,updatedAt:null},
+  {id:'athleteA',name:'選手A',role:'選手',status:'未共有',lat:null,lng:null,updatedAt:null},
+  {id:'athleteB',name:'選手B',role:'選手',status:'未共有',lat:null,lng:null,updatedAt:null}
+]);
+
+function toast(msg){
+  const t=$('toast');t.textContent=msg;t.classList.remove('hidden');
+  clearTimeout(t._timer);t._timer=setTimeout(()=>t.classList.add('hidden'),2500);
+}
+
+function dataUrlFromFile(file,maxMb=3){
+  return new Promise((resolve,reject)=>{
+    if(!file)return resolve('');
+    if(file.size>maxMb*1024*1024){reject(new Error('画像は'+maxMb+'MB以下にしてください'));return}
+    const r=new FileReader();r.onload=()=>resolve(String(r.result||''));r.onerror=reject;r.readAsDataURL(file);
+  });
+}
+
+function eventState(){
+  const n=now(), s=new Date(EVENT.startAt), e=EVENT.endAt?new Date(EVENT.endAt):null;
+  if(n<s)return 'before';
+  if(e && n>e)return 'after';
+  return 'during';
+}
+
+function updateCountdown(){
+  const n=now(),s=new Date(EVENT.startAt),diff=s-n,state=eventState();
+  const tag=$('eventStateTag');
+  if(state==='before'){
+    const days=Math.floor(diff/86400000), hrs=Math.floor((diff%86400000)/3600000), mins=Math.max(0,Math.floor((diff%3600000)/60000));
+    $('countdownText').textContent=days>0?`開催まで ${days}日 ${hrs}時間`:`開催まで ${hrs}時間 ${mins}分`;
+    $('countdownSub').textContent='10月4日（日）12:30 START';
+    tag.textContent='開催前';
+    $('nextActionTitle').textContent='会場・駐車場を確認';
+    $('nextActionText').textContent='到着前に、会場と2か所の駐車場出入口を確認してください。';
+  }else if(state==='during'){
+    $('countdownText').textContent='EVENT NOW';
+    $('countdownSub').textContent='大会開催中';
+    tag.textContent='開催中';
+    $('nextActionTitle').textContent='次の予定・現在位置を確認';
+    $('nextActionText').textContent='予定とLIVE位置共有から、参加者・指導者の状況を確認できます。';
+  }else{
+    $('countdownText').textContent='EVENT FINISHED';
+    $('countdownSub').textContent='掲示資料は引き続き確認できます';
+    tag.textContent='終了';
+  }
+}
+
+function renderNotices(){
+  const box=$('noticeList');
+  box.innerHTML=notices.slice().sort((a,b)=>b.createdAt-a.createdAt).map(n=>{
+    const icon=n.type==='大会要項'?'📘':n.type==='速報結果'?'⚡':n.type==='お知らせ'?'📢':'📄';
+    const thumb=n.image?`style="background-image:url('${n.image.replace(/'/g,"%27")}')"`:'';
+    return `<article class="notice">
+      <div class="noticeThumb" ${thumb}>${n.image?'':icon}</div>
+      <div>
+        <h3>${esc(n.title)}</h3>
+        <p>${esc(n.body)}</p>
+        <div class="noticeMeta"><span>${esc(n.type)}</span><span>${n.retention==='persistent'?'管理者削除まで保持':'イベント終了で削除'}</span></div>
+        ${n.link?`<button class="linkBtn" data-open="${esc(n.link)}">↗ 外部リンクを開く</button>`:`<span class="small" style="display:block;margin-top:7px">リンク未設定</span>`}
+        <div class="adminOnly" style="margin-top:8px"><button class="dangerBtn" data-delnotice="${esc(n.id)}">削除</button></div>
+      </div>
+    </article>`;
+  }).join('');
+  box.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>window.open(b.dataset.open,'_blank','noopener'));
+  box.querySelectorAll('[data-delnotice]').forEach(b=>b.onclick=()=>{if(confirm('この掲示を削除しますか？')){notices=notices.filter(x=>x.id!==b.dataset.delnotice);save(K.notices,notices);renderNotices()}});
+}
+
+function renderSchedule(){
+  $('scheduleList').innerHTML=schedule.map(s=>`<div class="scheduleItem"><div class="scheduleTime">${esc(s.time)}</div><div><b>${esc(s.title)}</b></div></div>`).join('');
+}
+
+function renderPeople(){
+  const me = shareState.on ? {id:'me',name:'あなた',role:'参加者',status:'共有中',lat:shareState.last?.lat,lng:shareState.last?.lng,updatedAt:shareState.last?.ts} : null;
+  const rows=(me?[me,...people]:people);
+  $('personList').innerHTML=rows.map(p=>`<div class="person">
+    <div class="avatar">${esc((p.name||'?').slice(0,1))}</div>
+    <div><b>${esc(p.name)}</b><small>${esc(p.role)}｜${esc(p.status)}${p.updatedAt?'｜'+new Date(p.updatedAt).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):''}</small></div>
+    <span class="dot ${p.status==='共有中'?'on':''}"></span>
+  </div>`).join('');
+  const st=$('privacyStatus');
+  if(shareState.on){
+    st.classList.remove('warn');st.innerHTML='<strong>位置共有はONです</strong><div>必要な時間だけ共有します。OFFにすると、この端末の正確な位置表示を停止します。</div>';
+    $('toggleShareBtn').textContent='位置共有をOFF';
+    $('privacyBtn').classList.add('on');
+  }else{
+    st.classList.add('warn');st.innerHTML='<strong>位置共有はOFFです</strong><div>必要な時間だけONにします。イベント終了処理で位置データは削除し、掲示は残せます。</div>';
+    $('toggleShareBtn').textContent='位置共有をON';
+    $('privacyBtn').classList.remove('on');
+  }
+}
+
+function renderChat(){
+  const list=$('chatList');
+  const rows=messages.filter(m=>chatFilter==='all'||m.category===chatFilter).sort((a,b)=>a.ts-b.ts);
+  list.innerHTML=rows.map(m=>`<div class="chatMsg">
+    <div class="chatHead"><span><b>${esc(m.name)}</b> ・ ${esc(m.category)}</span><span>${new Date(m.ts).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})}</span></div>
+    <p>${esc(m.text)}</p>
+    ${m.link?`<button class="linkBtn" data-chatlink="${esc(m.link)}">↗ リンクを開く</button>`:''}
+    ${m.image?`<img class="chatImg" src="${m.image}" alt="">`:''}
+  </div>`).join('')||'<div class="small">このカテゴリーの投稿はありません。</div>';
+  list.querySelectorAll('[data-chatlink]').forEach(b=>b.onclick=()=>window.open(b.dataset.chatlink,'_blank','noopener'));
+}
+
+function renderHero(){
+  $('heroTitle').textContent=EVENT.title;
+  const h=load(K.hero,'');if(h)$('heroImage').style.backgroundImage=`url("${h}")`;
+}
+
+function showTab(tab){
+  document.querySelectorAll('.tabPage').forEach(p=>p.classList.toggle('active',p.id==='page-'+tab));
+  document.querySelectorAll('.navBtn').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
+  window.scrollTo({top:0,behavior:'instant'});
+  if(tab==='map')setTimeout(()=>{initMap();map?.invalidateSize();fitAll()},70);
+}
+
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>showTab(b.dataset.go));
+
+$('adminBtn').onclick=()=>{
+  admin=!admin;document.body.classList.toggle('adminMode',admin);$('adminBtn').classList.toggle('on',admin);
+  renderNotices();toast(admin?'管理者モード ON':'管理者モード OFF');
+};
+$('privacyBtn').onclick=()=>showTab('live');
+
+$('addNoticeBtn').onclick=()=>$('noticeModal').classList.remove('hidden');
+$('cancelNoticeBtn').onclick=()=>$('noticeModal').classList.add('hidden');
+$('noticeModal').onclick=e=>{if(e.target===$('noticeModal'))$('noticeModal').classList.add('hidden')};
+$('saveNoticeBtn').onclick=async()=>{
+  const title=$('noticeTitle').value.trim();if(!title){toast('タイトルを入力してください');return}
+  try{
+    const image=await dataUrlFromFile($('noticeImage').files?.[0],3);
+    notices.push({id:'n'+Date.now(),type:$('noticeType').value,title,body:$('noticeBody').value.trim(),link:$('noticeLink').value.trim(),image,retention:$('noticeRetention').value,createdAt:Date.now()});
+    save(K.notices,notices);$('noticeModal').classList.add('hidden');
+    ['noticeTitle','noticeBody','noticeLink'].forEach(id=>$(id).value='');$('noticeImage').value='';
+    renderNotices();toast('掲示を保存しました');
+  }catch(e){toast(e.message||'画像を保存できませんでした')}
+};
+
+$('heroImageBtn').onclick=()=>$('heroImageInput').click();
+$('heroImageInput').onchange=async()=>{
+  try{const x=await dataUrlFromFile($('heroImageInput').files?.[0],3);save(K.hero,x);renderHero();toast('ホーム画像を変更しました')}
+  catch(e){toast(e.message||'画像を保存できませんでした')}
+};
+
+$('addScheduleBtn').onclick=()=>{
+  const time=$('scheduleTime').value.trim(), title=$('scheduleTitle').value.trim();
+  if(!title){toast('内容を入力してください');return}
+  schedule.splice(Math.max(0,schedule.length-1),0,{id:'s'+Date.now(),time:time||'未定',title});
+  save(K.schedule,schedule);$('scheduleTime').value='';$('scheduleTitle').value='';renderSchedule();toast('予定を追加しました');
+};
+
+$('chatFilters').querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>{
+  chatFilter=b.dataset.filter;$('chatFilters').querySelectorAll('.pill').forEach(x=>x.classList.toggle('on',x===b));renderChat();
+});
+$('chatImage').onchange=async()=>{
+  try{pendingChatImage=await dataUrlFromFile($('chatImage').files?.[0],3);$('chatImageName').textContent=$('chatImage').files?.[0]?.name||''}
+  catch(e){pendingChatImage='';toast(e.message||'画像を読み込めませんでした')}
+};
+$('sendChatBtn').onclick=()=>{
+  const text=$('chatText').value.trim(), link=$('chatLink').value.trim();
+  if(!text&&!link&&!pendingChatImage){toast('メッセージ・リンク・画像のいずれかを入力してください');return}
+  messages.push({id:'c'+Date.now(),name:admin?'運営':'参加者',category:$('chatCategory').value,text,link,image:pendingChatImage,ts:Date.now()});
+  save(K.chat,messages);$('chatText').value='';$('chatLink').value='';$('chatImage').value='';$('chatImageName').textContent='';pendingChatImage='';renderChat();toast('投稿しました');
+};
+
+function haversineKm(a,b){
+  const R=6371,toR=x=>x*Math.PI/180,dLat=toR(b.lat-a.lat),dLng=toR(b.lng-a.lng);
+  const s=Math.sin(dLat/2)**2+Math.cos(toR(a.lat))*Math.cos(toR(b.lat))*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(s));
+}
+
+function maybePromptShare(pos){
+  const dist=haversineKm({lat:pos.coords.latitude,lng:pos.coords.longitude},EVENT.venue);
+  const s=new Date(EVENT.startAt),hours=(s-now())/3600000;
+  if(!shareState.on && dist<=EVENT.live.radiusKm && hours<=EVENT.live.beforeHours && hours>-8){
+    toast('会場付近です。LIVE位置共有をONにすると合流しやすくなります。');
+  }
+  if(shareState.on && dist>EVENT.live.radiusKm && eventState()!=='before'){
+    stopSharing(true);toast('会場から離れたため位置共有をOFFにしました。');
+  }
+}
+
+function startSharing(){
+  if(!navigator.geolocation){toast('この端末では位置情報を利用できません');return}
+  watchId=navigator.geolocation.watchPosition(pos=>{
+    shareState={on:true,last:{lat:pos.coords.latitude,lng:pos.coords.longitude,accuracy:pos.coords.accuracy,ts:Date.now()}};
+    save(K.share,shareState);renderPeople();maybePromptShare(pos);
+    if(mapReady){showMyPosition(shareState.last)}
+  },err=>toast('位置情報を取得できません: '+err.message),{enableHighAccuracy:true,maximumAge:10000,timeout:15000});
+  shareState.on=true;save(K.share,shareState);renderPeople();toast('位置共有をONにしました');
+}
+function stopSharing(auto=false){
+  if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null}
+  shareState={on:false,last:null};save(K.share,shareState);
+  if(myMarker&&map){map.removeLayer(myMarker);myMarker=null}
+  renderPeople();if(!auto)toast('位置共有をOFFにしました');
+}
+$('toggleShareBtn').onclick=()=>shareState.on?stopSharing():startSharing();
+
+$('closeEventBtn').onclick=()=>{
+  if(!confirm('CHATとLIVE位置情報を削除します。掲示は残します。実行しますか？'))return;
+  messages=[];save(K.chat,messages);stopSharing(true);people=people.map(p=>({...p,status:'未共有',lat:null,lng:null,updatedAt:null}));save(K.people,people);
+  localStorage.setItem(K.eventClosed,'1');
+  notices=notices.filter(n=>n.retention==='persistent');save(K.notices,notices);
+  renderChat();renderPeople();renderNotices();toast('一時データを削除しました。掲示は保持しています。');
+};
+
+function markerIcon(emoji,bg='#fff'){
+  return L.divIcon({className:'',html:`<div style="width:38px;height:38px;border-radius:13px;background:${bg};border:2px solid white;box-shadow:0 4px 14px rgba(0,0,0,.25);display:grid;place-items:center;font-size:20px">${emoji}</div>`,iconSize:[38,38],iconAnchor:[19,19]});
+}
+function initMap(){
+  if(mapReady)return;
+  if(!window.L){$('map').classList.add('hidden');$('mapFallback').classList.remove('hidden');return}
+  map=L.map('map',{zoomControl:true,attributionControl:true}).setView([EVENT.venue.lat,EVENT.venue.lng],15);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);
+  L.marker([EVENT.venue.lat,EVENT.venue.lng],{icon:markerIcon('🏟️','#e9f7f8')}).addTo(map).bindPopup('<b>大会開催場所</b>');
+  EVENT.parking.forEach((p,i)=>L.marker([p.lat,p.lng],{icon:markerIcon('P','#fff3d9')}).addTo(map).bindPopup('<b>'+esc(p.name)+'</b><br>駐車場出入口'));
+  if(base){baseMarker=L.marker([base.lat,base.lng],{icon:markerIcon('★','#e9f7ee')}).addTo(map).bindPopup('<b>運営拠点</b>')}
+  if(shareState.on&&shareState.last)showMyPosition(shareState.last);
+  map.on('click',e=>{
+    if(!baseTapMode){$('mapHint').textContent='地図をタップしました。拠点設定を行う場合は「地図タップで拠点設定」を先に押してください。';return}
+    setBase({lat:e.latlng.lat,lng:e.latlng.lng,source:'tap'});baseTapMode=false;$('mapHint').textContent='拠点を設定しました。';
+  });
+  mapReady=true;renderPlaceList();
+}
+function fitAll(){
+  if(!mapReady)return;
+  const pts=[[EVENT.venue.lat,EVENT.venue.lng],...EVENT.parking.map(p=>[p.lat,p.lng])];
+  if(base)pts.push([base.lat,base.lng]);
+  if(shareState.on&&shareState.last)pts.push([shareState.last.lat,shareState.last.lng]);
+  map.fitBounds(pts,{padding:[30,30],maxZoom:16});
+}
+function showMyPosition(p){
+  if(!mapReady)return;
+  if(myMarker)myMarker.setLatLng([p.lat,p.lng]);else myMarker=L.marker([p.lat,p.lng],{icon:markerIcon('●','#d8f0ff')}).addTo(map).bindPopup('あなたの現在地');
+}
+function setBase(p){
+  base={lat:p.lat,lng:p.lng,source:p.source||'gps',setAt:Date.now()};save(K.base,base);
+  if(mapReady){
+    if(baseMarker)baseMarker.setLatLng([base.lat,base.lng]);else baseMarker=L.marker([base.lat,base.lng],{icon:markerIcon('★','#e9f7ee')}).addTo(map).bindPopup('<b>運営拠点</b>');
+    map.panTo([base.lat,base.lng]);
+  }
+  renderPlaceList();toast('運営拠点を設定しました');
+}
+function renderPlaceList(){
+  const rows=[
+    ['🏟️','大会開催場所',`${EVENT.venue.lat.toFixed(6)}, ${EVENT.venue.lng.toFixed(6)}`],
+    ['🅿️',EVENT.parking[0].name,`${EVENT.parking[0].lat.toFixed(6)}, ${EVENT.parking[0].lng.toFixed(6)}`],
+    ['🅿️',EVENT.parking[1].name,`${EVENT.parking[1].lat.toFixed(6)}, ${EVENT.parking[1].lng.toFixed(6)}`],
+    ['⭐','運営拠点',base?`${base.lat.toFixed(6)}, ${base.lng.toFixed(6)}`:'到着後に設定']
+  ];
+  $('placeList').innerHTML=rows.map(r=>`<div class="placeRow"><div class="placeIcon">${r[0]}</div><div><b>${r[1]}</b><span>${r[2]}</span></div><span>›</span></div>`).join('');
+}
+$('fitAllBtn').onclick=fitAll;
+$('locateBtn').onclick=()=>{
+  if(!navigator.geolocation){toast('位置情報を利用できません');return}
+  navigator.geolocation.getCurrentPosition(pos=>{
+    initMap();const p={lat:pos.coords.latitude,lng:pos.coords.longitude,ts:Date.now()};showMyPosition(p);map.setView([p.lat,p.lng],17);maybePromptShare(pos)
+  },err=>toast('現在地を取得できません: '+err.message),{enableHighAccuracy:true,timeout:15000});
+};
+$('setBaseGpsBtn').onclick=()=>{
+  if(!navigator.geolocation){toast('位置情報を利用できません');return}
+  navigator.geolocation.getCurrentPosition(pos=>setBase({lat:pos.coords.latitude,lng:pos.coords.longitude,source:'gps'}),err=>toast('現在地を取得できません: '+err.message),{enableHighAccuracy:true,timeout:15000});
+};
+$('setBaseTapBtn').onclick=()=>{baseTapMode=true;$('mapHint').textContent='地図上の拠点にしたい位置を1回タップしてください。';toast('拠点設定モード：地図をタップしてください')};
+
+function checkAutoCleanup(){
+  if(EVENT.endAt && now()>new Date(EVENT.endAt) && localStorage.getItem(K.eventClosed)!=='1'){
+    messages=[];save(K.chat,messages);stopSharing(true);people=people.map(p=>({...p,status:'未共有',lat:null,lng:null,updatedAt:null}));save(K.people,people);
+    notices=notices.filter(n=>n.retention==='persistent');save(K.notices,notices);localStorage.setItem(K.eventClosed,'1');
+  }
+}
+
+function firstLocationProbe(){
+  if(!navigator.geolocation)return;
+  navigator.geolocation.getCurrentPosition(pos=>maybePromptShare(pos),()=>{}, {enableHighAccuracy:false,maximumAge:600000,timeout:5000});
+}
+
+checkAutoCleanup();
+renderHero();renderNotices();renderSchedule();renderPeople();renderChat();renderPlaceList();updateCountdown();setInterval(updateCountdown,60000);firstLocationProbe();
+})();
+</script>
+</body>
+</html>
