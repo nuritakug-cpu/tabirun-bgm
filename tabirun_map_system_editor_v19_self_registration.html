@@ -1,0 +1,1852 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>旅ラン MAP BLOCK EDITOR v17</title>
+<style>
+:root{
+  --bg:#081d27;--panel:#fff;--ink:#173640;--muted:#6a7c83;
+  --accent:#087990;--manual:#b66721;--danger:#a64444;--ok:#2d7b59
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif}
+body{color:#fff}
+header{padding:17px 18px 14px;border-bottom:1px solid rgba(255,255,255,.1)}
+header h1{font-size:20px;margin:0 0 6px;font-weight:950}
+header p{font-size:12px;line-height:1.7;color:#c8d5d9;margin:0}
+main{max-width:980px;margin:auto;padding:10px}
+.card{background:#fff;color:var(--ink);border-radius:18px;overflow:hidden}
+.head{padding:12px 14px;background:#f4f7f8;border-bottom:1px solid #dae4e7}
+.head strong{font-size:15px}.head p{margin:4px 0 0;font-size:10px;color:var(--muted);line-height:1.55}
+.mapWrap{position:relative}
+#map{height:62vh;min-height:430px;background:#dce5e7}
+.crosshair{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:34px;height:34px;border:3px solid #fff;border-radius:50%;z-index:7;
+  pointer-events:none;box-shadow:0 0 0 2px rgba(8,121,144,.9),0 2px 8px rgba(0,0,0,.25)
+}
+.crosshair:before,.crosshair:after{content:"";position:absolute;background:#087990;left:50%;top:50%;transform:translate(-50%,-50%)}
+.crosshair:before{width:18px;height:3px}.crosshair:after{width:3px;height:18px}
+.mapFloat{
+  position:absolute;right:12px;bottom:12px;z-index:10;
+  display:flex;flex-direction:column;gap:7px
+}
+.mapFloat button{
+  width:48px;height:48px;min-height:48px;border-radius:50%;
+  border:0;background:rgba(7,31,43,.93);color:#fff;
+  font-size:20px;font-weight:900;box-shadow:0 2px 8px rgba(0,0,0,.25)
+}
+.mapFloat button.smallText{font-size:10px;line-height:1.1;padding:4px}
+.mapFloat button.cancel{background:rgba(166,68,68,.95)}
+
+.status{
+  position:absolute;left:12px;right:12px;top:12px;z-index:8;pointer-events:none
+}
+.status span{
+  display:inline-block;background:rgba(7,31,43,.92);color:#fff;padding:9px 11px;
+  border-radius:11px;font-size:10px;line-height:1.5
+}
+.saveState{
+  position:absolute;left:12px;top:58px;z-index:8;pointer-events:none;
+  background:rgba(255,255,255,.94);color:#17323e;border:1px solid #cfdde3;
+  border-radius:10px;padding:7px 9px;font-size:9px;font-weight:900;line-height:1.45;
+  box-shadow:0 3px 10px rgba(0,0,0,.12);max-width:72%
+}
+.saveState.saving{background:#fff7dd;color:#725700}
+.modeStrip{
+  padding:9px 11px;background:#edf5f7;color:#24515d;font-size:10px;line-height:1.55
+}
+.controls{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;padding:9px;background:#fff}
+.controls button,.manualPanel button,.panel button{
+  border:0;border-radius:11px;min-height:44px;padding:9px 8px;font-size:11px;font-weight:900
+}
+.primary{background:var(--accent);color:#fff}
+.secondary{background:#e9eff1;color:#28464e}
+.manualBtn{background:#f3e5d6;color:#7c4c1b}
+.danger{background:#f5e5e5;color:#8f3737}
+.ok{background:#e5f1ea;color:#286a49}
+.manualPanel{
+  display:none;background:#fff8ed;color:#684622;padding:11px;border-top:1px solid #efd8b8
+}
+.manualPanel.show{display:block}
+.manualPanel h3{font-size:13px;margin:0 0 7px}
+.manualPanel p{font-size:10px;line-height:1.6;margin:0 0 8px;color:#775d43}
+.manualActions{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}
+.manualActions .wide{grid-column:1/-1}
+.step{
+  padding:7px 9px;border-radius:10px;background:#fff;border:1px solid #ebd5b7;
+  font-size:10px;line-height:1.5;margin-bottom:7px
+}
+.step b{font-size:11px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.panel{background:#fff;color:var(--ink);border-radius:16px;padding:12px}
+.panel h2{font-size:13px;margin:0 0 9px}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.metric{background:#f2f6f7;border-radius:11px;padding:9px}
+.metric b{display:block;font-size:16px}.metric span{font-size:9px;color:var(--muted)}
+label{display:block;font-size:10px;font-weight:900;margin:8px 0 4px}
+input,select,textarea{
+  width:100%;border:1px solid #ccd9dd;border-radius:10px;padding:10px;font-size:16px;background:#fff;color:#173640
+}
+textarea{min-height:76px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.list{display:flex;flex-direction:column;gap:6px;max-height:180px;overflow:auto;margin-top:8px}
+.item{border:1px solid #dfe7e9;border-radius:10px;padding:8px;font-size:10px;line-height:1.45}
+.item button{float:right;min-height:30px;padding:4px 7px}
+.note{font-size:10px;line-height:1.6;color:var(--muted);margin-top:7px}
+
+.manualMapControls{
+  display:none;
+  position:absolute;
+  left:10px;
+  right:70px;
+  bottom:10px;
+  z-index:12;
+  background:rgba(255,248,237,.96);
+  border:1px solid rgba(182,103,33,.35);
+  border-radius:14px;
+  padding:8px;
+  box-shadow:0 3px 14px rgba(0,0,0,.22);
+}
+.manualMapControls.show{display:block}
+.manualMapStep{
+  color:#654522;
+  font-size:10px;
+  line-height:1.45;
+  margin-bottom:6px;
+  font-weight:800
+}
+.manualMapActions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:6px
+}
+.manualMapActions button{
+  border:0;
+  border-radius:10px;
+  min-height:43px;
+  padding:7px 6px;
+  font-size:10px;
+  font-weight:900
+}
+.manualMapActions .add{
+  grid-column:1/-1;
+  background:#b66721;
+  color:#fff;
+  font-size:12px
+}
+.manualMapActions .finish{background:#2d7b59;color:#fff}
+.manualMapActions .undo{background:#e9eff1;color:#29464e}
+.manualMapActions .cancel{background:#a64444;color:#fff}
+
+.pointMapControls{
+  display:none;
+  position:absolute;
+  left:10px;
+  right:70px;
+  bottom:10px;
+  z-index:13;
+  background:rgba(240,250,252,.97);
+  border:1px solid rgba(8,121,144,.28);
+  border-radius:14px;
+  padding:9px;
+  box-shadow:0 3px 14px rgba(0,0,0,.22);
+}
+.pointMapControls.show{display:block}
+.pointMapStep{font-size:10px;line-height:1.5;font-weight:900;color:#1f5663;margin-bottom:7px}
+.pointMapActions{display:grid;grid-template-columns:2fr 1fr;gap:7px}
+.pointMapActions button{border:0;border-radius:10px;min-height:44px;padding:8px;font-size:11px;font-weight:900}
+.pointMapActions .confirm{background:#087990;color:#fff}
+.pointMapActions .cancel{background:#e9eff1;color:#29464e}
+.editState{background:#eef6f8;border:1px solid #d4e6ea;border-radius:10px;padding:8px 9px;font-size:10px;font-weight:900;line-height:1.45;margin-bottom:7px}
+.panelActions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}
+.panelActions .wide{grid-column:1/-1}
+.itemActions{display:flex;gap:5px;justify-content:flex-end;flex-wrap:wrap;margin-bottom:5px}
+.itemActions button{float:none!important;min-height:30px!important;padding:4px 7px!important}
+.manualMapControls .miniToggle{
+  position:absolute;right:7px;top:7px;
+  width:30px;height:30px;min-height:30px;
+  border:0;border-radius:50%;
+  background:#6e573f;color:#fff;font-size:15px;font-weight:900
+}
+.manualMapControls.minimized{
+  left:8px;right:auto;width:226px;padding:7px
+}
+.manualMapControls.minimized .manualMapStep,
+.manualMapControls.minimized .undo,
+.manualMapControls.minimized .cancel{
+  display:none
+}
+.manualMapControls.minimized .manualMapActions{
+  display:grid;grid-template-columns:1fr 1fr;gap:6px;padding-right:34px
+}
+.manualMapControls.minimized .manualMapActions .add{
+  width:100%;min-height:42px;grid-column:auto;font-size:10px
+}
+.manualMapControls.minimized .manualMapActions .finish{
+  display:block;min-height:42px;font-size:10px
+}
+.cpCoord{font-size:9px;color:#71848b;margin-top:3px;font-variant-numeric:tabular-nums}
+
+.mapFloat button.restore{background:rgba(45,123,89,.95);font-size:9px;line-height:1.05}
+@media(max-width:420px){
+  .manualMapControls{right:62px;left:7px;bottom:7px}
+  .pointMapControls{right:62px;left:7px;bottom:7px}
+  .manualMapActions button{min-height:42px}
+}
+
+@media(max-width:760px){
+  .grid{grid-template-columns:1fr}
+  #map{height:58vh;min-height:410px}
+  .controls{grid-template-columns:repeat(2,1fr)}
+}
+
+/* === TABIRUN MODULE: PROJECT / MAP BLOCK CONFIG v17 === */
+.projectBlock{margin-bottom:12px}
+.projectBlock .head{background:linear-gradient(135deg,#102d38,#17495a)}
+.blockGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:12px}
+.blockGrid .wide2{grid-column:span 2}
+.blockGrid .wide4{grid-column:1/-1}
+.blockGrid label{font-size:9px;font-weight:900;color:#4e6670;margin:0 0 4px;display:block}
+.blockGrid input,.blockGrid select{width:100%;box-sizing:border-box}
+.blockModeRow{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.blockModeInfo{font-size:10px;line-height:1.55;color:#536a73;background:#f5f9fa;border:1px solid #dce8eb;padding:9px 10px}
+.blockChecks{display:flex;flex-wrap:wrap;gap:9px 14px;align-items:center}
+.blockChecks label{display:flex;gap:6px;align-items:center;margin:0;color:#324c55;font-size:10px}
+.blockChecks input{width:auto}
+.blockActions{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.moduleBadge{display:inline-flex;align-items:center;gap:5px;padding:4px 7px;border:1px solid #c8d9dd;background:#fff;font-size:8px;font-weight:900;color:#31535e;margin:2px 3px 2px 0}
+.moduleBadge.on:before{content:'●';color:#2d7b59}.moduleBadge.off:before{content:'○';color:#9aa9ae}
+.isModuleOff{display:none!important}
+@media(max-width:760px){.blockGrid{grid-template-columns:1fr 1fr}.blockGrid .wide2,.blockGrid .wide4{grid-column:1/-1}}
+/* === TABIRUN MODULE: EVENT WATCH / CAMP WATCH v17 === */
+.watchPanel .watchLead{font-size:10px;line-height:1.65;color:#516971;background:#f4f8f9;border:1px solid #d8e5e8;padding:9px 10px;margin-bottom:9px}
+.watchPanel .inline3{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.watchPanel .inline2{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}
+.watchPanel .gpsActions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}
+.roleRow{display:grid;grid-template-columns:34px 1.3fr .8fr .65fr auto;gap:6px;align-items:center;padding:8px;border:1px solid #dce7e9;background:#fff;margin-top:6px}
+.roleRow input[type=color]{width:32px;height:30px;padding:0;border:0;background:transparent}
+.roleRow input[type=text]{min-width:0}
+.roleRow .tinyCheck{display:flex;align-items:center;gap:4px;font-size:9px;font-weight:800}
+.statusPill{display:inline-block;padding:2px 6px;border:1px solid #ccdadd;background:#f6f9fa;font-size:8px;font-weight:900;margin-left:4px}
+.staleFresh{opacity:1}.staleCaution{opacity:.76}.staleOld{opacity:.5}.staleVeryOld{opacity:.32}
+@media(max-width:760px){.watchPanel .inline3{grid-template-columns:1fr}.watchPanel .inline2,.watchPanel .gpsActions{grid-template-columns:1fr}.roleRow{grid-template-columns:30px 1fr 52px;}.roleRow .roleVisible,.roleRow .roleDelete{grid-column:auto}}
+
+</style>
+</head>
+<body>
+<header>
+  <h1>旅ラン MAP BLOCK EDITOR v17</h1>
+  <p>既存MAPを作り直さず、イベント・ルート・STAGE設定だけ差し替えて再利用するための汎用エディタです。STAGE型／チェックポイント型／MAP ONLY型を同じMAP COREで管理し、大会・合宿では拠点・役割別表示・最終確認位置・選手別競技予定・駐車場出入口を追加できます。</p>
+</header>
+
+<main>
+<!-- === TABIRUN MODULE: PROJECT / MAP BLOCK CONFIG v17 === -->
+<section class="card projectBlock" id="projectBlock">
+  <div class="head">
+    <strong>MAP BLOCK / 移設設定</strong>
+    <p>ルートそのものは維持したまま、イベント・ルート・構成だけを差し替えます。ここを変更しても座標・CP・注意点は削除しません。</p>
+  </div>
+  <div class="blockGrid">
+    <div class="wide2"><label for="projectId">PROJECT ID / EVENT ID</label><input id="projectId" placeholder="例：chita-tabirun-2026"></div>
+    <div class="wide2"><label for="eventName">イベント名</label><input id="eventName" placeholder="例：知多半島 旅ランQUEST"></div>
+    <div class="wide2"><label for="routeId">ROUTE ID</label><input id="routeId" placeholder="例：chita-main"></div>
+    <div class="wide2"><label for="routeName">ルート名</label><input id="routeName" placeholder="例：阿久比→内海"></div>
+    <div class="wide4">
+      <label for="mapMode">MAP構成</label>
+      <select id="mapMode">
+        <option value="staged">STAGE + CHECKPOINT｜今回の旅ラン型</option>
+        <option value="checkpoint">CHECKPOINT ROUTE｜STAGEなし</option>
+        <option value="map_only">MAP ONLY｜STAGE・CHECKPOINTなし</option>
+      </select>
+    </div>
+    <div id="stageFields" class="wide4">
+      <div class="blockModeRow">
+        <div><label for="stageOrder">STAGE順</label><input id="stageOrder" type="number" min="1" step="1" value="1"></div>
+        <div><label for="stageId">STAGE ID</label><input id="stageId" placeholder="stage-1"></div>
+        <div><label for="stageName">STAGE名</label><input id="stageName" placeholder="STAGE 1"></div>
+      </div>
+    </div>
+    <div class="wide4 blockChecks">
+      <label><input id="featureWarnings" type="checkbox" checked>注意点ブロック</label>
+      <label><input id="featureToilets" type="checkbox" checked>トイレブロック</label>
+      <label><input id="featureOverviews" type="checkbox" checked>区間概要ブロック</label>
+      <label><input id="featureBasePoints" type="checkbox" checked>大会・合宿 拠点</label>
+      <label><input id="featureParkingEntrances" type="checkbox" checked>駐車場出入口</label>
+      <label><input id="featureParticipants" type="checkbox" checked>見守り参加者</label>
+      <label><input id="featureSchedules" type="checkbox" checked>選手競技予定</label>
+    </div>
+    <div class="wide4 blockModeInfo" id="modeHelp"></div>
+    <div class="wide4" id="moduleStatus"></div>
+    <div class="wide4 blockActions">
+      <button type="button" id="projectSaveBtn" class="ok">設定を保存</button>
+      <button type="button" id="projectCloneBtn" class="primary">別イベント／ルートへ複製</button>
+    </div>
+  </div>
+</section>
+
+<!-- === TABIRUN MODULE: MAP CORE v15-compatible === -->
+<section class="card">
+  <div class="head">
+    <strong id="titleView">STAGE 1 / 阿久比町役場 → 河和口駅</strong>
+    <p>青線＝QUESTで使う正規ルート。通常区間は自動下書き、Google非認識区間だけ手動固定します。</p>
+  </div>
+
+  <div class="mapWrap">
+    <div id="map"></div>
+    <div class="crosshair"></div>
+    <div class="status"><span id="status">Googleマップを準備しています…</span></div>
+    <div class="saveState" id="saveState">保存状態を確認中…</div>
+    <div class="mapFloat">
+      <button type="button" id="zoomInBtn" aria-label="拡大">＋</button>
+      <button type="button" id="zoomOutBtn" aria-label="縮小">−</button>
+      <button type="button" id="viewRestoreBtn" class="restore" aria-label="表示を戻す">表示<br>戻す</button>
+      <button type="button" id="mapResetBtn" class="smallText" aria-label="全体表示">全体</button>
+    </div>
+    <div class="manualMapControls" id="manualMapControls">
+      <button type="button" id="manualMiniBtn" class="miniToggle" aria-label="操作窓を小さくする">−</button>
+      <div class="manualMapStep" id="manualMapStep">開始位置を中央の＋に合わせてください。</div>
+      <div class="manualMapActions">
+        <button type="button" id="manualAddBtn" class="add">開始点にする</button>
+        <button type="button" id="manualUndoBtn" class="undo">1点戻す</button>
+        <button type="button" id="manualFinishBtn" class="finish" disabled>ここで終了</button>
+        <button type="button" id="manualEndBtn" class="finish" disabled>ここを終点にする</button>
+        <button type="button" id="manualCancelBtn" class="cancel">取消</button>
+      </div>
+    </div>
+    <div class="pointMapControls" id="pointMapControls">
+      <div class="pointMapStep" id="pointMapStep">地図を動かして中央の＋を目的位置に合わせてください。</div>
+      <div class="pointMapActions">
+        <button type="button" id="pointConfirmBtn" class="confirm">この位置に決定</button>
+        <button type="button" id="pointCancelBtn" class="cancel">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modeStrip" id="modeStrip">通常モード：地図を自由に動かせます。マーカーはタップしても移動しません。</div>
+
+  <div class="controls">
+    <button type="button" id="s1Btn" class="primary">知多STAGE 1 下書き生成／作り直し</button>
+    <button type="button" id="manualStartBtn" class="manualBtn">✍ 手動区間を直す</button>
+    <button type="button" id="gpsBtn" class="secondary">◎ GPS</button>
+    <button type="button" id="fitBtn" class="secondary">全体表示</button>
+    <button type="button" id="undoSaveBtn" class="ok">↶ 直前に戻す</button>
+  </div>
+
+</section>
+
+<div class="grid">
+  <section class="panel">
+    <h2>距離</h2>
+    <div class="metrics">
+      <div class="metric"><b id="totalKm">0.00 km</b><span>ルート総距離</span></div>
+      <div class="metric"><b id="accuracy">--</b><span>GPS精度</span></div>
+      <div class="metric"><b id="straightKm">--</b><span>目標まで直線距離</span></div>
+      <div class="metric"><b id="remainKm">--</b><span>ルート残り距離</span></div>
+    </div>
+    <label for="targetCp">距離表示するチェックポイント（編集用ではありません）</label>
+    <select id="targetCp"><option value="">未選択</option></select>
+  </section>
+
+  <section class="panel" id="warningPanel">
+    <h2>⚠ 注意点</h2>
+    <div class="note">地図上には順番番号を表示しません。管理IDは編集画面だけで識別するためのもので、走行順ではありません。</div>
+    <div class="editState" id="warnEditState">新規追加用の入力欄です。既存ポイントを直す場合は、下の一覧から「内容編集」を押してください。</div>
+    <div class="row">
+      <div>
+        <label for="warnType">種類</label>
+        <select id="warnType">
+          <option value="crosswalk">🚸 横断歩道</option>
+          <option value="intersection">⚠ 危険交差点</option>
+          <option value="sidewalk">↔ 歩道左右指定</option>
+          <option value="narrow">⚠ 狭路</option>
+          <option value="turn">↪ 曲がり注意</option>
+          <option value="coast">🌊 海岸出入口</option>
+        </select>
+      </div>
+      <div>
+        <label for="warnRadius">通知</label>
+        <select id="warnRadius"><option>50</option><option selected>100</option><option>150</option><option>200</option></select>
+      </div>
+    </div>
+    <label for="warnTitle">見出し</label>
+    <input id="warnTitle" placeholder="例：ここで東側へ横断">
+    <label for="warnNote">説明</label>
+    <textarea id="warnNote" placeholder="例：信号のある横断歩道を渡る"></textarea>
+    <div class="panelActions">
+      <button type="button" id="warnAddBtn" class="primary">新規注意点を追加</button>
+      <button type="button" id="warnSaveEditBtn" class="ok" disabled>選択中の内容を保存</button>
+      <button type="button" id="warnNewBtn" class="secondary wide">新規入力に戻す</button>
+    </div>
+    <div class="note">新規追加：内容を入力→「新規注意点を追加」→地図を動かす→「この位置に決定」。既存修正：一覧の「内容編集」または「位置変更」を使います。</div>
+    <div class="list" id="warnList"></div>
+  </section>
+
+  <section class="panel" id="cpPanel">
+    <h2>📍 チェックポイント</h2>
+    <div class="note">C1・C2…だけが走行順です。番号は作成順ではなく、現在のルート上の位置順で自動表示します。</div>
+    <label for="cpName">新規チェックポイント名</label>
+    <input id="cpName" placeholder="例：半田赤レンガ建物">
+    <button type="button" id="cpAddBtn" class="primary" style="width:100%;margin-top:8px">新規CPを追加</button>
+    <div class="note">通常時にC1/C2…を触っても位置は変わりません。既存CPを動かすときだけ、一覧の「位置変更」を押してください。</div>
+    <div class="list" id="cpList"></div>
+  </section>
+
+  <section class="panel" id="overviewPanel">
+    <h2>📝 ルート概要</h2>
+    <div class="note">「どのチェックポイントから、どのチェックポイントへ」の説明文を、このルートJSONの中に保存します。分岐・EXTRAも任意の組み合わせで登録できます。</div>
+    <div class="row">
+      <div><label for="overviewFrom">出発CP</label><select id="overviewFrom"></select></div>
+      <div><label for="overviewTo">到着CP</label><select id="overviewTo"></select></div>
+    </div>
+    <label for="overviewText">ルート概要</label>
+    <textarea id="overviewText" style="min-height:180px" placeholder="この区間の景色・注意点・補給情報など"></textarea>
+    <div class="panelActions">
+      <button type="button" id="overviewSaveBtn" class="ok">この区間の概要を保存</button>
+      <button type="button" id="overviewDeleteBtn" class="danger">この区間の概要を削除</button>
+    </div>
+    <div class="note">保存キーは「出発CP名→到着CP名」です。QUEST本体も同じキーを読む設計に統一します。</div>
+    <div class="list" id="overviewList"></div>
+  </section>
+
+  <section class="panel" id="toiletPanel">
+    <h2>🚻 トイレ</h2>
+    <div class="note">地図上は🚻アイコンだけを表示します。管理IDは編集用で、走行順を意味しません。</div>
+    <div class="editState" id="toiletEditState">新規追加用の入力欄です。既存トイレを直す場合は、下の一覧から「内容編集」を押してください。</div>
+    <label for="toiletName">施設名</label>
+    <input id="toiletName" placeholder="例：半田運河公衆トイレ">
+    <label for="toiletNote">補足・説明</label>
+    <textarea id="toiletNote" placeholder="例：公園内／駅改札外／コンビニなど"></textarea>
+    <div class="panelActions">
+      <button type="button" id="toiletAddBtn" class="primary">新規トイレを追加</button>
+      <button type="button" id="toiletSaveEditBtn" class="ok" disabled>選択中の内容を保存</button>
+      <button type="button" id="toiletNewBtn" class="secondary wide">新規入力に戻す</button>
+    </div>
+    <div class="note">新規追加：施設名を入力→「新規トイレを追加」→地図を動かす→「この位置に決定」。既存修正は一覧から選びます。</div>
+    <div class="list" id="toiletList"></div>
+  </section>
+
+  <!-- === TABIRUN MODULE: BASE POINT v17 === -->
+  <section class="panel watchPanel" id="basePointPanel">
+    <h2>⛺ 大会・合宿 拠点</h2>
+    <div class="watchLead">テント・本部・集合場所などの固定拠点です。人の現在地とは別データとして保持します。指導者・コーチ・保護者が現地でGPS登録できる構造です。</div>
+    <label for="baseName">拠点名</label><input id="baseName" placeholder="例：チーム本部テント">
+    <div class="inline2"><div><label for="baseType">種類</label><select id="baseType"><option value="headquarters">本部</option><option value="team_tent" selected>チームテント</option><option value="meeting">集合場所</option><option value="waiting">待機場所</option><option value="aid">補給拠点</option><option value="other">その他</option></select></div><div><label for="baseRegistrarRole">登録者役割</label><select id="baseRegistrarRole"></select></div></div>
+    <label for="baseRegistrarName">登録者名（任意）</label><input id="baseRegistrarName" placeholder="例：山田コーチ">
+    <label for="baseNote">補足</label><textarea id="baseNote" placeholder="例：青いテント／招集所の北側"></textarea>
+    <div class="gpsActions"><button type="button" id="baseGpsBtn" class="ok">◎ GPS現在地で拠点登録</button><button type="button" id="baseMapBtn" class="primary">地図で位置指定</button></div>
+    <div class="list" id="basePointList"></div>
+  </section>
+
+  <!-- === TABIRUN MODULE: PARKING ENTRANCE v17 === -->
+  <section class="panel watchPanel" id="parkingEntrancePanel">
+    <h2>🅿 駐車場出入口</h2>
+    <div class="watchLead">車両の駐車位置は登録しません。必要なのは会場へ出入りするための<strong>駐車場出入口</strong>だけです。入口・出口・共用を固定ポイントとして表示します。</div>
+    <label for="parkingName">表示名</label><input id="parkingName" placeholder="例：第2駐車場 西側入口">
+    <div class="inline2"><div><label for="parkingKind">区分</label><select id="parkingKind"><option value="both">出入口</option><option value="entrance">入口</option><option value="exit">出口</option></select></div><div><label for="parkingNote">短い補足</label><input id="parkingNote" placeholder="例：左折入場のみ"></div></div>
+    <div class="gpsActions"><button type="button" id="parkingGpsBtn" class="ok">◎ GPS現在地で入口登録</button><button type="button" id="parkingMapBtn" class="primary">地図で位置指定</button></div>
+    <div class="list" id="parkingEntranceList"></div>
+  </section>
+
+  <!-- === TABIRUN MODULE: ROLE CONFIG v17 === -->
+  <section class="panel watchPanel" id="rolePanel">
+    <h2>👥 ROLE / 表示色</h2>
+    <div class="watchLead">人の位置マーカーは役割ごとに区別します。初期設定では<strong>指導者を専用色</strong>にしています。色・略号・表示ON/OFFはここだけで変更できます。</div>
+    <div id="roleList"></div>
+    <div class="inline3" style="margin-top:9px"><div><label for="newRoleName">役割追加</label><input id="newRoleName" placeholder="例：マネージャー"></div><div><label for="newRoleIcon">略号</label><input id="newRoleIcon" maxlength="2" placeholder="M"></div><div><label for="newRoleColor">色</label><input id="newRoleColor" type="color" value="#3d6f8f"></div></div>
+    <button type="button" id="roleAddBtn" class="primary" style="width:100%;margin-top:7px">役割を追加</button>
+  </section>
+
+  <!-- === TABIRUN MODULE: RUNTIME SELF REGISTRATION v19 === -->
+  <section class="panel watchPanel" id="participantPanel">
+    <h2>📱 参加者は本体で自由登録</h2>
+    <div class="watchLead"><strong>参加者をエディタへ事前登録しません。</strong> 大会・合宿の本体公開後に、選手・保護者・指導者・コーチが自分のスマホから登録します。</div>
+    <div class="item"><strong>全員が入力</strong><div>名前 ／ 役割（選手・指導者・コーチ・保護者）</div></div>
+    <div class="item"><strong>選手だけ入力</strong><div>競技種目 ／ 競技時間</div></div>
+    <div class="note">投稿された参加者・競技予定は本体側の DATA ADAPTER に保存します。エディタのMAP設定とは別データなので、ルートや会場MAPを更新して本体を再生成しても参加者投稿を作り直さない設計です。</div>
+    <div style="display:none" aria-hidden="true">
+      <div id="participantEditState"></div><input id="participantName"><select id="participantRole"></select><input id="participantTeam"><input id="participantBib">
+      <select id="participantStatus"><option value="unknown">未確認</option><option value="waiting">待機</option></select><input id="participantConfirmedBy"><textarea id="participantNote"></textarea>
+      <button id="participantAddBtn" type="button"></button><button id="participantSaveBtn" type="button"></button><button id="participantNewBtn" type="button"></button><button id="participantGpsBtn" type="button"></button><div id="participantList"></div>
+    </div>
+  </section>
+
+  <section class="panel watchPanel" id="schedulePanel">
+    <h2>⏱ 競技予定も本体投稿</h2>
+    <div class="watchLead">選手本人が参加登録時に<strong>競技種目・競技時間</strong>を入力します。エディタで選手別予定を作成する必要はありません。</div>
+    <div class="note">将来、複数種目登録や招集時間を追加する場合も RUNTIME REGISTRATION MODULE の更新だけで拡張します。</div>
+    <div style="display:none" aria-hidden="true">
+      <select id="schedulePerson"></select><input id="scheduleEvent"><input id="scheduleCall"><input id="scheduleStart"><input id="scheduleEnd"><input id="scheduleNote"><button id="scheduleAddBtn" type="button"></button><div id="scheduleList"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="systemBuildPanel">
+    <h2>🧩 SYSTEM BUILD</h2>
+    <div class="watchLead">このエディタを設計元（SOURCE OF TRUTH）にします。MAP・拠点・駐車場出入口・ROLEをMAP BLOCKから本体へ渡します。参加者・競技予定は本体公開後の自由投稿データとして別管理します。</div>
+    <div class="row">
+      <button type="button" id="runtimePreviewBtn" class="primary">本体プレビュー</button>
+      <button type="button" id="runtimeExportBtn" class="ok">本体HTML書き出し</button>
+    </div>
+    <div class="note">会場設定はエディタ → MAP BLOCK → 本体生成の一方向です。参加者投稿は本体 DATA ADAPTER 側に残すため、MAPを更新して本体を再生成しても参加者を再登録しない設計です。将来Firebaseを導入するときはDATA ADAPTERだけ差し替えます。</div>
+    <div id="runtimeBuildState" class="editState">RUNTIME 2.0｜SELF REGISTRATION｜MAP BLOCK v19</div>
+  </section>
+
+  <section class="panel">
+    <h2>保存</h2>
+    <div class="row">
+      <button type="button" id="saveBtn" class="ok">端末保存</button>
+      <button type="button" id="exportBtn" class="primary">JSON保存</button>
+    </div>
+    <button type="button" id="importBtn" class="secondary" style="width:100%;margin-top:7px">JSON復元</button>
+    <input type="file" id="importInput" accept="application/json,.json" style="display:none">
+    <button type="button" id="apiBtn" class="secondary" style="width:100%;margin-top:7px">APIキー設定</button>
+    <div class="note">v19はMAPをブロック単位で保存し、同じデータから見守りシステム本体を自動生成します。大会・合宿見守り用の拠点・ROLE・駐車場出入口を設定し、参加者・競技予定は生成後の本体で自由投稿します。旧v15/v13/v12/v10のJSON・端末保存も読み込み可能です。STAGE型では同じPROJECT ID / ROUTE IDでSTAGE IDを変えて保存、STAGEなし型ではCHECKPOINT ROUTE、MAP ONLY型ではルート線だけを再利用できます。モードを切り替えても既存CP・注意点データは削除せず保持します。変更のたびに直前状態を最大5世代まで自動バックアップします。</div>
+  </section>
+</div>
+</main>
+
+<script>
+(() => {
+'use strict';
+
+const API_KEY_STORAGE='tabirun_google_maps_api_key';
+let ACTIVE_SECTION=1;
+const STORAGE_KEY='tabirun_map_block_editor_v19_current';
+const HISTORY_KEY=STORAGE_KEY+'_history';
+const MAX_HISTORY=5;
+
+const SECTION1_CONTROLS=[
+  {lat:34.9328950,lng:136.9152500},
+  {lat:34.9132500,lng:136.9127778},
+  {lat:34.9096944,lng:136.9136389},
+  {lat:34.9011944,lng:136.9290556},
+  {lat:34.9010833,lng:136.9312500},
+  {lat:34.8990833,lng:136.9318333},
+  {lat:34.8919810,lng:136.9347100},
+  {lat:34.8783611,lng:136.9375000},
+  {lat:34.8583056,lng:136.9248056},
+  {lat:34.8583889,lng:136.9251389},
+  {lat:34.8348333,lng:136.9218611},
+  {lat:34.8172222,lng:136.9214444},
+  {lat:34.8058056,lng:136.9213611},
+  {lat:34.7986389,lng:136.9189722},
+  {lat:34.7977370,lng:136.9192940}
+];
+
+const SECTION1_CPS=[
+  {name:'阿久比町役場',lat:34.9328950,lng:136.9152500},
+  {name:'半田赤レンガ建物',lat:34.9016044,lng:136.9283617},
+  {name:'半田運河',lat:34.8919811,lng:136.9347103},
+  {name:'武豊工業地帯',lat:34.8449736,lng:136.9247824},
+  {name:'河和口海岸',lat:34.8038742,lng:136.9190097},
+  {name:'河和口駅',lat:34.7977370,lng:136.9192940}
+];
+
+let map=null,line=null;
+let controls=[],segments=[],segmentTypes=[],route=[];
+let warnings=[],checkpoints=[],toilets=[],routeOverviews={};
+let basePoints=[],parkingEntrances=[],participants=[],athleteSchedules=[];
+let roleConfig=[
+  {id:'athlete',name:'選手',icon:'選',color:'#2d7b59',visible:true,builtin:true},
+  {id:'instructor',name:'指導者',icon:'指',color:'#b23a2e',visible:true,builtin:true},
+  {id:'coach',name:'コーチ',icon:'コ',color:'#5b4ab5',visible:true,builtin:true},
+  {id:'guardian',name:'保護者',icon:'保',color:'#6b7780',visible:true,builtin:true}
+];
+const WATCH_SETTINGS={parkingMode:'entrance_only',allowedBaseRegistrarRoles:['instructor','coach','guardian'],staleMinutes:{fresh:10,caution:30,old:60}};
+
+/* === TABIRUN MODULE MANIFEST v17 ===
+   CORE is inherited from v15. New projects change metadata/modules, not the MAP CORE. */
+const MODULE_VERSIONS={
+  projectConfig:'17.0',mapCore:'15.0-compatible',routeGeometry:'15.0-compatible',
+  checkpointLayer:'16.0-compatible',checkpointRoutes:'16.0-compatible',warningLayer:'15.0-compatible',
+  toiletLayer:'15.0-compatible',overviewLayer:'15.0-compatible',basePointLayer:'17.0',parkingEntranceLayer:'17.0',
+  roleConfig:'17.0',participantLastLocation:'19.0-runtime',athleteSchedule:'19.0-runtime'
+};
+const DESIGN_CONTRACT={
+  id:'tabirun-map-portability-contract-v1',
+  purpose:'既存MAPを作り直さず、イベント・ルート・用途を差し替えて共通利用する',
+  rules:[
+    '既存ルート座標・チェックポイント・注意点・トイレ・概要を再利用時に作り直さない',
+    '不具合修正は対象MODULEを優先し、MAP CORE全体の再構築を避ける',
+    'STAGE + CHECKPOINT / CHECKPOINT ROUTE / MAP ONLY の3構成を同じMAP COREで扱う',
+    'projectId / routeId / mode / stage をデータから分離し、別イベントへ移設可能にする',
+    'モードをOFFにしても既存データは削除せず休止状態で保持する',
+    '将来のLIVE・位置共有・CHATはMAP COREと独立ブロックとして接続する',
+    '大会・合宿ではテント等のBASE POINTを人の位置と分離し、指導者・コーチ・保護者が現地登録できる構造にする',
+    '駐車場は車両位置を収集せず、出入口ポイントだけを管理する',
+    '選手の位置は常時GPSを前提にせず、最終確認位置・更新時刻・確認者を明示する',
+    '選手別の競技予定は位置データから分離し、招集・開始・終了予定を複数登録できるようにする',
+    '人のMAP表示はROLE CONFIGを唯一の色・略号設定元とし、指導者など役割を視覚的に区別する',
+    '参加者は大会本体公開後に自由投稿し、エディタでは事前名簿を作成しない',
+    '全参加者は名前と役割、選手だけ競技種目と競技時間を入力する',
+    '参加者投稿と競技予定はMAP設定から分離し、同じprojectId/routeIdで本体再生成後もDATA ADAPTER側に保持する'
+  ]
+};
+let projectMeta={
+  projectId:'chita-tabirun-2026',eventName:'知多半島 旅ランQUEST',
+  routeId:'chita-main',routeName:'阿久比→内海',mode:'staged',
+  stage:{order:1,id:'stage-1',name:'STAGE 1'},
+  features:{warnings:true,toilets:true,overviews:true,basePoints:true,parkingEntrances:true,participants:true,schedules:true}
+};
+let warningMarkers=[],cpMarkers=[],toiletMarkers=[],baseMarkers=[],parkingMarkers=[],participantMarkers=[];
+let toiletInfoWindow=null;
+let warningInfoWindow=null;
+let cpInfoWindow=null;
+let watchInfoWindow=null;
+let selectedParticipantIndex=null;
+let gps=null,gpsMarker=null,gpsCircle=null,gpsWatch=null;
+
+let editMode='normal'; // normal | manual | placement
+let placementAction=null;
+let selectedWarningIndex=null;
+let selectedToiletIndex=null;
+let manualStage='idle'; // idle | start | points
+let manualSnapshot=null;
+let manualViewSnapshot=null;
+let manualStart=null;
+let manualPoints=[];
+let manualPreviewLine=null;
+let manualCursorLine=null;
+
+const $=id=>document.getElementById(id);
+const setStatus=s=>$('status').textContent=s;
+function updateSaveState(label='✅ 自動保存済み'){
+  const el=$('saveState');if(!el)return;
+  const t=new Date();
+  const hh=String(t.getHours()).padStart(2,'0'),mm=String(t.getMinutes()).padStart(2,'0');
+  el.classList.remove('saving');
+  el.textContent=label+'｜ルート '+route.length+'点｜CP '+checkpoints.length+'件｜拠点 '+basePoints.length+'件｜P入口 '+parkingEntrances.length+'件｜人 '+participants.length+'人｜'+hh+':'+mm;
+}
+function markSaving(){const el=$('saveState');if(el){el.classList.add('saving');el.textContent='● 保存中…'}}
+
+function clonePlain(v){return JSON.parse(JSON.stringify(v))}
+function safeSlug(v,fallback='route'){
+  const t=String(v||'').trim().toLowerCase().replace(/[^a-z0-9_-]+/g,'-').replace(/^-+|-+$/g,'');
+  return t||fallback;
+}
+function normalizedProjectMeta(src){
+  const base=clonePlain(projectMeta);
+  const x=(src&&typeof src==='object')?src:{};
+  base.projectId=String(x.projectId||base.projectId);
+  base.eventName=String(x.eventName||base.eventName);
+  base.routeId=String(x.routeId||base.routeId);
+  base.routeName=String(x.routeName||base.routeName);
+  base.mode=['staged','checkpoint','map_only'].includes(x.mode)?x.mode:base.mode;
+  const st=(x.stage&&typeof x.stage==='object')?x.stage:{};
+  base.stage={order:Math.max(1,Number(st.order)||1),id:String(st.id||base.stage.id),name:String(st.name||base.stage.name)};
+  const ft=(x.features&&typeof x.features==='object')?x.features:{};
+  base.features={warnings:ft.warnings!==false,toilets:ft.toilets!==false,overviews:ft.overviews!==false,basePoints:ft.basePoints!==false,parkingEntrances:ft.parkingEntrances!==false,participants:ft.participants!==false,schedules:ft.schedules!==false};
+  return base;
+}
+function effectiveFeatures(){
+  const cp=projectMeta.mode!=='map_only';
+  return {
+    stages:projectMeta.mode==='staged',checkpoints:cp,checkpointRoutes:cp,
+    warnings:projectMeta.features.warnings!==false,toilets:projectMeta.features.toilets!==false,
+    overviews:cp&&projectMeta.features.overviews!==false,
+    basePoints:projectMeta.features.basePoints!==false,parkingEntrances:projectMeta.features.parkingEntrances!==false,
+    participants:projectMeta.features.participants!==false,schedules:projectMeta.features.schedules!==false
+  };
+}
+function readProjectForm(){
+  projectMeta=normalizedProjectMeta({
+    projectId:$('projectId').value.trim()||'project',eventName:$('eventName').value.trim()||'EVENT',
+    routeId:$('routeId').value.trim()||'route',routeName:$('routeName').value.trim()||'ROUTE',
+    mode:$('mapMode').value,
+    stage:{order:Number($('stageOrder').value)||1,id:$('stageId').value.trim()||'stage-1',name:$('stageName').value.trim()||'STAGE 1'},
+    features:{warnings:$('featureWarnings').checked,toilets:$('featureToilets').checked,overviews:$('featureOverviews').checked,basePoints:$('featureBasePoints').checked,parkingEntrances:$('featureParkingEntrances').checked,participants:$('featureParticipants').checked,schedules:$('featureSchedules').checked}
+  });
+  applyProjectUi(false);
+}
+function writeProjectForm(){
+  const p=projectMeta;
+  $('projectId').value=p.projectId;$('eventName').value=p.eventName;$('routeId').value=p.routeId;$('routeName').value=p.routeName;
+  $('mapMode').value=p.mode;$('stageOrder').value=p.stage.order;$('stageId').value=p.stage.id;$('stageName').value=p.stage.name;
+  $('featureWarnings').checked=p.features.warnings!==false;$('featureToilets').checked=p.features.toilets!==false;$('featureOverviews').checked=p.features.overviews!==false;$('featureBasePoints').checked=p.features.basePoints!==false;$('featureParkingEntrances').checked=p.features.parkingEntrances!==false;$('featureParticipants').checked=p.features.participants!==false;$('featureSchedules').checked=p.features.schedules!==false;
+}
+function applyProjectUi(redraw=true){
+  const f=effectiveFeatures(),mode=projectMeta.mode;
+  $('stageFields').classList.toggle('isModuleOff',!f.stages);
+  $('cpPanel').classList.toggle('isModuleOff',!f.checkpoints);
+  $('overviewPanel').classList.toggle('isModuleOff',!f.overviews);
+  $('warningPanel').classList.toggle('isModuleOff',!f.warnings);
+  $('toiletPanel').classList.toggle('isModuleOff',!f.toilets);
+  $('basePointPanel').classList.toggle('isModuleOff',!f.basePoints);
+  $('parkingEntrancePanel').classList.toggle('isModuleOff',!f.parkingEntrances);
+  $('rolePanel').classList.toggle('isModuleOff',!f.participants);
+  $('participantPanel').classList.toggle('isModuleOff',!f.participants);
+  $('schedulePanel').classList.toggle('isModuleOff',!(f.participants&&f.schedules));
+  const distPanel=$('targetCp')?.closest('.panel');if(distPanel)distPanel.classList.toggle('isModuleOff',!f.checkpoints);
+  const help={
+    staged:'STAGE型：イベント → STAGE → CHECKPOINT → CP間ルート。今回の旅ランQUESTと同じ構成です。各STAGEを独立MAP BLOCKとして保存できます。',
+    checkpoint:'CHECKPOINT型：STAGEを使わず、START→CP→CP→GOALの区間ルートを自動ブロック化します。',
+    map_only:'MAP ONLY型：STAGEもCHECKPOINTも使いません。ルート線だけの大会コース・応援MAP・見守りMAPなどに使えます。CPデータは削除せず休止扱いで保持します。'
+  };
+  $('modeHelp').textContent=help[mode]||'';
+  const badges=[['MAP CORE',true],['STAGE',f.stages],['CHECKPOINT',f.checkpoints],['CP ROUTES',f.checkpointRoutes],['WARNINGS',f.warnings],['TOILETS',f.toilets],['OVERVIEWS',f.overviews],['BASE',f.basePoints],['P入口',f.parkingEntrances],['ROLE/PEOPLE',f.participants],['SCHEDULE',f.participants&&f.schedules]];
+  $('moduleStatus').innerHTML=badges.map(([n,on])=>'<span class="moduleBadge '+(on?'on':'off')+'">'+n+'</span>').join('');
+  if(mode==='staged') $('titleView').textContent=(projectMeta.stage.name||'STAGE '+projectMeta.stage.order)+' / '+(projectMeta.routeName||'ROUTE');
+  else if(mode==='checkpoint') $('titleView').textContent=(projectMeta.routeName||'ROUTE')+' / CHECKPOINT ROUTE';
+  else $('titleView').textContent=(projectMeta.routeName||'ROUTE')+' / MAP ONLY';
+  if(redraw&&map)renderLists();
+}
+function saveProjectSettings(){readProjectForm();autosave();setStatus('MAP BLOCK設定を保存しました。ルート座標は変更していません。')}
+function cloneProjectSettings(){
+  readProjectForm();
+  const pid=prompt('複製先のPROJECT ID / EVENT ID',projectMeta.projectId+'-copy');if(pid===null)return;
+  const eid=prompt('複製先のイベント名',projectMeta.eventName);if(eid===null)return;
+  const rid=prompt('複製先のROUTE ID',projectMeta.routeId+'-copy');if(rid===null)return;
+  const rn=prompt('複製先のルート名',projectMeta.routeName);if(rn===null)return;
+  projectMeta.projectId=pid.trim()||projectMeta.projectId;projectMeta.eventName=eid.trim()||projectMeta.eventName;
+  projectMeta.routeId=rid.trim()||projectMeta.routeId;projectMeta.routeName=rn.trim()||projectMeta.routeName;
+  writeProjectForm();applyProjectUi();autosave();
+  setStatus('既存MAPをそのまま別イベント／ルート設定へ複製しました。座標・CP・注意点は維持されています。');
+}
+function routePointAtAlong(dist,c){
+  if(!route.length)return null;if(dist<=0)return {...route[0]};const total=c[c.length-1]||0;if(dist>=total)return {...route[route.length-1]};
+  for(let i=0;i<c.length-1;i++)if(dist>=c[i]&&dist<=c[i+1]){const span=c[i+1]-c[i]||1,t=(dist-c[i])/span;return {lat:route[i].lat+(route[i+1].lat-route[i].lat)*t,lng:route[i].lng+(route[i+1].lng-route[i].lng)*t}}
+  return {...route[route.length-1]};
+}
+function sliceRouteAlong(start,end){
+  if(route.length<2||!Number.isFinite(start)||!Number.isFinite(end))return [];
+  if(end<start){const t=start;start=end;end=t}
+  const c=cumulative(route),out=[routePointAtAlong(start,c)];
+  for(let i=1;i<route.length-1;i++)if(c[i]>start&&c[i]<end)out.push({...route[i]});
+  out.push(routePointAtAlong(end,c));return out.filter(Boolean);
+}
+function checkpointRouteBlocks(){
+  if(!effectiveFeatures().checkpointRoutes)return [];
+  refreshAttachments();const cps=orderedCheckpointEntries().map(x=>x.cp).filter(cp=>Number.isFinite(cp.routeAlong));const out=[];
+  for(let i=0;i<cps.length-1;i++){
+    const a=cps[i],b=cps[i+1],start=a.routeAlong,end=b.routeAlong;
+    out.push({
+      id:'cp-'+String(i+1).padStart(2,'0')+'-'+String(i+2).padStart(2,'0'),order:i+1,
+      from:{name:a.name,lat:a.lat,lng:a.lng},to:{name:b.name,lat:b.lat,lng:b.lng},
+      distanceM:Math.max(0,end-start),path:sliceRouteAlong(start,end),overview:routeOverviews[overviewKey(a.name,b.name)]||''
+    });
+  }
+  return out;
+}
+function currentMapModules(){
+  const f=effectiveFeatures();
+  return {
+    route:{enabled:true,controls:clonePlain(controls),segments:clonePlain(segments),segmentTypes:[...segmentTypes],path:clonePlain(route)},
+    checkpoints:{enabled:f.checkpoints,items:clonePlain(checkpoints)},
+    checkpointRoutes:{enabled:f.checkpointRoutes,items:checkpointRouteBlocks()},
+    warnings:{enabled:f.warnings,items:clonePlain(warnings)},
+    toilets:{enabled:f.toilets,items:clonePlain(toilets)},
+    overviews:{enabled:f.overviews,items:clonePlain(routeOverviews)},
+    watchConfig:{enabled:(f.basePoints||f.parkingEntrances||f.participants),settings:clonePlain(WATCH_SETTINGS)},
+    basePoints:{enabled:f.basePoints,items:clonePlain(basePoints)},
+    parkingEntrances:{enabled:f.parkingEntrances,items:clonePlain(parkingEntrances)},
+    roles:{enabled:f.participants,items:clonePlain(roleConfig)},
+    participantRegistration:{enabled:f.participants,mode:'self_post',fields:{all:['name','roleId'],athlete:['eventName','eventTime']}},
+    participants:{enabled:f.participants,source:'runtime_adapter',items:[]},
+    athleteSchedules:{enabled:f.participants&&f.schedules,source:'runtime_adapter',items:[]}
+  };
+}
+
+function centerPoint(){
+  const c=map.getCenter();
+  return {lat:c.lat(),lng:c.lng()};
+}
+
+function hav(a,b){
+  const R=6371008.8,rad=Math.PI/180;
+  const p1=a.lat*rad,p2=b.lat*rad,dp=(b.lat-a.lat)*rad,dl=(b.lng-a.lng)*rad;
+  const h=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;
+  return 2*R*Math.asin(Math.min(1,Math.sqrt(h)));
+}
+
+function cumulative(path){
+  const c=[0];
+  for(let i=1;i<path.length;i++)c.push(c[i-1]+hav(path[i-1],path[i]));
+  return c;
+}
+
+function totalDistance(){
+  const c=cumulative(route);
+  return c.length?c[c.length-1]:0;
+}
+
+function projectToSegment(p,a,b){
+  const lat0=p.lat*Math.PI/180,mx=111320*Math.cos(lat0),my=110540;
+  const ax=(a.lng-p.lng)*mx,ay=(a.lat-p.lat)*my,bx=(b.lng-p.lng)*mx,by=(b.lat-p.lat)*my;
+  const dx=bx-ax,dy=by-ay,den=dx*dx+dy*dy;
+  let t=den?-(ax*dx+ay*dy)/den:0;
+  t=Math.max(0,Math.min(1,t));
+  const x=ax+t*dx,y=ay+t*dy;
+  return {t,distance:Math.hypot(x,y),point:{lat:a.lat+(b.lat-a.lat)*t,lng:a.lng+(b.lng-a.lng)*t}};
+}
+
+function nearestOnPath(p,path){
+  if(!path||path.length<2)return null;
+  const c=cumulative(path);let best=null;
+  for(let i=0;i<path.length-1;i++){
+    const pr=projectToSegment(p,path[i],path[i+1]);
+    const along=c[i]+hav(path[i],pr.point);
+    if(!best||pr.distance<best.distance)best={...pr,index:i,along};
+  }
+  return best;
+}
+
+function nearestSegmentOnRoute(p){
+  let best=null;
+  segments.forEach((seg,si)=>{
+    const n=nearestOnPath(p,seg);
+    if(n&&(!best||n.distance<best.distance))best={...n,segmentIndex:si};
+  });
+  return best;
+}
+
+function nearestOnRoute(p){return nearestOnPath(p,route)}
+
+function rebuildRoute(){
+  route=[];
+  segments.forEach((seg,si)=>{
+    if(!seg||!seg.length)return;
+    seg.forEach((p,pi)=>{
+      if(si>0&&pi===0)return;
+      route.push({lat:p.lat,lng:p.lng});
+    });
+  });
+  drawLine();
+  refreshAttachments();
+  renderLists();
+  renderMetrics();
+}
+
+function drawLine(){
+  if(line)line.setMap(null);
+  line=new google.maps.Polyline({
+    map,path:route,strokeColor:'#087990',strokeOpacity:.96,strokeWeight:7,
+    editable:false,clickable:false,geodesic:false,
+    icons:[{icon:{path:google.maps.SymbolPath.FORWARD_CLOSED_ARROW,scale:2.4,strokeColor:'#fff',fillColor:'#fff',fillOpacity:1},offset:'40px',repeat:'95px'}]
+  });
+}
+
+async function computeSegment(a,b){
+  const lib=await google.maps.importLibrary('routes');
+  const res=await lib.Route.computeRoutes({
+    origin:a,destination:b,travelMode:'WALKING',
+    polylineQuality:'HIGH_QUALITY',fields:['path']
+  });
+  const r=res.routes&&res.routes[0];
+  if(!r||!r.path||r.path.length<2)throw new Error('NO_ROUTE');
+  return r.path.map(x=>({lat:x.lat,lng:x.lng}));
+}
+
+async function buildSection1(){
+  const hasExisting=route.length>=2 || segments.length>0;
+  if(hasExisting){
+    const ok=confirm(
+      '現在のSECTION 1ルートを下書きで作り直します。\n\n'+
+      '・現在の状態は「直前に戻す」用に自動バックアップされます\n'+
+      '・チェックポイント、注意点、トイレは消しません\n'+
+      '・青いルートだけをGoogle下書きから作り直します\n\n'+
+      '実行しますか？'
+    );
+    if(!ok){setStatus('下書きの作り直しを中止しました。現在のルートは変更していません。');return}
+  }
+
+  const keepCheckpoints=checkpoints.map(x=>({...x}));
+  const keepWarnings=warnings.map(x=>({...x}));
+  const keepToilets=toilets.map(x=>({...x}));
+
+  controls=SECTION1_CONTROLS.map(x=>({...x}));
+  if(keepCheckpoints.length){
+    checkpoints=keepCheckpoints;
+  }else{
+    checkpoints=SECTION1_CPS.map(x=>({...x}));
+  }
+  warnings=keepWarnings;
+  toilets=keepToilets;
+  segments=[];segmentTypes=[];
+
+  for(let i=0;i<controls.length-1;i++){
+    setStatus('SECTION 1 下書き生成 '+(i+1)+' / '+(controls.length-1));
+    try{
+      segments[i]=await computeSegment(controls[i],controls[i+1]);
+    }catch(e){
+      segments[i]=[{...controls[i]},{...controls[i+1]}];
+    }
+    segmentTypes[i]='auto';
+  }
+  rebuildRoute();refreshAttachments();renderLists();fitAll();autosave();
+  setStatus(hasExisting?'下書きを作り直しました。必要なら「↶ 直前に戻す」で作り直す前へ戻せます。':'下書き完成。Google未認識区間だけ「✍ 手動区間を直す」で修正してください。');
+}
+
+function refreshAttachments(){
+  checkpoints.forEach(cp=>{const n=nearestOnRoute(cp);cp.routeAlong=n?n.along:null;cp.offRoute=n?n.distance:null});
+  warnings.forEach(w=>{const n=nearestOnRoute(w);w.routeAlong=n?n.along:null;w.offRoute=n?n.distance:null});
+  toilets.forEach(t=>{const n=nearestOnRoute(t);t.routeAlong=n?n.along:null;t.offRoute=n?n.distance:null});
+}
+
+function fmt(m){return Number.isFinite(m)?(m/1000).toFixed(2)+' km':'--'}
+
+function renderMetrics(){
+  $('totalKm').textContent=fmt(totalDistance());
+  $('accuracy').textContent=gps&&Number.isFinite(gps.accuracy)?Math.round(gps.accuracy)+' m':'--';
+  const idx=Number($('targetCp').value);
+  if(!Number.isInteger(idx)||!checkpoints[idx]){
+    $('straightKm').textContent='--';$('remainKm').textContent='--';return;
+  }
+  const cp=checkpoints[idx];
+  $('straightKm').textContent=gps?fmt(hav(gps,cp)):'--';
+  if(gps){
+    const here=nearestOnRoute(gps);
+    if(here&&Number.isFinite(cp.routeAlong)){
+      const rem=cp.routeAlong-here.along;
+      $('remainKm').textContent=rem>=0?fmt(rem):'通過済み';
+    }else $('remainKm').textContent='--';
+  }else $('remainKm').textContent='--';
+}
+
+function clearMarkers(arr){arr.forEach(m=>m.setMap(null));arr.length=0}
+function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
+function warningIcon(t){return({crosswalk:'🚸',intersection:'⚠',sidewalk:'↔',narrow:'⚠',turn:'↪',coast:'🌊'})[t]||'⚠'}
+
+function normalizeManagementIds(items,prefix){
+  let max=0;const used=new Set();
+  items.forEach(x=>{
+    const m=String(x.manageId||'').match(new RegExp('^'+prefix+'-(\\d+)$'));
+    if(m&&!used.has(x.manageId)){used.add(x.manageId);max=Math.max(max,Number(m[1])||0)}else{x.manageId=''}
+  });
+  items.forEach(x=>{if(!x.manageId){do{max++}while(used.has(prefix+'-'+String(max).padStart(3,'0')));x.manageId=prefix+'-'+String(max).padStart(3,'0');used.add(x.manageId)}});
+}
+function nextManagementId(prefix,items){
+  normalizeManagementIds(items,prefix);
+  let max=0;items.forEach(x=>{const m=String(x.manageId||'').match(/-(\d+)$/);if(m)max=Math.max(max,Number(m[1])||0)});
+  return prefix+'-'+String(max+1).padStart(3,'0');
+}
+function orderedCheckpointEntries(){
+  return checkpoints.map((cp,index)=>({cp,index,along:Number.isFinite(cp.routeAlong)?cp.routeAlong:Number.POSITIVE_INFINITY}))
+    .sort((a,b)=>a.along-b.along||a.index-b.index);
+}
+
+function overviewKey(from,to){return String(from||'').trim()+'→'+String(to||'').trim()}
+function overviewPairs(){return orderedCheckpointEntries().map(x=>x.cp)}
+function populateOverviewSelectors(){
+  const from=$('overviewFrom'),to=$('overviewTo');if(!from||!to)return;
+  const oldFrom=from.value,oldTo=to.value,cps=overviewPairs();from.innerHTML='';to.innerHTML='';
+  cps.forEach(cp=>{const a=document.createElement('option');a.value=cp.name;a.textContent=cp.name;from.appendChild(a);const b=a.cloneNode(true);to.appendChild(b)});
+  if([...from.options].some(o=>o.value===oldFrom))from.value=oldFrom;if([...to.options].some(o=>o.value===oldTo))to.value=oldTo;
+  if(!oldFrom&&cps[0])from.value=cps[0].name;if(!oldTo&&cps[1])to.value=cps[1].name;loadOverviewEditor();
+}
+function loadOverviewEditor(){const f=$('overviewFrom')?.value,t=$('overviewTo')?.value,ta=$('overviewText');if(ta)ta.value=routeOverviews[overviewKey(f,t)]||''}
+function saveOverviewEditor(){
+  const f=$('overviewFrom')?.value,t=$('overviewTo')?.value,ta=$('overviewText');if(!f||!t||!ta)return;if(f===t){setStatus('出発CPと到着CPは別にしてください。');return}
+  const k=overviewKey(f,t),v=ta.value.trim();if(v)routeOverviews[k]=v;else delete routeOverviews[k];renderOverviewList();autosave();setStatus(k+' のルート概要を保存しました。');
+}
+function deleteOverviewEditor(){const f=$('overviewFrom')?.value,t=$('overviewTo')?.value;if(!f||!t)return;const k=overviewKey(f,t);delete routeOverviews[k];$('overviewText').value='';renderOverviewList();autosave();setStatus(k+' のルート概要を削除しました。')}
+function renderOverviewList(){
+  const box=$('overviewList');if(!box)return;box.innerHTML='';Object.keys(routeOverviews||{}).sort().forEach(k=>{const d=document.createElement('div');d.className='item';const txt=String(routeOverviews[k]||'');d.innerHTML='<div class="itemActions"><button type="button" class="secondary" data-act="edit">編集</button></div><strong>'+esc(k)+'</strong><div>'+esc(txt.slice(0,100))+(txt.length>100?'…':'')+'</div>';d.querySelector('[data-act="edit"]').addEventListener('click',()=>{const p=k.split('→');if(p.length>=2){$('overviewFrom').value=p[0];$('overviewTo').value=p.slice(1).join('→');loadOverviewEditor();$('overviewPanel').scrollIntoView({behavior:'smooth',block:'start'})}});box.appendChild(d)})
+}
+
+function roleById(id){return roleConfig.find(r=>r.id===id)||roleConfig[0]||{id:'unknown',name:'未設定',icon:'?',color:'#607d86',visible:true}}
+function roleOptionsHtml(includeAthlete=true){return roleConfig.filter(r=>includeAthlete||r.id!=='athlete').map(r=>'<option value="'+esc(r.id)+'">'+esc(r.name)+'</option>').join('')}
+function fillRoleSelectors(){
+  const p=$('participantRole'),b=$('baseRegistrarRole');if(p){const old=p.value;p.innerHTML=roleOptionsHtml(true);if([...p.options].some(o=>o.value===old))p.value=old}
+  if(b){const old=b.value;b.innerHTML=roleConfig.filter(r=>WATCH_SETTINGS.allowedBaseRegistrarRoles.includes(r.id)).map(r=>'<option value="'+esc(r.id)+'">'+esc(r.name)+'</option>').join('');if([...b.options].some(o=>o.value===old))b.value=old}
+}
+function uid(prefix){return prefix+'-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,6)}
+function ageMinutes(iso){const t=Date.parse(iso||'');return Number.isFinite(t)?Math.max(0,(Date.now()-t)/60000):Infinity}
+function staleClass(iso){const m=ageMinutes(iso),x=WATCH_SETTINGS.staleMinutes;return m<=x.fresh?'staleFresh':m<=x.caution?'staleCaution':m<=x.old?'staleOld':'staleVeryOld'}
+function staleLabel(iso){const m=ageMinutes(iso);if(!Number.isFinite(m))return'時刻なし';if(m<1)return'1分未満前';if(m<60)return Math.floor(m)+'分前';return Math.floor(m/60)+'時間'+Math.floor(m%60)+'分前'}
+function statusLabel(v){return({unknown:'未確認',waiting:'待機',warmup:'アップ中',call:'招集中',competing:'競技中',finished:'競技終了',moving:'移動中'})[v]||v||'未確認'}
+function baseTypeLabel(v){return({headquarters:'本部',team_tent:'チームテント',meeting:'集合場所',waiting:'待機場所',aid:'補給拠点',other:'その他'})[v]||v}
+function parkingKindLabel(v){return({both:'出入口',entrance:'入口',exit:'出口'})[v]||v}
+function schedulesForParticipant(id){return athleteSchedules.filter(x=>x.personId===id).sort((a,b)=>String(a.start||a.call||'').localeCompare(String(b.start||b.call||'')))}
+function scheduleState(sc){const now=Date.now(),c=Date.parse(sc.call||''),st=Date.parse(sc.start||''),en=Date.parse(sc.end||'');if(Number.isFinite(en)&&now>en)return'終了予定後';if(Number.isFinite(st)&&now>=st&&( !Number.isFinite(en)||now<=en))return'競技時間';if(Number.isFinite(c)&&now>=c&&( !Number.isFinite(st)||now<st))return'招集時間';return'予定'}
+function formatDT(v){if(!v)return'--';const d=new Date(v);if(!Number.isFinite(d.getTime()))return v;return (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')}
+function currentPositionOnce(onOk,label='現在地'){
+  if(!navigator.geolocation){setStatus('このブラウザはGPSに対応していません。');return}
+  setStatus(label+'を取得しています…');navigator.geolocation.getCurrentPosition(pos=>onOk({lat:pos.coords.latitude,lng:pos.coords.longitude,accuracy:pos.coords.accuracy}),err=>setStatus('GPS取得失敗：'+err.message),{enableHighAccuracy:true,maximumAge:5000,timeout:15000});
+}
+function renderRoleConfig(){
+  const box=$('roleList');if(!box)return;box.innerHTML='';roleConfig.forEach((r,i)=>{const d=document.createElement('div');d.className='roleRow';d.innerHTML='<input data-k="color" type="color" value="'+esc(r.color||'#607d86')+'"><input data-k="name" type="text" value="'+esc(r.name)+'"><input data-k="icon" type="text" maxlength="2" value="'+esc(r.icon||'?')+'"><label class="tinyCheck roleVisible"><input data-k="visible" type="checkbox" '+(r.visible!==false?'checked':'')+'>MAP表示</label><button type="button" class="danger roleDelete" '+(r.builtin?'disabled':'')+'>削除</button>';['color','name','icon','visible'].forEach(k=>{const el=d.querySelector('[data-k="'+k+'"]');el.addEventListener('change',()=>{if(k==='visible')r[k]=el.checked;else r[k]=el.value;fillRoleSelectors();renderLists();autosave()})});d.querySelector('.roleDelete').addEventListener('click',()=>{if(r.builtin)return;roleConfig.splice(i,1);participants.forEach(p=>{if(p.roleId===r.id)p.roleId='athlete'});renderRoleConfig();fillRoleSelectors();renderLists();autosave()});box.appendChild(d)});fillRoleSelectors();
+}
+function addRole(){const name=$('newRoleName').value.trim(),icon=$('newRoleIcon').value.trim().slice(0,2)||'?';if(!name){setStatus('追加する役割名を入力してください。');return}const id=safeSlug(name,'role-'+(roleConfig.length+1));if(roleConfig.some(r=>r.id===id)){setStatus('同じROLE IDが存在します。別の名前にしてください。');return}roleConfig.push({id,name,icon,color:$('newRoleColor').value||'#3d6f8f',visible:true,builtin:false});$('newRoleName').value='';$('newRoleIcon').value='';renderRoleConfig();renderLists();autosave();setStatus('役割「'+name+'」を追加しました。')}
+function basePayload(){const name=$('baseName').value.trim();if(!name)return null;return{name,type:$('baseType').value,note:$('baseNote').value.trim(),createdBy:$('baseRegistrarName').value.trim(),createdRoleId:$('baseRegistrarRole').value,createdAt:new Date().toISOString()}}
+function addBasePointAt(p){const q=basePayload();if(!q){setStatus('拠点名を入力してください。');return}basePoints.push({id:uid('base'),...p,...q});$('baseName').value='';$('baseNote').value='';autosave();renderLists();setStatus('拠点「'+q.name+'」を登録しました。')}
+function addBaseGps(){const q=basePayload();if(!q){setStatus('拠点名を入力してください。');return}currentPositionOnce(p=>addBasePointAt(p),'拠点のGPS現在地')}
+function addBaseMap(){const q=basePayload();if(!q){setStatus('拠点名を入力してください。');return}startPlacement({type:'base-add',payload:q,label:'拠点「'+q.name+'」'})}
+function parkingPayload(){const name=$('parkingName').value.trim();if(!name)return null;return{name,kind:$('parkingKind').value,note:$('parkingNote').value.trim(),createdAt:new Date().toISOString()}}
+function addParkingAt(p){const q=parkingPayload();if(!q){setStatus('駐車場出入口の表示名を入力してください。');return}parkingEntrances.push({id:uid('parking-gate'),...p,...q});$('parkingName').value='';$('parkingNote').value='';autosave();renderLists();setStatus('駐車場'+parkingKindLabel(q.kind)+'「'+q.name+'」を登録しました。')}
+function addParkingGps(){if(!parkingPayload()){setStatus('駐車場出入口の表示名を入力してください。');return}currentPositionOnce(p=>addParkingAt(p),'駐車場出入口のGPS現在地')}
+function addParkingMap(){const q=parkingPayload();if(!q){setStatus('駐車場出入口の表示名を入力してください。');return}startPlacement({type:'parking-add',payload:q,label:'駐車場'+parkingKindLabel(q.kind)+'「'+q.name+'」'})}
+function participantFromForm(base={}){return{...base,name:$('participantName').value.trim(),roleId:$('participantRole').value,team:$('participantTeam').value.trim(),bib:$('participantBib').value.trim(),status:$('participantStatus').value,confirmedBy:$('participantConfirmedBy').value.trim(),note:$('participantNote').value.trim()}}
+function clearParticipantForm(){selectedParticipantIndex=null;$('participantName').value='';$('participantTeam').value='';$('participantBib').value='';$('participantStatus').value='unknown';$('participantConfirmedBy').value='';$('participantNote').value='';$('participantSaveBtn').disabled=true;$('participantGpsBtn').disabled=true;$('participantEditState').textContent='新規参加者の登録です。'}
+function addParticipant(){const p=participantFromForm({id:uid('person'),lastLocation:null,lastSeenAt:null,positionSource:null});if(!p.name){setStatus('参加者名を入力してください。');return}participants.push(p);clearParticipantForm();renderLists();autosave();setStatus('参加者「'+p.name+'」を追加しました。')}
+function editParticipant(i){const p=participants[i];if(!p)return;selectedParticipantIndex=i;$('participantName').value=p.name||'';$('participantRole').value=p.roleId||'athlete';$('participantTeam').value=p.team||'';$('participantBib').value=p.bib||'';$('participantStatus').value=p.status||'unknown';$('participantConfirmedBy').value=p.confirmedBy||'';$('participantNote').value=p.note||'';$('participantSaveBtn').disabled=false;$('participantGpsBtn').disabled=false;$('participantEditState').textContent='編集中：'+p.name+'／最終位置 '+(p.lastSeenAt?staleLabel(p.lastSeenAt):'未登録')}
+function saveParticipant(){if(selectedParticipantIndex===null||!participants[selectedParticipantIndex])return;const old=participants[selectedParticipantIndex];const p=participantFromForm(old);if(!p.name){setStatus('参加者名を入力してください。');return}participants[selectedParticipantIndex]=p;renderLists();autosave();editParticipant(selectedParticipantIndex);setStatus(p.name+' の情報を保存しました。')}
+function confirmParticipantGps(){if(selectedParticipantIndex===null||!participants[selectedParticipantIndex]){setStatus('先に参加者を選択してください。');return}const i=selectedParticipantIndex;currentPositionOnce(pos=>{const p=participants[i];p.lastLocation={lat:pos.lat,lng:pos.lng,accuracy:pos.accuracy};p.lastSeenAt=new Date().toISOString();p.positionSource='confirmed_gps';p.confirmedBy=$('participantConfirmedBy').value.trim()||p.confirmedBy||'現地確認';p.status=$('participantStatus').value;renderLists();autosave();editParticipant(i);setStatus(p.name+' の最終確認位置を更新しました。')},'選択中参加者の確認位置')}
+function renderParticipantSelectors(){const sel=$('schedulePerson');if(!sel)return;const old=sel.value;sel.innerHTML='<option value="">選択してください</option>';participants.filter(p=>p.roleId==='athlete').forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.name+(p.bib?' / '+p.bib:'');sel.appendChild(o)});if([...sel.options].some(o=>o.value===old))sel.value=old}
+function addSchedule(){const personId=$('schedulePerson').value,eventName=$('scheduleEvent').value.trim();if(!personId||!eventName){setStatus('選手と種目・予定名を入力してください。');return}athleteSchedules.push({id:uid('schedule'),personId,eventName,call:$('scheduleCall').value,start:$('scheduleStart').value,end:$('scheduleEnd').value,note:$('scheduleNote').value.trim()});$('scheduleEvent').value='';$('scheduleCall').value='';$('scheduleStart').value='';$('scheduleEnd').value='';$('scheduleNote').value='';renderSchedules();autosave();setStatus('競技予定を追加しました。')}
+function renderSchedules(){const box=$('scheduleList');if(!box)return;box.innerHTML='';athleteSchedules.slice().sort((a,b)=>String(a.start||a.call||'').localeCompare(String(b.start||b.call||''))).forEach(sc=>{const p=participants.find(x=>x.id===sc.personId);const d=document.createElement('div');d.className='item';d.innerHTML='<div class="itemActions"><button type="button" class="danger">削除</button></div><strong>'+esc(p?.name||'選手未登録')+'｜'+esc(sc.eventName)+'</strong><div>招集 '+esc(formatDT(sc.call))+' ／ 開始 '+esc(formatDT(sc.start))+' ／ 終了 '+esc(formatDT(sc.end))+' <span class="statusPill">'+esc(scheduleState(sc))+'</span></div>'+(sc.note?'<div>'+esc(sc.note)+'</div>':'');d.querySelector('button').addEventListener('click',()=>{athleteSchedules=athleteSchedules.filter(x=>x.id!==sc.id);renderSchedules();autosave()});box.appendChild(d)})}
+
+function renderLists(){
+  clearMarkers(warningMarkers);clearMarkers(cpMarkers);clearMarkers(toiletMarkers);clearMarkers(baseMarkers);clearMarkers(parkingMarkers);clearMarkers(participantMarkers);
+  normalizeManagementIds(warnings,'W');normalizeManagementIds(toilets,'T');
+
+  const features=effectiveFeatures();
+  const wl=$('warnList');wl.innerHTML='';
+  if(features.warnings)warnings.forEach((w,i)=>{
+    const m=new google.maps.Marker({
+      map,position:w,draggable:false,
+      icon:{path:google.maps.SymbolPath.CIRCLE,scale:16,fillColor:'#c45a31',fillOpacity:1,strokeColor:'#ffffff',strokeWeight:2},
+      label:{text:warningIcon(w.type),fontSize:'14px'},
+      title:(w.title||'注意点')
+    });
+    m.addListener('click',()=>{
+      if(!warningInfoWindow)warningInfoWindow=new google.maps.InfoWindow();
+      const title=esc(w.title||'注意点');
+      const note=esc(w.note||'').replace(/\n/g,'<br>');
+      warningInfoWindow.setContent('<div style="min-width:180px;max-width:260px"><strong>'+warningIcon(w.type)+' '+title+'</strong>'+(note?'<div style="margin-top:6px;line-height:1.5">'+note+'</div>':'')+'<div style="margin-top:6px;font-size:11px">事前通知 '+(w.radius||100)+'m</div></div>');
+      warningInfoWindow.open({map,anchor:m});
+    });
+    warningMarkers.push(m);
+    const d=document.createElement('div');d.className='item';
+    d.innerHTML='<div class="itemActions"><button data-act="edit" class="secondary" type="button">内容編集</button><button data-act="move" class="secondary" type="button">位置変更</button><button data-act="delete" class="danger" type="button">削除</button></div><strong>'+warningIcon(w.type)+' '+esc(w.title||'注意点')+'</strong><div>'+esc(w.note||'')+'</div><div class="cpCoord">管理ID '+esc(w.manageId)+' ／ 通知 '+(w.radius||100)+'m前</div>';
+    d.querySelector('[data-act="edit"]').addEventListener('click',()=>selectWarningForEdit(i));
+    d.querySelector('[data-act="move"]').addEventListener('click',()=>startPlacement({type:'warning-move',index:i,label:(w.title||'注意点')+'（管理ID '+w.manageId+'）の位置変更'}));
+    d.querySelector('[data-act="delete"]').addEventListener('click',()=>{warnings.splice(i,1);if(selectedWarningIndex===i)newWarningInput();else if(selectedWarningIndex>i)selectedWarningIndex--;renderLists();autosave()});
+    wl.appendChild(d);
+  });
+
+  const cl=$('cpList');cl.innerHTML='';
+  const cpEntries=orderedCheckpointEntries();
+  if(features.checkpoints)cpEntries.forEach(({cp,index:sourceIndex},orderIndex)=>{
+    const cpNo=orderIndex+1;
+    const m=new google.maps.Marker({
+      map,position:cp,draggable:false,
+      icon:{path:google.maps.SymbolPath.CIRCLE,scale:15,fillColor:'#2d7b59',fillOpacity:1,strokeColor:'#ffffff',strokeWeight:2},
+      label:{text:'C'+cpNo,color:'#ffffff',fontSize:'9px',fontWeight:'900'},
+      title:'チェックポイント C'+cpNo+' / '+cp.name
+    });
+    m.addListener('click',()=>{
+      if(!cpInfoWindow)cpInfoWindow=new google.maps.InfoWindow();
+      cpInfoWindow.setContent('<div style="min-width:160px"><strong>C'+cpNo+'｜'+esc(cp.name)+'</strong><div style="margin-top:5px;font-size:11px">番号はルート進行順です。位置変更は下の一覧から行います。</div></div>');
+      cpInfoWindow.open({map,anchor:m});
+    });
+    cpMarkers.push(m);
+    const d=document.createElement('div');d.className='item';
+    d.innerHTML='<div class="itemActions"><button data-act="move" class="secondary" type="button">位置変更</button><button data-act="delete" class="danger" type="button">削除</button></div><strong>C'+cpNo+'　'+esc(cp.name)+'</strong><div class="cpCoord">ルート進行順 ／ '+Number(cp.lat).toFixed(6)+', '+Number(cp.lng).toFixed(6)+'</div>';
+    d.querySelector('[data-act="move"]').addEventListener('click',()=>startPlacement({type:'cp-move',index:sourceIndex,label:'C'+cpNo+' '+cp.name+' の位置変更'}));
+    d.querySelector('[data-act="delete"]').addEventListener('click',()=>{checkpoints.splice(sourceIndex,1);refreshAttachments();renderLists();renderMetrics();autosave()});
+    cl.appendChild(d);
+  });
+
+  const tl=$('toiletList');if(tl){tl.innerHTML='';
+  if(features.toilets)toilets.forEach((t,i)=>{
+    const m=new google.maps.Marker({map,position:t,label:'🚻',title:t.name||'トイレ',zIndex:40,draggable:false});
+    m.addListener('click',()=>{
+      if(!toiletInfoWindow)toiletInfoWindow=new google.maps.InfoWindow();
+      const title=esc(t.name||'トイレ');
+      const note=esc(t.note||'').replace(/\n/g,'<br>');
+      toiletInfoWindow.setContent('<div style="min-width:180px;max-width:260px"><strong>🚻 '+title+'</strong>'+(note?'<div style="margin-top:6px;line-height:1.5">'+note+'</div>':'')+'</div>');
+      toiletInfoWindow.open({map,anchor:m});
+    });
+    toiletMarkers.push(m);
+    const d=document.createElement('div');d.className='item';
+    d.innerHTML='<div class="itemActions"><button data-act="edit" class="secondary" type="button">内容編集</button><button data-act="move" class="secondary" type="button">位置変更</button><button data-act="delete" class="danger" type="button">削除</button></div><strong>🚻 '+esc(t.name||'トイレ')+'</strong><div>'+esc(t.note||'')+'</div><div class="cpCoord">管理ID '+esc(t.manageId)+'</div>';
+    d.querySelector('[data-act="edit"]').addEventListener('click',()=>selectToiletForEdit(i));
+    d.querySelector('[data-act="move"]').addEventListener('click',()=>startPlacement({type:'toilet-move',index:i,label:'🚻 '+(t.name||'トイレ')+'（管理ID '+t.manageId+'）の位置変更'}));
+    d.querySelector('[data-act="delete"]').addEventListener('click',()=>{toilets.splice(i,1);if(selectedToiletIndex===i)newToiletInput();else if(selectedToiletIndex>i)selectedToiletIndex--;refreshAttachments();renderLists();autosave()});
+    tl.appendChild(d);
+  });}
+
+  const bl=$('basePointList');if(bl){bl.innerHTML='';if(features.basePoints)basePoints.forEach((b,i)=>{const m=new google.maps.Marker({map,position:b,label:'⛺',title:b.name||'拠点',zIndex:55,draggable:false});m.addListener('click',()=>{if(!watchInfoWindow)watchInfoWindow=new google.maps.InfoWindow();const rr=roleById(b.createdRoleId);watchInfoWindow.setContent('<div style="min-width:190px"><strong>⛺ '+esc(b.name)+'</strong><div>'+esc(baseTypeLabel(b.type))+'</div>'+(b.note?'<div style="margin-top:5px">'+esc(b.note)+'</div>':'')+'<div style="margin-top:6px;font-size:11px">登録：'+esc(rr.name)+(b.createdBy?' / '+esc(b.createdBy):'')+'</div></div>');watchInfoWindow.open({map,anchor:m})});baseMarkers.push(m);const d=document.createElement('div');d.className='item';d.innerHTML='<div class="itemActions"><button data-act="move" class="secondary">位置変更</button><button data-act="delete" class="danger">削除</button></div><strong>⛺ '+esc(b.name)+'</strong><div>'+esc(baseTypeLabel(b.type))+(b.note?' ／ '+esc(b.note):'')+'</div>';d.querySelector('[data-act="move"]').addEventListener('click',()=>startPlacement({type:'base-move',index:i,label:'拠点「'+b.name+'」の位置変更'}));d.querySelector('[data-act="delete"]').addEventListener('click',()=>{basePoints.splice(i,1);renderLists();autosave()});bl.appendChild(d)})}
+  const pl=$('parkingEntranceList');if(pl){pl.innerHTML='';if(features.parkingEntrances)parkingEntrances.forEach((g,i)=>{const m=new google.maps.Marker({map,position:g,icon:{path:google.maps.SymbolPath.CIRCLE,scale:16,fillColor:'#405f73',fillOpacity:1,strokeColor:'#fff',strokeWeight:2},label:{text:'P入',color:'#fff',fontSize:'9px',fontWeight:'900'},title:g.name||'駐車場出入口',zIndex:54,draggable:false});m.addListener('click',()=>{if(!watchInfoWindow)watchInfoWindow=new google.maps.InfoWindow();watchInfoWindow.setContent('<div style="min-width:180px"><strong>🅿 '+esc(g.name)+'</strong><div>'+esc(parkingKindLabel(g.kind))+'</div>'+(g.note?'<div style="margin-top:5px">'+esc(g.note)+'</div>':'')+'<div style="margin-top:6px;font-size:11px">※車両位置は収集しません</div></div>');watchInfoWindow.open({map,anchor:m})});parkingMarkers.push(m);const d=document.createElement('div');d.className='item';d.innerHTML='<div class="itemActions"><button data-act="move" class="secondary">位置変更</button><button data-act="delete" class="danger">削除</button></div><strong>🅿 '+esc(g.name)+'</strong><div>'+esc(parkingKindLabel(g.kind))+(g.note?' ／ '+esc(g.note):'')+'</div>';d.querySelector('[data-act="move"]').addEventListener('click',()=>startPlacement({type:'parking-move',index:i,label:'駐車場出入口「'+g.name+'」の位置変更'}));d.querySelector('[data-act="delete"]').addEventListener('click',()=>{parkingEntrances.splice(i,1);renderLists();autosave()});pl.appendChild(d)})}
+  const ppl=$('participantList');if(ppl){ppl.innerHTML='';if(features.participants)participants.forEach((p,i)=>{const r=roleById(p.roleId);if(p.lastLocation&&r.visible!==false){const sc=staleClass(p.lastSeenAt),opacity=sc==='staleFresh'?1:(sc==='staleCaution'?0.76:(sc==='staleOld'?0.5:0.32));const m=new google.maps.Marker({map,position:p.lastLocation,icon:{path:google.maps.SymbolPath.CIRCLE,scale:16,fillColor:r.color||'#607d86',fillOpacity:opacity,strokeColor:'#fff',strokeWeight:2},label:{text:r.icon||'?',color:'#fff',fontSize:'9px',fontWeight:'900'},title:p.name+' / 最終確認 '+staleLabel(p.lastSeenAt),zIndex:r.id==='instructor'?90:70,draggable:false});m.addListener('click',()=>{if(!watchInfoWindow)watchInfoWindow=new google.maps.InfoWindow();const sched=schedulesForParticipant(p.id).slice(0,3).map(x=>'<div style="margin-top:4px">'+esc(x.eventName)+'｜'+esc(formatDT(x.start||x.call))+' <b>'+esc(scheduleState(x))+'</b></div>').join('');watchInfoWindow.setContent('<div style="min-width:210px"><strong>'+esc(r.name)+' '+esc(p.name)+'</strong><div>状態：'+esc(statusLabel(p.status))+'</div><div>最終確認：'+esc(staleLabel(p.lastSeenAt))+'</div><div style="font-size:11px">'+esc(formatDT(p.lastSeenAt))+(p.confirmedBy?' / 確認 '+esc(p.confirmedBy):'')+'</div>'+sched+'</div>');watchInfoWindow.open({map,anchor:m})});participantMarkers.push(m)}const d=document.createElement('div');d.className='item '+staleClass(p.lastSeenAt);d.innerHTML='<div class="itemActions"><button data-act="edit" class="secondary">編集</button><button data-act="delete" class="danger">削除</button></div><strong><span style="display:inline-block;width:9px;height:9px;background:'+esc(r.color)+';border-radius:50%;margin-right:5px"></span>'+esc(p.name)+' <span class="statusPill">'+esc(r.name)+'</span></strong><div>状態 '+esc(statusLabel(p.status))+' ／ 最終位置 '+(p.lastSeenAt?esc(staleLabel(p.lastSeenAt)):'未登録')+'</div><div class="cpCoord">'+esc(p.team||'')+(p.bib?' ／ '+esc(p.bib):'')+(p.confirmedBy?' ／ 確認 '+esc(p.confirmedBy):'')+'</div>';d.querySelector('[data-act="edit"]').addEventListener('click',()=>editParticipant(i));d.querySelector('[data-act="delete"]').addEventListener('click',()=>{const id=p.id;participants.splice(i,1);athleteSchedules=athleteSchedules.filter(x=>x.personId!==id);if(selectedParticipantIndex===i)clearParticipantForm();renderLists();autosave()});ppl.appendChild(d)})}
+  renderParticipantSelectors();renderSchedules();renderRoleConfig();
+
+  const sel=$('targetCp'),old=sel.value;
+  sel.innerHTML='<option value="">未選択</option>';
+  if(features.checkpoints)cpEntries.forEach(({cp,index:sourceIndex},orderIndex)=>{const o=document.createElement('option');o.value=sourceIndex;o.textContent='C'+(orderIndex+1)+' '+cp.name;sel.appendChild(o)});
+  if(old!==''&&checkpoints[Number(old)])sel.value=old;
+  if(features.overviews){populateOverviewSelectors();renderOverviewList()}else{if($('overviewList'))$('overviewList').innerHTML=''}
+}
+
+function clearManualPreview(){
+  if(manualPreviewLine){manualPreviewLine.setMap(null);manualPreviewLine=null}
+  if(manualCursorLine){manualCursorLine.setMap(null);manualCursorLine=null}
+}
+
+function drawManualPreview(){
+  clearManualPreview();
+  if(!map||manualStage!=='points'||manualPoints.length<1)return;
+
+  manualPreviewLine=new google.maps.Polyline({
+    map,
+    path:manualPoints,
+    strokeColor:'#c26a1b',
+    strokeOpacity:.98,
+    strokeWeight:7,
+    clickable:false,
+    geodesic:false
+  });
+
+  const last=manualPoints[manualPoints.length-1];
+  const now=centerPoint();
+  manualCursorLine=new google.maps.Polyline({
+    map,
+    path:[last,now],
+    strokeColor:'#c26a1b',
+    strokeOpacity:0,
+    strokeWeight:5,
+    clickable:false,
+    geodesic:false,
+    icons:[{
+      icon:{path:'M 0,-1 0,1',strokeOpacity:1,scale:3,strokeColor:'#c26a1b'},
+      offset:'0',
+      repeat:'12px'
+    }]
+  });
+}
+
+function updateManualCursorPreview(){
+  if(editMode!=='manual'||manualStage!=='points'||!manualCursorLine||manualPoints.length<1)return;
+  manualCursorLine.setPath([manualPoints[manualPoints.length-1],centerPoint()]);
+}
+
+function setNormal(){
+  editMode='normal';
+  $('manualMapControls').classList.remove('show');
+  $('manualMapControls').classList.remove('minimized');
+  $('pointMapControls').classList.remove('show');
+  placementAction=null;
+  clearManualPreview();
+  $('modeStrip').textContent='通常モード：地図を自由に動かせます。マーカーはタップしても移動しません。';
+}
+
+
+function restoreManualView(){
+  if(manualViewSnapshot&&map){
+    map.setCenter(manualViewSnapshot.center);
+    map.setZoom(manualViewSnapshot.zoom);
+    setStatus('手動編集開始前の表示位置・倍率へ戻しました。');
+  }else{
+    fitAll();
+    setStatus('ルート全体表示へ戻しました。');
+  }
+}
+
+function zoomBy(delta){
+  if(!map)return;
+  const z=map.getZoom();
+  if(Number.isFinite(z)) map.setZoom(Math.max(3,Math.min(21,z+delta)));
+}
+
+
+function syncManualUi(){
+  const pointsMode=manualStage==='points'&&!!manualStart;
+  $('manualAddBtn').textContent=pointsMode?'この位置を追加':'開始点にする';
+  $('manualFinishBtn').disabled=!(pointsMode&&manualPoints.length>=2);
+  $('manualEndBtn').disabled=!pointsMode;
+  if(pointsMode){
+    $('manualMapStep').textContent='STEP 2：途中修正は既存の青線へ戻して「ここで終了」。ルート最後まで直す場合は、最後の位置で「ここを終点にする」。';
+  }else{
+    $('manualMapStep').textContent='STEP 1：修正を始める青線上に中央の＋を合わせ、「開始点にする」を押してください。';
+  }
+}
+
+function toggleManualMini(){
+  const box=$('manualMapControls');
+  const minimized=box.classList.toggle('minimized');
+  $('manualMiniBtn').textContent=minimized?'…':'−';
+  $('manualMiniBtn').setAttribute('aria-label',minimized?'操作窓を広げる':'操作窓を小さくする');
+  syncManualUi();
+  if(manualStage==='points')drawManualPreview();
+  setStatus(minimized?'操作窓を小さくしました。「この位置を追加」「ここで終了」「ここを終点にする」はそのまま使えます。':'操作窓を広げました。手動ルートの状態は維持されています。');
+}
+
+function startManual(){
+  if(route.length<2){setStatus('先にSECTION 1下書きを作成してください。');return}
+
+  const c=map.getCenter();
+  manualViewSnapshot={
+    center:{lat:c.lat(),lng:c.lng()},
+    zoom:map.getZoom()
+  };
+
+  editMode='manual';
+  manualStage='start';
+  manualStart=null;
+  manualPoints=[];
+  manualSnapshot={
+    segments:segments.map(seg=>seg.map(p=>({...p}))),
+    segmentTypes:[...segmentTypes]
+  };
+
+  $('manualMapControls').classList.remove('minimized');
+  $('manualMiniBtn').textContent='−';
+  $('manualMapControls').classList.add('show');
+  syncManualUi();
+  $('modeStrip').textContent='手動区間モード：中央＋に合わせて、地図上のボタンで点を追加します。';
+  setStatus('開始点を中央の＋に合わせてください。');
+}
+
+function addManualCenter(){
+  const p=centerPoint();
+
+  if(manualStage==='start'){
+    const n=nearestSegmentOnRoute(p);
+    if(!n||n.distance>120){
+      setStatus('青線の近くに中央の＋を合わせてください。');
+      return;
+    }
+    manualStart={point:n.point,segmentIndex:n.segmentIndex};
+    manualPoints=[{...n.point}];
+    manualStage='points';
+    syncManualUi();
+    drawManualPreview();
+    setStatus('開始点を設定しました。オレンジ線を見ながら海岸線に沿って進めてください。');
+    return;
+  }
+
+  if(manualStage==='points'){
+    manualPoints.push(p);
+    syncManualUi();
+    drawManualPreview();
+    setStatus('手動点 '+manualPoints.length+' 点。オレンジ線を確認しながら続けてください。');
+  }
+}
+
+function undoManual(){
+  if(manualStage==='points'&&manualPoints.length>1){
+    manualPoints.pop();
+    syncManualUi();
+    drawManualPreview();
+    setStatus('手動点を1点戻しました。');
+  }else if(manualStage==='points'){
+    manualStage='start';
+    manualStart=null;
+    manualPoints=[];
+    clearManualPreview();
+    syncManualUi();
+    setStatus('開始点の設定前へ戻りました。');
+  }
+}
+
+function finishManual(){
+  if(manualStage!=='points'||!manualStart||manualPoints.length<2){
+    setStatus('手動点が不足しています。');
+    return;
+  }
+
+  const endProbe=centerPoint();
+  const endNearest=nearestSegmentOnRoute(endProbe);
+  if(!endNearest||endNearest.distance>120){
+    setStatus('最後は既存の青線上へ戻し、中央の＋を青線の近くに合わせてください。');
+    return;
+  }
+
+  const startSeg=manualStart.segmentIndex;
+  const endSeg=endNearest.segmentIndex;
+
+  if(endSeg<startSeg){
+    setStatus('終了位置が開始位置より手前です。進行方向側の青線へ戻してください。');
+    return;
+  }
+
+  const manualPath=[...manualPoints,{...endNearest.point}];
+
+  const newSegments=[];
+  const newTypes=[];
+
+  for(let i=0;i<segments.length;i++){
+    if(i<startSeg||i>endSeg){
+      newSegments.push(segments[i].map(p=>({...p})));
+      newTypes.push(segmentTypes[i]||'auto');
+      continue;
+    }
+
+    if(i===startSeg){
+      const seg=segments[i];
+      const n=nearestOnPath(manualStart.point,seg);
+      const prefix=[];
+      if(n){
+        for(let k=0;k<=n.index;k++)prefix.push({...seg[k]});
+        prefix.push({...manualStart.point});
+      }else{
+        prefix.push({...seg[0]},{...manualStart.point});
+      }
+
+      const merged=[...prefix];
+      manualPath.forEach((p,idx)=>{
+        if(idx===0&&merged.length&&hav(merged[merged.length-1],p)<1)return;
+        merged.push({...p});
+      });
+
+      if(endSeg===startSeg){
+        const en=nearestOnPath(endNearest.point,seg);
+        if(en){
+          for(let k=en.index+1;k<seg.length;k++)merged.push({...seg[k]});
+        }
+      }
+
+      newSegments.push(merged);
+      newTypes.push('manual');
+    }else if(i===endSeg&&endSeg!==startSeg){
+      const seg=segments[i];
+      const en=nearestOnPath(endNearest.point,seg);
+      const suffix=[{...endNearest.point}];
+      if(en){
+        for(let k=en.index+1;k<seg.length;k++)suffix.push({...seg[k]});
+      }
+      newSegments.push(suffix);
+      newTypes.push('manual');
+    }
+  }
+
+  segments=newSegments;
+  segmentTypes=newTypes;
+  rebuildRoute();
+  autosave();
+  manualSnapshot=null;manualStart=null;manualPoints=[];manualStage='idle';
+  manualViewSnapshot=null;
+  setNormal();
+  setStatus('手動区間を固定しました。青線として保存され、この区間はGoogle再計算で戻されません。');
+}
+
+function finishManualAtEnd(){
+  if(manualStage!=='points'||!manualStart){
+    setStatus('先に手動修正の開始点を設定してください。');
+    return;
+  }
+
+  const ok=confirm(
+    'ここをSECTION 1の新しい終点にします。\n\n'+
+    '開始点より先に残っている元の青線は削除されます。\n'+
+    'この操作も「↶ 直前に戻す」で戻せます。\n\n'+
+    '実行しますか？'
+  );
+  if(!ok){setStatus('終点変更を中止しました。ルートは変更していません。');return}
+
+  const startSeg=manualStart.segmentIndex;
+  const endPoint=centerPoint();
+  const manualPath=manualPoints.map(p=>({...p}));
+  if(!manualPath.length || hav(manualPath[manualPath.length-1],endPoint)>=1){
+    manualPath.push({...endPoint});
+  }
+
+  const newSegments=[];
+  const newTypes=[];
+
+  for(let i=0;i<startSeg;i++){
+    newSegments.push(segments[i].map(p=>({...p})));
+    newTypes.push(segmentTypes[i]||'auto');
+  }
+
+  const seg=segments[startSeg];
+  const n=nearestOnPath(manualStart.point,seg);
+  const prefix=[];
+  if(n){
+    for(let k=0;k<=n.index;k++)prefix.push({...seg[k]});
+    if(!prefix.length || hav(prefix[prefix.length-1],manualStart.point)>=1){
+      prefix.push({...manualStart.point});
+    }
+  }else{
+    prefix.push({...seg[0]},{...manualStart.point});
+  }
+
+  const merged=[...prefix];
+  manualPath.forEach((p,idx)=>{
+    if(merged.length&&hav(merged[merged.length-1],p)<1)return;
+    merged.push({...p});
+  });
+
+  newSegments.push(merged);
+  newTypes.push('manual');
+
+  segments=newSegments;
+  segmentTypes=newTypes;
+  rebuildRoute();
+  autosave();
+  manualSnapshot=null;manualStart=null;manualPoints=[];manualStage='idle';
+  manualViewSnapshot=null;
+  setNormal();
+  fitAll();
+  setStatus('新しい終点を保存しました。開始点より先の古い青線は削除されています。');
+}
+
+function cancelManual(){
+  const view=manualViewSnapshot
+    ?{center:{...manualViewSnapshot.center},zoom:manualViewSnapshot.zoom}
+    :null;
+
+  if(manualSnapshot){
+    segments=manualSnapshot.segments.map(seg=>seg.map(p=>({...p})));
+    segmentTypes=[...manualSnapshot.segmentTypes];
+    rebuildRoute();
+  }
+
+  manualSnapshot=null;
+  manualStart=null;
+  manualPoints=[];
+  manualStage='idle';
+  setNormal();
+
+  if(view&&map){
+    map.setCenter(view.center);
+    map.setZoom(view.zoom);
+  }
+  manualViewSnapshot=null;
+  setStatus('手動編集を取消し、ルート・表示位置・拡大率を編集前へ戻しました。');
+}
+
+function startPlacement(action){
+  if(editMode==='manual'){setStatus('手動ルート編集を終了または取消してから操作してください。');return}
+  setNormal();
+  placementAction=action;
+  editMode='placement';
+  $('pointMapControls').classList.add('show');
+  $('pointMapStep').textContent=(action.label||'ポイント')+'：地図を動かして中央の＋を目的位置に合わせてください。';
+  $('modeStrip').textContent='位置指定モード：中央＋を合わせて「この位置に決定」を押してください。マーカーを直接ドラッグする必要はありません。';
+  setStatus((action.label||'ポイント')+' の位置を中央＋に合わせてください。');
+}
+
+function confirmPlacement(){
+  if(!placementAction)return;
+  const p=centerPoint(),a=placementAction;
+  if(a.type==='warning-add'){
+    warnings.push({...p,...a.payload,manageId:nextManagementId('W',warnings)});
+    newWarningInput();
+  }else if(a.type==='warning-move'&&warnings[a.index]){
+    warnings[a.index].lat=p.lat;warnings[a.index].lng=p.lng;
+  }else if(a.type==='cp-add'){
+    checkpoints.push({name:a.name,...p});$('cpName').value='';
+  }else if(a.type==='cp-move'&&checkpoints[a.index]){
+    checkpoints[a.index].lat=p.lat;checkpoints[a.index].lng=p.lng;
+  }else if(a.type==='toilet-add'){
+    toilets.push({...p,...a.payload,manageId:nextManagementId('T',toilets)});
+    newToiletInput();
+  }else if(a.type==='toilet-move'&&toilets[a.index]){
+    toilets[a.index].lat=p.lat;toilets[a.index].lng=p.lng;
+  }else if(a.type==='base-add'){
+    basePoints.push({id:uid('base'),...p,...a.payload});$('baseName').value='';$('baseNote').value='';
+  }else if(a.type==='base-move'&&basePoints[a.index]){
+    basePoints[a.index].lat=p.lat;basePoints[a.index].lng=p.lng;
+  }else if(a.type==='parking-add'){
+    parkingEntrances.push({id:uid('parking-gate'),...p,...a.payload});$('parkingName').value='';$('parkingNote').value='';
+  }else if(a.type==='parking-move'&&parkingEntrances[a.index]){
+    parkingEntrances[a.index].lat=p.lat;parkingEntrances[a.index].lng=p.lng;
+  }
+  const label=a.label||'ポイント';
+  setNormal();refreshAttachments();renderLists();renderMetrics();autosave();
+  setStatus(label+' を保存しました。');
+}
+
+function cancelPlacement(){setNormal();setStatus('位置指定を取り消しました。データは変更していません。')}
+
+function addWarning(){
+  const title=$('warnTitle').value.trim()||$('warnType').selectedOptions[0].text;
+  const payload={type:$('warnType').value,radius:Number($('warnRadius').value)||100,title,note:$('warnNote').value.trim()};
+  startPlacement({type:'warning-add',payload,label:'新規注意点'});
+}
+function selectWarningForEdit(i){
+  const w=warnings[i];if(!w)return;
+  selectedWarningIndex=i;
+  $('warnType').value=w.type||'intersection';$('warnRadius').value=String(w.radius||100);$('warnTitle').value=w.title||'';$('warnNote').value=w.note||'';
+  $('warnEditState').textContent='編集中：'+warningIcon(w.type)+' '+(w.title||'注意点')+'（管理ID '+w.manageId+'）';
+  $('warnSaveEditBtn').disabled=false;
+  setStatus((w.title||'注意点')+'（管理ID '+w.manageId+'）を選択しました。入力欄を直して「選択中の内容を保存」を押してください。');
+}
+function saveWarningEdit(){
+  const i=selectedWarningIndex;if(i===null||!warnings[i]){setStatus('先に一覧から「内容編集」を押してください。');return}
+  const w=warnings[i];w.type=$('warnType').value;w.radius=Number($('warnRadius').value)||100;w.title=$('warnTitle').value.trim()||$('warnType').selectedOptions[0].text;w.note=$('warnNote').value.trim();
+  renderLists();autosave();$('warnEditState').textContent='編集中：'+warningIcon(w.type)+' '+w.title+'（管理ID '+w.manageId+'）';setStatus(w.title+'（管理ID '+w.manageId+'）の内容を保存しました。');
+}
+function newWarningInput(){
+  selectedWarningIndex=null;$('warnType').value='crosswalk';$('warnRadius').value='100';$('warnTitle').value='';$('warnNote').value='';$('warnSaveEditBtn').disabled=true;
+  $('warnEditState').textContent='新規追加用の入力欄です。既存ポイントを直す場合は、下の一覧から「内容編集」を押してください。';
+}
+
+function addCp(){
+  const name=$('cpName').value.trim();if(!name){setStatus('新規チェックポイント名を入力してください。');return}
+  startPlacement({type:'cp-add',name,label:'新規CP「'+name+'」'});
+}
+
+function addToilet(){
+  const name=$('toiletName').value.trim();if(!name){setStatus('トイレの施設名を入力してください。');return}
+  startPlacement({type:'toilet-add',payload:{name,note:$('toiletNote').value.trim()},label:'新規トイレ「'+name+'」'});
+}
+function selectToiletForEdit(i){
+  const t=toilets[i];if(!t)return;
+  selectedToiletIndex=i;$('toiletName').value=t.name||'';$('toiletNote').value=t.note||'';$('toiletEditState').textContent='編集中：🚻 '+(t.name||'トイレ');$('toiletSaveEditBtn').disabled=false;
+  setStatus('🚻 '+(t.name||'トイレ')+' を選択しました。入力欄を直して「選択中の内容を保存」を押してください。');
+}
+function saveToiletEdit(){
+  const i=selectedToiletIndex;if(i===null||!toilets[i]){setStatus('先に一覧から「内容編集」を押してください。');return}
+  const t=toilets[i],name=$('toiletName').value.trim();if(!name){setStatus('施設名を入力してください。');return}
+  t.name=name;t.note=$('toiletNote').value.trim();renderLists();autosave();$('toiletEditState').textContent='編集中：🚻 '+name;setStatus('🚻 '+name+' の内容を保存しました。');
+}
+function newToiletInput(){
+  selectedToiletIndex=null;$('toiletName').value='';$('toiletNote').value='';$('toiletSaveEditBtn').disabled=true;$('toiletEditState').textContent='新規追加用の入力欄です。既存トイレを直す場合は、下の一覧から「内容編集」を押してください。';
+}
+
+function startGps(){
+  if(!navigator.geolocation){setStatus('このブラウザはGPSに対応していません。');return}
+  if(gpsWatch!==null){
+    navigator.geolocation.clearWatch(gpsWatch);gpsWatch=null;
+    setStatus('GPS表示を停止しました。');return;
+  }
+  setStatus('GPS現在地を取得しています…');
+  gpsWatch=navigator.geolocation.watchPosition(pos=>{
+    gps={lat:pos.coords.latitude,lng:pos.coords.longitude,accuracy:pos.coords.accuracy};
+    if(!gpsMarker){
+      gpsMarker=new google.maps.Marker({map,position:gps,title:'現在地',zIndex:100});
+      gpsCircle=new google.maps.Circle({map,center:gps,radius:gps.accuracy,strokeOpacity:.3,fillOpacity:.08});
+    }else{
+      gpsMarker.setPosition(gps);gpsCircle.setCenter(gps);gpsCircle.setRadius(gps.accuracy);
+    }
+    renderMetrics();
+    setStatus('GPS表示中 / 精度 '+Math.round(gps.accuracy)+'m');
+  },err=>setStatus('GPS取得失敗：'+err.message),{enableHighAccuracy:true,maximumAge:3000,timeout:15000});
+}
+
+function fitAll(){
+  if(!route.length)return;
+  const b=new google.maps.LatLngBounds();
+  route.forEach(p=>b.extend(p));
+  map.fitBounds(b,36);
+}
+
+function data(){
+  refreshAttachments();
+  const modules=currentMapModules();
+  return {
+    format:'tabirun-map-block-v18',schemaVersion:18,runtimeContract:{name:'tabirun-watch-runtime',version:'1.0',sourceOfTruth:'editor-map-block',adapter:'pluggable'},
+    designContract:clonePlain(DESIGN_CONTRACT),moduleVersions:{...MODULE_VERSIONS},project:clonePlain(projectMeta),modules,
+    /* v15 compatibility mirror: existing QUEST/importers can continue reading these keys. */
+    section:projectMeta.mode==='staged'?projectMeta.stage.order:ACTIVE_SECTION,
+    title:$('titleView').textContent,
+    controls:clonePlain(controls),segments:clonePlain(segments),segmentTypes:[...segmentTypes],route:clonePlain(route),
+    warnings:clonePlain(warnings),checkpoints:clonePlain(checkpoints),toilets:clonePlain(toilets),routeOverviews:clonePlain(routeOverviews),
+    basePoints:clonePlain(basePoints),parkingEntrances:clonePlain(parkingEntrances),roleConfig:clonePlain(roleConfig),participants:clonePlain(participants),athleteSchedules:clonePlain(athleteSchedules),
+    savedAt:new Date().toISOString()
+  };
+}
+
+function readHistory(){
+  try{
+    const h=JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]');
+    return Array.isArray(h)?h:[];
+  }catch(e){return []}
+}
+
+function writeHistory(h){
+  try{localStorage.setItem(HISTORY_KEY,JSON.stringify(h.slice(0,MAX_HISTORY)))}catch(e){}
+}
+
+function archivePrevious(raw,label='変更前'){
+  if(!raw)return;
+  const h=readHistory();
+  if(h[0]&&h[0].raw===raw)return;
+  h.unshift({at:new Date().toISOString(),label,raw});
+  writeHistory(h);
+}
+
+function autosave(){
+  markSaving();
+  try{
+    const nextRaw=JSON.stringify(data());
+    const prevRaw=localStorage.getItem(STORAGE_KEY);
+    localStorage.setItem(STORAGE_KEY,nextRaw);
+    if(prevRaw&&prevRaw!==nextRaw)archivePrevious(prevRaw);
+    updateSaveState();
+  }catch(e){
+    const el=$('saveState');if(el){el.classList.remove('saving');el.textContent='⚠ 保存できません'}
+  }
+}
+
+function applySavedData(d){
+  if(!d||typeof d!=='object')return false;
+  const routeModule=d.modules&&d.modules.route&&typeof d.modules.route==='object'?d.modules.route:null;
+  const savedSegments=routeModule?(routeModule.segments||[]):d.segments;
+  const savedRoute=routeModule?(routeModule.path||routeModule.route||[]):d.route;
+  if(!Array.isArray(savedSegments)||!Array.isArray(savedRoute))return false;
+
+  if(d.project&&typeof d.project==='object')projectMeta=normalizedProjectMeta(d.project);
+  else{
+    const inferredMode=(Array.isArray(d.checkpoints)&&d.checkpoints.length)?(d.section?'staged':'checkpoint'):'map_only';
+    projectMeta=normalizedProjectMeta({
+      projectId:'legacy-import',eventName:'旧MAPから引継ぎ',routeId:'legacy-route',routeName:String(d.title||'Imported route'),mode:inferredMode,
+      stage:{order:Number(d.section)||1,id:'stage-'+(Number(d.section)||1),name:'STAGE '+(Number(d.section)||1)},features:{warnings:true,toilets:true,overviews:true,basePoints:true,parkingEntrances:true,participants:true,schedules:true}
+    });
+  }
+
+  ACTIVE_SECTION=projectMeta.mode==='staged'?(Number(projectMeta.stage.order)||1):(Number(d.section)||ACTIVE_SECTION||1);
+  controls=Array.isArray(routeModule?.controls)?routeModule.controls:(Array.isArray(d.controls)?d.controls:[]);
+  segments=savedSegments;
+  segmentTypes=Array.isArray(routeModule?.segmentTypes)?routeModule.segmentTypes:(Array.isArray(d.segmentTypes)?d.segmentTypes:segments.map(()=> 'auto'));
+  route=savedRoute;
+  const mods=d.modules||{};
+  warnings=Array.isArray(mods.warnings?.items)?mods.warnings.items:(Array.isArray(d.warnings)?d.warnings:[]);
+  checkpoints=Array.isArray(mods.checkpoints?.items)?mods.checkpoints.items:(Array.isArray(d.checkpoints)?d.checkpoints:[]);
+  toilets=Array.isArray(mods.toilets?.items)?mods.toilets.items:(Array.isArray(d.toilets)?d.toilets:[]);
+  const ov=mods.overviews?.items!==undefined?mods.overviews.items:d.routeOverviews;
+  routeOverviews=(ov&&typeof ov==='object'&&!Array.isArray(ov))?{...ov}:{};
+  basePoints=Array.isArray(mods.basePoints?.items)?mods.basePoints.items:(Array.isArray(d.basePoints)?d.basePoints:[]);
+  parkingEntrances=Array.isArray(mods.parkingEntrances?.items)?mods.parkingEntrances.items:(Array.isArray(d.parkingEntrances)?d.parkingEntrances:[]);
+  roleConfig=Array.isArray(mods.roles?.items)&&mods.roles.items.length?mods.roles.items:(Array.isArray(d.roleConfig)&&d.roleConfig.length?d.roleConfig:roleConfig);
+  participants=Array.isArray(mods.participants?.items)?mods.participants.items:(Array.isArray(d.participants)?d.participants:[]);
+  athleteSchedules=Array.isArray(mods.athleteSchedules?.items)?mods.athleteSchedules.items:(Array.isArray(d.athleteSchedules)?d.athleteSchedules:[]);
+  normalizeManagementIds(warnings,'W');normalizeManagementIds(toilets,'T');
+  writeProjectForm();applyProjectUi(false);
+  rebuildRoute();refreshAttachments();renderLists();renderMetrics();fitAll();
+  return true;
+}
+
+function undoLastSaved(){
+  const h=readHistory();
+  if(!h.length){setStatus('戻せる自動バックアップがありません。');return}
+  const item=h.shift();
+  try{
+    const d=JSON.parse(item.raw);
+    if(!applySavedData(d))throw new Error('INVALID_BACKUP');
+    localStorage.setItem(STORAGE_KEY,item.raw);
+    writeHistory(h);
+    updateSaveState('↶ 直前状態へ復元済み');
+    setStatus('直前の保存状態へ戻しました。必要ならもう一度「↶ 直前に戻す」を押せます。');
+  }catch(e){
+    setStatus('自動バックアップを復元できませんでした。現在のデータは変更していません。');
+  }
+}
+
+function loadSaved(){
+  const keys=[
+    STORAGE_KEY,
+    'tabirun_map_block_editor_v17_current',
+    'tabirun_map_block_editor_v16_current',
+    'tabirun_route_editor_v15_current',
+    'tabirun_route_editor_v13_section'+ACTIVE_SECTION,
+    'tabirun_route_editor_v12_section'+ACTIVE_SECTION,
+    'tabirun_route_editor_v10',
+    'tabirun_route_editor_v9',
+    'tabirun_route_editor_v8',
+    'tabirun_route_editor_v7',
+    'tabirun_route_editor_v6',
+    'tabirun_route_editor_v5',
+    'tabirun_route_editor_v4',
+    'tabirun_route_editor_v3'
+  ];
+  for(const key of keys){
+    const raw=localStorage.getItem(key);
+    if(!raw)continue;
+    try{
+      const d=JSON.parse(raw);
+      if(!applySavedData(d))continue;
+      if(key!==STORAGE_KEY){
+        localStorage.setItem(STORAGE_KEY,JSON.stringify(data()));
+      }
+      if(key===STORAGE_KEY){
+        setStatus('v18 MAP BLOCKを復元しました。');
+        updateSaveState('✅ MAP BLOCK 復元済み');
+      }else if(key==='tabirun_route_editor_v12_section'+ACTIVE_SECTION){
+        setStatus('v12のSECTION 1保存データをv13へ引き継ぎました。');
+        updateSaveState('✅ v12→v13 引継ぎ済み');
+      }else if(key==='tabirun_route_editor_v10'){
+        setStatus('v10の保存データをSECTION 1へ安全に引き継ぎました。v11の上書き状態は使用していません。');
+        updateSaveState('✅ v10→SECTION 1 引継ぎ済み');
+      }else{
+        setStatus('利用可能な旧保存データをSECTION 1へ引き継ぎました。');
+        updateSaveState('✅ 旧データ引継ぎ済み');
+      }
+      return;
+    }catch(e){}
+  }
+}
+
+function exportJson(){
+  readProjectForm();
+  const payload=data();
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  const stagePart=projectMeta.mode==='staged'?'_'+safeSlug(projectMeta.stage.id,'stage-'+projectMeta.stage.order):'';
+  a.href=URL.createObjectURL(blob);a.download=safeSlug(projectMeta.projectId,'project')+'_'+safeSlug(projectMeta.routeId,'route')+stagePart+'_mapblock_v18.json';
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  setStatus('MAP BLOCK JSONを保存しました。別イベントでは設定だけ変更して再利用できます。');
+}
+
+async function importJsonFile(file){
+  if(!file)return;
+  try{
+    const text=await file.text();
+    const d=JSON.parse(text);
+    const rm=d&&d.modules&&d.modules.route;
+    const validLegacy=d&&Array.isArray(d.segments)&&Array.isArray(d.route);
+    const validBlock=rm&&Array.isArray(rm.segments)&&Array.isArray(rm.path||rm.route);
+    if(!validLegacy&&!validBlock){
+      setStatus('このJSONは旅ランMAP BLOCKとして読み込めません。');
+      return;
+    }
+    const ok=confirm('JSONバックアップからこのルートを復元します。\n現在の状態は自動バックアップに残します。\n実行しますか？');
+    if(!ok){setStatus('JSON復元を中止しました。');return}
+    if(!applySavedData(d)){setStatus('JSONを復元できませんでした。');return}
+    autosave();
+    updateSaveState('✅ JSONから復元済み');
+    setStatus('JSONバックアップからルートを復元しました。');
+  }catch(e){
+    setStatus('JSONファイルを読み込めませんでした。');
+  }finally{
+    $('importInput').value='';
+  }
+}
+
+function setApi(){
+  const current=localStorage.getItem(API_KEY_STORAGE)||'';
+  const v=prompt('Google Maps APIキーを入力してください',current);
+  if(v===null)return;
+  if(v.trim()){localStorage.setItem(API_KEY_STORAGE,v.trim());location.reload()}
+}
+
+function initMap(){
+  map=new google.maps.Map($('map'),{
+    center:{lat:34.9135,lng:136.9190},zoom:13,
+    mapTypeControl:false,streetViewControl:false,fullscreenControl:false,
+    clickableIcons:false,gestureHandling:'greedy'
+  });
+  drawLine();
+  map.addListener('center_changed',updateManualCursorPreview);
+  writeProjectForm();applyProjectUi(false);renderRoleConfig();clearParticipantForm();
+  loadSaved();
+  if(!route.length){setStatus('準備完了。既存JSONを復元するか、知多STAGE 1プリセットから開始できます。');updateSaveState('未保存')}else updateSaveState();
+}
+
+function loadGoogle(){
+  const key=(localStorage.getItem(API_KEY_STORAGE)||'').trim();
+  if(!key){setStatus('APIキー未設定です。「APIキー設定」を押してください。');return}
+  const cb='tabirunV14_'+Date.now();
+  window[cb]=()=>{delete window[cb];initMap()};
+  const s=document.createElement('script');
+  s.src='https://maps.googleapis.com/maps/api/js?key='+encodeURIComponent(key)+'&v=weekly&language=ja&region=JP&callback='+cb;
+  s.async=true;s.defer=true;
+  s.onerror=()=>setStatus('Googleマップを読み込めません。APIキー設定を確認してください。');
+  document.head.appendChild(s);
+}
+
+$('s1Btn').addEventListener('click',buildSection1);
+$('zoomInBtn').addEventListener('click',()=>zoomBy(1));
+$('zoomOutBtn').addEventListener('click',()=>zoomBy(-1));
+$('viewRestoreBtn').addEventListener('click',restoreManualView);
+$('mapResetBtn').addEventListener('click',fitAll);
+$('manualStartBtn').addEventListener('click',startManual);
+$('manualMiniBtn').addEventListener('click',toggleManualMini);
+$('manualAddBtn').addEventListener('click',addManualCenter);
+$('manualUndoBtn').addEventListener('click',undoManual);
+$('manualFinishBtn').addEventListener('click',finishManual);
+$('manualEndBtn').addEventListener('click',finishManualAtEnd);
+$('manualCancelBtn').addEventListener('click',cancelManual);
+$('pointConfirmBtn').addEventListener('click',confirmPlacement);
+$('pointCancelBtn').addEventListener('click',cancelPlacement);
+$('warnAddBtn').addEventListener('click',addWarning);
+$('warnSaveEditBtn').addEventListener('click',saveWarningEdit);
+$('warnNewBtn').addEventListener('click',newWarningInput);
+$('cpAddBtn').addEventListener('click',addCp);
+$('toiletAddBtn').addEventListener('click',addToilet);
+$('toiletSaveEditBtn').addEventListener('click',saveToiletEdit);
+$('toiletNewBtn').addEventListener('click',newToiletInput);
+$('baseGpsBtn').addEventListener('click',addBaseGps);
+$('baseMapBtn').addEventListener('click',addBaseMap);
+$('parkingGpsBtn').addEventListener('click',addParkingGps);
+$('parkingMapBtn').addEventListener('click',addParkingMap);
+$('roleAddBtn').addEventListener('click',addRole);
+$('participantAddBtn').addEventListener('click',addParticipant);
+$('participantSaveBtn').addEventListener('click',saveParticipant);
+$('participantNewBtn').addEventListener('click',clearParticipantForm);
+$('participantGpsBtn').addEventListener('click',confirmParticipantGps);
+$('scheduleAddBtn').addEventListener('click',addSchedule);
+$('gpsBtn').addEventListener('click',startGps);
+$('fitBtn').addEventListener('click',fitAll);
+$('undoSaveBtn').addEventListener('click',undoLastSaved);
+$('targetCp').addEventListener('change',renderMetrics);
+$('saveBtn').addEventListener('click',()=>{autosave();setStatus('この端末に保存しました。')});
+
+
+/* === TABIRUN MODULE: SYSTEM BUILDER v19 / RUNTIME 2.0 ===
+   SOURCE OF TRUTH: editor = MAP/config only.
+   Participants and athlete schedules are self-posted after runtime publication.
+   Dynamic posts live behind WATCH_DATA_ADAPTER and survive runtime regeneration
+   as long as projectId + routeId stay the same. */
+function runtimeSafeJson(obj){return JSON.stringify(obj).replace(/</g,'\\u003c')}
+
+function buildWatchRuntimeHtml(payload){
+  const embedded=runtimeSafeJson(payload);
+  const title=String(payload?.project?.eventName||'大会・合宿 見守りMAP').replace(/[<>&]/g,'');
+  return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>${title}</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;color:#17343d;background:#f3f6f7}*{box-sizing:border-box}body{margin:0;background:#f3f6f7}.top{position:sticky;top:0;z-index:50;background:#102e38;color:#fff;padding:11px 13px;box-shadow:0 2px 10px #0003}.top small{display:block;opacity:.72;font-weight:800;letter-spacing:.08em}.top h1{font-size:17px;margin:2px 0 0}.mode{display:inline-block;margin-top:5px;padding:3px 8px;border:1px solid #ffffff44;font-size:10px;font-weight:900}.tabs{display:grid;grid-template-columns:repeat(4,1fr);position:sticky;top:65px;z-index:45;background:#fff;border-bottom:1px solid #d7e1e4}.tabs button{border:0;background:#fff;padding:12px 4px;font-size:11px;font-weight:900;color:#49646d}.tabs button.on{background:#e9f1f3;color:#123a46}.view{display:none}.view.on{display:block}#map{height:61vh;min-height:400px;background:#dce6e9}.toolbar{display:flex;gap:7px;padding:8px;background:#fff;overflow:auto}.toolbar button,.btn{border:0;background:#163e4a;color:#fff;padding:10px 12px;font-weight:900;font-size:11px;white-space:nowrap}.toolbar .light,.btn.light{background:#e4ecef;color:#17343d}.btn.danger{background:#a8483f}.content{padding:10px;max-width:780px;margin:auto}.card{background:#fff;border:1px solid #d7e3e6;padding:11px;margin-bottom:8px;box-shadow:0 2px 8px #1638460b}.card h3{font-size:14px;margin:0 0 5px}.meta{font-size:11px;color:#62767d;line-height:1.55}.pill{display:inline-block;padding:3px 7px;background:#edf3f5;font-size:9px;font-weight:900;margin-right:4px}.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}.stale{opacity:.52}.scheduleNow{border-left:5px solid #bf4d35}.empty{padding:18px;background:#fff;border:1px dashed #b9c9ce;text-align:center;color:#73868d;font-size:12px}.legend{display:flex;gap:8px;flex-wrap:wrap;padding:8px 10px;background:#fff;border-top:1px solid #d9e3e6;font-size:10px;font-weight:800}.legend span{display:flex;align-items:center}.fab{position:fixed;right:14px;bottom:18px;z-index:70;border:0;background:#173f4b;color:#fff;padding:13px 16px;font-weight:900;box-shadow:0 4px 18px #0004}.modal{display:none;position:fixed;inset:0;z-index:200;background:#0008;align-items:flex-end;justify-content:center}.modal.show{display:flex}.sheet{background:#fff;width:min(100%,620px);max-height:92vh;overflow:auto;padding:16px;border-radius:18px 18px 0 0}.sheet h2{font-size:18px;margin:0 0 12px}.sheet label{display:block;font-size:11px;font-weight:900;margin:10px 0 4px}.sheet input,.sheet select,.sheet textarea{width:100%;padding:11px;border:1px solid #bfcfd4;font-size:16px;background:#fff}.sheet .row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.athleteOnly{display:none}.athleteOnly.show{display:block}.notice{background:#eef4f5;border:1px solid #d6e3e6;padding:10px;font-size:11px;line-height:1.6;margin-bottom:10px}.toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);z-index:300;background:#163e4a;color:#fff;padding:10px 14px;font-size:11px;font-weight:900;display:none;max-width:90%;text-align:center}.toast.show{display:block}.myCard{border-left:5px solid #173f4b}.roleTeacher{box-shadow:inset 4px 0 0 #7f3f98}
+</style></head><body>
+<header class="top"><small>WATCH SYSTEM / SELF REGISTRATION</small><h1 id="eventTitle"></h1><span class="mode" id="routeTitle"></span></header>
+<nav class="tabs"><button class="on" data-view="mapView">MAP</button><button data-view="peopleView">参加者</button><button data-view="scheduleView">競技予定</button><button data-view="baseView">会場案内</button></nav>
+<section class="view on" id="mapView"><div class="toolbar"><button id="registerBtn">参加登録</button><button id="meBtn">現在地更新</button><button id="baseAddBtn" class="light">拠点登録</button><button id="fitBtn" class="light">全体表示</button></div><div id="map"></div><div class="legend" id="legend"></div></section>
+<section class="view" id="peopleView"><div class="content"><div class="notice">参加者は各自で登録します。位置は常時追跡ではなく、最後に「現在地更新」をした地点と時刻です。</div><div id="peopleList"></div></div></section>
+<section class="view" id="scheduleView"><div class="content"><div class="notice">選手本人が登録した競技種目・競技時間を表示します。位置情報とは別管理です。</div><div id="scheduleList"></div></div></section>
+<section class="view" id="baseView"><div class="content"><div id="baseList"></div><div id="parkingList"></div></div></section>
+<button class="fab" id="floatingRegister">参加登録</button>
+
+<div class="modal" id="registrationModal"><div class="sheet"><h2>参加登録</h2><div class="notice">全員：名前と役割を入力。<br>選手だけ：競技種目と競技時間も入力してください。</div><label>名前</label><input id="regName" placeholder="例：山田 太郎"><label>役割</label><select id="regRole"></select><div class="athleteOnly" id="athleteFields"><label>競技種目</label><input id="regEvent" placeholder="例：100m 予選 3組"><label>競技時間</label><input id="regTime" type="datetime-local"></div><div class="row"><button class="btn light" id="regCancel">戻る</button><button class="btn" id="regSave">登録する</button></div><button class="btn danger" id="regDelete" style="width:100%;margin-top:8px;display:none">自分の登録を削除</button></div></div>
+<div class="modal" id="baseModal"><div class="sheet"><h2>拠点を現地登録</h2><div class="notice">指導者・コーチ・保護者のみ登録できます。GPS現在地をテント・本部などの固定拠点として保存します。</div><label>拠点名</label><input id="baseName" placeholder="例：チーム本部テント"><label>種類</label><select id="baseType"><option value="team_tent">チームテント</option><option value="headquarters">本部</option><option value="meeting">集合場所</option><option value="waiting">待機場所</option><option value="aid">補給拠点</option><option value="other">その他</option></select><label>補足</label><textarea id="baseNote" placeholder="例：青いテント／招集所の北側"></textarea><div class="row"><button class="btn light" id="baseCancel">戻る</button><button class="btn" id="baseSave">GPSで登録</button></div></div></div>
+<div class="toast" id="toast"></div>
+<script id="mapBlock" type="application/json">${embedded}<\/script>
+<script>
+(()=>{'use strict';
+const $=id=>document.getElementById(id);const CONFIG=JSON.parse($('mapBlock').textContent);const M=CONFIG.modules||{},P=CONFIG.project||{};const EVENT_ID=String(P.projectId||'event')+'__'+String(P.routeId||'route');const DATA_KEY='tabirun_watch_posts_v19_'+EVENT_ID;const MY_KEY='tabirun_watch_me_v19_'+EVENT_ID;
+const LocalAdapter={load(){try{return JSON.parse(localStorage.getItem(DATA_KEY)||'{}')}catch(e){return{}}},save(v){localStorage.setItem(DATA_KEY,JSON.stringify(v));window.dispatchEvent(new CustomEvent('tabirun-watch-local-change'))},subscribe(cb){const on=()=>cb(LocalAdapter.load());window.addEventListener('storage',e=>{if(e.key===DATA_KEY)on()});window.addEventListener('tabirun-watch-local-change',on);return()=>window.removeEventListener('tabirun-watch-local-change',on)}};window.WATCH_DATA_ADAPTER=window.WATCH_DATA_ADAPTER||LocalAdapter;const ADAPTER=window.WATCH_DATA_ADAPTER;let state=ADAPTER.load()||{};state.participants=Array.isArray(state.participants)?state.participants:[];state.athleteSchedules=Array.isArray(state.athleteSchedules)?state.athleteSchedules:[];state.basePoints=Array.isArray(state.basePoints)?state.basePoints:[];
+function saveState(){ADAPTER.save(state)}function loadMe(){try{return JSON.parse(localStorage.getItem(MY_KEY)||'{}')}catch(e){return{}}}function saveMe(v){localStorage.setItem(MY_KEY,JSON.stringify(v))}let me=loadMe();
+function esc(v){return String(v??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]))}function baseItems(k){return Array.isArray(M[k]?.items)?M[k].items:[]}function roles(){return baseItems('roles')}function role(id){return roles().find(r=>r.id===id)||{id:'unknown',name:'未設定',icon:'?',color:'#607d86',visible:true}}function people(){return state.participants}function schedules(){return state.athleteSchedules}function mergedBase(){return [...baseItems('basePoints'),...state.basePoints]}function myPerson(){return people().find(p=>p.id===me.personId)||null}
+function toast(t){const x=$('toast');x.textContent=t;x.classList.add('show');clearTimeout(x._t);x._t=setTimeout(()=>x.classList.remove('show'),2200)}function ageMin(t){const n=Date.parse(t||'');return Number.isFinite(n)?Math.max(0,(Date.now()-n)/60000):null}function stale(t){const m=ageMin(t);if(m===null)return'位置未更新';if(m<2)return'たった今';if(m<60)return Math.floor(m)+'分前';if(m<1440)return Math.floor(m/60)+'時間前';return Math.floor(m/1440)+'日前'}function opacity(t){const m=ageMin(t);if(m===null)return .25;if(m<10)return 1;if(m<30)return .75;if(m<60)return .55;return .32}function fmt(t){if(!t)return'--';const d=new Date(t);if(!Number.isFinite(d.getTime()))return'--';return d.toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}function scheduleState(s){const n=Date.now(),st=Date.parse(s.start||'');if(!Number.isFinite(st))return'予定';const diff=(st-n)/60000;if(diff<-120)return'終了後';if(diff<0)return'競技時間';if(diff<=60)return'1時間以内';return'予定'}
+$('eventTitle').textContent=P.eventName||'大会・合宿 見守りMAP';$('routeTitle').textContent=(P.routeName||'ROUTE')+' / '+String(P.mode||'map_only').toUpperCase();
+let map,markers=[],line,meMarker,info;function iconCircle(color,alpha=1,scale=15){return{path:google.maps.SymbolPath.CIRCLE,scale,fillColor:color,fillOpacity:alpha,strokeColor:'#fff',strokeWeight:2}}function addMarker(pos,label,color,title,html,z=50,alpha=1){const m=new google.maps.Marker({map,position:pos,icon:iconCircle(color,alpha),label:{text:label,color:'#fff',fontSize:'9px',fontWeight:'900'},title,zIndex:z});m.addListener('click',()=>{info=info||new google.maps.InfoWindow();info.setContent(html);info.open({map,anchor:m})});markers.push(m);return m}function clearMarkers(){markers.forEach(m=>m.setMap(null));markers=[];if(line){line.setMap(null);line=null}}
+function personSchedule(p){return schedules().find(s=>s.personId===p.id)||null}
+function renderMap(){if(!map)return;clearMarkers();const path=Array.isArray(M.route?.path)?M.route.path:[];if(path.length)line=new google.maps.Polyline({map,path,strokeColor:'#296d79',strokeOpacity:.95,strokeWeight:6,clickable:false});baseItems('checkpoints').forEach((p,i)=>addMarker(p,'C'+(i+1),'#2d7b59',p.name||'CP','<strong>C'+(i+1)+' '+esc(p.name||'チェックポイント')+'</strong>'));baseItems('warnings').forEach(p=>addMarker(p,'!','#c45a31',p.title||'注意','<strong>⚠ '+esc(p.title||'注意')+'</strong><div>'+esc(p.note||'')+'</div>'));baseItems('toilets').forEach(p=>addMarker(p,'WC','#49778a',p.name||'トイレ','<strong>🚻 '+esc(p.name||'トイレ')+'</strong><div>'+esc(p.note||'')+'</div>'));mergedBase().forEach(p=>addMarker(p,'基','#7c5e35',p.name||'拠点','<strong>⛺ '+esc(p.name||'拠点')+'</strong><div>'+esc(p.note||'')+'</div>',60));baseItems('parkingEntrances').forEach(p=>addMarker(p,'P入','#405f73',p.name||'駐車場出入口','<strong>🅿 '+esc(p.name||'駐車場出入口')+'</strong><div>'+esc(p.note||'')+'</div>',58));people().forEach(p=>{const r=role(p.roleId);if(!p.lastLocation||r.visible===false)return;const sc=personSchedule(p);const sh=sc?'<div>'+esc(sc.eventName)+'｜'+esc(fmt(sc.start))+' <b>'+esc(scheduleState(sc))+'</b></div>':'';addMarker(p.lastLocation,r.icon||'?',r.color||'#607d86',p.name,'<strong>'+esc(r.name)+' '+esc(p.name)+'</strong><div>最終確認：'+esc(stale(p.lastSeenAt))+'</div>'+sh,r.id==='instructor'?95:75,opacity(p.lastSeenAt))});renderLegend()}
+function renderLegend(){$('legend').innerHTML=roles().filter(r=>r.visible!==false).map(r=>'<span><i class="dot" style="background:'+esc(r.color)+'"></i>'+esc(r.name)+'</span>').join('')+'<span>⛺ 拠点</span><span>🅿 出入口</span>'}
+function fit(){if(!map)return;const b=new google.maps.LatLngBounds();let n=0;const path=Array.isArray(M.route?.path)?M.route.path:[];path.forEach(p=>{b.extend(p);n++});mergedBase().forEach(p=>{b.extend(p);n++});baseItems('parkingEntrances').forEach(p=>{b.extend(p);n++});people().forEach(p=>{if(p.lastLocation){b.extend(p.lastLocation);n++}});if(n)map.fitBounds(b,45)}
+function renderLists(){const ps=people();$('peopleList').innerHTML=ps.length?ps.map(p=>{const r=role(p.roleId),sc=personSchedule(p),mine=p.id===me.personId;return'<div class="card '+(mine?'myCard ':'')+(r.id==='instructor'?'roleTeacher':'')+'"><h3><i class="dot" style="background:'+esc(r.color)+'"></i>'+esc(p.name)+' <span class="pill">'+esc(r.name)+'</span>'+(mine?' <span class="pill">自分</span>':'')+'</h3><div>最終位置 '+esc(stale(p.lastSeenAt))+'</div>'+(sc?'<div class="meta">'+esc(sc.eventName)+' ／ '+esc(fmt(sc.start))+'</div>':'')+'</div>'}).join(''):'<div class="empty">まだ参加登録がありません</div>';const ss=schedules().slice().sort((a,b)=>String(a.start||'').localeCompare(String(b.start||'')));$('scheduleList').innerHTML=ss.length?ss.map(s=>{const p=ps.find(x=>x.id===s.personId),st=scheduleState(s);return'<div class="card '+(st==='競技時間'?'scheduleNow':'')+'"><h3>'+esc(p?.name||'未設定')+'｜'+esc(s.eventName||'競技')+'</h3><div><span class="pill">'+esc(st)+'</span> '+esc(fmt(s.start))+'</div></div>'}).join(''):'<div class="empty">選手の競技予定はまだありません</div>';const bp=mergedBase();$('baseList').innerHTML='<h2 style="font-size:15px">拠点</h2>'+(bp.length?bp.map(b=>'<div class="card"><h3>⛺ '+esc(b.name)+'</h3><div>'+esc(b.note||'')+'</div><div class="meta">登録 '+esc(b.createdBy||'')+'</div></div>').join(''):'<div class="empty">拠点未登録</div>');const pp=baseItems('parkingEntrances');$('parkingList').innerHTML='<h2 style="font-size:15px">駐車場出入口</h2>'+(pp.length?pp.map(p=>'<div class="card"><h3>🅿 '+esc(p.name)+'</h3><div>'+esc(p.note||'')+'</div></div>').join(''):'<div class="empty">駐車場出入口未登録</div>');const has=!!myPerson();$('registerBtn').textContent=has?'登録内容変更':'参加登録';$('floatingRegister').textContent=has?'登録内容変更':'参加登録'}
+function openModal(id){$(id).classList.add('show')}function closeModal(id){$(id).classList.remove('show')}function updateAthleteFields(){const athlete=$('regRole').value==='athlete';$('athleteFields').classList.toggle('show',athlete)}
+function openRegistration(){const p=myPerson();$('regRole').innerHTML=roles().map(r=>'<option value="'+esc(r.id)+'">'+esc(r.name)+'</option>').join('');$('regName').value=p?.name||'';$('regRole').value=p?.roleId||'athlete';const sc=p?personSchedule(p):null;$('regEvent').value=sc?.eventName||'';$('regTime').value=sc?.start||'';$('regDelete').style.display=p?'block':'none';$('regSave').textContent=p?'変更を保存':'登録する';updateAthleteFields();openModal('registrationModal')}
+$('regRole').addEventListener('change',updateAthleteFields);$('regCancel').onclick=()=>closeModal('registrationModal');
+$('regSave').onclick=()=>{const name=$('regName').value.trim(),roleId=$('regRole').value;if(!name){toast('名前を入力してください');return}if(!roleId){toast('役割を選択してください');return}const athlete=roleId==='athlete',eventName=$('regEvent').value.trim(),eventTime=$('regTime').value;if(athlete&&(!eventName||!eventTime)){toast('選手は競技種目と競技時間を入力してください');return}let p=myPerson();if(!p){p={id:'person-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),registeredAt:new Date().toISOString(),lastLocation:null,lastSeenAt:null};state.participants.push(p);me={personId:p.id};saveMe(me)}p.name=name;p.roleId=roleId;p.updatedAt=new Date().toISOString();state.athleteSchedules=state.athleteSchedules.filter(s=>s.personId!==p.id);if(athlete)state.athleteSchedules.push({id:'schedule-'+Date.now(),personId:p.id,eventName,start:eventTime,createdAt:new Date().toISOString(),source:'self_registration'});saveState();closeModal('registrationModal');renderAll();toast('参加登録を保存しました')};
+$('regDelete').onclick=()=>{const p=myPerson();if(!p)return;if(!confirm('自分の参加登録を削除しますか？'))return;state.participants=state.participants.filter(x=>x.id!==p.id);state.athleteSchedules=state.athleteSchedules.filter(x=>x.personId!==p.id);saveState();me={};saveMe(me);closeModal('registrationModal');renderAll();toast('登録を削除しました')};
+function currentPos(cb){if(!navigator.geolocation){toast('GPSを使用できません');return}navigator.geolocation.getCurrentPosition(p=>cb({lat:p.coords.latitude,lng:p.coords.longitude,accuracy:p.coords.accuracy}),e=>toast('GPS取得失敗：'+e.message),{enableHighAccuracy:true,timeout:15000,maximumAge:3000})}
+$('meBtn').onclick=()=>{const p=myPerson();if(!p){openRegistration();toast('先に参加登録してください');return}currentPos(pos=>{p.lastLocation={lat:pos.lat,lng:pos.lng,accuracy:pos.accuracy};p.lastSeenAt=new Date().toISOString();p.positionSource='self_gps';saveState();if(meMarker)meMarker.setMap(null);if(map){meMarker=new google.maps.Marker({map,position:pos,label:'●',title:'現在地'});map.panTo(pos);map.setZoom(Math.max(map.getZoom()||15,16))}renderAll();toast('最終確認位置を更新しました')})};
+function allowedBase(){const p=myPerson();return p&&['instructor','coach','guardian'].includes(p.roleId)}$('baseAddBtn').onclick=()=>{if(!myPerson()){openRegistration();toast('先に参加登録してください');return}if(!allowedBase()){toast('拠点登録は指導者・コーチ・保護者用です');return}openModal('baseModal')};$('baseCancel').onclick=()=>closeModal('baseModal');$('baseSave').onclick=()=>{const p=myPerson(),name=$('baseName').value.trim();if(!p||!allowedBase()){toast('この役割では拠点登録できません');return}if(!name){toast('拠点名を入力してください');return}currentPos(pos=>{state.basePoints.push({id:'field-'+Date.now(),name,type:$('baseType').value,note:$('baseNote').value.trim(),createdBy:p.name,createdRoleId:p.roleId,createdAt:new Date().toISOString(),lat:pos.lat,lng:pos.lng});saveState();closeModal('baseModal');$('baseName').value='';$('baseNote').value='';renderAll();toast('拠点を登録しました')})};
+$('registerBtn').onclick=openRegistration;$('floatingRegister').onclick=openRegistration;$('fitBtn').onclick=fit;document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id===b.dataset.view));if(b.dataset.view==='mapView'&&map)setTimeout(()=>google.maps.event.trigger(map,'resize'),50)});
+function renderAll(){renderLists();if(map)renderMap()}window.initWatchMap=()=>{const path=Array.isArray(M.route?.path)?M.route.path:[];const c=path[0]||mergedBase()[0]||baseItems('parkingEntrances')[0]||{lat:35.0,lng:136.9};map=new google.maps.Map($('map'),{center:c,zoom:14,mapTypeControl:false,streetViewControl:false,fullscreenControl:false,gestureHandling:'greedy'});renderAll();fit()};renderLists();if(typeof ADAPTER.subscribe==='function')ADAPTER.subscribe(v=>{if(v&&typeof v==='object'){state=v;state.participants=Array.isArray(state.participants)?state.participants:[];state.athleteSchedules=Array.isArray(state.athleteSchedules)?state.athleteSchedules:[];state.basePoints=Array.isArray(state.basePoints)?state.basePoints:[];renderAll()}});
+const k=(localStorage.getItem('tabirun_google_maps_api_key')||'').trim();if(!k){const v=prompt('Google Maps APIキーを入力してください。\\n同じ端末では次回から再入力不要です。','');if(v){localStorage.setItem('tabirun_google_maps_api_key',v.trim());location.reload()}else toast('APIキー未設定：一覧は確認できます')}else{const sc=document.createElement('script');sc.src='https://maps.googleapis.com/maps/api/js?key='+encodeURIComponent(k)+'&v=weekly&language=ja&region=JP&callback=initWatchMap';sc.async=true;sc.defer=true;document.head.appendChild(sc)}
+})();
+<\/script></body></html>`;
+}
+
+function previewRuntime(){
+  readProjectForm();const html=buildWatchRuntimeHtml(data());const blob=new Blob([html],{type:'text/html'});const url=URL.createObjectURL(blob);window.open(url,'_blank','noopener');setTimeout(()=>URL.revokeObjectURL(url),60000);setStatus('MAP設定から自由参加登録型の本体プレビューを生成しました。');
+}
+function exportRuntimeHtml(){
+  readProjectForm();const payload=data();const html=buildWatchRuntimeHtml(payload);const blob=new Blob([html],{type:'text/html'});const a=document.createElement('a');const p=safeSlug(projectMeta.projectId,'project'),r=safeSlug(projectMeta.routeId,'route');a.href=URL.createObjectURL(blob);a.download=p+'_'+r+'_watch_system.html';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);setStatus('本体HTMLを生成しました。MAP設定は埋め込み、参加者・競技予定は本体公開後の自由投稿です。');
+}
+$('runtimePreviewBtn').addEventListener('click',previewRuntime);
+$('runtimeExportBtn').addEventListener('click',exportRuntimeHtml);
+
+$('exportBtn').addEventListener('click',exportJson);
+$('importBtn').addEventListener('click',()=>$('importInput').click());
+$('importInput').addEventListener('change',e=>importJsonFile(e.target.files&&e.target.files[0]));
+$('overviewFrom').addEventListener('change',loadOverviewEditor);
+$('overviewTo').addEventListener('change',loadOverviewEditor);
+$('overviewSaveBtn').addEventListener('click',saveOverviewEditor);
+$('overviewDeleteBtn').addEventListener('click',deleteOverviewEditor);
+$('apiBtn').addEventListener('click',setApi);
+$('projectSaveBtn').addEventListener('click',saveProjectSettings);
+$('projectCloneBtn').addEventListener('click',cloneProjectSettings);
+['projectId','eventName','routeId','routeName','stageOrder','stageId','stageName'].forEach(id=>$(id).addEventListener('change',()=>{readProjectForm();autosave()}));
+['mapMode','featureWarnings','featureToilets','featureOverviews','featureBasePoints','featureParkingEntrances','featureParticipants','featureSchedules'].forEach(id=>$(id).addEventListener('change',()=>{readProjectForm();autosave()}));
+
+writeProjectForm();applyProjectUi(false);renderRoleConfig();clearParticipantForm();renderParticipantSelectors();renderSchedules();
+loadGoogle();
+})();
+</script>
+</body>
+</html>
