@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>大会・記録会 MAP EDITOR v21</title>
+<style>
+html,body{margin:0;background:#081d27;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif}
+.boot{max-width:720px;margin:80px auto;padding:24px}
+.boot b{font-size:20px}.boot p{color:#c8d5d9;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="boot"><b>大会用エディタを準備しています…</b><p>既存MAPはそのまま表示せず、大会の種類と会場を決めてから新しいMAPを開始します。</p></div>
+<script>
+(async()=>{
+'use strict';
+const base='./tabirun_map_system_editor_v20_privacy_operations.html';
+try{
+  const res=await fetch(base,{cache:'no-store'});
+  if(!res.ok)throw new Error('v20 core '+res.status);
+  let html=await res.text();
+
+  const oldVars=`let map=null,line=null;
+let controls=[],segments=[],segmentTypes=[],route=[];
+let warnings=[],checkpoints=[],toilets=[],routeOverviews={};
+let basePoints=[],parkingEntrances=[],participants=[],athleteSchedules=[];`;
+  const newVars=`let map=null,line=null;
+let controls=[],segments=[],segmentTypes=[],route=[];
+let warnings=[],checkpoints=[],toilets=[],routeOverviews={};
+let basePoints=[],parkingEntrances=[],participants=[],athleteSchedules=[];
+window.__TABIRUN_EVENT_EDITOR_V21__={
+  version:'21.0',
+  getMap:()=>map,
+  clearVenueData:()=>{
+    controls=[];segments=[];segmentTypes=[];route=[];warnings=[];checkpoints=[];toilets=[];routeOverviews={};basePoints=[];parkingEntrances=[];
+    if(line){line.setMap(null);line=null}
+    try{renderLists();renderMetrics();autosave()}catch(e){}
+  },
+  centerMap:(lat,lng,zoom=16)=>{if(map){map.setCenter({lat:Number(lat),lng:Number(lng)});map.setZoom(Number(zoom)||16)}},
+  setVenueCenter:(lat,lng)=>{
+    try{projectMeta.privacyGuard=v20PrivacyNormalize(projectMeta.privacyGuard);projectMeta.privacyGuard.venueCenter={lat:Number(lat),lng:Number(lng)};autosave();v20RenderPrivacyCenter()}catch(e){}
+  },
+  setChatFlag:(enabled)=>{try{projectMeta.chatEnabled=!!enabled;autosave()}catch(e){}},
+  setRolePreset:(mode)=>{
+    try{
+      const visible={all:['athlete','instructor','coach','guardian'],staff:['instructor','coach'],athlete_staff:['athlete','instructor','coach']}[mode]||['athlete','instructor','coach','guardian'];
+      roleConfig.forEach(r=>r.visible=visible.includes(r.id));renderRoleConfig();autosave();
+    }catch(e){}
+  }
+};`;
+  if(html.includes(oldVars))html=html.replace(oldVars,newVars);
+
+  const extraCss=`
+<style id="v21-simple-style">
+header{padding-bottom:12px}header h1{font-size:19px}header p{display:none!important}
+#projectBlock{display:none!important}
+#rolePanel,#participantPanel,#schedulePanel{display:none}
+.v21Setup{margin-bottom:12px!important;border:2px solid #72aebc}
+.v21Setup .head{background:linear-gradient(135deg,#0e3948,#176278)!important;color:#fff}
+.v21Setup .head p{display:block!important;color:#d9e8ec!important;font-size:10px!important}
+.v21Pad{padding:14px;background:#fff;color:#173640}
+.v21Pad label{font-size:11px;margin:11px 0 5px}
+.v21Pad select,.v21Pad input{min-height:50px;font-size:16px}
+.v21Two{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.v21Search{display:grid;grid-template-columns:1fr auto;gap:7px;align-items:end}
+.v21Search button{border:0;border-radius:10px;background:#087990;color:#fff;font-weight:900;padding:0 15px;min-height:50px}
+.v21Hint{font-size:10px;color:#60747b;line-height:1.65;margin-top:6px}
+.v21Result{display:none;margin-top:8px;padding:10px;background:#e9f5f1;color:#24664d;border-radius:10px;font-size:11px;line-height:1.55;white-space:pre-line}
+.v21Result.show{display:block}.v21Result.bad{background:#fff0ed;color:#8e3c32}
+.v21Feature{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:8px}
+.v21Feature>div{background:#f4f7f8;border:1px solid #dbe6e9;padding:9px;border-radius:11px}
+.v21Feature label{margin:0 0 5px}
+.v21Actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.v21Actions button{border:0;border-radius:11px;min-height:50px;font-size:13px;font-weight:900}
+#v21Start{background:#087990;color:#fff}.v21Sub{background:#e9eff1;color:#29464e}
+.v21ChatNote{margin-top:8px;padding:9px 10px;background:#fff7dd;border:1px solid #ead9a3;color:#715b17;font-size:10px;line-height:1.6;border-radius:10px}
+.v21MapMask{display:flex;position:absolute;inset:0;z-index:20;background:rgba(8,29,39,.92);align-items:center;justify-content:center;text-align:center;padding:28px;color:#fff}
+.v21MapMask.hide{display:none}.v21MapMask b{font-size:17px}.v21MapMask p{font-size:11px;line-height:1.7;color:#d5e2e6}
+body.v21-record .controls,body.v21-camp .controls{display:none!important}
+body.v21-record .grid>section:nth-child(1),body.v21-camp .grid>section:nth-child(1){display:none!important}
+body.v21-record #cpPanel,body.v21-record #overviewPanel,body.v21-camp #cpPanel,body.v21-camp #overviewPanel{display:none!important}
+body.v21-record #warningPanel,body.v21-record #toiletPanel,body.v21-record #basePointPanel,body.v21-record #parkingEntrancePanel{display:block!important}
+body.v21-camp #warningPanel,body.v21-camp #toiletPanel,body.v21-camp #basePointPanel,body.v21-camp #parkingEntrancePanel{display:block!important}
+#v21AdvancedNote{display:none}.v21Advanced #rolePanel{display:block!important}.v21Advanced #projectBlock{display:block!important}.v21Advanced #v21AdvancedNote{display:block}
+@media(max-width:560px){.v21Two,.v21Feature,.v21Actions{grid-template-columns:1fr}.v21Search{grid-template-columns:1fr}.v21Search button{width:100%}}
+</style>`;
+  html=html.replace('</head>',extraCss+'\n</head>');
+
+  const setup=`
+<section class="card v21Setup" id="v21Setup">
+  <div class="head"><strong>大会MAPを作る</strong><p>専門用語は使いません。大会の種類を選ぶと、必要な入力欄だけ表示します。</p></div>
+  <div class="v21Pad">
+    <label for="v21Type">① 何を作りますか？</label>
+    <select id="v21Type">
+      <option value="record" selected>記録会・競技会｜競技場・公園が中心</option>
+      <option value="road">ロードレース・駅伝｜コースあり</option>
+      <option value="camp">合宿・練習会｜拠点中心</option>
+      <option value="quest">旅ラン・チェックポイント型｜ルートあり</option>
+    </select>
+
+    <div class="v21Two">
+      <div><label for="v21EventName">② 大会名</label><input id="v21EventName" placeholder="例：駅伝強化豊川長距離競技会"></div>
+      <div><label for="v21Date">開催日</label><input id="v21Date" type="date"></div>
+    </div>
+
+    <label for="v21Venue">③ 会場を検索</label>
+    <div class="v21Search"><input id="v21Venue" placeholder="例：OKAKENアスリートフィールド"><button type="button" id="v21VenueSearch">検索して地図を移動</button></div>
+    <div class="v21Hint">競技場・公園・学校名などを入力してください。検索結果を中心にして大会MAPを始めます。緯度・経度の入力は不要です。</div>
+    <div class="v21Result" id="v21VenueResult"></div>
+
+    <label>④ 使う機能</label>
+    <div class="v21Feature">
+      <div><label for="v21Share">位置共有</label><select id="v21Share"><option value="on" selected>使う</option><option value="off">使わない</option></select></div>
+      <div><label for="v21Roles">表示する人</label><select id="v21Roles"><option value="all" selected>選手・指導者・コーチ・保護者</option><option value="athlete_staff">選手＋指導者・コーチ</option><option value="staff">指導者・コーチのみ</option><option value="custom">自分で細かく設定</option></select></div>
+      <div><label for="v21Parking">駐車場</label><select id="v21Parking"><option value="on" selected>表示する</option><option value="off">使わない</option></select></div>
+      <div><label for="v21Toilet">トイレ・注意点</label><select id="v21Toilet"><option value="on" selected>表示する</option><option value="off">使わない</option></select></div>
+      <div><label for="v21Schedule">競技予定</label><select id="v21Schedule"><option value="on" selected>参加者が本体で入力</option><option value="off">使わない</option></select></div>
+      <div><label for="v21Chat">チャット</label><select id="v21Chat"><option value="on" selected>使う</option><option value="off">使わない</option></select></div>
+    </div>
+    <div class="v21ChatNote"><strong>CHAT：</strong> 現行v20からCHAT本体への接続が抜けているため、設定だけを「使える」ようにはしません。ON/OFFは大会設定に保存し、本体生成側の接続復旧対象として明示します。</div>
+
+    <div class="v21Actions"><button type="button" id="v21Start">この大会の新しいMAPを開始</button><button type="button" class="v21Sub" id="v21Advanced">詳細設定を開く</button></div>
+    <div class="v21Hint" id="v21AdvancedNote">PROJECT ID / ROUTE ID は内部管理用です。通常は自動生成するため触る必要はありません。</div>
+  </div>
+</section>`;
+  html=html.replace('<main>','<main>'+setup);
+
+  const postScript=`
+<script id="v21-simple-script">
+(()=>{
+'use strict';
+const q=id=>document.getElementById(id);
+const state={venue:null,started:false};
+document.querySelector('header h1').textContent='大会・記録会 MAP EDITOR v21';
+const mapWrap=document.querySelector('.mapWrap');
+if(mapWrap){const mask=document.createElement('div');mask.className='v21MapMask';mask.id='v21MapMask';mask.innerHTML='<div><b>新しい大会MAPはまだ開始していません</b><p>上の「会場を検索」→「この大会の新しいMAPを開始」の順に進めてください。<br>以前の旅ランMAPを新しい大会MAPとして表示しません。</p></div>';mapWrap.appendChild(mask)}
+function core(){return window.__TABIRUN_EVENT_EDITOR_V21__||null}
+function modeApply(){
+  const t=q('v21Type').value;document.body.classList.remove('v21-record','v21-road','v21-camp','v21-quest');document.body.classList.add('v21-'+t);
+  const mapMode=t==='quest'?'staged':t==='road'?'checkpoint':'map_only';q('mapMode').value=mapMode;
+  q('featureOverviews').checked=(t==='quest'||t==='road');
+  q('featureWarnings').checked=q('v21Toilet').value==='on';q('featureToilets').checked=q('v21Toilet').value==='on';
+  q('featureBasePoints').checked=true;q('featureParkingEntrances').checked=q('v21Parking').value==='on';
+  q('featureParticipants').checked=q('v21Share').value==='on';q('featureSchedules').checked=q('v21Schedule').value==='on';
+  q('mapMode').dispatchEvent(new Event('change',{bubbles:true}));
+}
+q('v21Type').addEventListener('change',modeApply);['v21Share','v21Parking','v21Toilet','v21Schedule'].forEach(id=>q(id).addEventListener('change',modeApply));
+q('v21Roles').addEventListener('change',()=>{const v=q('v21Roles').value;document.body.classList.toggle('v21Advanced',v==='custom');if(v!=='custom'&&core())core().setRolePreset(v)});
+q('v21Chat').addEventListener('change',()=>{if(core())core().setChatFlag(q('v21Chat').value==='on')});
+q('v21Advanced').addEventListener('click',()=>{document.body.classList.toggle('v21Advanced');q('v21Advanced').textContent=document.body.classList.contains('v21Advanced')?'詳細設定を閉じる':'詳細設定を開く'});
+function result(msg,bad=false){const x=q('v21VenueResult');x.textContent=msg;x.className='v21Result show'+(bad?' bad':'')}
+function doVenueSearch(){
+  const text=q('v21Venue').value.trim();if(!text){result('会場名を入力してください。',true);return}
+  if(!window.google||!google.maps){result('Googleマップの準備中です。数秒後にもう一度検索してください。',true);return}
+  result('検索中…');
+  const geocoder=new google.maps.Geocoder();
+  geocoder.geocode({address:text,region:'jp'},(rows,status)=>{
+    if(status!=='OK'||!rows||!rows[0]){result('会場を特定できませんでした。施設名＋市町村名で検索してください。',true);return}
+    const r=rows[0],p={lat:r.geometry.location.lat(),lng:r.geometry.location.lng()};state.venue={...p,label:r.formatted_address||text,name:text};
+    if(core()){core().centerMap(p.lat,p.lng,16);core().setVenueCenter(p.lat,p.lng)}
+    result('会場を確認：'+(r.formatted_address||text)+'\nこの位置を中心にMAPを開始できます。');
+  });
+}
+q('v21VenueSearch').addEventListener('click',doVenueSearch);
+q('v21Venue').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();doVenueSearch()}});
+function autoId(){const d=(q('v21Date').value||new Date().toISOString().slice(0,10)).replaceAll('-','');return 'event-'+d+'-'+Date.now().toString(36).slice(-5)}
+q('v21Start').addEventListener('click',()=>{
+  const name=q('v21EventName').value.trim();if(!name){result('先に大会名を入力してください。',true);q('v21EventName').focus();return}
+  if(!state.venue){result('先に会場を検索して、地図の中心を決めてください。',true);return}
+  try{const old=localStorage.getItem('tabirun_map_block_editor_v19_current');if(old&&!localStorage.getItem('tabirun_v21_backup_before_new_event'))localStorage.setItem('tabirun_v21_backup_before_new_event',old)}catch(e){}
+  const c=core();if(c)c.clearVenueData();
+  q('projectId').value=autoId();q('eventName').value=name;
+  const type=q('v21Type').value;q('routeId').value=type==='record'?'venue-map':type==='camp'?'camp-map':type==='road'?'road-route':'quest-route';
+  q('routeName').value=(q('v21Venue').value.trim()||'会場')+' 周辺';
+  modeApply();
+  if(c){c.setVenueCenter(state.venue.lat,state.venue.lng);c.setChatFlag(q('v21Chat').value==='on');if(q('v21Roles').value!=='custom')c.setRolePreset(q('v21Roles').value);c.centerMap(state.venue.lat,state.venue.lng,16)}
+  q('projectSaveBtn').click();state.started=true;q('v21MapMask')?.classList.add('hide');
+  result('新しい大会MAPを開始しました。以前のルート・CPはこの大会MAPには表示しません。必要な「駐車場出入口」「本部・集合場所」「トイレ・注意点」だけ登録してください。');
+  setTimeout(()=>document.querySelector('.mapWrap')?.scrollIntoView({behavior:'smooth',block:'start'}),150);
+});
+modeApply();
+setTimeout(()=>{if(q('v21Chat').value==='on'&&core())core().setChatFlag(true)},700);
+})();
+<\/script>`;
+  html=html.replace('</body>',postScript+'\n</body>');
+  html=html.replaceAll('旅ラン MAP SYSTEM EDITOR v20','大会・記録会 MAP EDITOR v21');
+  document.open();document.write(html);document.close();
+}catch(err){
+  document.body.innerHTML='<div class="boot"><b>大会用エディタを読み込めませんでした</b><p>'+String(err.message||err)+'</p></div>';
+}
+})();
+</script>
+</body>
+</html>
