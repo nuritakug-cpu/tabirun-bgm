@@ -1,0 +1,846 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>TABIRUN EVENT BUILDER v5</title>
+<style>
+:root{
+  --bg:#0c2530;--panel:#fff;--ink:#183741;--muted:#6d8087;--line:#d9e4e7;
+  --accent:#0a7890;--accent2:#15566a;--ok:#2d7355;--warn:#9c6428;--danger:#9d4141;--soft:#f3f7f8;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;color:var(--ink)}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+.top{position:sticky;top:0;z-index:50;background:rgba(9,35,46,.97);color:#fff;border-bottom:1px solid #ffffff18;padding:10px 12px;backdrop-filter:blur(12px)}
+.topRow{max-width:1220px;margin:auto;display:flex;align-items:center;gap:10px;justify-content:space-between}
+.brand{min-width:0}.brand b{display:block;font-size:16px}.brand span{display:block;font-size:10px;color:#c9d7dc;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topActions{display:flex;gap:6px}.topActions button{border:1px solid #ffffff30;background:#ffffff10;color:#fff;border-radius:9px;padding:8px 10px;font-size:10px;font-weight:900}
+.shell{max-width:1220px;margin:auto;padding:10px;display:grid;grid-template-columns:300px minmax(0,1fr);gap:10px;align-items:start}
+.sidebar{position:sticky;top:72px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 28px #00141c25}
+.sideHead{padding:12px;background:#eef5f6;border-bottom:1px solid var(--line)}
+.sideHead strong{display:block;font-size:13px}.sideHead small{display:block;color:var(--muted);font-size:9px;line-height:1.5;margin-top:3px}
+.eventPicker{padding:10px;border-bottom:1px solid var(--line)}
+.eventPicker select,.eventPicker button{width:100%;margin-top:6px}
+.tree{padding:7px;max-height:calc(100vh - 220px);overflow:auto}
+.treeMain{border:1px solid var(--line);border-radius:12px;margin-bottom:7px;overflow:hidden;background:#fff}
+.treeMainHead{display:flex;align-items:center;gap:7px;padding:10px;border:0;background:#f8fafb;width:100%;text-align:left;color:var(--ink)}
+.treeMainHead .ico{font-size:16px;width:22px;text-align:center}.treeMainHead .label{font-size:11px;font-weight:950;flex:1}.treeMainHead .count{font-size:9px;color:var(--muted)}
+.treeSubs{display:none;border-top:1px solid #edf2f3;padding:5px}.treeMain.open .treeSubs{display:block}
+.treeSub{width:100%;border:0;background:#fff;text-align:left;border-radius:8px;padding:9px 8px;font-size:10px;color:#47616a;display:flex;gap:6px;align-items:center}
+.treeSub:hover,.treeSub.on{background:#eaf3f5;color:#164a59;font-weight:900}.dot{width:7px;height:7px;border-radius:50%;background:#b9c8cd;flex:none}.treeSub.complete .dot{background:var(--ok)}.treeSub.issue .dot{background:#c48331}
+.content{min-width:0}.panel{background:#fff;border-radius:16px;margin-bottom:10px;overflow:hidden;box-shadow:0 8px 28px #00141c20}
+.panelHead{padding:14px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;gap:10px;justify-content:space-between;background:#fbfcfc}
+.panelHead h1{font-size:18px;margin:0}.panelHead p{font-size:10px;color:var(--muted);line-height:1.6;margin:4px 0 0}.panelBody{padding:14px}
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+.sum{background:#fff;border-radius:13px;padding:10px;border:1px solid #dbe6e9}.sum b{display:block;font-size:18px}.sum span{font-size:9px;color:var(--muted)}
+.formGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.wide{grid-column:1/-1}
+.field{min-width:0}.field label{display:flex;gap:5px;align-items:center;font-size:10px;font-weight:900;margin-bottom:4px}.req{font-size:8px;color:#fff;background:#a94d43;padding:2px 5px;border-radius:5px}.help{font-size:9px;color:var(--muted);line-height:1.55;margin-top:4px}
+input,select,textarea{width:100%;border:1px solid #cbd9dd;border-radius:10px;background:#fff;color:var(--ink);padding:10px;font-size:15px}textarea{min-height:92px;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:2px solid #0a789025;border-color:#0a7890}
+.toggleRow{display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--line);border-radius:10px;background:#f8fafb}.toggleRow input{width:auto}.toggleRow b{font-size:11px}.toggleRow span{font-size:9px;color:var(--muted);display:block;margin-top:2px}
+.actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}.btn{border:0;border-radius:10px;padding:10px 12px;font-size:10px;font-weight:950;background:#e7eef0;color:#25464f}.btn.primary{background:var(--accent);color:#fff}.btn.ok{background:#e4f0e9;color:#245d43}.btn.warn{background:#f4eadf;color:#7c4d20}.btn.danger{background:#f3e2e2;color:#8d3434}.btn:disabled{opacity:.45;cursor:not-allowed}
+.note{background:#f1f6f7;border:1px solid #d9e6e9;border-radius:10px;padding:9px 10px;font-size:9px;line-height:1.65;color:#536b74;margin-top:8px}.note.important{background:#fff7ed;border-color:#ecd5b8;color:#694a29}.note.safe{background:#edf7f2;border-color:#cfe3d8;color:#28523f}
+.moduleCards{display:grid;grid-template-columns:1fr 1fr;gap:8px}.moduleCard{border:1px solid var(--line);border-radius:12px;padding:10px;background:#fff}.moduleCardTop{display:flex;justify-content:space-between;gap:8px;align-items:center}.moduleCard h3{font-size:11px;margin:0}.moduleCard p{font-size:9px;color:var(--muted);line-height:1.55;margin:5px 0 0}.moduleState{font-size:8px;font-weight:950;padding:3px 6px;background:#edf2f4}.moduleState.on{background:#dceee4;color:#235b40}
+.progressBar{height:7px;background:#e6edef;border-radius:10px;overflow:hidden;margin-top:6px}.progressBar i{display:block;height:100%;background:#2d7355;width:0}
+.issueList{display:flex;flex-direction:column;gap:5px}.issue{font-size:10px;padding:8px;border:1px solid #ecd7bb;background:#fff8ee;border-radius:8px}.okLine{font-size:10px;padding:8px;border:1px solid #d0e5d8;background:#eff8f3;border-radius:8px}
+.advancedBox{border:1px dashed #b9cbd0;border-radius:12px;padding:10px;background:#fafcfc;margin-top:10px}.advancedBox summary{font-size:10px;font-weight:950;cursor:pointer}.advancedContent{padding-top:8px}
+.builderRow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px}.builderRow.four{grid-template-columns:1.1fr 1.1fr .8fr .8fr}
+.customList{margin-top:8px;display:flex;flex-direction:column;gap:6px}.customItem{border:1px solid var(--line);padding:8px;border-radius:9px;font-size:9px;display:flex;justify-content:space-between;gap:8px;align-items:center}.customItem b{font-size:10px}.pill{display:inline-block;padding:3px 6px;border-radius:6px;background:#edf2f4;font-size:8px;font-weight:900;margin-right:4px}
+.handoff{border:2px solid #cfe0e4;background:#f8fbfc;border-radius:13px;padding:11px;margin-top:10px}.handoff h3{font-size:12px;margin:0 0 5px}.handoff p{font-size:9px;line-height:1.6;color:#587079;margin:0}.handoffStatus{font-size:10px;font-weight:900;margin-top:8px;padding:8px;background:#fff;border:1px solid #d9e5e8}
+.hidden{display:none!important}.empty{padding:18px;border:1px dashed #c4d1d5;border-radius:10px;text-align:center;font-size:10px;color:#75888e}
+.footer{color:#bfd0d6;font-size:9px;line-height:1.6;padding:8px 12px 20px;max-width:1220px;margin:auto}
+@media(max-width:900px){.shell{grid-template-columns:1fr}.sidebar{position:static}.tree{max-height:none}.summary{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.shell{padding:7px}.formGrid,.moduleCards,.builderRow,.builderRow.four{grid-template-columns:1fr}.wide{grid-column:auto}.topRow{align-items:flex-start}.topActions{flex-direction:column}.topActions button{padding:7px}.panelHead h1{font-size:16px}}
+
+/* === v2 USABILITY LAYER === */
+body{font-size:16px}
+.brand b{font-size:20px;letter-spacing:.01em}.brand span{font-size:13px;line-height:1.45;margin-top:4px}
+.top{padding:12px}.topActions button{font-size:14px;padding:11px 13px;border-radius:11px;min-height:44px}.topActions .previewAction{background:#ffffff;color:#123e4c;border-color:#fff}
+.sideHead{padding:14px}.sideHead strong{font-size:17px}.sideHead small{font-size:13px;line-height:1.6;margin-top:5px}
+.eventPicker{padding:12px}.eventPicker select,.eventPicker button{font-size:15px;min-height:46px}
+.tree{padding:9px}.treeMainHead{padding:13px 12px}.treeMainHead .ico{font-size:20px;width:28px}.treeMainHead .label{font-size:15px}.treeMainHead .count{font-size:12px}
+.treeSub{padding:12px 10px;font-size:14px;line-height:1.4}.dot{width:9px;height:9px}
+.panelHead{padding:18px}.panelHead h1{font-size:23px}.panelHead p{font-size:14px;line-height:1.7;margin-top:6px}.panelBody{padding:18px}
+.sum{padding:13px}.sum b{font-size:23px}.sum span{font-size:12px;line-height:1.4}
+.field label{font-size:15px;margin-bottom:7px}.req{font-size:11px;padding:3px 6px}.help{font-size:13px;line-height:1.65;margin-top:6px}
+input,select,textarea{padding:13px 12px;font-size:17px;min-height:48px;border-radius:11px}textarea{min-height:112px}
+.toggleRow{padding:13px}.toggleRow b{font-size:15px}.toggleRow span{font-size:13px;line-height:1.5}
+.actions{gap:9px;margin-top:15px}.btn{padding:12px 14px;font-size:14px;min-height:44px}.bigAction{width:100%;min-height:54px;font-size:17px}
+.note{padding:12px 13px;font-size:13px;line-height:1.7}.moduleCard{padding:13px}.moduleCard h3{font-size:15px}.moduleCard p{font-size:13px;line-height:1.6}.moduleState{font-size:11px;padding:4px 7px}
+.issue,.okLine{font-size:14px;padding:11px}.advancedBox{padding:13px}.advancedBox summary{font-size:14px}.customItem{padding:11px;font-size:13px}.customItem b{font-size:14px}.pill{font-size:11px;padding:4px 7px}
+.handoff{padding:14px}.handoff h3{font-size:16px}.handoff p{font-size:13px}.handoffStatus{font-size:13px;padding:10px}.empty{font-size:14px;line-height:1.6}
+.footer{font-size:12px}.welcomeHead{background:linear-gradient(135deg,#f8fcfd,#eef7f8)}.startField{padding:8px 0}
+.guideHead{background:linear-gradient(135deg,#0c5c70,#0a7890);color:#fff}.guideHead p{color:#dceff3}.guideNow{background:#fff;color:#0a5d70;border-radius:999px;padding:8px 12px;font-size:13px;font-weight:950;white-space:nowrap}
+.guideLead{border:2px solid #c9e0e6;background:#f6fbfc;border-radius:13px;padding:14px;font-size:15px;line-height:1.7;margin-bottom:12px}
+.guideLead b{font-size:18px}
+.guideSteps{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.guideStep{border:1px solid #d4e1e5;background:#fff;border-radius:12px;padding:12px;text-align:left;min-height:112px;color:#31515b}.guideStep .n{display:inline-flex;width:28px;height:28px;border-radius:50%;align-items:center;justify-content:center;background:#e8f1f3;font-size:13px;font-weight:950;margin-bottom:7px}.guideStep b{display:block;font-size:14px}.guideStep span{display:block;font-size:12px;color:#6a7f86;line-height:1.45;margin-top:4px}.guideStep.done{border-color:#b7d9c7;background:#f3faf6}.guideStep.done .n{background:#d8eee2;color:#1d6343}.guideStep.now{border:2px solid #0a7890;background:#eef8fa}.guideStep.now .n{background:#0a7890;color:#fff}.guideNext{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}.guideNext .btn{font-size:15px}
+.previewModal{display:none;position:fixed;inset:0;z-index:500}.previewModal.show{display:block}.previewBackdrop{position:absolute;inset:0;background:#00151db8}.previewSheet{position:relative;z-index:2;width:min(720px,100%);height:100%;margin-left:auto;background:#edf2f4;overflow:auto;padding-bottom:24px}.previewToolbar{position:sticky;top:0;z-index:3;background:#0b2d38;color:#fff;padding:14px;display:flex;justify-content:space-between;gap:12px;align-items:center}.previewToolbar b{display:block;font-size:18px}.previewToolbar span{display:block;font-size:12px;color:#cadddf;margin-top:2px}.previewToolbar button{border:0;background:#fff;color:#173e49;border-radius:9px;padding:9px 12px;font-weight:900;font-size:14px}.previewHint{margin:12px;background:#fff9ec;border:1px solid #ead6ab;padding:11px;border-radius:10px;font-size:13px;line-height:1.6}.phoneFrame{width:min(390px,calc(100% - 24px));margin:12px auto;background:#fff;border:8px solid #1b2f35;border-radius:30px;overflow:hidden;box-shadow:0 12px 32px #00151d35;min-height:650px}.phoneTop{background:#123b47;color:#fff;padding:18px 15px 14px}.phoneTop small{font-size:10px;letter-spacing:.18em;opacity:.75}.phoneTop h2{font-size:20px;margin:4px 0 5px}.phoneTop span{font-size:12px;color:#cbdadd}.phoneTabs{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:#fff;border-bottom:1px solid #d8e2e5;overflow:auto}.phoneTabs button{border:0;background:#fff;padding:12px 5px;font-size:11px;font-weight:900;color:#60757d}.phoneTabs button.on{background:#eaf3f5;color:#104a5a}.phoneBody{padding:12px;background:#f4f7f8;min-height:530px}.pvHero{background:#fff;border:1px solid #d8e3e6;border-radius:13px;padding:14px;margin-bottom:10px}.pvHero h3{font-size:15px;margin:0 0 6px}.pvHero p{font-size:12px;line-height:1.65;color:#60757d;margin:0}.pvCard{background:#fff;border:1px solid #d8e3e6;border-radius:11px;padding:11px;margin-bottom:8px}.pvCard b{font-size:13px}.pvCard span{display:block;font-size:11px;color:#6b7e85;margin-top:4px;line-height:1.5}.pvActions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.pvActions button{border:0;border-radius:9px;background:#174c5a;color:#fff;padding:12px 8px;font-size:12px;font-weight:900}.pvMap{height:260px;background:linear-gradient(135deg,#e2ecef,#c9dde3);border-radius:12px;display:flex;align-items:center;justify-content:center;text-align:center;color:#31545e;font-size:13px;line-height:1.6;padding:18px}.previewBottomActions{display:flex;gap:8px;justify-content:center;padding:4px 12px 20px}
+@media(max-width:900px){
+  .content{order:1}.sidebar{order:2}.guideSteps{grid-template-columns:1fr 1fr}.shell{gap:8px}.sidebar{margin-top:2px}
+  .sideHead small{font-size:13px}.tree{max-height:none}
+}
+@media(max-width:600px){
+  .topRow{align-items:center}.brand b{font-size:18px}.brand span{display:none}.topActions{flex-direction:row;gap:5px}.topActions button{font-size:12px;padding:9px 8px;min-height:40px}
+  .summary{grid-template-columns:1fr 1fr}.panelHead{padding:15px}.panelHead h1{font-size:21px}.panelHead p{font-size:14px}
+  .panelBody{padding:15px}.guideSteps{grid-template-columns:1fr}.guideStep{min-height:auto}.guideNow{font-size:12px}.previewSheet{width:100%}
+}
+
+
+/* === v4 GENERIC LOCATION + SEQUENTIAL WIZARD === */
+#guidePanel{display:none!important}
+.sidebar{display:none}
+.shell{grid-template-columns:minmax(0,1fr);max-width:900px}
+.summary{display:none}
+.topRow{max-width:900px}
+.topActions .advancedAction{background:#ffffff12;color:#fff}
+.wizardPanel{overflow:visible}
+.wizardHead{background:linear-gradient(135deg,#0d6074,#087990);color:#fff;padding:18px}
+.wizardHeadTop{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.wizardHead small{display:block;font-size:13px;font-weight:900;letter-spacing:.08em;color:#d8edf1}
+.wizardHead h1{font-size:25px;margin:5px 0 5px;line-height:1.3}.wizardHead p{margin:0;font-size:14px;line-height:1.6;color:#d8edf1}
+.wizardStepBadge{flex:none;background:#fff;color:#0c5a6c;border-radius:999px;padding:9px 12px;font-size:14px;font-weight:950}
+.wizardProgress{height:9px;background:#d7e8ec}.wizardProgress i{display:block;height:100%;background:#37a078;transition:width .2s}
+.wizardBody{padding:18px}.wizardIntro{font-size:16px;line-height:1.75;margin-bottom:14px;color:#365660}.wizardIntro b{font-size:18px;color:#183b46}
+.wizardFields{display:grid;grid-template-columns:1fr 1fr;gap:12px}.wizardFields .wide{grid-column:1/-1}
+.wizardField label{display:block;font-size:15px;font-weight:950;margin:0 0 7px}.wizardField .hint{font-size:13px;color:#687d84;line-height:1.6;margin-top:6px}
+.wizardNav{display:grid;grid-template-columns:1fr 1.3fr;gap:9px;margin-top:18px;padding-top:14px;border-top:1px solid #dbe6e9}.wizardNav .btn{font-size:16px;min-height:52px}.wizardNav .primary{font-size:17px}
+.choiceList{display:flex;flex-direction:column;gap:9px}.choiceCard{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:flex-start;border:2px solid #d9e4e7;background:#fff;border-radius:13px;padding:14px;cursor:pointer}.choiceCard.on{border-color:#2e8c6b;background:#f2faf6}.choiceCard input{width:24px;height:24px;min-height:24px;margin:1px 0 0}.choiceCard b{display:block;font-size:16px;line-height:1.4}.choiceCard span{display:block;font-size:13px;color:#62777e;line-height:1.6;margin-top:3px}.choiceCard .recommend{display:inline-block;width:auto;margin-top:6px;background:#e3f1e9;color:#286146;border-radius:6px;padding:3px 7px;font-size:11px;font-weight:900}
+.detailCounter{display:inline-block;background:#edf4f6;color:#315861;border-radius:7px;padding:5px 8px;font-size:12px;font-weight:900;margin-bottom:10px}.safeDefaults{border:1px solid #cde1d6;background:#f0f8f4;border-radius:11px;padding:12px;margin-top:12px;font-size:13px;line-height:1.7;color:#315443}.safeDefaults b{font-size:14px}
+.wizardSummary{display:flex;flex-direction:column;gap:8px}.wizardSummaryRow{display:grid;grid-template-columns:120px 1fr;gap:10px;border-bottom:1px solid #e1e9eb;padding:9px 0;font-size:14px}.wizardSummaryRow b{color:#4c676f}.wizardSummaryRow span{font-weight:850;color:#173e49}.wizardStatus{padding:12px;border-radius:11px;background:#f1f7f8;border:1px solid #d4e4e8;font-size:14px;line-height:1.65;margin-top:12px}.wizardStatus.warn{background:#fff7ec;border-color:#ecd3ad;color:#714921}
+.recentEvents{margin-top:18px;padding-top:16px;border-top:1px solid #dce6e9}.recentEvents h2{font-size:17px;margin:0 0 8px}.recentEvent{display:flex;justify-content:space-between;gap:10px;align-items:center;border:1px solid #d8e4e7;border-radius:11px;padding:11px;margin-top:7px}.recentEvent b{font-size:14px}.recentEvent span{display:block;font-size:12px;color:#6b7f86;margin-top:3px}.recentEvent button{flex:none}
+.eventTypeCards{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}.typeCard{border:2px solid #d8e3e6;background:#fff;border-radius:12px;padding:12px;text-align:left;color:#294a54}.typeCard.on{border-color:#0a7890;background:#eef8fa}.typeCard b{display:block;font-size:15px}.typeCard span{display:block;font-size:12px;color:#6b7e85;line-height:1.5;margin-top:3px}
+body.advancedMode .sidebar{display:block}
+body.advancedMode .shell{max-width:1220px;grid-template-columns:300px minmax(0,1fr)}
+body.advancedMode .summary{display:grid}
+body.advancedMode #wizardPanel{display:none!important}
+body.advancedMode #welcomePanel{display:none!important}
+body.advancedMode #editorPanel{display:block}
+.advancedNotice{background:#fff6e9;border:1px solid #ecd4ae;border-radius:10px;padding:10px;font-size:13px;line-height:1.6;margin:0 0 10px}
+#validateTopBtn{display:none!important}
+@media(max-width:900px){body.advancedMode .shell{grid-template-columns:1fr}.content{order:1}.sidebar{order:2}}
+@media(max-width:600px){
+ .top{padding:9px 8px}.brand b{font-size:17px}.topActions button{font-size:11px;padding:8px 7px;min-height:38px}.topActions{gap:4px}
+ .wizardHead{padding:15px}.wizardHead h1{font-size:22px}.wizardHead p{font-size:13px}.wizardStepBadge{font-size:12px;padding:7px 9px}
+ .wizardBody{padding:15px}.wizardFields,.eventTypeCards{grid-template-columns:1fr}.wizardFields .wide{grid-column:auto}.wizardNav{grid-template-columns:1fr 1.2fr}.wizardNav .btn{font-size:14px;padding:10px 8px}.choiceCard{padding:13px}.choiceCard b{font-size:15px}.choiceCard span{font-size:13px}.wizardSummaryRow{grid-template-columns:95px 1fr;font-size:13px}
+}
+
+
+/* === v4 GENERIC LOCATION / INLINE MAP === */
+.locationMapBox{margin-top:14px;border:2px solid #d7e5e8;border-radius:14px;overflow:hidden;background:#f8fbfc}
+.locationMapHead{padding:12px 13px;border-bottom:1px solid #dbe7ea;background:#eef6f7}
+.locationMapHead b{display:block;font-size:15px}.locationMapHead span{display:block;font-size:12px;color:#61767d;line-height:1.55;margin-top:3px}
+.locationMapCanvas{height:330px;background:#e3ecef;position:relative}
+.locationMapMsg{padding:10px 12px;font-size:13px;line-height:1.6;background:#fff;border-top:1px solid #dce7ea;color:#526a72}
+.locationMapTools{display:flex;gap:8px;flex-wrap:wrap;padding:10px;background:#fff;border-top:1px solid #dce7ea}
+.locationMapTools .btn{flex:1;min-width:180px}
+.pointManager{margin-top:14px;border:2px solid #d7e5e8;border-radius:14px;padding:13px;background:#fbfdfd}
+.pointManager h3{font-size:17px;margin:0 0 5px}.pointManager p{font-size:13px;line-height:1.65;color:#60767e;margin:0 0 10px}
+.pointList{display:flex;flex-direction:column;gap:8px;margin-top:10px}.pointItem{border:1px solid #d9e5e8;border-radius:11px;padding:10px;background:#fff}
+.pointItemTop{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}.pointItem b{font-size:14px}.pointItem small{display:block;font-size:12px;color:#6b7f86;line-height:1.5;margin-top:3px}
+.pointKind{display:inline-block;background:#eaf3f5;color:#315b66;border-radius:6px;padding:3px 7px;font-size:11px;font-weight:900;margin-right:5px}
+.genericRule{border:1px solid #cfe2d8;background:#f1f8f4;border-radius:11px;padding:11px 12px;font-size:13px;line-height:1.65;color:#315644;margin-top:10px}
+@media(max-width:600px){.locationMapCanvas{height:270px}.locationMapTools{display:grid;grid-template-columns:1fr}.locationMapTools .btn{min-width:0}.pointManager h3{font-size:16px}}
+
+
+/* === v5 MULTI LOCATION / ROUTE / BGM / MAP FALLBACK === */
+.providerBadge{display:inline-block;margin-left:6px;padding:3px 7px;border-radius:7px;background:#e9f1f3;color:#315863;font-size:11px;font-weight:900}
+.locationEditorGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.locationEditorGrid .wide{grid-column:1/-1}
+.routeManager{margin-top:14px;border:2px solid #d7e5e8;border-radius:14px;padding:13px;background:#fbfdfd}.routeManager h3{font-size:17px;margin:0 0 5px}.routeManager p{font-size:13px;line-height:1.65;color:#60767e;margin:0 0 10px}
+.routeItem{border:1px solid #d9e5e8;border-radius:11px;padding:10px;background:#fff;margin-top:7px}.routeItem b{font-size:14px}.routeItem small{display:block;font-size:12px;color:#6b7f86;line-height:1.5;margin-top:3px}
+.bgmTrackList{display:flex;flex-direction:column;gap:7px;margin-top:10px}.bgmTrack{border:1px solid #d8e4e7;border-radius:10px;padding:10px;background:#fff}.bgmTrack b{font-size:14px}.bgmTrack small{display:block;color:#687d84;font-size:12px;line-height:1.55;margin-top:3px}
+.questGrid{display:grid;grid-template-columns:1fr;gap:8px}.questGrid .choiceCard{margin:0}
+.mapFallbackNotice{background:#edf7f2;border:1px solid #cfe4d8;color:#285742;border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.6;margin-top:8px}
+@media(max-width:600px){.locationEditorGrid{grid-template-columns:1fr}.locationEditorGrid .wide{grid-column:auto}.routeManager h3{font-size:16px}}
+
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="topRow">
+    <div class="brand"><b>TABIRUN EVENT BUILDER v5</b><span>1つのエディタから、旅ラン・大会・駅伝・合宿・見守りなどを構成する汎用ビルダー</span></div>
+    <div class="topActions"><button id="previewTopBtn" class="previewAction">👁 プレビュー</button><button id="saveTopBtn">保存</button><button id="advancedTopBtn" class="advancedAction">⚙ 詳細</button><button id="validateTopBtn">入力漏れ確認</button></div>
+  </div>
+</header>
+<div class="shell">
+  <aside class="sidebar" id="advancedSidebar">
+    <div class="sideHead"><strong>詳細設定（上級）</strong><small>通常入力では使いません。独自項目・分類追加など、必要な場合だけ開きます。</small></div>
+    <div class="eventPicker">
+      <select id="eventSelect"></select>
+      <button class="btn primary" id="newEventBtn">＋ 新しいイベント</button>
+    </div>
+    <div class="tree" id="tree"></div>
+  </aside>
+
+  <main class="content">
+    <div class="summary">
+      <div class="sum"><b id="progressPct">0%</b><span>必須入力の完了</span><div class="progressBar"><i id="progressFill"></i></div></div>
+      <div class="sum"><b id="enabledModules">0</b><span>使用中モジュール</span></div>
+      <div class="sum"><b id="customFieldsCount">0</b><span>追加した独自項目</span></div>
+      <div class="sum"><b id="lastSaved">未保存</b><span>保存状態</span></div>
+    </div>
+
+
+    <section class="panel hidden wizardPanel" id="wizardPanel">
+      <div class="wizardHead">
+        <div class="wizardHeadTop">
+          <div><small id="wizardStepLabel">STEP</small><h1 id="wizardTitle">入力</h1><p id="wizardHelp"></p></div>
+          <span class="wizardStepBadge" id="wizardStepBadge">1 / 5</span>
+        </div>
+      </div>
+      <div class="wizardProgress"><i id="wizardProgressFill"></i></div>
+      <div class="wizardBody">
+        <div id="wizardBody"></div>
+        <div class="wizardNav" id="wizardNav"></div>
+      </div>
+    </section>
+
+    <section class="panel hidden" id="guidePanel">
+      <div class="panelHead guideHead">
+        <div><h1>入力ガイド</h1><p>上から順番に進めれば完成します。すべてを一度に設定する必要はありません。</p></div>
+        <span class="guideNow" id="guideNow">STEP 1</span>
+      </div>
+      <div class="panelBody">
+        <div class="guideLead" id="guideLead"></div>
+        <div class="guideSteps" id="guideSteps"></div>
+        <div class="guideNext" id="guideNext"></div>
+      </div>
+    </section>
+
+    <section class="panel" id="welcomePanel">
+      <div class="panelHead welcomeHead"><div><h1>STEP 1 / 5　イベントを新しく作る</h1><p>最初は「イベントの種類」と「イベント名」だけです。作成後は、画面の「次へ」を押して順番に入力します。</p></div></div>
+      <div class="panelBody">
+        <div class="wizardIntro"><b>① 近いイベントの種類を選んでください。</b><br>完全一致でなくて大丈夫です。後からすべて変更できます。</div>
+        <div class="eventTypeCards" id="startTypeCards">
+          <button class="typeCard" data-preset="record"><b>🏟 記録会・競技会</b><span>競技場・公園などを中心に使うイベント</span></button>
+          <button class="typeCard" data-preset="road"><b>🏃 ロードレース・駅伝</b><span>コース・中継点・応援を使うイベント</span></button>
+          <button class="typeCard" data-preset="camp"><b>⛺ 合宿・練習会</b><span>集合場所・拠点・見守りを使うイベント</span></button>
+          <button class="typeCard" data-preset="quest"><b>📍 旅ラン・QUEST</b><span>ルート・チェックポイント・クイズ等を使うイベント</span></button>
+          <button class="typeCard on" data-preset="free"><b>🧩 その他・自由構成</b><span>必要な機能を自分で選んで組み立てる</span></button>
+        </div>
+        <select id="presetSelect" class="hidden"><option value="free">自由構成</option><option value="record">記録会・競技会</option><option value="road">ロードレース・駅伝</option><option value="camp">合宿・練習会</option><option value="quest">旅ラン・チェックポイント型</option></select>
+        <div class="wizardField"><label>② イベント名 <span class="req">必須</span></label><input id="quickEventName" placeholder="例：豊川長距離競技会"><div class="hint">参加者に表示する名前です。あとから変更できます。</div></div>
+        <div class="actions"><button class="btn primary bigAction" id="startEventBtn">次へ：日時・場所を入力</button></div>
+        <div class="recentEvents" id="recentEvents"><h2>保存済みイベント</h2><div class="empty">読み込み中…</div></div>
+      </div>
+    </section>
+
+    <section class="panel hidden" id="editorPanel">
+      <div class="panelHead"><div><h1 id="sectionTitle"></h1><p id="sectionHelp"></p></div><button class="btn" id="sectionValidateBtn">この分類を確認</button></div>
+      <div class="panelBody">
+        <div id="sectionFields" class="formGrid"></div>
+        <div id="sectionExtra"></div>
+      </div>
+    </section>
+
+    <section class="panel hidden" id="validatePanel">
+      <div class="panelHead"><div><h1>入力確認</h1><p>公開前に必須項目とモジュール設定を確認します。未入力でもデータは消しません。</p></div></div>
+      <div class="panelBody"><div id="issueList" class="issueList"></div><div class="actions"><button class="btn" id="validationBackBtn">入力画面に戻る</button></div></div>
+    </section>
+  </main>
+</div>
+<div class="footer">通常操作はSTEP 1→5を順番に入力します。複数地点・地点間ルート・BGM・QUEST詳細も独立モジュールとして追加でき、主分類・副分類の樹形図は「詳細設定」に退避します。</div>
+
+<div class="previewModal" id="previewModal" aria-hidden="true">
+  <div class="previewBackdrop" id="previewBackdrop"></div>
+  <div class="previewSheet">
+    <div class="previewToolbar">
+      <div><b>公開プレビュー</b><span>参加者からどう見えるかを確認</span></div>
+      <button id="previewCloseBtn">閉じる</button>
+    </div>
+    <div class="previewHint" id="previewHint"></div>
+    <div class="phoneFrame">
+      <div class="phoneTop">
+        <small>EVENT</small>
+        <h2 id="pvEventName">イベント名</h2>
+        <span id="pvEventMeta"></span>
+      </div>
+      <div class="phoneTabs" id="pvTabs"></div>
+      <div class="phoneBody" id="pvBody"></div>
+    </div>
+    <div class="previewBottomActions">
+      <button class="btn" id="previewValidateBtn">入力漏れを確認</button>
+      <button class="btn primary" id="previewBackEditBtn">編集に戻る</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="importInput" accept="application/json,.json" class="hidden">
+<script>
+(()=>{'use strict';
+const $=id=>document.getElementById(id);
+const DB_NAME='tabirun_event_builder_v1', STORE='events', META_STORE='meta', DB_VER=1;
+const LEGACY_MAP_KEY='tabirun_map_block_editor_v19_current';
+const MAP_EDITOR_FILE='tabirun_map_system_editor_v20_privacy_operations.html';
+const BUILDER_VERSION='1.4.0';
+
+const CORE_CONTRACT=Object.freeze({
+  id:'tabirun-event-builder-contract-v1',
+  baseline:'LIVE_EVENT_PLATFORM 2.6.0 + MAP SYSTEM EDITOR v20',
+  rules:[
+    'Do not rebuild the whole app to fix one module.',
+    'Freeze working modules and replace only the module under change.',
+    'Every release declares baseline, changed modules, unchanged modules and regression checks.',
+    'Do not remove or rename existing data paths without a migration plan.',
+    'Route is optional. Location sharing, chat, support and monitoring must work without a course.',
+    'LIVE ephemeral data stays separate from records/results.',
+    'QUEST-specific logic stays outside the foundation core and connects through an adapter.',
+    'Editor taxonomy is data-driven: main category > subcategory > field.',
+    'Presets only change recommended visibility/defaults; they never permanently remove capabilities.',
+    'Unknown future fields and classifications can be added without rewriting neighboring modules.',
+    'Physical places use a generic LOCATION model. Event type only changes labels/default roles such as venue, main start or meeting base.',
+    'Parking entrances, bases, starts, goals and future place types are sibling LOCATION records; they do not require rebuilding MAP core.',
+    'An event may have multiple locations. Camp lodging, training sites, meeting places and bases are sibling LOCATION records, not forced checkpoints.',
+    'Optional ROUTE CONNECTION records link any two LOCATION records and may later hold detailed path geometry and route distance.',
+    'BGM/audio is a first-class main module and must not be hidden inside QUEST or MAP.',
+    'Quest presets expose stage/checkpoint/arrival/reward settings in detail without moving QUEST-specific logic into the foundation core.',
+    'Map display must have a provider fallback so a Google geocoding permission failure does not blank the location editor.'
+  ]
+});
+
+const MODULE_REGISTRY=Object.freeze({
+  map:{label:'MAP',version:'v20-frozen',responsibility:'会場・ルート・CP・注意点・トイレ・拠点・駐車場出入口',frozen:true},
+  participant:{label:'参加者',version:'foundation-1.0',responsibility:'参加者自己登録・役割',frozen:true},
+  schedule:{label:'競技予定',version:'foundation-1.0',responsibility:'競技・招集・予定情報',frozen:true},
+  liveLocation:{label:'LIVE位置共有',version:'privacy-20.0',responsibility:'イベント時間・会場範囲内の位置共有',frozen:true},
+  chatSupport:{label:'CHAT',version:'foundation-1.0',responsibility:'イベント内チャット・支援連絡',frozen:true},
+  privacyGuard:{label:'プライバシー',version:'20.0',responsibility:'共有期限・範囲・正確位置削除',frozen:true},
+  questAdapter:{label:'QUEST',version:'adapter-1.1',responsibility:'STAGE・CP・到達判定・クイズ・スタンプ・表彰など旅ラン固有機能',frozen:false},
+  audioBgm:{label:'BGM・音声',version:'audio-1.0',responsibility:'BGMライブラリ・選曲・固定区間・地点連動・クレジット',frozen:false},
+  publication:{label:'公開',version:'builder-1.0',responsibility:'プレビュー・公開設定・生成',frozen:false}
+});
+
+const BASE_SCHEMA=[
+  {id:'event',label:'イベント基本情報',icon:'🏁',subs:[
+    {id:'identity',label:'基本情報',help:'イベント名・種類・開催日など、すべてのイベントに共通する情報です。',fields:[
+      {id:'eventName',label:'イベント名',type:'text',required:true,placeholder:'例：豊川長距離競技会'},
+      {id:'eventType',label:'イベント形式',type:'select',required:true,options:[['free','自由構成'],['record','記録会・競技会'],['road','ロードレース・駅伝'],['camp','合宿・練習会'],['quest','旅ラン・チェックポイント型'],['other','その他']]},
+      {id:'startAt',label:'開始日時',type:'datetime-local',required:false},
+      {id:'endAt',label:'終了日時',type:'datetime-local',required:false},
+      {id:'description',label:'説明・メモ',type:'textarea',required:false,wide:true}
+    ]},
+    {id:'venue',label:'基準地点・場所',help:'イベント形式に応じて、会場・メインスタート地点・集合拠点などの基準地点を設定します。内部では同じLOCATIONデータとして扱います。',fields:[
+      {id:'venueName',label:'基準地点名',type:'text',required:false,placeholder:'会場・スタート地点・集合拠点など'},
+      {id:'venueAddress',label:'住所・場所',type:'text',required:false,placeholder:'施設名・住所・地域名'},
+      {id:'venueLat',label:'緯度',type:'number',required:false,advanced:true,step:'any'},
+      {id:'venueLng',label:'経度',type:'number',required:false,advanced:true,step:'any'}
+    ]}
+  ]},
+  {id:'map',label:'MAP・会場案内',icon:'🗺️',subs:[
+    {id:'mapConfig',label:'MAP構成',help:'ルートの有無に関係なくMAPを使えます。既存のMAP CORE v20は凍結して再利用します。',fields:[
+      {id:'mapEnabled',label:'MAPを使う',type:'checkbox',required:false,module:'map'},
+      {id:'mapMode',label:'MAPの使い方',type:'select',required:false,options:[['venue','会場・公園中心'],['route','単一路線・コース'],['checkpoint','チェックポイント型'],['staged','STAGE型'],['free','自由MAP']]}
+    ]},
+    {id:'venuePoints',label:'会場ポイント',help:'駐車場出入口・本部・テント・トイレ・注意点など。必要なものだけMAPモジュールで登録します。',fields:[]},
+    {id:'route',label:'ルート・コース',help:'ロード・駅伝・旅ランなどで必要な場合だけ使用します。ルートなしイベントでも他機能は動作します。',fields:[]}
+  ]},
+  {id:'quest',label:'CHECKPOINT・QUEST',icon:'📍',subs:[
+    {id:'structure',label:'STAGE・チェックポイント',help:'旅ランの進行構造。STAGE、CP、途中参加、EXTRA、区間概要を独立設定します。',fields:[
+      {id:'checkpointEnabled',label:'チェックポイント機能を使う',type:'checkbox',module:'questAdapter'},
+      {id:'stageEnabled',label:'STAGEを使う',type:'checkbox'},{id:'midJoinEnabled',label:'途中参加を許可',type:'checkbox'},
+      {id:'resumeEnabled',label:'途中離脱・再開を許可',type:'checkbox'},{id:'extraRouteEnabled',label:'任意EXTRAルートを使う',type:'checkbox'},
+      {id:'routeOverviewEnabled',label:'区間ごとのルート概要を使う',type:'checkbox'}
+    ]},
+    {id:'arrival',label:'到達判定・距離',help:'GPS判定と手動到着を分離して設定します。ルート距離表示にも対応できるデータを保持します。',fields:[
+      {id:'gpsArrivalEnabled',label:'GPS到達判定',type:'checkbox'},{id:'arrivalRadiusM',label:'到達半径 m',type:'number',min:'10',step:'10'},
+      {id:'manualArrivalEnabled',label:'手動到着を許可',type:'checkbox'},{id:'manualTwoStep',label:'手動到着を2段階確認',type:'checkbox'},
+      {id:'routeDistanceEnabled',label:'次の目的地までルート距離を表示',type:'checkbox'}
+    ]},
+    {id:'experience',label:'クイズ・アイコン・表彰',help:'QUESTの体験要素。位置・MAPとは別モジュール内データとして保持します。',fields:[
+      {id:'quizEnabled',label:'クイズ',type:'checkbox'},{id:'stampEnabled',label:'スタンプ・アイコン',type:'checkbox'},
+      {id:'specialIconEnabled',label:'スペシャルアイコン',type:'checkbox'},{id:'awardEnabled',label:'表彰・完走証',type:'checkbox'},
+      {id:'gpsFullCompleteAward',label:'GPS認定フルコンプ賞',type:'checkbox'},{id:'limitedMedalEnabled',label:'限定メダル',type:'checkbox'}
+    ]}
+  ]},
+  {id:'people',label:'参加者・役割',icon:'👥',subs:[
+    {id:'registration',label:'参加方法',help:'参加者自己登録を基本とし、将来名簿取込などを追加できる構造です。',fields:[
+      {id:'participantEnabled',label:'参加者機能を使う',type:'checkbox',module:'participant'},
+      {id:'registrationMode',label:'登録方法',type:'select',options:[['self','参加者が自分で登録'],['admin','主催者登録'],['mixed','両方']]}
+    ]},
+    {id:'roles',label:'役割',help:'選手・指導者・コーチ・保護者など。通常は既定値を使い、詳細変更は必要な場合だけ行います。',fields:[]}
+  ]},
+  {id:'schedule',label:'予定・競技情報',icon:'⏱️',subs:[
+    {id:'scheduleConfig',label:'競技・予定',help:'競技時間、招集、活動予定など。位置情報とは別データです。',fields:[
+      {id:'scheduleEnabled',label:'予定機能を使う',type:'checkbox',module:'schedule'},
+      {id:'scheduleMode',label:'入力方法',type:'select',options:[['self','参加者が入力'],['admin','主催者が入力'],['mixed','両方']]}
+    ]}
+  ]},
+  {id:'live',label:'LIVE・位置共有',icon:'📡',subs:[
+    {id:'liveConfig',label:'位置共有',help:'位置共有はイベント時間・会場範囲内に限定し、OFF時や期限到達時に正確な位置を残さない設計を基本にします。',fields:[
+      {id:'liveEnabled',label:'LIVE位置共有を使う',type:'checkbox',module:'liveLocation'},
+      {id:'shareRadiusKm',label:'会場共有範囲 km',type:'number',step:'0.5',min:'0.5'},
+      {id:'shareBeforeHours',label:'開始何時間前からON案内',type:'number',step:'0.5',min:'0'},
+      {id:'shareAfterHours',label:'終了後の共有目安 h',type:'number',step:'0.5',min:'0.5'}
+    ]},
+    {id:'privacy',label:'プライバシー',help:'会場外・共有OFF・期限到達時の扱いを固定します。',fields:[
+      {id:'purgeExactOnOff',label:'共有OFF時に正確な位置を削除',type:'checkbox',module:'privacyGuard'},
+      {id:'stopOutsideArea',label:'会場範囲外で共有停止',type:'checkbox',module:'privacyGuard'}
+    ]}
+  ]},
+  {id:'communication',label:'CHAT・連絡',icon:'💬',subs:[
+    {id:'chat',label:'CHAT',help:'イベント単位のチャット。MAPとは独立したモジュールとして接続します。',fields:[
+      {id:'chatEnabled',label:'CHATを使う',type:'checkbox',module:'chatSupport'},
+      {id:'chatMode',label:'CHAT構成',type:'select',options:[['all','全体チャット'],['group','グループ対応を想定'],['support','連絡・支援中心']]}
+    ]}
+  ]},
+  {id:'audio',label:'BGM・音声',icon:'🎵',subs:[
+    {id:'bgm',label:'BGM設定',help:'BGMはMAPやQUESTに埋め込まず独立モジュールとして管理します。旅ランではSTAGE・地点・区間ルールから参照できます。',fields:[
+      {id:'bgmEnabled',label:'BGMを使う',type:'checkbox',module:'audioBgm'},
+      {id:'bgmMode',label:'再生ルール',type:'select',options:[['playlist','自由選曲・プレイリスト'],['stage','STAGEごとの曲'],['location','地点・区間で切替'],['mixed','固定区間＋自由選曲']]},
+      {id:'bgmContinueAcrossScreens',label:'画面遷移でも再生を継続',type:'checkbox'},
+      {id:'bgmCreditEnabled',label:'クレジット表示を使う',type:'checkbox'}
+    ]},
+    {id:'tracks',label:'曲ライブラリ',help:'曲名・作者・公開クレジット・ファイル参照をイベント定義に保持します。',fields:[]}
+  ]},
+  {id:'publish',label:'表示・公開',icon:'🚀',subs:[
+    {id:'home',label:'HOME画面',help:'参加者が最初に見る情報の優先順位を設定します。',fields:[
+      {id:'homePriority',label:'HOMEの優先表示',type:'select',options:[['auto','イベント形式に合わせて自動'],['map','MAP中心'],['schedule','予定中心'],['live','LIVE中心'],['quest','QUEST中心']]}
+    ]},
+    {id:'publication',label:'公開設定',help:'最終的にはここからプレビュー・イベント本体生成・公開へ進みます。',fields:[
+      {id:'publicTitle',label:'公開タイトル',type:'text',required:false},{id:'accessMode',label:'参加方法',type:'select',options:[['code','イベントコード'],['link','限定リンク'],['open','公開']]}
+    ]}
+  ]},
+  {id:'extensions',label:'拡張・独自項目',icon:'🧩',subs:[
+    {id:'customFields',label:'独自入力項目',help:'将来必要になった入力項目を、既存モジュールを書き換えずに追加します。',fields:[]},
+    {id:'structure',label:'分類を追加',help:'主分類・副分類そのものも追加できます。既存分類のIDやデータは変更しません。',fields:[]},
+    {id:'advanced',label:'詳細設定',help:'内部ID・設計情報・JSON入出力など、通常は触らない設定です。',fields:[]}
+  ]}
+];
+
+const PRESETS={
+  free:{eventType:'free',modules:{map:true,participant:true,schedule:true,liveLocation:false,chatSupport:true,privacyGuard:true,questAdapter:false,audioBgm:false}},
+  record:{eventType:'record',mapMode:'venue',modules:{map:true,participant:true,schedule:true,liveLocation:true,chatSupport:true,privacyGuard:true,questAdapter:false,audioBgm:false}},
+  road:{eventType:'road',mapMode:'route',modules:{map:true,participant:true,schedule:true,liveLocation:true,chatSupport:true,privacyGuard:true,questAdapter:false,audioBgm:false}},
+  camp:{eventType:'camp',mapMode:'multi_location',modules:{map:true,participant:true,schedule:true,liveLocation:true,chatSupport:true,privacyGuard:true,questAdapter:false,audioBgm:false}},
+  quest:{eventType:'quest',mapMode:'staged',modules:{map:true,participant:false,schedule:false,liveLocation:true,chatSupport:true,privacyGuard:true,questAdapter:true,audioBgm:true}}
+};
+
+let db=null,current=null,selected={main:'event',sub:'identity'},saveTimer=null;
+let wizardStep=2,wizardDetailIndex=0,advancedMode=false;
+function uid(){return 'event-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8)}
+function clone(v){return JSON.parse(JSON.stringify(v))}
+function nowIso(){return new Date().toISOString()}
+function defaultModules(){const out={};Object.entries(MODULE_REGISTRY).forEach(([k,v])=>out[k]={enabled:false,version:v.version,data:{}});out.privacyGuard.enabled=true;return out}
+function migrateEvent(e){
+  if(!e||typeof e!=='object')return e;
+  e.modules=e.modules||{};Object.entries(MODULE_REGISTRY).forEach(([k,v])=>{if(!e.modules[k])e.modules[k]={enabled:false,version:v.version,data:{}};if(!e.modules[k].data)e.modules[k].data={}});
+  e.values=e.values||{};if(e.values.bgmEnabled===undefined)e.values.bgmEnabled=!!e.modules.audioBgm.enabled;if(e.values.bgmMode===undefined)e.values.bgmMode='mixed';if(e.values.bgmContinueAcrossScreens===undefined)e.values.bgmContinueAcrossScreens=true;if(e.values.bgmCreditEnabled===undefined)e.values.bgmCreditEnabled=true;
+  const qdefs={stageEnabled:false,midJoinEnabled:false,resumeEnabled:true,extraRouteEnabled:false,routeOverviewEnabled:false,gpsArrivalEnabled:true,arrivalRadiusM:100,manualArrivalEnabled:true,manualTwoStep:true,routeDistanceEnabled:true,quizEnabled:false,stampEnabled:false,specialIconEnabled:false,awardEnabled:false,gpsFullCompleteAward:false,limitedMedalEnabled:false};Object.entries(qdefs).forEach(([k,v])=>{if(e.values[k]===undefined)e.values[k]=v});
+  if(!Array.isArray(e.locations))e.locations=[];if(!Array.isArray(e.routeConnections))e.routeConnections=[];e.schemaVersion=Math.max(3,Number(e.schemaVersion)||1);e.builderVersion=BUILDER_VERSION;return e
+}
+function makeEvent(preset='free',name=''){
+  const pr=PRESETS[preset]||PRESETS.free,mods=defaultModules();Object.entries(pr.modules||{}).forEach(([k,v])=>{if(mods[k])mods[k].enabled=!!v});
+  const event={schemaVersion:3,builderVersion:BUILDER_VERSION,eventId:uid(),createdAt:nowIso(),updatedAt:nowIso(),preset,values:{eventName:name,eventType:pr.eventType||preset,mapMode:pr.mapMode||'venue',mapEnabled:!!mods.map.enabled,participantEnabled:!!mods.participant.enabled,scheduleEnabled:!!mods.schedule.enabled,liveEnabled:!!mods.liveLocation.enabled,chatEnabled:!!mods.chatSupport.enabled,checkpointEnabled:!!mods.questAdapter.enabled,bgmEnabled:!!mods.audioBgm.enabled,bgmMode:'mixed',bgmContinueAcrossScreens:true,bgmCreditEnabled:true,purgeExactOnOff:true,stopOutsideArea:true,shareRadiusKm:3,shareBeforeHours:3,shareAfterHours:2,registrationMode:'self',scheduleMode:'self',chatMode:'all',homePriority:'auto',accessMode:'code',stageEnabled:preset==='quest',midJoinEnabled:preset==='quest',resumeEnabled:preset==='quest',extraRouteEnabled:preset==='quest',routeOverviewEnabled:preset==='quest',gpsArrivalEnabled:preset==='quest',arrivalRadiusM:100,manualArrivalEnabled:preset==='quest',manualTwoStep:true,routeDistanceEnabled:preset==='quest',quizEnabled:preset==='quest',stampEnabled:preset==='quest',specialIconEnabled:preset==='quest',awardEnabled:preset==='quest',gpsFullCompleteAward:preset==='quest',limitedMedalEnabled:false},modules:mods,customSchema:{mains:[],subs:[],fields:[]},mapBridge:{mapBlock:null,lastCapturedAt:null},locations:[],routeConnections:[],uiState:{wizardStep:2,detailIndex:0},contract:clone(CORE_CONTRACT)};
+  return event;
+}
+
+const LOCATION_ROLE_META={
+  record:{kind:'venue',label:'会場',nameLabel:'会場名',placeLabel:'所在地',placeholder:'例：OKAKENアスリートフィールド',hint:'競技場・公園など大会の中心となる場所'},
+  road:{kind:'main_start',label:'メインスタート地点',nameLabel:'スタート地点名',placeLabel:'所在地・場所',placeholder:'例：大会スタート地点',hint:'ロードレース・駅伝の基準となるスタート地点'},
+  camp:{kind:'meeting',label:'集合場所',nameLabel:'集合場所名',placeLabel:'所在地・場所',placeholder:'例：集合場所 / 出発拠点',hint:'まず集合場所を設定し、宿泊地・練習場所・本部は後のMAP設定で複数追加できます'},
+  quest:{kind:'main_start',label:'メインスタート地点',nameLabel:'スタート地点名',placeLabel:'所在地・場所',placeholder:'例：阿久比町役場',hint:'旅ランを開始する最初の地点。会場である必要はありません'},
+  free:{kind:'primary',label:'基準地点',nameLabel:'基準地点名',placeLabel:'所在地・場所',placeholder:'イベントの中心・開始・集合場所など',hint:'イベントで最初に基準とする場所'},
+  other:{kind:'primary',label:'基準地点',nameLabel:'基準地点名',placeLabel:'所在地・場所',placeholder:'イベントの中心・開始・集合場所など',hint:'イベントで最初に基準とする場所'}
+};
+function locationMeta(type=value('eventType')){return LOCATION_ROLE_META[type]||LOCATION_ROLE_META.free}
+function finiteCoord(v){return Number.isFinite(Number(v))&&String(v??'').trim()!==''}
+function ensureLocationModel(){
+  if(!current)return;
+  if(!Array.isArray(current.locations))current.locations=[];
+  let p=current.locations.find(x=>x.primary)||current.locations.find(x=>x.kind==='venue'||x.kind==='main_start'||x.kind==='meeting'||x.kind==='meeting_base'||x.kind==='primary');
+  const meta=locationMeta();
+  if(!p){
+    p={id:'loc-'+Date.now().toString(36),kind:meta.kind,primary:true,name:String(current.values?.venueName||''),address:String(current.values?.venueAddress||''),lat:finiteCoord(current.values?.venueLat)?Number(current.values.venueLat):null,lng:finiteCoord(current.values?.venueLng)?Number(current.values.venueLng):null,createdAt:nowIso()};
+    current.locations.unshift(p);
+  }
+  p.primary=true;
+  if(['venue','main_start','meeting','meeting_base','primary'].includes(p.kind))p.kind=meta.kind;
+  current.values.venueName=p.name||'';
+  current.values.venueAddress=p.address||'';
+  current.values.venueLat=finiteCoord(p.lat)?Number(p.lat):'';
+  current.values.venueLng=finiteCoord(p.lng)?Number(p.lng):'';
+}
+function primaryLocation(){ensureLocationModel();return current?.locations?.find(x=>x.primary)||null}
+function syncPrimaryFromValue(id,v){
+  if(!current||!['eventType','venueName','venueAddress','venueLat','venueLng'].includes(id))return;
+  ensureLocationModel();const p=primaryLocation();if(!p)return;
+  if(id==='eventType'){p.kind=locationMeta(v).kind;return}
+  if(id==='venueName')p.name=String(v||'');
+  if(id==='venueAddress')p.address=String(v||'');
+  if(id==='venueLat')p.lat=finiteCoord(v)?Number(v):null;
+  if(id==='venueLng')p.lng=finiteCoord(v)?Number(v):null;
+}
+const LOCATION_TYPES=[
+  ['parking_entrance','🅿 駐車場出入口'],['meeting','📍 集合場所'],['lodging','🏨 宿泊地'],['training','🏃 練習場所'],['base','⛺ 本部・拠点'],['main_start','▶ メインスタート'],['goal','🏁 ゴール'],['aid','🥤 補給・給水'],['cheer','📣 応援ポイント'],['toilet_ref','🚻 トイレ'],['other','● その他']
+];
+function parkingLocations(){ensureLocationModel();return (current.locations||[]).filter(x=>x.kind==='parking_entrance')}
+function extraLocations(){ensureLocationModel();return (current.locations||[]).filter(x=>!x.primary)}
+function locationTypeLabel(kind){return (LOCATION_TYPES.find(x=>x[0]===kind)||[kind,'● '+kind])[1]}
+function locationById(id){ensureLocationModel();return (current.locations||[]).find(x=>x.id===id)||null}
+function ensureRouteConnections(){if(!current)return[];if(!Array.isArray(current.routeConnections))current.routeConnections=[];return current.routeConnections}
+function havKm(a,b){if(!a||!b||!finiteCoord(a.lat)||!finiteCoord(a.lng)||!finiteCoord(b.lat)||!finiteCoord(b.lng))return null;const R=6371,r=Math.PI/180,p1=Number(a.lat)*r,p2=Number(b.lat)*r,dp=(Number(b.lat)-Number(a.lat))*r,dl=(Number(b.lng)-Number(a.lng))*r;const h=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return 2*R*Math.asin(Math.min(1,Math.sqrt(h)))}
+function locationSummary(){const p=primaryLocation(),m=locationMeta();return p&&(p.name||p.address)?(p.name||p.address):(m.label+'未設定')}
+function addLocation(kind,name,address,lat,lng,extra={}){
+  ensureLocationModel();const item={id:'loc-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,5),kind,name:String(name||''),address:String(address||''),lat:Number(lat),lng:Number(lng),createdAt:nowIso(),...extra};current.locations.push(item);syncLocationsToMapBlock();queueSave();return item;
+}
+function removeLocation(id){ensureLocationModel();current.locations=current.locations.filter(x=>x.id!==id||x.primary);syncLocationsToMapBlock();queueSave()}
+
+
+function openDb(){return new Promise((res,rej)=>{const r=indexedDB.open(DB_NAME,DB_VER);r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains(STORE))d.createObjectStore(STORE,{keyPath:'eventId'});if(!d.objectStoreNames.contains(META_STORE))d.createObjectStore(META_STORE,{keyPath:'key'})};r.onsuccess=()=>{db=r.result;res(db)};r.onerror=()=>rej(r.error)})}
+function idbTx(store,mode='readonly'){return db.transaction(store,mode).objectStore(store)}
+function idbPut(v){return new Promise((res,rej)=>{const r=idbTx(STORE,'readwrite').put(v);r.onsuccess=()=>res();r.onerror=()=>rej(r.error)})}
+function idbAll(){return new Promise((res,rej)=>{const r=idbTx(STORE).getAll();r.onsuccess=()=>res(r.result||[]);r.onerror=()=>rej(r.error)})}
+function idbGet(id){return new Promise((res,rej)=>{const r=idbTx(STORE).get(id);r.onsuccess=()=>res(r.result||null);r.onerror=()=>rej(r.error)})}
+function idbDelete(id){return new Promise((res,rej)=>{const r=idbTx(STORE,'readwrite').delete(id);r.onsuccess=()=>res();r.onerror=()=>rej(r.error)})}
+
+function mergedSchema(){const s=clone(BASE_SCHEMA),cs=current?.customSchema||{mains:[],subs:[],fields:[]};(cs.mains||[]).forEach(m=>s.push({id:m.id,label:m.label,icon:m.icon||'＋',subs:[]}));(cs.subs||[]).forEach(sub=>{const m=s.find(x=>x.id===sub.mainId);if(m)m.subs.push({id:sub.id,label:sub.label,help:sub.help||'追加した分類です。',fields:[]})});(cs.fields||[]).forEach(f=>{for(const m of s){const sub=m.subs.find(x=>x.id===f.subId);if(sub){sub.fields.push({...f,custom:true});break}}});return s}
+function allFields(){return mergedSchema().flatMap(m=>m.subs.flatMap(s=>s.fields.map(f=>({...f,mainId:m.id,subId:s.id}))))}
+function getSub(mainId,subId){const m=mergedSchema().find(x=>x.id===mainId);return {m,sub:m?.subs.find(x=>x.id===subId)}}
+function value(id){return current?.values?.[id]}
+function setValue(id,v){if(!current)return;current.values[id]=v;syncPrimaryFromValue(id,v);syncModuleFromField(id,v);current.updatedAt=nowIso();queueSave();renderSummary();renderTree()}
+function syncModuleFromField(id,v){const map={mapEnabled:'map',participantEnabled:'participant',scheduleEnabled:'schedule',liveEnabled:'liveLocation',chatEnabled:'chatSupport',checkpointEnabled:'questAdapter',bgmEnabled:'audioBgm',purgeExactOnOff:'privacyGuard',stopOutsideArea:'privacyGuard'};const mod=map[id];if(!mod||!current.modules[mod])return;if(id==='purgeExactOnOff'||id==='stopOutsideArea')current.modules[mod].enabled=true;else current.modules[mod].enabled=!!v}
+function syncFieldsFromModules(){if(!current)return;const pairs=[['mapEnabled','map'],['participantEnabled','participant'],['scheduleEnabled','schedule'],['liveEnabled','liveLocation'],['chatEnabled','chatSupport'],['checkpointEnabled','questAdapter'],['bgmEnabled','audioBgm']];pairs.forEach(([f,m])=>current.values[f]=!!current.modules[m]?.enabled)}
+function queueSave(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>saveCurrent(true),450)}
+async function saveCurrent(silent=false){if(!current)return;current.updatedAt=nowIso();await idbPut(clone(current));$('lastSaved').textContent=new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'});if(!silent)flashTop('保存しました');await refreshEventSelect()}
+function flashTop(msg){const b=$('saveTopBtn'),old=b.textContent;b.textContent=msg;setTimeout(()=>b.textContent=old,1300)}
+
+function applyPreset(preset,keepExisting=true){if(!current)return;const p=PRESETS[preset]||PRESETS.free;current.preset=preset;current.values.eventType=p.eventType||preset;ensureLocationModel();const pl=primaryLocation();if(pl)pl.kind=locationMeta(current.values.eventType).kind;if(p.mapMode)current.values.mapMode=p.mapMode;Object.entries(p.modules||{}).forEach(([k,v])=>{if(current.modules[k]){if(!keepExisting||current.modules[k].enabled===false)current.modules[k].enabled=!!v}});syncFieldsFromModules();queueSave();renderAll()}
+
+function renderEventSelectOptions(list){const sel=$('eventSelect');const old=current?.eventId||sel.value;sel.innerHTML='<option value="">イベントを選択</option>'+list.sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt))).map(e=>'<option value="'+esc(e.eventId)+'">'+esc(e.values?.eventName||'名称未設定')+'</option>').join('');if(old)sel.value=old}
+async function refreshEventSelect(){const list=await idbAll();renderEventSelectOptions(list);renderRecentEvents(list)}
+async function selectEvent(id){if(!id){current=null;advancedMode=false;document.body.classList.remove('advancedMode');renderAll();return}const e=await idbGet(id);if(!e)return;current=migrateEvent(e);ensureLocationModel();syncFieldsFromModules();wizardStep=Math.max(1,Math.min(5,Number(e.uiState?.wizardStep)||2));wizardDetailIndex=Math.max(0,Number(e.uiState?.detailIndex)||0);advancedMode=false;document.body.classList.remove('advancedMode');selected={main:'event',sub:'identity'};queueSave();renderAll()}
+
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
+function fieldComplete(f){if(!f.required)return true;const v=value(f.id);if(f.type==='checkbox')return v===true;return !(v===undefined||v===null||String(v).trim()==='')}
+function subStatus(sub){const req=sub.fields.filter(f=>f.required);if(!req.length)return 'neutral';return req.every(fieldComplete)?'complete':'issue'}
+function renderTree(){const box=$('tree');if(!current){box.innerHTML='<div class="empty">イベントを作成または選択してください</div>';return}const schema=mergedSchema();box.innerHTML='';schema.forEach(m=>{const d=document.createElement('div');d.className='treeMain '+(m.id===selected.main?'open':'');const count=m.subs.length;d.innerHTML='<button class="treeMainHead"><span class="ico">'+esc(m.icon||'•')+'</span><span class="label">'+esc(m.label)+'</span><span class="count">'+count+'</span></button><div class="treeSubs"></div>';d.querySelector('.treeMainHead').onclick=()=>{d.classList.toggle('open')};const subs=d.querySelector('.treeSubs');m.subs.forEach(s=>{const b=document.createElement('button');const st=subStatus(s);b.className='treeSub '+(selected.main===m.id&&selected.sub===s.id?'on ':'')+(st==='complete'?'complete':st==='issue'?'issue':'');b.innerHTML='<span class="dot"></span><span>'+esc(s.label)+'</span>';b.onclick=()=>{selected={main:m.id,sub:s.id};renderTree();renderSection()};subs.appendChild(b)});box.appendChild(d)})}
+
+function renderField(f){const wrap=document.createElement('div');wrap.className='field '+(f.wide?'wide':'');const lab=document.createElement('label');lab.innerHTML=esc(f.label)+(f.required?' <span class="req">必須</span>':'');wrap.appendChild(lab);let el;if(f.type==='select'){el=document.createElement('select');(f.options||[]).forEach(([v,t])=>{const o=document.createElement('option');o.value=v;o.textContent=t;el.appendChild(o)});el.value=value(f.id)??''}else if(f.type==='textarea'){el=document.createElement('textarea');el.placeholder=f.placeholder||'';el.value=value(f.id)??''}else if(f.type==='checkbox'){const row=document.createElement('div');row.className='toggleRow';el=document.createElement('input');el.type='checkbox';el.checked=!!value(f.id);const txt=document.createElement('div');txt.innerHTML='<b>'+esc(f.label)+'</b><span>'+esc(f.help||'ON/OFFを選択')+'</span>';row.append(el,txt);wrap.innerHTML='';wrap.appendChild(row)}else{el=document.createElement('input');el.type=f.type||'text';el.placeholder=f.placeholder||'';if(f.step)el.step=f.step;if(f.min)el.min=f.min;el.value=value(f.id)??''}el.dataset.fieldId=f.id;if(f.type==='checkbox')el.onchange=()=>setValue(f.id,el.checked);else el.oninput=()=>setValue(f.id,el.value);if(f.help&&f.type!=='checkbox'){const h=document.createElement('div');h.className='help';h.textContent=f.help;wrap.appendChild(h)}if(!wrap.contains(el))wrap.appendChild(el);if(f.advanced)wrap.classList.add('advancedField','hidden');return wrap}
+
+function renderSection(){if(!current){$('editorPanel').classList.add('hidden');return}$('welcomePanel').classList.add('hidden');$('editorPanel').classList.remove('hidden');$('validatePanel').classList.add('hidden');const {m,sub}=getSub(selected.main,selected.sub);if(!m||!sub)return;$('sectionTitle').textContent=m.icon+' '+sub.label;$('sectionHelp').textContent=sub.help||'';const fields=$('sectionFields');fields.innerHTML='';sub.fields.forEach(f=>fields.appendChild(renderField(f)));const extra=$('sectionExtra');extra.innerHTML='';renderSpecialSection(extra,m,sub);if(fields.querySelector('.advancedField')){const b=document.createElement('button');b.className='btn';b.textContent='詳細項目を表示';b.onclick=()=>{fields.querySelectorAll('.advancedField').forEach(x=>x.classList.remove('hidden'));b.remove()};extra.prepend(b)}}
+
+function renderSpecialSection(extra,m,sub){
+  if(m.id==='event'&&sub.id==='venue')renderVenueTools(extra);
+  if(m.id==='map'&&['mapConfig','venuePoints','route'].includes(sub.id))renderMapBridge(extra);
+  if(m.id==='people'&&sub.id==='roles')renderRoles(extra);
+  if(m.id==='extensions'&&sub.id==='customFields')renderCustomFieldBuilder(extra);
+  if(m.id==='extensions'&&sub.id==='structure')renderStructureBuilder(extra);
+  if(m.id==='extensions'&&sub.id==='advanced')renderAdvanced(extra);
+  if(m.id==='audio'&&sub.id==='tracks')renderBgmTrackManager(extra);
+  if(m.id==='publish'&&sub.id==='publication')renderPublication(extra);
+  if(!sub.fields.length&&!extra.children.length){const e=document.createElement('div');e.className='empty';e.textContent='この枝にはまだ入力項目がありません。必要になったら「拡張・独自項目」から追加できます。';extra.appendChild(e)}
+}
+
+let googleMapsPromise=null,leafletPromise=null,primaryMap=null,primaryMarker=null,primaryMapProvider=null,eventPointsMap=null,eventPointsProvider=null,pendingPointPin=false,lastNominatimAt=0;
+function renderVenueTools(extra){
+  const meta=locationMeta();const box=document.createElement('div');box.className='advancedBox';
+  box.innerHTML='<b style="font-size:15px">'+esc(meta.label)+'の位置</b><div class="note">名称・住所検索だけに依存せず、地図を表示して直接位置指定もできます。Google検索が使えない場合は自動で別の検索・地図表示へ切り替えます。</div><div class="actions"><button class="btn primary" id="venueSearchBtn">名称・住所から検索</button></div><div id="venueSearchState" class="handoffStatus">位置検索はまだしていません</div><div class="locationMapBox"><div class="locationMapHead"><b>'+esc(meta.label)+' MAP <span class="providerBadge" id="primaryMapProviderBadge">準備中</span></b><span>地図をタップすると位置を直接設定できます。</span></div><div class="locationMapCanvas" id="primaryMapCanvas"></div><div class="locationMapMsg" id="primaryMapMsg">MAPを準備しています…</div></div>';
+  extra.appendChild(box);box.querySelector('#venueSearchBtn').onclick=searchVenue;setTimeout(renderPrimaryLocationMap,0)
+}
+function normalizeSearchText(s){return String(s||'').normalize('NFKC').replace(/[‐‑‒–—―−]/g,'-').replace(/\s+/g,' ').trim()}
+function loadGoogleMaps(){
+  if(window.google?.maps?.Map)return Promise.resolve(window.google.maps);
+  if(googleMapsPromise)return googleMapsPromise;
+  googleMapsPromise=new Promise((res,rej)=>{
+    const key=(localStorage.getItem('tabirun_google_maps_api_key')||'').trim();
+    if(!key){googleMapsPromise=null;rej(new Error('API_KEY'));return}
+    const cb='builderGoogle_'+Date.now();window[cb]=()=>{delete window[cb];res(window.google.maps)};
+    const s=document.createElement('script');s.src='https://maps.googleapis.com/maps/api/js?key='+encodeURIComponent(key)+'&v=weekly&language=ja&region=JP&callback='+cb;s.async=true;s.defer=true;s.onerror=()=>{googleMapsPromise=null;rej(new Error('LOAD'))};document.head.appendChild(s)
+  });return googleMapsPromise
+}
+function loadLeaflet(){
+  if(window.L?.map)return Promise.resolve(window.L);if(leafletPromise)return leafletPromise;
+  leafletPromise=new Promise((res,rej)=>{if(!document.querySelector('link[data-tabirun-leaflet]')){const l=document.createElement('link');l.rel='stylesheet';l.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';l.dataset.tabirunLeaflet='1';document.head.appendChild(l)}const s=document.createElement('script');s.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';s.onload=()=>res(window.L);s.onerror=()=>{leafletPromise=null;rej(new Error('LEAFLET_LOAD'))};document.head.appendChild(s)});return leafletPromise
+}
+async function loadGoogleGeocoder(){const g=await loadGoogleMaps();if(!g.Geocoder)throw new Error('GEOCODER_UNAVAILABLE');return new g.Geocoder()}
+function geocodeOne(geocoder,q){return new Promise((resolve,reject)=>geocoder.geocode({address:q,region:'JP'},(results,status)=>{if(status==='OK'&&results?.length){const r=results[0];r._provider='Google';resolve(r)}else if(status==='REQUEST_DENIED'||status==='OVER_QUERY_LIMIT')reject(new Error(status));else resolve(null)}))}
+async function nominatimOne(q){
+  const wait=Math.max(0,1050-(Date.now()-lastNominatimAt));if(wait)await new Promise(r=>setTimeout(r,wait));lastNominatimAt=Date.now();
+  const url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=jp&accept-language=ja&q='+encodeURIComponent(q);
+  const r=await fetch(url,{headers:{'Accept-Language':'ja'}});if(!r.ok)return null;const a=await r.json();if(!Array.isArray(a)||!a.length)return null;const x=a[0],lat=Number(x.lat),lon=Number(x.lon);if(!Number.isFinite(lat)||!Number.isFinite(lon))return null;return{formatted_address:x.display_name||q,_provider:'OpenStreetMap',geometry:{location:{lat:()=>lat,lng:()=>lon}}}
+}
+async function geocodeCandidates(name,address){
+  const n=normalizeSearchText(name),a=normalizeSearchText(address),candidates=[n&&a?n+' '+a:'',a,n].filter(Boolean).filter((x,i,arr)=>arr.indexOf(x)===i);
+  try{const geocoder=await loadGoogleGeocoder();for(const q of candidates){const r=await geocodeOne(geocoder,q);if(r)return r}}catch(e){if(!['REQUEST_DENIED','OVER_QUERY_LIMIT','API_KEY','LOAD','GEOCODER_UNAVAILABLE'].includes(e.message))throw e}
+  for(const q of candidates){try{const r=await nominatimOne(q);if(r)return r}catch(e){}}
+  return null
+}
+function applyPrimaryGeo(r){
+  ensureLocationModel();const p=primaryLocation(),g=r.geometry.location;p.name=String(value('venueName')||p.name||'');p.address=r.formatted_address||String(value('venueAddress')||'');p.lat=g.lat();p.lng=g.lng();
+  current.values.venueAddress=p.address;current.values.venueLat=p.lat;current.values.venueLng=p.lng;syncLocationsToMapBlock();queueSave();
+  const addr=document.querySelector('[data-wfield="venueAddress"]');if(addr)addr.value=p.address;updatePrimaryMapMarker()
+}
+async function searchVenue(){
+  const p=primaryLocation(),name=String(value('venueName')||p?.name||'').trim(),address=String(value('venueAddress')||p?.address||'').trim(),st=$('venueSearchState');
+  if(!name&&!address){if(st)st.textContent=locationMeta().nameLabel+'または'+locationMeta().placeLabel+'を入力してください。';return}
+  if(st)st.textContent='検索中…';
+  const r=await geocodeCandidates(name,address).catch(()=>null);
+  if(!r){if(st)st.textContent='検索結果がありません。地図は検索APIとは別に表示できます。目的位置を地図でタップしてください。';await renderPrimaryLocationMap();return}
+  applyPrimaryGeo(r);if(st)st.textContent='位置設定済み（'+(r._provider||'検索')+'）：'+r.formatted_address;await renderPrimaryLocationMap()
+}
+function clearMapCanvas(canvas){if(primaryMapProvider==='leaflet'&&primaryMap?.remove){try{primaryMap.remove()}catch(e){}}canvas.innerHTML=''}
+async function renderPrimaryLeafletMap(canvas,msg){
+  const L=await loadLeaflet();clearMapCanvas(canvas);const p=primaryLocation(),has=finiteCoord(p?.lat)&&finiteCoord(p?.lng),lat=has?Number(p.lat):35.05,lng=has?Number(p.lng):136.91;primaryMapProvider='leaflet';primaryMap=L.map(canvas,{zoomControl:true}).setView([lat,lng],has?16:9);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(primaryMap);primaryMarker=null;primaryMap.on('click',e=>{const q=primaryLocation();q.lat=e.latlng.lat;q.lng=e.latlng.lng;current.values.venueLat=q.lat;current.values.venueLng=q.lng;syncLocationsToMapBlock();queueSave();updatePrimaryMapMarker();if(msg)msg.textContent=locationMeta().label+'を地図タップ位置に設定しました。'});updatePrimaryMapMarker();const badge=$('primaryMapProviderBadge');if(badge)badge.textContent='OpenStreetMap';if(msg)msg.textContent=has?locationMeta().label+'を表示中。位置を変える場合は地図をタップしてください。':'地図を移動・拡大して目的位置をタップしてください。'
+}
+async function renderPrimaryLocationMap(){
+  const canvas=$('primaryMapCanvas'),msg=$('primaryMapMsg');if(!canvas)return;
+  try{const g=await loadGoogleMaps();if(primaryMapProvider==='leaflet'&&primaryMap?.remove){try{primaryMap.remove()}catch(e){}}canvas.innerHTML='';const p=primaryLocation(),has=finiteCoord(p?.lat)&&finiteCoord(p?.lng),center=has?{lat:Number(p.lat),lng:Number(p.lng)}:{lat:35.05,lng:136.91};primaryMapProvider='google';primaryMap=new g.Map(canvas,{center,zoom:has?16:9,mapTypeControl:false,streetViewControl:false,fullscreenControl:false,gestureHandling:'greedy',clickableIcons:true});primaryMap.addListener('click',e=>{const q=primaryLocation();q.lat=e.latLng.lat();q.lng=e.latLng.lng();current.values.venueLat=q.lat;current.values.venueLng=q.lng;syncLocationsToMapBlock();queueSave();updatePrimaryMapMarker();if(msg)msg.textContent=locationMeta().label+'を地図タップ位置に設定しました。'});updatePrimaryMapMarker();const badge=$('primaryMapProviderBadge');if(badge)badge.textContent='Google Maps';if(msg)msg.textContent=has?locationMeta().label+'を表示中。位置を変える場合は地図をタップしてください。':'検索できない場合でも、地図を移動・拡大して目的位置をタップできます。'}catch(e){try{await renderPrimaryLeafletMap(canvas,msg)}catch(x){if(msg)msg.textContent='Google Maps / OpenStreetMap の両方を読み込めませんでした。通信状態を確認してください。'}}
+}
+function updatePrimaryMapMarker(){
+  if(!primaryMap)return;const p=primaryLocation();if(!finiteCoord(p?.lat)||!finiteCoord(p?.lng))return;const lat=Number(p.lat),lng=Number(p.lng);
+  if(primaryMapProvider==='google'){if(primaryMarker?.setMap)primaryMarker.setMap(null);primaryMarker=new google.maps.Marker({map:primaryMap,position:{lat,lng},title:locationMeta().label});primaryMap.panTo({lat,lng})}
+  else if(primaryMapProvider==='leaflet'){if(primaryMarker?.remove)primaryMarker.remove();primaryMarker=L.marker([lat,lng]).addTo(primaryMap).bindPopup(locationMeta().label);primaryMap.panTo([lat,lng])}
+}
+function blankMapBlock(){
+  ensureLocationModel();const p=primaryLocation(),lat=finiteCoord(p?.lat)?Number(p.lat):null,lng=finiteCoord(p?.lng)?Number(p.lng):null,parks=parkingLocations().map(x=>({id:x.id,name:x.name||'駐車場出入口',kind:'both',note:x.address||'',lat:Number(x.lat),lng:Number(x.lng)})).filter(x=>Number.isFinite(x.lat)&&Number.isFinite(x.lng));
+  return {format:'tabirun-map-block-v20',schemaVersion:20,project:{projectId:current.eventId,eventName:value('eventName')||'EVENT',routeId:'main-map',routeName:p?.name||locationMeta().label,mode:value('mapMode')==='staged'?'staged':value('mapMode')==='checkpoint'?'checkpoint':'map_only',stage:{order:1,id:'stage-1',name:'STAGE 1'},features:{warnings:true,toilets:true,overviews:true,basePoints:true,parkingEntrances:true,participants:true,schedules:true},privacyGuard:{enabled:true,assemblyTime:value('startAt')||'',eventEndTime:value('endAt')||'',approachHours:Number(value('shareBeforeHours')||3),radiusKm:Number(value('shareRadiusKm')||3),athleteAfterHours:Number(value('shareAfterHours')||2),extensionHours:2,maxSessionHours:10,venueCenter:Number.isFinite(lat)&&Number.isFinite(lng)?{lat,lng}:null,exactOutsideArea:false,purgeExactOnOff:true}},modules:{route:{enabled:true,controls:[],segments:[],segmentTypes:[],path:[]},checkpoints:{enabled:true,items:[]},checkpointRoutes:{enabled:true,items:[]},warnings:{enabled:true,items:[]},toilets:{enabled:true,items:[]},overviews:{enabled:true,items:{}},basePoints:{enabled:true,items:[]},parkingEntrances:{enabled:true,items:parks},eventLocations:{enabled:true,items:clone(current.locations||[])},routeConnections:{enabled:true,items:clone(ensureRouteConnections())},roles:{enabled:true,items:[{id:'athlete',name:'選手',icon:'選',color:'#2d7b59',visible:true,builtin:true},{id:'instructor',name:'指導者',icon:'指',color:'#b23a2e',visible:true,builtin:true},{id:'coach',name:'コーチ',icon:'コ',color:'#5b4ab5',visible:true,builtin:true},{id:'guardian',name:'保護者',icon:'保',color:'#6b7780',visible:true,builtin:true}]},participants:{enabled:true,source:'runtime_adapter',items:[]},athleteSchedules:{enabled:true,source:'runtime_adapter',items:[]}},controls:[],segments:[],segmentTypes:[],route:[],warnings:[],checkpoints:[],toilets:[],routeOverviews:{},basePoints:[],parkingEntrances:parks,roleConfig:[],participants:[],athleteSchedules:[],savedAt:nowIso()}
+}
+function syncLocationsToMapBlock(){
+  if(!current)return;ensureLocationModel();let d=current.mapBridge?.mapBlock;if(!d){d=blankMapBlock();current.mapBridge={...(current.mapBridge||{}),mapBlock:d,lastCapturedAt:current.mapBridge?.lastCapturedAt||null}}
+  const p=primaryLocation(),parks=parkingLocations().map(x=>({id:x.id,name:x.name||'駐車場出入口',kind:'both',note:x.address||'',lat:Number(x.lat),lng:Number(x.lng)})).filter(x=>Number.isFinite(x.lat)&&Number.isFinite(x.lng));
+  d.project=d.project||{};d.project.eventName=value('eventName')||d.project.eventName||'EVENT';d.project.routeName=p?.name||d.project.routeName||locationMeta().label;d.project.privacyGuard=d.project.privacyGuard||{};if(finiteCoord(p?.lat)&&finiteCoord(p?.lng))d.project.privacyGuard.venueCenter={lat:Number(p.lat),lng:Number(p.lng)};
+  d.modules=d.modules||{};d.modules.parkingEntrances={enabled:true,items:parks};d.parkingEntrances=parks;d.modules.eventLocations={enabled:true,items:clone(current.locations||[])};d.modules.routeConnections={enabled:true,items:clone(ensureRouteConnections())};d.savedAt=nowIso()
+}
+function renderMapBridge(extra){const mb=current.mapBridge||={mapBlock:null,lastCapturedAt:null};let c=0,cp=0,b=0,p=0;if(mb.mapBlock){const d=mb.mapBlock,m=d.modules||{};c=(m.route?.path||d.route||[]).length;cp=(m.checkpoints?.items||d.checkpoints||[]).length;b=(m.basePoints?.items||d.basePoints||[]).length;p=(m.parkingEntrances?.items||d.parkingEntrances||[]).length}const box=document.createElement('div');box.className='handoff';box.innerHTML='<h3>MAP CORE v20 接続</h3><p>MAP CORE自体は作り直しません。イベントごとにMAP BLOCKをビルダーへ保管し、編集時だけ凍結済みv20へ受け渡します。</p><div class="handoffStatus">'+(mb.mapBlock?'このイベントのMAPあり｜ルート '+c+'点｜CP '+cp+'｜拠点 '+b+'｜駐車場入口 '+p+'｜取込 '+(mb.lastCapturedAt?new Date(mb.lastCapturedAt).toLocaleString('ja-JP'):'未記録'):'このイベントのMAPはまだありません')+'</div><div class="actions"><button class="btn primary" id="openMapBtn">MAP編集を開く</button><button class="btn ok" id="captureMapBtn">MAP編集内容を取り込む</button></div><div class="note important">MAP編集を開く前に、現在v20に残っているデータを自動バックアップします。新しいイベントでは過去MAPを勝手に引き継ぎません。</div>';extra.appendChild(box);box.querySelector('#openMapBtn').onclick=openMapEditor;box.querySelector('#captureMapBtn').onclick=captureMapEditor}
+function backupLegacyMap(){const raw=localStorage.getItem(LEGACY_MAP_KEY);if(!raw||!current)return;try{current.mapBridge=current.mapBridge||{};current.mapBridge.previousLegacyMap=JSON.parse(raw);current.mapBridge.previousLegacyMapSavedAt=nowIso()}catch(e){current.mapBridge.previousLegacyMapRaw=raw.slice(0,500000)}}
+async function openMapEditor(){if(!current)return;backupLegacyMap();syncLocationsToMapBlock();const block=current.mapBridge?.mapBlock||blankMapBlock();try{localStorage.removeItem(LEGACY_MAP_KEY);localStorage.setItem(LEGACY_MAP_KEY,JSON.stringify(block))}catch(e){await saveCurrent(true);alert('MAP COREへの受け渡し領域を確保できませんでした。現在のEVENT BUILDERデータは保存済みです。ルート・CP編集連携はここで止め、他の設定は壊しません。');return}await saveCurrent(true);window.open(MAP_EDITOR_FILE,'_blank');}
+function captureMapEditor(){if(!current)return;const raw=localStorage.getItem(LEGACY_MAP_KEY);if(!raw){alert('MAP編集データが見つかりません。');return}try{const d=JSON.parse(raw);const rm=d?.modules?.route;const ok=(Array.isArray(d?.segments)&&Array.isArray(d?.route))||(rm&&Array.isArray(rm.segments)&&Array.isArray(rm.path||rm.route));if(!ok)throw new Error('invalid');current.mapBridge={mapBlock:d,lastCapturedAt:nowIso()};current.modules.map.enabled=true;current.values.mapEnabled=true;queueSave();if(advancedMode)renderSection();else renderWizard();renderSummary();alert('このイベントへMAP編集内容を取り込みました。')}catch(e){alert('v20のMAP BLOCKとして読み込めませんでした。現在のイベントデータは変更していません。')}}
+
+
+function defaultExtraKind(){const t=value('eventType');if(t==='camp')return'lodging';if(t==='record')return'parking_entrance';if(t==='quest')return'goal';if(t==='road')return'goal';return'other'}
+function renderLocationPointManager(extra){
+  ensureLocationModel();ensureRouteConnections();const box=document.createElement('div');box.className='pointManager';
+  box.innerHTML='<h3>📍 イベント地点を追加</h3><p>'+ (value('eventType')==='camp'?'合宿では集合場所のほか、宿泊地・練習場所・本部・駐車場などを別々に追加できます。チェックポイント扱いにする必要はありません。':'駐車場出入口・ゴール・本部・補給など必要な地点を追加できます。') +'</p><div class="locationEditorGrid"><div class="wizardField"><label>地点の種類</label><select id="extraPointKind">'+LOCATION_TYPES.map(x=>'<option value="'+x[0]+'">'+x[1]+'</option>').join('')+'</select></div><div class="wizardField"><label>表示名</label><input id="extraPointName" placeholder="例：宿泊地 / 第2駐車場 西側入口"></div><div class="wizardField wide"><label>住所・場所</label><input id="extraPointAddress" placeholder="施設名・住所・地域名"></div></div><div class="actions"><button class="btn primary" id="extraPointSearchAdd">🔎 検索して追加</button><button class="btn" id="extraPointMapAdd">📍 地図で位置指定</button></div><div id="extraPointState" class="handoffStatus">追加地点はまだありません</div><div class="locationMapBox"><div class="locationMapHead"><b>イベント地点MAP <span class="providerBadge" id="eventMapProviderBadge">準備中</span></b><span>'+esc(locationMeta().label)+'と追加地点、地点間ルート下書きを確認します。</span></div><div id="eventPointsMapCanvas" class="locationMapCanvas"></div><div class="locationMapMsg" id="eventPointsMapMsg">MAPを準備しています…</div></div><div class="pointList" id="extraPointList"></div>';
+  extra.appendChild(box);box.querySelector('#extraPointKind').value=defaultExtraKind();box.querySelector('#extraPointSearchAdd').onclick=searchAndAddExtraPoint;box.querySelector('#extraPointMapAdd').onclick=()=>{const n=box.querySelector('#extraPointName').value.trim();if(!n){alert('先に地点の表示名を入力してください。');return}pendingPointPin=true;box.querySelector('#extraPointState').textContent='地図上の登録したい位置をタップしてください。'};renderExtraLocationList();setTimeout(renderEventPointsMap,0);renderRouteConnectionManager(extra)
+}
+async function searchAndAddExtraPoint(){
+  const kind=$('extraPointKind')?.value||'other',name=$('extraPointName')?.value.trim()||'',address=$('extraPointAddress')?.value.trim()||'',st=$('extraPointState');if(!name){if(st)st.textContent='地点の表示名を入力してください。';return}if(st)st.textContent='検索中…';const r=await geocodeCandidates(name,address).catch(()=>null);if(!r){if(st)st.textContent='検索できませんでした。地図表示は使えます。「地図で位置指定」で目的位置をタップしてください。';return}const p=r.geometry.location;addLocation(kind,name,r.formatted_address||address,p.lat(),p.lng());if($('extraPointName'))$('extraPointName').value='';if($('extraPointAddress'))$('extraPointAddress').value='';if(st)st.textContent='地点を追加しました（'+(r._provider||'検索')+'）。';renderExtraLocationList();renderRouteConnectionManagerRefresh();renderEventPointsMap()}
+function renderExtraLocationList(){
+  const list=$('extraPointList');if(!list)return;const items=extraLocations();list.innerHTML='';items.forEach(x=>{const d=document.createElement('div');d.className='pointItem';d.innerHTML='<div class="pointItemTop"><div><span class="pointKind">'+esc(locationTypeLabel(x.kind))+'</span><b>'+esc(x.name||'地点')+'</b><small>'+esc(x.address||'')+(finiteCoord(x.lat)&&finiteCoord(x.lng)?'<br>'+Number(x.lat).toFixed(6)+', '+Number(x.lng).toFixed(6):'')+'</small></div><button class="btn danger">削除</button></div>';d.querySelector('button').onclick=()=>{removeLocation(x.id);ensureRouteConnections();current.routeConnections=current.routeConnections.filter(r=>r.fromId!==x.id&&r.toId!==x.id);queueSave();renderExtraLocationList();renderRouteConnectionManagerRefresh();renderEventPointsMap()};list.appendChild(d)});if(!items.length)list.innerHTML='<div class="empty">追加地点はまだありません</div>'
+}
+function allRouteLocations(){ensureLocationModel();return (current.locations||[]).filter(x=>finiteCoord(x.lat)&&finiteCoord(x.lng))}
+function renderRouteConnectionManager(extra){
+  const box=document.createElement('div');box.className='routeManager';box.id='routeConnectionManager';box.innerHTML='<h3>↔ 地点間ルート・距離</h3><p>集合場所→宿泊地、宿泊地→練習場所など、チェックポイントとは別に任意の2地点を結べます。まず直線距離を表示し、詳細ルート形状・ルート距離は同じ接続データへ追加できる構造です。</p><div id="routeConnectionEditor"></div><div id="routeConnectionList"></div>';extra.appendChild(box);renderRouteConnectionManagerRefresh()
+}
+function renderRouteConnectionManagerRefresh(){
+  const ed=$('routeConnectionEditor'),list=$('routeConnectionList');if(!ed||!list)return;const locs=allRouteLocations(),opts=locs.map(x=>'<option value="'+esc(x.id)+'">'+esc((x.primary?'★ ':'')+(x.name||locationTypeLabel(x.kind)))+'</option>').join('');ed.innerHTML=locs.length>=2?'<div class="locationEditorGrid"><div class="wizardField"><label>出発地点</label><select id="routeFrom">'+opts+'</select></div><div class="wizardField"><label>到着地点</label><select id="routeTo">'+opts+'</select></div><div class="wizardField wide"><label>ルート名（任意）</label><input id="routeLinkName" placeholder="例：宿泊地 → 午前練習会場"></div></div><div class="actions"><button class="btn primary" id="routeLinkAdd">この2地点を結ぶ</button></div>':'<div class="empty">位置設定済みの地点が2か所以上になると、地点間ルートを作れます。</div>';if(locs.length>=2){$('routeTo').selectedIndex=Math.min(1,$('routeTo').options.length-1);$('routeLinkAdd').onclick=()=>{const f=locationById($('routeFrom').value),t=locationById($('routeTo').value);if(!f||!t||f.id===t.id){alert('別の2地点を選んでください。');return}const km=havKm(f,t),name=$('routeLinkName').value.trim()||((f.name||'出発')+' → '+(t.name||'到着'));ensureRouteConnections().push({id:'route-'+Date.now().toString(36),name,fromId:f.id,toId:t.id,straightDistanceKm:km,routeDistanceM:null,path:[],mode:'walk_run',createdAt:nowIso()});queueSave();renderRouteConnectionManagerRefresh();renderEventPointsMap()}}const routes=ensureRouteConnections();list.innerHTML=routes.map(r=>{const f=locationById(r.fromId),t=locationById(r.toId),km=Number.isFinite(r.routeDistanceM)?(r.routeDistanceM/1000):r.straightDistanceKm;return'<div class="routeItem"><b>'+esc(r.name||'地点間ルート')+'</b><small>'+esc(f?.name||'出発')+' → '+esc(t?.name||'到着')+'<br>'+(Number.isFinite(r.routeDistanceM)?'ルート距離 ':'直線距離 ')+(Number.isFinite(km)?Number(km).toFixed(2)+' km':'--')+(Number.isFinite(r.routeDistanceM)?'':' / 詳細ルート未作成')+'</small><div class="actions"><button class="btn danger" data-route-delete="'+esc(r.id)+'">削除</button></div></div>'}).join('')||'<div class="empty">地点間ルートはまだありません</div>';list.querySelectorAll('[data-route-delete]').forEach(b=>b.onclick=()=>{current.routeConnections=current.routeConnections.filter(r=>r.id!==b.dataset.routeDelete);queueSave();renderRouteConnectionManagerRefresh();renderEventPointsMap()})
+}
+async function renderEventLeafletMap(canvas,msg){
+  const L=await loadLeaflet();if(eventPointsProvider==='leaflet'&&eventPointsMap?.remove){try{eventPointsMap.remove()}catch(e){}}canvas.innerHTML='';const p=primaryLocation(),has=finiteCoord(p?.lat)&&finiteCoord(p?.lng),lat=has?Number(p.lat):35.05,lng=has?Number(p.lng):136.91;eventPointsProvider='leaflet';eventPointsMap=L.map(canvas,{zoomControl:true}).setView([lat,lng],has?15:9);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(eventPointsMap);if(has)L.marker([lat,lng]).addTo(eventPointsMap).bindPopup('★ '+locationMeta().label);extraLocations().forEach(x=>{if(finiteCoord(x.lat)&&finiteCoord(x.lng))L.marker([Number(x.lat),Number(x.lng)]).addTo(eventPointsMap).bindPopup(locationTypeLabel(x.kind)+' '+(x.name||'地点'))});ensureRouteConnections().forEach(r=>{const f=locationById(r.fromId),t=locationById(r.toId);if(f&&t&&finiteCoord(f.lat)&&finiteCoord(f.lng)&&finiteCoord(t.lat)&&finiteCoord(t.lng))L.polyline([[Number(f.lat),Number(f.lng)],[Number(t.lat),Number(t.lng)]],{dashArray:'6 7'}).addTo(eventPointsMap)});eventPointsMap.on('click',e=>{if(!pendingPointPin)return;const kind=$('extraPointKind')?.value||'other',name=$('extraPointName')?.value.trim()||'地点',address=$('extraPointAddress')?.value.trim()||'';addLocation(kind,name,address,e.latlng.lat,e.latlng.lng);pendingPointPin=false;if($('extraPointName'))$('extraPointName').value='';if($('extraPointAddress'))$('extraPointAddress').value='';if($('extraPointState'))$('extraPointState').textContent='地図タップ位置に地点を追加しました。';renderExtraLocationList();renderRouteConnectionManagerRefresh();renderEventPointsMap()});const badge=$('eventMapProviderBadge');if(badge)badge.textContent='OpenStreetMap';if(msg)msg.textContent='★＝'+locationMeta().label+' / 追加地点と地点間ルートを表示しています。'
+}
+async function renderEventPointsMap(){
+  const canvas=$('eventPointsMapCanvas'),msg=$('eventPointsMapMsg');if(!canvas)return;
+  try{const g=await loadGoogleMaps();if(eventPointsProvider==='leaflet'&&eventPointsMap?.remove){try{eventPointsMap.remove()}catch(e){}}canvas.innerHTML='';const p=primaryLocation(),has=finiteCoord(p?.lat)&&finiteCoord(p?.lng),center=has?{lat:Number(p.lat),lng:Number(p.lng)}:{lat:35.05,lng:136.91};eventPointsProvider='google';eventPointsMap=new g.Map(canvas,{center,zoom:has?15:9,mapTypeControl:false,streetViewControl:false,fullscreenControl:false,gestureHandling:'greedy',clickableIcons:true});if(has)new google.maps.Marker({map:eventPointsMap,position:center,label:'★',title:locationMeta().label});extraLocations().forEach(x=>{if(finiteCoord(x.lat)&&finiteCoord(x.lng))new google.maps.Marker({map:eventPointsMap,position:{lat:Number(x.lat),lng:Number(x.lng)},label:x.kind==='parking_entrance'?'P':'●',title:x.name||locationTypeLabel(x.kind)})});ensureRouteConnections().forEach(r=>{const f=locationById(r.fromId),t=locationById(r.toId);if(f&&t&&finiteCoord(f.lat)&&finiteCoord(f.lng)&&finiteCoord(t.lat)&&finiteCoord(t.lng))new google.maps.Polyline({map:eventPointsMap,path:[{lat:Number(f.lat),lng:Number(f.lng)},{lat:Number(t.lat),lng:Number(t.lng)}],strokeOpacity:.6,strokeWeight:4})});eventPointsMap.addListener('click',e=>{if(!pendingPointPin)return;const kind=$('extraPointKind')?.value||'other',name=$('extraPointName')?.value.trim()||'地点',address=$('extraPointAddress')?.value.trim()||'';addLocation(kind,name,address,e.latLng.lat(),e.latLng.lng());pendingPointPin=false;if($('extraPointName'))$('extraPointName').value='';if($('extraPointAddress'))$('extraPointAddress').value='';if($('extraPointState'))$('extraPointState').textContent='地図タップ位置に地点を追加しました。';renderExtraLocationList();renderRouteConnectionManagerRefresh();renderEventPointsMap()});const badge=$('eventMapProviderBadge');if(badge)badge.textContent='Google Maps';if(msg)msg.textContent='★＝'+locationMeta().label+' / 追加地点と地点間ルートを表示しています。'}catch(e){try{await renderEventLeafletMap(canvas,msg)}catch(x){if(msg)msg.textContent='Google Maps / OpenStreetMap の両方を読み込めませんでした。通信状態を確認してください。'}}
+}
+
+function renderRoles(extra){const roles=current.modules.participant.data.roles||[{id:'athlete',name:'選手'},{id:'instructor',name:'指導者'},{id:'coach',name:'コーチ'},{id:'guardian',name:'保護者'}];current.modules.participant.data.roles=roles;const box=document.createElement('div');box.innerHTML='<div class="note">通常はこの既定役割をそのまま使用します。追加が必要なときだけ変更してください。</div><div class="customList" id="roleSimpleList"></div><div class="builderRow" style="margin-top:8px"><input id="roleNameAdd" placeholder="役割名"><span></span><button class="btn" id="roleAddSimple">役割追加</button></div>';extra.appendChild(box);const list=box.querySelector('#roleSimpleList');roles.forEach((r,i)=>{const x=document.createElement('div');x.className='customItem';x.innerHTML='<div><b>'+esc(r.name)+'</b></div>'+(i<4?'<span class="pill">既定</span>':'<button class="btn danger">削除</button>');if(i>=4)x.querySelector('button').onclick=()=>{roles.splice(i,1);queueSave();renderSection()};list.appendChild(x)});box.querySelector('#roleAddSimple').onclick=()=>{const n=box.querySelector('#roleNameAdd').value.trim();if(!n)return;roles.push({id:'role-'+Date.now().toString(36),name:n});queueSave();renderSection()}}
+
+function renderCustomFieldBuilder(extra){const s=mergedSchema();const box=document.createElement('div');box.innerHTML='<div class="builderRow four"><select id="cfMain"></select><select id="cfSub"></select><select id="cfType"><option value="text">1行文字</option><option value="textarea">複数行</option><option value="number">数値</option><option value="date">日付</option><option value="datetime-local">日時</option><option value="checkbox">ON/OFF</option><option value="select">選択式</option></select><select id="cfReq"><option value="0">任意</option><option value="1">必須</option></select></div><input id="cfLabel" style="margin-top:7px" placeholder="追加する項目名"><input id="cfOptions" style="margin-top:7px" placeholder="選択式の場合：選択肢をカンマ区切り"><div class="actions"><button class="btn primary" id="cfAdd">この項目を追加</button></div><div class="customList" id="cfList"></div>';extra.appendChild(box);const main=box.querySelector('#cfMain'),sub=box.querySelector('#cfSub');s.filter(m=>m.id!=='extensions').forEach(m=>{const o=document.createElement('option');o.value=m.id;o.textContent=m.label;main.appendChild(o)});const fillSubs=()=>{const m=s.find(x=>x.id===main.value);sub.innerHTML=(m?.subs||[]).map(x=>'<option value="'+esc(x.id)+'">'+esc(x.label)+'</option>').join('')};main.onchange=fillSubs;fillSubs();box.querySelector('#cfAdd').onclick=()=>{const label=box.querySelector('#cfLabel').value.trim();if(!label||!sub.value)return;const type=box.querySelector('#cfType').value,raw=box.querySelector('#cfOptions').value.trim();const field={id:'custom-'+Date.now().toString(36),subId:sub.value,label,type,required:box.querySelector('#cfReq').value==='1',options:type==='select'?raw.split(',').map(x=>x.trim()).filter(Boolean).map(x=>[x,x]):undefined};current.customSchema.fields.push(field);queueSave();renderSection();renderSummary();renderTree()};const list=box.querySelector('#cfList');(current.customSchema.fields||[]).forEach((f,i)=>{const x=document.createElement('div');x.className='customItem';x.innerHTML='<div><b>'+esc(f.label)+'</b><div><span class="pill">'+esc(f.type)+'</span>'+(f.required?'<span class="pill">必須</span>':'')+'</div></div><button class="btn danger">削除</button>';x.querySelector('button').onclick=()=>{delete current.values[f.id];current.customSchema.fields.splice(i,1);queueSave();renderSection();renderSummary();renderTree()};list.appendChild(x)});if(!current.customSchema.fields.length)list.innerHTML='<div class="empty">独自項目はまだありません</div>'}
+
+function renderStructureBuilder(extra){const box=document.createElement('div');box.innerHTML='<div class="note">既存分類を変更せず、新しい枝だけ追加します。これにより将来の用途が増えても隣のモジュールを触らず拡張できます。</div><h3 style="font-size:11px">主分類を追加</h3><div class="builderRow"><input id="mainLabel" placeholder="例：送迎・バス"><input id="mainIcon" placeholder="絵文字（任意）"><button class="btn primary" id="mainAdd">追加</button></div><h3 style="font-size:11px;margin-top:12px">副分類を追加</h3><div class="builderRow"><select id="subMain"></select><input id="subLabel" placeholder="例：乗車場所"><button class="btn primary" id="subAdd">追加</button></div><div class="customList" id="structureList"></div>';extra.appendChild(box);const sm=box.querySelector('#subMain');mergedSchema().forEach(m=>{const o=document.createElement('option');o.value=m.id;o.textContent=m.label;sm.appendChild(o)});box.querySelector('#mainAdd').onclick=()=>{const label=box.querySelector('#mainLabel').value.trim();if(!label)return;current.customSchema.mains.push({id:'main-'+Date.now().toString(36),label,icon:box.querySelector('#mainIcon').value.trim()||'＋'});queueSave();renderAll()};box.querySelector('#subAdd').onclick=()=>{const label=box.querySelector('#subLabel').value.trim();if(!label)return;current.customSchema.subs.push({id:'sub-'+Date.now().toString(36),mainId:sm.value,label});queueSave();renderAll()};const list=box.querySelector('#structureList'),rows=[...(current.customSchema.mains||[]).map((x,i)=>({kind:'main',i,x})),...(current.customSchema.subs||[]).map((x,i)=>({kind:'sub',i,x}))];rows.forEach(r=>{const x=document.createElement('div');x.className='customItem';x.innerHTML='<div><span class="pill">'+(r.kind==='main'?'主分類':'副分類')+'</span><b>'+esc(r.x.label)+'</b></div><button class="btn danger">削除</button>';x.querySelector('button').onclick=()=>{const hasFields=current.customSchema.fields.some(f=>f.subId===r.x.id);const hasSubs=r.kind==='main'&&current.customSchema.subs.some(s=>s.mainId===r.x.id);if(hasFields||hasSubs){alert('この分類の下に項目または副分類があります。先に下位項目を削除してください。');return}current.customSchema[r.kind==='main'?'mains':'subs'].splice(r.i,1);queueSave();renderAll()};list.appendChild(x)});if(!rows.length)list.innerHTML='<div class="empty">追加分類はまだありません</div>'}
+
+function renderAdvanced(extra){const box=document.createElement('div');box.innerHTML='<div class="note important">ここは通常操作では使いません。内部IDやデータ入出力など、保守・移行時だけ使用します。</div><div class="formGrid" style="margin-top:8px"><div class="field"><label>EVENT ID</label><input value="'+esc(current.eventId)+'" readonly></div><div class="field"><label>Builder version</label><input value="'+BUILDER_VERSION+'" readonly></div></div><div class="actions"><button class="btn" id="exportJsonBtn">イベントJSON保存</button><button class="btn" id="importJsonBtn">イベントJSON読込</button><button class="btn danger" id="deleteEventBtn">このイベントを削除</button></div><details class="advancedBox"><summary>設計契約・モジュール状態</summary><div class="advancedContent"><pre style="white-space:pre-wrap;font-size:9px;line-height:1.55">'+esc(JSON.stringify({contract:CORE_CONTRACT,modules:current.modules},null,2))+'</pre></div></details>';extra.appendChild(box);box.querySelector('#exportJsonBtn').onclick=exportCurrent;box.querySelector('#importJsonBtn').onclick=()=>$('importInput').click();box.querySelector('#deleteEventBtn').onclick=async()=>{if(!confirm('このイベントをビルダーから削除しますか？\nMAP CORE本体や他イベントは削除しません。'))return;const id=current.eventId;await idbDelete(id);current=null;await refreshEventSelect();renderAll()}}
+function exportCurrent(){if(!current)return;const blob=new Blob([JSON.stringify(current,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=(String(value('eventName')||'event').replace(/[\\/:*?"<>|]/g,'_'))+'_event_builder.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+async function importCurrentFile(file){if(!file)return;try{const x=JSON.parse(await file.text());if(!x||!x.eventId||!x.values||!x.modules)throw new Error();x.updatedAt=nowIso();current=migrateEvent(x);ensureLocationModel();await idbPut(current);selected={main:'event',sub:'identity'};await refreshEventSelect();renderAll();alert('イベントJSONを読み込みました。')}catch(e){alert('EVENT BUILDER JSONとして読み込めませんでした。')}finally{$('importInput').value=''}}
+
+function renderBgmTrackManager(extra){
+  const data=current.modules.audioBgm.data||(current.modules.audioBgm.data={});if(!Array.isArray(data.tracks))data.tracks=[];const box=document.createElement('div');box.className='pointManager';box.innerHTML='<h3>🎵 曲ライブラリ</h3><p>曲名・作者・クレジット・ファイル参照を登録します。音源そのものをここへ埋め込まず、公開時に利用する参照情報を保持します。</p><div class="locationEditorGrid"><div class="wizardField"><label>曲名</label><input id="bgmTrackName" placeholder="曲名"></div><div class="wizardField"><label>作者・アーティスト</label><input id="bgmTrackArtist" placeholder="作者名"></div><div class="wizardField wide"><label>クレジット・利用条件メモ</label><input id="bgmTrackCredit" placeholder="公開時に必要な表記など"></div><div class="wizardField wide"><label>ファイル名・URL参照</label><input id="bgmTrackSource" placeholder="例：audio/example.mp3"></div></div><div class="actions"><button class="btn primary" id="bgmTrackAdd">曲を追加</button></div><div class="bgmTrackList" id="bgmTrackList"></div>';extra.appendChild(box);const render=()=>{const list=$('bgmTrackList');list.innerHTML=data.tracks.map((t,i)=>'<div class="bgmTrack"><b>'+esc(t.name||'曲名未設定')+'</b><small>'+esc(t.artist||'')+(t.credit?'<br>'+esc(t.credit):'')+(t.source?'<br>'+esc(t.source):'')+'</small><div class="actions"><button class="btn danger" data-bgm-del="'+i+'">削除</button></div></div>').join('')||'<div class="empty">曲はまだ登録されていません</div>';list.querySelectorAll('[data-bgm-del]').forEach(b=>b.onclick=()=>{data.tracks.splice(Number(b.dataset.bgmDel),1);queueSave();render()})};$('bgmTrackAdd').onclick=()=>{const name=$('bgmTrackName').value.trim();if(!name){alert('曲名を入力してください。');return}data.tracks.push({id:'track-'+Date.now().toString(36),name,artist:$('bgmTrackArtist').value.trim(),credit:$('bgmTrackCredit').value.trim(),source:$('bgmTrackSource').value.trim()});['bgmTrackName','bgmTrackArtist','bgmTrackCredit','bgmTrackSource'].forEach(id=>$(id).value='');queueSave();render()};render()
+}
+
+function renderPublication(extra){const box=document.createElement('div');box.className='moduleCards';Object.entries(MODULE_REGISTRY).forEach(([id,m])=>{const d=document.createElement('div');d.className='moduleCard';const on=!!current.modules[id]?.enabled;d.innerHTML='<div class="moduleCardTop"><h3>'+esc(m.label)+'</h3><span class="moduleState '+(on?'on':'')+'">'+(on?'使用':'未使用')+'</span></div><p>'+esc(m.responsibility)+'</p>';box.appendChild(d)});extra.appendChild(box);const n=document.createElement('div');n.className='note safe';n.textContent='「公開プレビュー」で参加者画面の見え方を確認できます。本番公開用の統合は、各モジュールの接続契約を守って段階的に行い、v20 MAP COREやLIVE基盤を再生成しません。';extra.appendChild(n)}
+
+function validationIssues(scope){if(!current)return[];const fields=allFields().filter(f=>!scope||f.mainId===scope.main&&f.subId===scope.sub);const issues=[];fields.forEach(f=>{if(f.required&&!fieldComplete(f))issues.push({type:'field',text:f.label+' が未入力です',main:f.mainId,sub:f.subId})});if((!scope||scope.main==='live')&&current.modules.liveLocation.enabled){if(!Number(value('venueLat'))||!Number(value('venueLng')))issues.push({type:'rule',text:'LIVE位置共有を使う場合、基準地点の位置設定を推奨します',main:'event',sub:'venue'})}if((!scope||scope.main==='map')&&current.modules.map.enabled&&!current.mapBridge?.mapBlock)issues.push({type:'rule',text:'MAPを使う設定ですが、このイベントのMAP BLOCKがまだありません',main:'map',sub:'mapConfig'});return issues}
+function renderValidation(scope=null){$('welcomePanel').classList.add('hidden');$('wizardPanel')?.classList.add('hidden');$('editorPanel').classList.add('hidden');$('validatePanel').classList.remove('hidden');const box=$('issueList'),issues=validationIssues(scope);box.innerHTML='';if(!issues.length){box.innerHTML='<div class="okLine">この範囲の必須入力に問題はありません。</div>';return}issues.forEach(it=>{const d=document.createElement('button');d.className='issue';d.style.textAlign='left';d.textContent=it.text;d.onclick=()=>{if(!advancedMode){if(it.main==='event'&&it.sub==='identity')setWizardStep(1);else if(it.main==='event')setWizardStep(2);else if(['map','people','schedule','live','communication','audio','quest'].includes(it.main)){const mapKey={map:'map',people:'participant',schedule:'schedule',live:'live',communication:'chat',audio:'audio',quest:'questStructure'}[it.main];const q=wizardDetailQueue(),i=q.indexOf(mapKey);setWizardStep(i>=0?4:3,Math.max(0,i))}else setWizardStep(3)}else{selected={main:it.main,sub:it.sub};renderTree();renderSection()}};box.appendChild(d)})}
+
+
+function guideState(){
+  if(!current)return {step:0};
+  const hasName=String(value('eventName')||'').trim().length>0;
+  const hasType=String(value('eventType')||'').trim().length>0;
+  const hasWhen=!!value('startAt');
+  ensureLocationModel();const pl=primaryLocation();const hasPlace=!!(String(pl?.name||'').trim()||String(pl?.address||'').trim()||(finiteCoord(pl?.lat)&&finiteCoord(pl?.lng)));
+  const hasModules=Object.values(current.modules||{}).some(m=>m.enabled);
+  const noCritical=validationIssues().filter(x=>x.type==='field').length===0;
+  let step=1;
+  if(hasName&&hasType)step=2;
+  if(hasPlace||hasWhen)step=3;
+  if(hasModules)step=4;
+  if(noCritical&&hasName&&hasType)step=5;
+  return {step,hasName,hasType,hasWhen,hasPlace,hasModules,noCritical};
+}
+function navTo(main,sub){
+  selected={main,sub};renderTree();renderSection();window.scrollTo({top:0,behavior:'smooth'});
+}
+function renderGuide(){
+  const p=$('guidePanel');if(!p)return;
+  if(!current){p.classList.add('hidden');return}
+  p.classList.remove('hidden');
+  const st=guideState();
+  $('guideNow').textContent='STEP '+st.step+' / 5';
+  const steps=[
+    {n:1,t:'基本情報',d:'イベント名・種類',done:st.hasName&&st.hasType,main:'event',sub:'identity'},
+    {n:2,t:'日時・場所',d:'開始時刻と基準地点',done:st.hasWhen||st.hasPlace,main:'event',sub:'venue'},
+    {n:3,t:'使う機能',d:'MAP・LIVE・CHAT等',done:st.hasModules,main:'map',sub:'mapConfig'},
+    {n:4,t:'詳細設定',d:'必要な枝だけ設定',done:st.noCritical,main:'publish',sub:'home'},
+    {n:5,t:'公開プレビュー',d:'参加者画面を確認',done:false,preview:true}
+  ];
+  $('guideSteps').innerHTML='';
+  steps.forEach(x=>{
+    const b=document.createElement('button');b.className='guideStep '+(x.done?'done ':'')+(st.step===x.n?'now':'');
+    b.innerHTML='<span class="n">'+(x.done?'✓':x.n)+'</span><b>'+x.t+'</b><span>'+x.d+'</span>';
+    b.onclick=()=>x.preview?openPublicPreview():navTo(x.main,x.sub);$('guideSteps').appendChild(b);
+  });
+  const leads={
+    1:'<b>まず「イベント名」と「イベント形式」を入力してください。</b><br>それ以外は後からで大丈夫です。',
+    2:'<b>次に「いつ・どこで」を設定します。</b><br>イベント形式に合う基準地点を設定します。合宿などは後で宿泊地・練習場所も追加できます。',
+    3:'<b>使う機能を選びます。</b><br>不要な機能はOFFのままで構いません。後から追加できます。',
+    4:'<b>必要な部分だけ詳細設定します。</b><br>主分類 → 副分類から必要な枝だけ開いてください。詳細設定は必須ではありません。',
+    5:'<b>最後に公開プレビューで確認します。</b><br>参加者からどう見えるかを確認し、入力漏れがあれば戻って修正できます。'
+  };
+  $('guideLead').innerHTML=leads[st.step];
+  const next=$('guideNext');next.innerHTML='';
+  const nextDef=st.step===1?['基本情報を入力','event','identity']:st.step===2?['日時・場所を入力','event','venue']:st.step===3?['使う機能を選ぶ','map','mapConfig']:st.step===4?['詳細設定へ','publish','home']:null;
+  if(nextDef){const b=document.createElement('button');b.className='btn primary';b.textContent='次へ：'+nextDef[0];b.onclick=()=>navTo(nextDef[1],nextDef[2]);next.appendChild(b)}
+  const pv=document.createElement('button');pv.className='btn';pv.textContent='👁 公開プレビュー';pv.onclick=openPublicPreview;next.appendChild(pv);
+  const all=document.createElement('button');all.className='btn';all.textContent='すべての設定を見る';all.onclick=()=>document.querySelector('.sidebar')?.scrollIntoView({behavior:'smooth'});next.appendChild(all);
+}
+function previewTabs(){
+  if(!current)return [];
+  const tabs=[{id:'home',label:'HOME'}];
+  if(current.modules.map?.enabled)tabs.push({id:'map',label:'MAP'});
+  if(current.modules.participant?.enabled)tabs.push({id:'people',label:'参加者'});
+  if(current.modules.schedule?.enabled)tabs.push({id:'schedule',label:'予定'});
+  if(current.modules.chatSupport?.enabled)tabs.push({id:'chat',label:'CHAT'});
+  if(current.modules.audioBgm?.enabled)tabs.push({id:'audio',label:'BGM'});
+  if(current.modules.questAdapter?.enabled)tabs.push({id:'quest',label:'QUEST'});
+  return tabs;
+}
+function pvCard(title,text){return '<div class="pvCard"><b>'+esc(title)+'</b><span>'+esc(text)+'</span></div>'}
+function renderPreviewBody(tab='home'){
+  const body=$('pvBody');if(!body||!current)return;
+  const name=value('eventName')||'イベント名未設定',venue=locationSummary();
+  const when=value('startAt')?new Date(value('startAt')).toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'日時未設定';
+  const mb=current.mapBridge?.mapBlock,m=mb?.modules||{};
+  if(tab==='home'){
+    let html='<div class="pvHero"><h3>'+esc(name)+'</h3><p>'+esc(when)+'<br>'+esc(venue)+'</p><div class="pvActions">';
+    if(current.modules.liveLocation?.enabled)html+='<button>位置共有</button>';
+    if(current.modules.participant?.enabled)html+='<button>参加登録</button>';
+    if(current.modules.chatSupport?.enabled)html+='<button>CHAT</button>';
+    if(current.modules.audioBgm?.enabled)html+='<button>BGM</button>';
+    if(current.modules.questAdapter?.enabled)html+='<button>QUEST開始</button>';
+    html+='</div></div>';
+    if(current.modules.schedule?.enabled)html+=pvCard('これからの予定','競技・招集・活動予定がここに表示されます');
+    if(current.modules.liveLocation?.enabled)html+=pvCard('位置共有','会場範囲・共有時間に従ってON/OFFを案内します');
+    if(current.modules.map?.enabled)html+=pvCard('MAP・地点','集合場所・宿泊地・練習場所・駐車場・ルート等を表示します');
+    if(current.modules.audioBgm?.enabled)html+=pvCard('BGM','イベント設定に応じた曲・クレジットを表示します');
+    body.innerHTML=html;return;
+  }
+  if(tab==='map'){
+    const route=(m.route?.path||mb?.route||[]).length,cp=(m.checkpoints?.items||mb?.checkpoints||[]).length,base=(m.basePoints?.items||mb?.basePoints||[]).length,park=(m.parkingEntrances?.items||mb?.parkingEntrances||[]).length;
+    body.innerHTML='<div class="pvHero"><h3>MAP</h3><p>'+esc(venue)+'</p></div><div class="pvMap">'+(mb?'MAP BLOCKを反映<br>ルート '+route+'点 / CP '+cp+' / 拠点 '+base+' / 駐車場入口 '+park:'MAPはまだ編集されていません')+'</div>';return;
+  }
+  if(tab==='people'){body.innerHTML='<div class="pvHero"><h3>参加者</h3><p>参加者登録と役割別の状態を表示します。</p></div>'+pvCard('選手','参加登録後に表示')+pvCard('指導者・コーチ','来場・共有状態などを表示');return}
+  if(tab==='schedule'){body.innerHTML='<div class="pvHero"><h3>予定</h3><p>競技時間・招集・活動予定を位置情報とは別に表示します。</p></div>'+pvCard('次の予定','登録された予定を時刻順に表示');return}
+  if(tab==='chat'){body.innerHTML='<div class="pvHero"><h3>CHAT</h3><p>このイベント専用のチャット画面です。</p></div>'+pvCard('全体チャット','イベント参加者間の連絡を表示');return}
+  if(tab==='audio'){const tr=current.modules.audioBgm?.data?.tracks||[];body.innerHTML='<div class="pvHero"><h3>BGM</h3><p>再生ルール：'+esc(value('bgmMode')||'未設定')+'</p></div>'+pvCard('登録曲',tr.length+'曲 / 画面遷移継続 '+(value('bgmContinueAcrossScreens')?'ON':'OFF'))+pvCard('クレジット',value('bgmCreditEnabled')?'表示する':'表示しない');return}
+  if(tab==='quest'){body.innerHTML='<div class="pvHero"><h3>QUEST</h3><p>STAGE・CP・到達判定・クイズ・アイコン・表彰をQUESTアダプターから表示します。</p></div>'+pvCard('次の目的地',value('routeDistanceEnabled')?'ルート残距離を表示':'目的地を表示')+pvCard('到達判定',(value('gpsArrivalEnabled')?'GPS ':'')+(value('manualArrivalEnabled')?'＋手動':'') )+pvCard('報酬',(value('stampEnabled')?'スタンプ ':'')+(value('awardEnabled')?'表彰 ':'')+(value('gpsFullCompleteAward')?'GPSフルコンプ':'') );return}
+}
+function openPublicPreview(){
+  if(!current){alert('先にイベントを作成してください。');return}
+  $('previewModal').classList.add('show');$('previewModal').setAttribute('aria-hidden','false');
+  $('pvEventName').textContent=value('eventName')||'イベント名未設定';
+  const bits=[];if(value('startAt'))bits.push(new Date(value('startAt')).toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}));const pl=primaryLocation();if(pl?.name||pl?.address)bits.push(pl.name||pl.address);$('pvEventMeta').textContent=bits.join(' / ')||'日時・場所未設定';
+  const issues=validationIssues();
+  $('previewHint').textContent=issues.length?'プレビューできますが、未設定・確認項目が '+issues.length+' 件あります。下の「入力漏れを確認」から戻れます。':'必須入力は揃っています。参加者画面の見え方を確認してください。';
+  const tabs=previewTabs(),tb=$('pvTabs');tb.innerHTML='';tabs.forEach((t,i)=>{const b=document.createElement('button');b.textContent=t.label;b.className=i===0?'on':'';b.onclick=()=>{tb.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));renderPreviewBody(t.id)};tb.appendChild(b)});renderPreviewBody(tabs[0]?.id||'home');
+}
+function closePublicPreview(){$('previewModal').classList.remove('show');$('previewModal').setAttribute('aria-hidden','true')}
+
+
+function renderRecentEvents(list){
+  const box=$('recentEvents');if(!box)return;
+  const items=(list||[]).slice().sort((a,b)=>String(b.updatedAt||'').localeCompare(String(a.updatedAt||'')));
+  box.innerHTML='<h2>保存済みイベント</h2>';
+  if(!items.length){box.innerHTML+='<div class="empty">保存済みイベントはありません</div>';return}
+  items.slice(0,8).forEach(e=>{const d=document.createElement('div');d.className='recentEvent';const dt=e.updatedAt?new Date(e.updatedAt).toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';d.innerHTML='<div><b>'+esc(e.values?.eventName||'名称未設定')+'</b><span>最終保存 '+esc(dt)+'</span></div><button class="btn">開く</button>';d.querySelector('button').onclick=()=>selectEvent(e.eventId);box.appendChild(d)});
+}
+function rememberWizard(){if(!current)return;current.uiState={wizardStep,wizardDetailIndex};queueSave()}
+function setWizardStep(step,detailIndex=0){wizardStep=Math.max(1,Math.min(5,step));wizardDetailIndex=Math.max(0,detailIndex);rememberWizard();renderWizard();window.scrollTo({top:0,behavior:'smooth'})}
+function wizardTypeLabel(v){return ({free:'自由構成',record:'記録会・競技会',road:'ロードレース・駅伝',camp:'合宿・練習会',quest:'旅ラン・QUEST',other:'その他'})[v]||'自由構成'}
+function wizardDetailQueue(){if(!current)return[];const q=[];if(current.modules.map?.enabled)q.push('map');if(current.modules.participant?.enabled)q.push('participant');if(current.modules.schedule?.enabled)q.push('schedule');if(current.modules.liveLocation?.enabled)q.push('live');if(current.modules.chatSupport?.enabled)q.push('chat');if(current.modules.audioBgm?.enabled)q.push('audio');if(current.modules.questAdapter?.enabled)q.push('questStructure','questArrival','questExperience');return q}
+function wizardFieldHtml(id,label,type='text',opts={}){const v=value(id)??'';let ctl='';if(type==='select'){ctl='<select data-wfield="'+id+'">'+(opts.options||[]).map(x=>'<option value="'+esc(x[0])+'" '+(String(v)===String(x[0])?'selected':'')+'>'+esc(x[1])+'</option>').join('')+'</select>'}else if(type==='checkbox'){ctl='<label class="choiceCard '+(v?'on':'')+'"><input data-wfield="'+id+'" type="checkbox" '+(v?'checked':'')+'><div><b>'+esc(label)+'</b><span>'+esc(opts.hint||'')+'</span></div></label>';return ctl}else{ctl='<input data-wfield="'+id+'" type="'+type+'" value="'+esc(v)+'" '+(opts.step?'step="'+esc(opts.step)+'" ':'')+(opts.min!==undefined?'min="'+esc(opts.min)+'" ':'')+'placeholder="'+esc(opts.placeholder||'')+'">'}return '<div class="wizardField '+(opts.wide?'wide':'')+'"><label>'+esc(label)+(opts.required?' <span class="req">必須</span>':'')+'</label>'+ctl+(opts.hint?'<div class="hint">'+esc(opts.hint)+'</div>':'')+'</div>'}
+function bindWizardFields(root=$('wizardBody')){root.querySelectorAll('[data-wfield]').forEach(el=>{const id=el.dataset.wfield;const handler=()=>{setValue(id,el.type==='checkbox'?el.checked:el.value);if(el.type==='checkbox')el.closest('.choiceCard')?.classList.toggle('on',el.checked)};el.addEventListener(el.type==='checkbox'||el.tagName==='SELECT'?'change':'input',handler)})}
+function wizardHeader(title,help,step=wizardStep){$('wizardStepLabel').textContent='STEP '+step;$('wizardTitle').textContent=title;$('wizardHelp').textContent=help;$('wizardStepBadge').textContent=step+' / 5';$('wizardProgressFill').style.width=(step*20)+'%'}
+function wizardNav(backLabel,nextLabel,onBack,onNext,nextClass='primary'){const nav=$('wizardNav');nav.innerHTML='';const b=document.createElement('button');b.className='btn';b.textContent=backLabel||'戻る';b.onclick=onBack||(()=>{});const n=document.createElement('button');n.className='btn '+nextClass;n.textContent=nextLabel||'次へ';n.onclick=onNext||(()=>{});nav.append(b,n)}
+function renderWizard(){
+  if(!current||advancedMode)return;
+  $('welcomePanel').classList.add('hidden');$('editorPanel').classList.add('hidden');$('validatePanel').classList.add('hidden');$('wizardPanel').classList.remove('hidden');
+  const body=$('wizardBody');body.innerHTML='';
+  if(wizardStep===1){
+    wizardHeader('基本情報','イベント名と種類だけ確認します。');
+    body.innerHTML='<div class="wizardIntro"><b>このイベントの名前と種類を確認してください。</b><br>種類は初期設定の目安だけです。機能を制限しません。</div><div class="wizardFields">'+wizardFieldHtml('eventName','イベント名','text',{required:true,wide:true,placeholder:'例：豊川長距離競技会'})+wizardFieldHtml('eventType','イベントの種類','select',{wide:true,options:[['record','記録会・競技会'],['road','ロードレース・駅伝'],['camp','合宿・練習会'],['quest','旅ラン・QUEST'],['free','その他・自由構成']]})+'</div>';bindWizardFields();wizardNav('イベント一覧','次へ：日時・場所',()=>showEventHome(),()=>{if(!String(value('eventName')||'').trim()){alert('イベント名を入力してください。');return}setWizardStep(2)});return;
+  }
+  if(wizardStep===2){
+    ensureLocationModel();const lm=locationMeta();
+    wizardHeader('日時・'+lm.label,'イベント形式に合わせた基準地点を設定します。');
+    body.innerHTML='<div class="wizardIntro"><b>'+esc(lm.label)+'を設定してください。</b><br>'+esc(lm.hint)+'。検索できない場合でも、下の地図を直接タップして位置を指定できます。</div><div class="wizardFields">'+wizardFieldHtml('startAt','開始日時','datetime-local',{hint:'集合・開始の基準時刻'})+wizardFieldHtml('endAt','終了予定','datetime-local',{hint:'終了目安。位置共有の終了案内にも使えます'})+wizardFieldHtml('venueName',lm.nameLabel,'text',{wide:true,placeholder:lm.placeholder,hint:lm.hint})+wizardFieldHtml('venueAddress',lm.placeLabel,'text',{wide:true,placeholder:'施設名・住所・地域名',hint:'分かる範囲で入力。検索または地図タップで位置を設定できます'})+'</div><div class="actions"><button class="btn primary" id="wizardVenueSearch">🔎 名称・住所から位置を検索</button></div><div id="venueSearchState" class="handoffStatus">'+(finiteCoord(primaryLocation()?.lat)&&finiteCoord(primaryLocation()?.lng)?'位置設定済み':'位置検索はまだしていません')+'</div><div class="locationMapBox"><div class="locationMapHead"><b>'+esc(lm.label)+' MAP</b><span>検索結果を確認できます。位置を変える場合は地図をタップしてください。</span></div><div id="primaryMapCanvas" class="locationMapCanvas"></div><div id="primaryMapMsg" class="locationMapMsg">MAPを準備しています…</div></div><div class="genericRule"><b>汎用LOCATION方式</b><br>ここは固定の「会場」ではありません。旅ランならメインスタート地点、記録会なら会場、合宿なら集合・活動拠点として同じLOCATIONデータを使います。</div>';bindWizardFields();$('wizardVenueSearch').onclick=searchVenue;setTimeout(renderPrimaryLocationMap,0);wizardNav('戻る：基本情報','次へ：使う機能',()=>setWizardStep(1),()=>setWizardStep(3));return;
+  }
+  if(wizardStep===3){
+    wizardHeader('使う機能','必要な機能だけONにします。意味が分からないものはOFFでも後から追加できます。');
+    const choices=[
+      ['mapEnabled','🗺 MAP・地点・ルート','会場地図、駐車場出入口、ルート、チェックポイントなどを表示します。','map'],
+      ['participantEnabled','👥 参加者登録','参加者が自分の名前や役割を登録できるようにします。','participant'],
+      ['scheduleEnabled','⏱ 予定・競技情報','競技時間、招集、活動予定などを共有します。','schedule'],
+      ['liveEnabled','📡 LIVE位置共有','会場付近で参加者・指導者の位置を必要な時間だけ共有します。','liveLocation'],
+      ['chatEnabled','💬 CHAT・連絡','イベント参加者の連絡用チャットを使います。','chatSupport'],
+      ['bgmEnabled','🎵 BGM・音声','BGM、固定区間、地点切替、クレジットなどを使います。','audioBgm'],
+      ['checkpointEnabled','📍 QUEST・チェックポイント','STAGE、チェックポイント、到達判定、クイズ、スタンプ、表彰などを使います。','questAdapter']
+    ];
+    body.innerHTML='<div class="wizardIntro"><b>使いたいものだけ選んでください。</b><br>選ばなかった機能は消えません。あとからいつでも追加できます。</div><div class="choiceList">'+choices.map(x=>'<label class="choiceCard '+(value(x[0])?'on':'')+'"><input type="checkbox" data-wfield="'+x[0]+'" '+(value(x[0])?'checked':'')+'><div><b>'+x[1]+'</b><span>'+x[2]+'</span>'+(current.modules[x[3]]?.enabled?'<span class="recommend">現在ON</span>':'')+'</div></label>').join('')+'</div>';bindWizardFields();wizardNav('戻る：日時・場所','次へ：選んだ機能を設定',()=>setWizardStep(2),()=>{const q=wizardDetailQueue();setWizardStep(q.length?4:5,0)});return;
+  }
+  if(wizardStep===4){
+    const q=wizardDetailQueue();if(!q.length){setWizardStep(5);return}wizardDetailIndex=Math.min(wizardDetailIndex,q.length-1);const key=q[wizardDetailIndex];const names={map:'MAP・地点・ルート',participant:'参加者登録',schedule:'予定・競技情報',live:'LIVE位置共有',chat:'CHAT・連絡',audio:'BGM・音声',questStructure:'QUEST 進行構造',questArrival:'QUEST 到達判定・距離',questExperience:'QUEST クイズ・アイコン・表彰'};wizardHeader('選んだ機能を設定','必要な機能を1つずつ順番に設定します。');
+    body.innerHTML='<span class="detailCounter">設定 '+(wizardDetailIndex+1)+' / '+q.length+'</span><div class="wizardIntro"><b>'+esc(names[key])+'</b><br>標準設定でよければ、そのまま「次へ」で進めます。</div><div id="wizardDetailBody"></div>';const d=$('wizardDetailBody');
+    if(key==='map'){d.innerHTML='<div class="wizardFields">'+wizardFieldHtml('mapMode','MAPの使い方','select',{wide:true,options:[['venue','基準地点周辺（ルートなし）'],['multi_location','複数地点＋地点間ルート'],['route','1本のルート・コース'],['checkpoint','チェックポイント型'],['staged','STAGE型'],['free','自由MAP']]})+'</div>';bindWizardFields(d);renderLocationPointManager(d);if(['route','checkpoint','staged'].includes(String(value('mapMode')||'')))renderMapBridge(d);else{const n=document.createElement('div');n.className='note';n.textContent='ルートなしMAPでは、この画面だけで基準地点と駐車場出入口を設定できます。ルート・CPが必要な場合だけMAP CORE詳細編集を使います。';d.appendChild(n)}}
+    else if(key==='participant'){d.innerHTML='<div class="wizardFields">'+wizardFieldHtml('registrationMode','参加者の登録方法','select',{wide:true,options:[['self','参加者が自分で登録（おすすめ）'],['admin','主催者が登録'],['mixed','両方']]})+'</div><div class="safeDefaults"><b>標準の役割</b><br>選手・指導者・コーチ・保護者。追加や変更は「詳細設定」から行えます。</div>';bindWizardFields(d)}
+    else if(key==='schedule'){d.innerHTML='<div class="wizardFields">'+wizardFieldHtml('scheduleMode','予定の入力方法','select',{wide:true,options:[['self','参加者が自分で入力'],['admin','主催者が入力'],['mixed','両方']]})+'</div>';bindWizardFields(d)}
+    else if(key==='live'){d.innerHTML='<div class="wizardFields">'+wizardFieldHtml('shareRadiusKm','会場から何km以内で共有するか','number',{step:'0.5',min:'0.5',hint:'標準は3km'})+wizardFieldHtml('shareBeforeHours','開始何時間前からONを案内するか','number',{step:'0.5',min:'0',hint:'標準は3時間前'})+wizardFieldHtml('shareAfterHours','終了後の共有目安','number',{step:'0.5',min:'0.5',hint:'標準は2時間'})+'</div><div class="safeDefaults"><b>プライバシー保護は標準で固定</b><br>共有OFF時は正確な位置を残さず、会場範囲外・期限到達時は共有停止する方針を維持します。</div>';bindWizardFields(d)}
+    else if(key==='chat'){d.innerHTML='<div class="wizardFields">'+wizardFieldHtml('chatMode','CHATの使い方','select',{wide:true,options:[['all','全体チャット'],['group','グループ対応を想定'],['support','主催者からの連絡・支援中心']]})+'</div>';bindWizardFields(d)}
+    else if(key==='audio'){d.innerHTML='<div class="wizardFields">'+wizardFieldHtml('bgmMode','BGMの再生ルール','select',{wide:true,options:[['playlist','自由選曲・プレイリスト'],['stage','STAGEごとの曲'],['location','地点・区間で切替'],['mixed','固定区間＋自由選曲']]})+'</div><div class="choiceList">'+wizardFieldHtml('bgmContinueAcrossScreens','画面遷移でも再生を継続','checkbox',{hint:'MAPや別画面へ移っても曲を頭から再開させない設計'})+wizardFieldHtml('bgmCreditEnabled','クレジット表示','checkbox',{hint:'公開利用に必要な作者・ライセンス表記を表示'})+'</div>';bindWizardFields(d);renderBgmTrackManager(d)}
+    else if(key==='questStructure'){d.innerHTML='<div class="questGrid">'+wizardFieldHtml('stageEnabled','STAGEを使う','checkbox',{hint:'複数STAGEに分ける'})+wizardFieldHtml('midJoinEnabled','途中参加を許可','checkbox',{hint:'指定地点からの途中スタートを扱える'})+wizardFieldHtml('resumeEnabled','途中離脱・再開','checkbox',{hint:'どこでやめても再開できる'})+wizardFieldHtml('extraRouteEnabled','任意EXTRAルート','checkbox',{hint:'寄り道・追加距離ルートを扱う'})+wizardFieldHtml('routeOverviewEnabled','区間ごとのルート概要','checkbox',{hint:'景色・注意・補給などを区間単位で表示'})+'</div>';bindWizardFields(d)}
+    else if(key==='questArrival'){d.innerHTML='<div class="wizardFields">'+wizardFieldHtml('arrivalRadiusM','GPS到達半径 m','number',{min:'10',step:'10',hint:'標準100m'})+'</div><div class="questGrid">'+wizardFieldHtml('gpsArrivalEnabled','GPS到達判定','checkbox',{hint:'位置情報で到達を判定'})+wizardFieldHtml('manualArrivalEnabled','手動到着','checkbox',{hint:'GPS不調時の救済'})+wizardFieldHtml('manualTwoStep','手動到着を2段階確認','checkbox',{hint:'ミスタッチ防止'})+wizardFieldHtml('routeDistanceEnabled','ルート残距離を表示','checkbox',{hint:'直線距離ではなくルートに沿った残距離'})+'</div>';bindWizardFields(d)}
+    else if(key==='questExperience'){d.innerHTML='<div class="questGrid">'+wizardFieldHtml('quizEnabled','クイズ','checkbox',{hint:'CP到着後に出題'})+wizardFieldHtml('stampEnabled','スタンプ・アイコン','checkbox',{hint:'アイコンコレクション'})+wizardFieldHtml('specialIconEnabled','スペシャルアイコン','checkbox',{hint:'通常CPとは別の追加アイコン'})+wizardFieldHtml('awardEnabled','表彰・完走証','checkbox',{hint:'通過記録・区間時間・ゴール記録'})+wizardFieldHtml('gpsFullCompleteAward','GPS認定フルコンプ賞','checkbox',{hint:'GPS認定の全取得賞'})+wizardFieldHtml('limitedMedalEnabled','限定メダル','checkbox',{hint:'開催日など条件付きメダル'})+'</div>';bindWizardFields(d)}
+    wizardNav(wizardDetailIndex===0?'戻る：機能選択':'前の機能',wizardDetailIndex===q.length-1?'次へ：確認・プレビュー':'次の機能',()=>{if(wizardDetailIndex===0)setWizardStep(3);else{wizardDetailIndex--;rememberWizard();renderWizard()}},()=>{if(wizardDetailIndex>=q.length-1)setWizardStep(5);else{wizardDetailIndex++;rememberWizard();renderWizard()}});return;
+  }
+  wizardHeader('確認・公開プレビュー','入力内容を確認し、参加者からどう見えるかをプレビューします。');
+  const enabled=[];if(current.modules.map?.enabled)enabled.push('MAP');if(current.modules.participant?.enabled)enabled.push('参加者');if(current.modules.schedule?.enabled)enabled.push('予定');if(current.modules.liveLocation?.enabled)enabled.push('LIVE位置共有');if(current.modules.chatSupport?.enabled)enabled.push('CHAT');if(current.modules.audioBgm?.enabled)enabled.push('BGM');if(current.modules.questAdapter?.enabled)enabled.push('QUEST');const issues=validationIssues();
+  body.innerHTML='<div class="wizardSummary"><div class="wizardSummaryRow"><b>イベント</b><span>'+esc(value('eventName')||'未設定')+'</span></div><div class="wizardSummaryRow"><b>種類</b><span>'+esc(wizardTypeLabel(value('eventType')))+'</span></div><div class="wizardSummaryRow"><b>日時</b><span>'+esc(value('startAt')?new Date(value('startAt')).toLocaleString('ja-JP'):'未設定')+'</span></div><div class="wizardSummaryRow"><b>'+esc(locationMeta().label)+'</b><span>'+esc(locationSummary())+'</span></div><div class="wizardSummaryRow"><b>使う機能</b><span>'+esc(enabled.join(' / ')||'なし')+'</span></div></div><div class="wizardStatus '+(issues.length?'warn':'')+'">'+(issues.length?'確認したい項目が '+issues.length+' 件あります。プレビューはできます。':'基本入力は揃っています。公開プレビューで参加者画面を確認してください。')+'</div><div class="actions"><button class="btn primary bigAction" id="wizardPreviewBtn">👁 公開プレビューを見る</button><button class="btn" id="wizardValidateBtn">入力内容を確認</button></div><div class="note">公開プレビューは参加者画面の見え方を確認する機能です。実際の公開本体の統合は、既存MAP・LIVE・CHATを壊さず接続していきます。</div>';$('wizardPreviewBtn').onclick=openPublicPreview;$('wizardValidateBtn').onclick=()=>renderValidation();wizardNav('戻る：機能設定','保存して完了',()=>{const q=wizardDetailQueue();setWizardStep(q.length?4:3,Math.max(0,q.length-1))},async()=>{await saveCurrent(false);openPublicPreview()});
+}
+function showEventHome(){current=null;advancedMode=false;document.body.classList.remove('advancedMode');$('wizardPanel').classList.add('hidden');$('editorPanel').classList.add('hidden');$('validatePanel').classList.add('hidden');$('welcomePanel').classList.remove('hidden');$('presetSelect').value='free';document.querySelectorAll('#startTypeCards .typeCard').forEach(x=>x.classList.toggle('on',x.dataset.preset==='free'));refreshEventSelect();window.scrollTo({top:0,behavior:'smooth'})}
+function toggleAdvanced(){if(!current){alert('先にイベントを作成または開いてください。');return}advancedMode=!advancedMode;document.body.classList.toggle('advancedMode',advancedMode);$('advancedTopBtn').textContent=advancedMode?'← かんたん入力':'⚙ 詳細';if(advancedMode){$('wizardPanel').classList.add('hidden');renderTree();renderSection();const n=$('editorPanel').querySelector('.advancedNotice');if(!n){const x=document.createElement('div');x.className='advancedNotice';x.textContent='ここは詳細設定です。通常は「かんたん入力」に戻り、STEP順に進めればイベントを作れます。';$('editorPanel').querySelector('.panelBody').prepend(x)}}else{renderWizard()}}
+function renderSummary(){if(!current){$('progressPct').textContent='0%';$('progressFill').style.width='0%';$('enabledModules').textContent='0';$('customFieldsCount').textContent='0';$('lastSaved').textContent='未保存';return}const req=allFields().filter(f=>f.required),done=req.filter(fieldComplete).length,pct=req.length?Math.round(done/req.length*100):100;$('progressPct').textContent=pct+'%';$('progressFill').style.width=pct+'%';$('enabledModules').textContent=Object.values(current.modules).filter(m=>m.enabled).length;$('customFieldsCount').textContent=(current.customSchema.fields||[]).length}
+function renderAll(){renderSummary();renderTree();if(!current){$('welcomePanel').classList.remove('hidden');$('wizardPanel').classList.add('hidden');$('editorPanel').classList.add('hidden');$('validatePanel').classList.add('hidden');$('eventSelect').value='';refreshEventSelect();return}$('eventSelect').value=current.eventId;if(advancedMode){document.body.classList.add('advancedMode');renderSection()}else{document.body.classList.remove('advancedMode');renderWizard()}}
+
+$('startEventBtn').onclick=async()=>{const name=$('quickEventName').value.trim();if(!name){alert('イベント名を入力してください。');return}current=makeEvent($('presetSelect').value,name);ensureLocationModel();wizardStep=2;wizardDetailIndex=0;current.uiState={wizardStep:2,detailIndex:0};await saveCurrent(true);await refreshEventSelect();selected={main:'event',sub:'identity'};renderAll()};
+$('newEventBtn').onclick=()=>{current=null;advancedMode=false;document.body.classList.remove('advancedMode');$('quickEventName').value='';$('presetSelect').value='free';renderAll()};
+$('eventSelect').onchange=e=>selectEvent(e.target.value);
+$('saveTopBtn').onclick=()=>saveCurrent(false);
+$('previewTopBtn').onclick=openPublicPreview;
+$('previewCloseBtn').onclick=closePublicPreview;
+$('previewBackdrop').onclick=closePublicPreview;
+$('previewBackEditBtn').onclick=closePublicPreview;
+$('previewValidateBtn').onclick=()=>{closePublicPreview();renderValidation();};
+$('validateTopBtn').onclick=()=>renderValidation();
+$('sectionValidateBtn').onclick=()=>renderValidation(selected);
+$('importInput').onchange=e=>importCurrentFile(e.target.files?.[0]);
+
+
+$('advancedTopBtn').onclick=toggleAdvanced;
+$('validationBackBtn').onclick=()=>{if(current){$('validatePanel').classList.add('hidden');if(advancedMode)renderSection();else renderWizard()}else showEventHome()};
+document.querySelectorAll('#startTypeCards .typeCard').forEach(b=>b.onclick=()=>{document.querySelectorAll('#startTypeCards .typeCard').forEach(x=>x.classList.toggle('on',x===b));$('presetSelect').value=b.dataset.preset});
+(async()=>{try{await openDb();await refreshEventSelect();const list=await idbAll();if(list.length)await selectEvent(list.sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt)))[0].eventId);else renderAll()}catch(e){document.body.innerHTML='<div style="padding:24px;color:#fff">このブラウザでEVENT BUILDERの保存領域を初期化できませんでした。<br>'+esc(e.message||e)+'</div>'}})();
+})();
+</script>
+</body>
+</html>

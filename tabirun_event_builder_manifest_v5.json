@@ -1,0 +1,218 @@
+{
+  "platform": "TABIRUN_EVENT_BUILDER",
+  "version": "1.4.0",
+  "baseline": {
+    "live_event_platform": "2.6.0",
+    "map_core": "tabirun_map_system_editor_v20_privacy_operations.html",
+    "previous_builder": "v4",
+    "policy": "freeze working modules; extend through adapters and data-driven taxonomy"
+  },
+  "change_policy": [
+    "Do not rebuild the whole app to fix one module.",
+    "Freeze working modules and replace only the module under change.",
+    "Do not remove or rename an existing data path without a migration plan.",
+    "Presets are recommendations only; they never permanently remove capabilities.",
+    "Unknown future fields, location types, route links and classifications must be addable without rewriting neighboring modules.",
+    "Usability and readable mobile typography are release requirements.",
+    "Every release response must include exact upload filenames and post-upload GitHub Pages URLs.",
+    "Map display/search failure must not block location input; provider fallback and direct map placement are required."
+  ],
+  "taxonomy": {
+    "model": "main_category > sub_category > field",
+    "normal_ui": "sequential wizard",
+    "advanced_ui": "expandable tree",
+    "data_driven": true,
+    "custom_main_categories": true,
+    "custom_sub_categories": true,
+    "custom_fields": true
+  },
+  "modules": {
+    "map": {
+      "baseline": "v20",
+      "frozen": true
+    },
+    "participant": {
+      "baseline": "foundation-1.0",
+      "frozen": true
+    },
+    "schedule": {
+      "baseline": "foundation-1.0",
+      "frozen": true
+    },
+    "liveLocation": {
+      "baseline": "privacy-20.0",
+      "frozen": true
+    },
+    "chatSupport": {
+      "baseline": "foundation-1.0",
+      "frozen": true
+    },
+    "privacyGuard": {
+      "baseline": "20.0",
+      "frozen": true
+    },
+    "questAdapter": {
+      "baseline": "adapter-1.1",
+      "frozen": false
+    },
+    "audioBgm": {
+      "baseline": "audio-1.0",
+      "frozen": false
+    },
+    "publication": {
+      "baseline": "builder-1.0",
+      "frozen": false
+    }
+  },
+  "location_contract": {
+    "model": "event.locations[]",
+    "multiple_locations": true,
+    "primary_role_by_preset": {
+      "record": "venue",
+      "road": "main_start",
+      "camp": "meeting",
+      "quest": "main_start",
+      "free": "primary"
+    },
+    "supported_types": [
+      "venue",
+      "main_start",
+      "meeting",
+      "lodging",
+      "training",
+      "base",
+      "parking_entrance",
+      "goal",
+      "aid",
+      "cheer",
+      "toilet_ref",
+      "other"
+    ],
+    "rule": "camp lodging/training/base locations are not forced into checkpoint semantics"
+  },
+  "route_connection_contract": {
+    "model": "event.routeConnections[]",
+    "from": "locationId",
+    "to": "locationId",
+    "initial_distance": "straightDistanceKm",
+    "future_fields": [
+      "path",
+      "routeDistanceM",
+      "routingProvider"
+    ],
+    "rule": "route connection is optional and independent from checkpoint/QUEST"
+  },
+  "map_provider_contract": {
+    "display_priority": [
+      "Google Maps JavaScript API",
+      "Leaflet + OpenStreetMap fallback"
+    ],
+    "search_priority": [
+      "Google Geocoder when permitted",
+      "OpenStreetMap Nominatim fallback",
+      "direct map tap"
+    ],
+    "blocking": false,
+    "note": "Google Geocoding REQUEST_DENIED must not blank the map editor"
+  },
+  "bgm_contract": {
+    "main_category": true,
+    "module": "audioBgm",
+    "independent_from": [
+      "map",
+      "questAdapter"
+    ],
+    "data": [
+      "mode",
+      "continueAcrossScreens",
+      "creditEnabled",
+      "tracks"
+    ],
+    "future_rule_links": [
+      "stageId",
+      "locationId",
+      "routeConnectionId",
+      "checkpointId"
+    ]
+  },
+  "quest_contract": {
+    "adapter_only": true,
+    "groups": {
+      "structure": [
+        "stageEnabled",
+        "checkpointEnabled",
+        "midJoinEnabled",
+        "resumeEnabled",
+        "extraRouteEnabled",
+        "routeOverviewEnabled"
+      ],
+      "arrival": [
+        "gpsArrivalEnabled",
+        "arrivalRadiusM",
+        "manualArrivalEnabled",
+        "manualTwoStep",
+        "routeDistanceEnabled"
+      ],
+      "experience": [
+        "quizEnabled",
+        "stampEnabled",
+        "specialIconEnabled",
+        "awardEnabled",
+        "gpsFullCompleteAward",
+        "limitedMedalEnabled"
+      ]
+    }
+  },
+  "camp_contract": {
+    "primary": "meeting",
+    "additional_recommended_locations": [
+      "lodging",
+      "training",
+      "base",
+      "parking_entrance"
+    ],
+    "routes_between_any_locations": true
+  },
+  "regression_requirements": [
+    "v20 MAP CORE file is not modified by this release.",
+    "LIVE_EVENT_PLATFORM data paths are not renamed.",
+    "CHAT remains independent from MAP.",
+    "QUEST remains an adapter.",
+    "BGM is added as a sibling module, not embedded into MAP/QUEST core.",
+    "v1-v4 IndexedDB events migrate without deleting existing values.",
+    "new events do not inherit another event map automatically.",
+    "location search permission failure still allows visible map and direct placement.",
+    "camp can store meeting/lodging/training/base as separate locations.",
+    "routeConnections do not turn locations into checkpoints.",
+    "quest preset exposes detailed structure, arrival and experience controls.",
+    "public preview remains available from top bar and STEP 5."
+  ],
+  "release_output_policy": {
+    "required": true,
+    "pages_base": "https://nuritakug-cpu.github.io/tabirun-bgm/",
+    "files": [
+      "tabirun_event_builder_v5.html",
+      "tabirun_event_builder_manifest_v5.json"
+    ]
+  },
+  "release": {
+    "changed_modules": [
+      "builderMapProviderAdapter",
+      "builderLocationGraph",
+      "builderRouteConnections",
+      "audioBgm",
+      "questAdapterEditor",
+      "campPreset"
+    ],
+    "unchanged_modules": [
+      "map(v20 frozen)",
+      "participant",
+      "schedule",
+      "liveLocation",
+      "chatSupport",
+      "privacyGuard",
+      "publication preview shell"
+    ],
+    "purpose": "Make map input resilient, promote BGM to a first-class module, support multi-location camps and generic point-to-point routes, and expose the previously missing detailed QUEST configuration without coupling modules."
+  }
+}
