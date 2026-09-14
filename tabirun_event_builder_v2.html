@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>TABIRUN EVENT BUILDER v2</title>
+<style>
+:root{
+  --bg:#0c2530;--panel:#fff;--ink:#183741;--muted:#6d8087;--line:#d9e4e7;
+  --accent:#0a7890;--accent2:#15566a;--ok:#2d7355;--warn:#9c6428;--danger:#9d4141;--soft:#f3f7f8;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;color:var(--ink)}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+.top{position:sticky;top:0;z-index:50;background:rgba(9,35,46,.97);color:#fff;border-bottom:1px solid #ffffff18;padding:10px 12px;backdrop-filter:blur(12px)}
+.topRow{max-width:1220px;margin:auto;display:flex;align-items:center;gap:10px;justify-content:space-between}
+.brand{min-width:0}.brand b{display:block;font-size:16px}.brand span{display:block;font-size:10px;color:#c9d7dc;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topActions{display:flex;gap:6px}.topActions button{border:1px solid #ffffff30;background:#ffffff10;color:#fff;border-radius:9px;padding:8px 10px;font-size:10px;font-weight:900}
+.shell{max-width:1220px;margin:auto;padding:10px;display:grid;grid-template-columns:300px minmax(0,1fr);gap:10px;align-items:start}
+.sidebar{position:sticky;top:72px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 28px #00141c25}
+.sideHead{padding:12px;background:#eef5f6;border-bottom:1px solid var(--line)}
+.sideHead strong{display:block;font-size:13px}.sideHead small{display:block;color:var(--muted);font-size:9px;line-height:1.5;margin-top:3px}
+.eventPicker{padding:10px;border-bottom:1px solid var(--line)}
+.eventPicker select,.eventPicker button{width:100%;margin-top:6px}
+.tree{padding:7px;max-height:calc(100vh - 220px);overflow:auto}
+.treeMain{border:1px solid var(--line);border-radius:12px;margin-bottom:7px;overflow:hidden;background:#fff}
+.treeMainHead{display:flex;align-items:center;gap:7px;padding:10px;border:0;background:#f8fafb;width:100%;text-align:left;color:var(--ink)}
+.treeMainHead .ico{font-size:16px;width:22px;text-align:center}.treeMainHead .label{font-size:11px;font-weight:950;flex:1}.treeMainHead .count{font-size:9px;color:var(--muted)}
+.treeSubs{display:none;border-top:1px solid #edf2f3;padding:5px}.treeMain.open .treeSubs{display:block}
+.treeSub{width:100%;border:0;background:#fff;text-align:left;border-radius:8px;padding:9px 8px;font-size:10px;color:#47616a;display:flex;gap:6px;align-items:center}
+.treeSub:hover,.treeSub.on{background:#eaf3f5;color:#164a59;font-weight:900}.dot{width:7px;height:7px;border-radius:50%;background:#b9c8cd;flex:none}.treeSub.complete .dot{background:var(--ok)}.treeSub.issue .dot{background:#c48331}
+.content{min-width:0}.panel{background:#fff;border-radius:16px;margin-bottom:10px;overflow:hidden;box-shadow:0 8px 28px #00141c20}
+.panelHead{padding:14px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;gap:10px;justify-content:space-between;background:#fbfcfc}
+.panelHead h1{font-size:18px;margin:0}.panelHead p{font-size:10px;color:var(--muted);line-height:1.6;margin:4px 0 0}.panelBody{padding:14px}
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+.sum{background:#fff;border-radius:13px;padding:10px;border:1px solid #dbe6e9}.sum b{display:block;font-size:18px}.sum span{font-size:9px;color:var(--muted)}
+.formGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.wide{grid-column:1/-1}
+.field{min-width:0}.field label{display:flex;gap:5px;align-items:center;font-size:10px;font-weight:900;margin-bottom:4px}.req{font-size:8px;color:#fff;background:#a94d43;padding:2px 5px;border-radius:5px}.help{font-size:9px;color:var(--muted);line-height:1.55;margin-top:4px}
+input,select,textarea{width:100%;border:1px solid #cbd9dd;border-radius:10px;background:#fff;color:var(--ink);padding:10px;font-size:15px}textarea{min-height:92px;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:2px solid #0a789025;border-color:#0a7890}
+.toggleRow{display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--line);border-radius:10px;background:#f8fafb}.toggleRow input{width:auto}.toggleRow b{font-size:11px}.toggleRow span{font-size:9px;color:var(--muted);display:block;margin-top:2px}
+.actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}.btn{border:0;border-radius:10px;padding:10px 12px;font-size:10px;font-weight:950;background:#e7eef0;color:#25464f}.btn.primary{background:var(--accent);color:#fff}.btn.ok{background:#e4f0e9;color:#245d43}.btn.warn{background:#f4eadf;color:#7c4d20}.btn.danger{background:#f3e2e2;color:#8d3434}.btn:disabled{opacity:.45;cursor:not-allowed}
+.note{background:#f1f6f7;border:1px solid #d9e6e9;border-radius:10px;padding:9px 10px;font-size:9px;line-height:1.65;color:#536b74;margin-top:8px}.note.important{background:#fff7ed;border-color:#ecd5b8;color:#694a29}.note.safe{background:#edf7f2;border-color:#cfe3d8;color:#28523f}
+.moduleCards{display:grid;grid-template-columns:1fr 1fr;gap:8px}.moduleCard{border:1px solid var(--line);border-radius:12px;padding:10px;background:#fff}.moduleCardTop{display:flex;justify-content:space-between;gap:8px;align-items:center}.moduleCard h3{font-size:11px;margin:0}.moduleCard p{font-size:9px;color:var(--muted);line-height:1.55;margin:5px 0 0}.moduleState{font-size:8px;font-weight:950;padding:3px 6px;background:#edf2f4}.moduleState.on{background:#dceee4;color:#235b40}
+.progressBar{height:7px;background:#e6edef;border-radius:10px;overflow:hidden;margin-top:6px}.progressBar i{display:block;height:100%;background:#2d7355;width:0}
+.issueList{display:flex;flex-direction:column;gap:5px}.issue{font-size:10px;padding:8px;border:1px solid #ecd7bb;background:#fff8ee;border-radius:8px}.okLine{font-size:10px;padding:8px;border:1px solid #d0e5d8;background:#eff8f3;border-radius:8px}
+.advancedBox{border:1px dashed #b9cbd0;border-radius:12px;padding:10px;background:#fafcfc;margin-top:10px}.advancedBox summary{font-size:10px;font-weight:950;cursor:pointer}.advancedContent{padding-top:8px}
+.builderRow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px}.builderRow.four{grid-template-columns:1.1fr 1.1fr .8fr .8fr}
+.customList{margin-top:8px;display:flex;flex-direction:column;gap:6px}.customItem{border:1px solid var(--line);padding:8px;border-radius:9px;font-size:9px;display:flex;justify-content:space-between;gap:8px;align-items:center}.customItem b{font-size:10px}.pill{display:inline-block;padding:3px 6px;border-radius:6px;background:#edf2f4;font-size:8px;font-weight:900;margin-right:4px}
+.handoff{border:2px solid #cfe0e4;background:#f8fbfc;border-radius:13px;padding:11px;margin-top:10px}.handoff h3{font-size:12px;margin:0 0 5px}.handoff p{font-size:9px;line-height:1.6;color:#587079;margin:0}.handoffStatus{font-size:10px;font-weight:900;margin-top:8px;padding:8px;background:#fff;border:1px solid #d9e5e8}
+.hidden{display:none!important}.empty{padding:18px;border:1px dashed #c4d1d5;border-radius:10px;text-align:center;font-size:10px;color:#75888e}
+.footer{color:#bfd0d6;font-size:9px;line-height:1.6;padding:8px 12px 20px;max-width:1220px;margin:auto}
+@media(max-width:900px){.shell{grid-template-columns:1fr}.sidebar{position:static}.tree{max-height:none}.summary{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.shell{padding:7px}.formGrid,.moduleCards,.builderRow,.builderRow.four{grid-template-columns:1fr}.wide{grid-column:auto}.topRow{align-items:flex-start}.topActions{flex-direction:column}.topActions button{padding:7px}.panelHead h1{font-size:16px}}
+
+/* === v2 USABILITY LAYER === */
+body{font-size:16px}
+.brand b{font-size:20px;letter-spacing:.01em}.brand span{font-size:13px;line-height:1.45;margin-top:4px}
+.top{padding:12px}.topActions button{font-size:14px;padding:11px 13px;border-radius:11px;min-height:44px}.topActions .previewAction{background:#ffffff;color:#123e4c;border-color:#fff}
+.sideHead{padding:14px}.sideHead strong{font-size:17px}.sideHead small{font-size:13px;line-height:1.6;margin-top:5px}
+.eventPicker{padding:12px}.eventPicker select,.eventPicker button{font-size:15px;min-height:46px}
+.tree{padding:9px}.treeMainHead{padding:13px 12px}.treeMainHead .ico{font-size:20px;width:28px}.treeMainHead .label{font-size:15px}.treeMainHead .count{font-size:12px}
+.treeSub{padding:12px 10px;font-size:14px;line-height:1.4}.dot{width:9px;height:9px}
+.panelHead{padding:18px}.panelHead h1{font-size:23px}.panelHead p{font-size:14px;line-height:1.7;margin-top:6px}.panelBody{padding:18px}
+.sum{padding:13px}.sum b{font-size:23px}.sum span{font-size:12px;line-height:1.4}
+.field label{font-size:15px;margin-bottom:7px}.req{font-size:11px;padding:3px 6px}.help{font-size:13px;line-height:1.65;margin-top:6px}
+input,select,textarea{padding:13px 12px;font-size:17px;min-height:48px;border-radius:11px}textarea{min-height:112px}
+.toggleRow{padding:13px}.toggleRow b{font-size:15px}.toggleRow span{font-size:13px;line-height:1.5}
+.actions{gap:9px;margin-top:15px}.btn{padding:12px 14px;font-size:14px;min-height:44px}.bigAction{width:100%;min-height:54px;font-size:17px}
+.note{padding:12px 13px;font-size:13px;line-height:1.7}.moduleCard{padding:13px}.moduleCard h3{font-size:15px}.moduleCard p{font-size:13px;line-height:1.6}.moduleState{font-size:11px;padding:4px 7px}
+.issue,.okLine{font-size:14px;padding:11px}.advancedBox{padding:13px}.advancedBox summary{font-size:14px}.customItem{padding:11px;font-size:13px}.customItem b{font-size:14px}.pill{font-size:11px;padding:4px 7px}
+.handoff{padding:14px}.handoff h3{font-size:16px}.handoff p{font-size:13px}.handoffStatus{font-size:13px;padding:10px}.empty{font-size:14px;line-height:1.6}
+.footer{font-size:12px}.welcomeHead{background:linear-gradient(135deg,#f8fcfd,#eef7f8)}.startField{padding:8px 0}
+.guideHead{background:linear-gradient(135deg,#0c5c70,#0a7890);color:#fff}.guideHead p{color:#dceff3}.guideNow{background:#fff;color:#0a5d70;border-radius:999px;padding:8px 12px;font-size:13px;font-weight:950;white-space:nowrap}
+.guideLead{border:2px solid #c9e0e6;background:#f6fbfc;border-radius:13px;padding:14px;font-size:15px;line-height:1.7;margin-bottom:12px}
+.guideLead b{font-size:18px}
+.guideSteps{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.guideStep{border:1px solid #d4e1e5;background:#fff;border-radius:12px;padding:12px;text-align:left;min-height:112px;color:#31515b}.guideStep .n{display:inline-flex;width:28px;height:28px;border-radius:50%;align-items:center;justify-content:center;background:#e8f1f3;font-size:13px;font-weight:950;margin-bottom:7px}.guideStep b{display:block;font-size:14px}.guideStep span{display:block;font-size:12px;color:#6a7f86;line-height:1.45;margin-top:4px}.guideStep.done{border-color:#b7d9c7;background:#f3faf6}.guideStep.done .n{background:#d8eee2;color:#1d6343}.guideStep.now{border:2px solid #0a7890;background:#eef8fa}.guideStep.now .n{background:#0a7890;color:#fff}.guideNext{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}.guideNext .btn{font-size:15px}
+.previewModal{display:none;position:fixed;inset:0;z-index:500}.previewModal.show{display:block}.previewBackdrop{position:absolute;inset:0;background:#00151db8}.previewSheet{position:relative;z-index:2;width:min(720px,100%);height:100%;margin-left:auto;background:#edf2f4;overflow:auto;padding-bottom:24px}.previewToolbar{position:sticky;top:0;z-index:3;background:#0b2d38;color:#fff;padding:14px;display:flex;justify-content:space-between;gap:12px;align-items:center}.previewToolbar b{display:block;font-size:18px}.previewToolbar span{display:block;font-size:12px;color:#cadddf;margin-top:2px}.previewToolbar button{border:0;background:#fff;color:#173e49;border-radius:9px;padding:9px 12px;font-weight:900;font-size:14px}.previewHint{margin:12px;background:#fff9ec;border:1px solid #ead6ab;padding:11px;border-radius:10px;font-size:13px;line-height:1.6}.phoneFrame{width:min(390px,calc(100% - 24px));margin:12px auto;background:#fff;border:8px solid #1b2f35;border-radius:30px;overflow:hidden;box-shadow:0 12px 32px #00151d35;min-height:650px}.phoneTop{background:#123b47;color:#fff;padding:18px 15px 14px}.phoneTop small{font-size:10px;letter-spacing:.18em;opacity:.75}.phoneTop h2{font-size:20px;margin:4px 0 5px}.phoneTop span{font-size:12px;color:#cbdadd}.phoneTabs{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:#fff;border-bottom:1px solid #d8e2e5;overflow:auto}.phoneTabs button{border:0;background:#fff;padding:12px 5px;font-size:11px;font-weight:900;color:#60757d}.phoneTabs button.on{background:#eaf3f5;color:#104a5a}.phoneBody{padding:12px;background:#f4f7f8;min-height:530px}.pvHero{background:#fff;border:1px solid #d8e3e6;border-radius:13px;padding:14px;margin-bottom:10px}.pvHero h3{font-size:15px;margin:0 0 6px}.pvHero p{font-size:12px;line-height:1.65;color:#60757d;margin:0}.pvCard{background:#fff;border:1px solid #d8e3e6;border-radius:11px;padding:11px;margin-bottom:8px}.pvCard b{font-size:13px}.pvCard span{display:block;font-size:11px;color:#6b7e85;margin-top:4px;line-height:1.5}.pvActions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.pvActions button{border:0;border-radius:9px;background:#174c5a;color:#fff;padding:12px 8px;font-size:12px;font-weight:900}.pvMap{height:260px;background:linear-gradient(135deg,#e2ecef,#c9dde3);border-radius:12px;display:flex;align-items:center;justify-content:center;text-align:center;color:#31545e;font-size:13px;line-height:1.6;padding:18px}.previewBottomActions{display:flex;gap:8px;justify-content:center;padding:4px 12px 20px}
+@media(max-width:900px){
+  .content{order:1}.sidebar{order:2}.guideSteps{grid-template-columns:1fr 1fr}.shell{gap:8px}.sidebar{margin-top:2px}
+  .sideHead small{font-size:13px}.tree{max-height:none}
+}
+@media(max-width:600px){
+  .topRow{align-items:center}.brand b{font-size:18px}.brand span{display:none}.topActions{flex-direction:row;gap:5px}.topActions button{font-size:12px;padding:9px 8px;min-height:40px}
+  .summary{grid-template-columns:1fr 1fr}.panelHead{padding:15px}.panelHead h1{font-size:21px}.panelHead p{font-size:14px}
+  .panelBody{padding:15px}.guideSteps{grid-template-columns:1fr}.guideStep{min-height:auto}.guideNow{font-size:12px}.previewSheet{width:100%}
+}
+
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="topRow">
+    <div class="brand"><b>TABIRUN EVENT BUILDER v2</b><span>1つのエディタから、旅ラン・大会・駅伝・合宿・見守りなどを構成する汎用ビルダー</span></div>
+    <div class="topActions"><button id="previewTopBtn" class="previewAction">👁 公開プレビュー</button><button id="validateTopBtn">入力漏れ確認</button><button id="saveTopBtn">保存</button></div>
+  </div>
+</header>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sideHead"><strong>イベント構成</strong><small>主分類 → 副分類 → 入力項目。必要な枝だけ開いて編集します。</small></div>
+    <div class="eventPicker">
+      <select id="eventSelect"></select>
+      <button class="btn primary" id="newEventBtn">＋ 新しいイベント</button>
+    </div>
+    <div class="tree" id="tree"></div>
+  </aside>
+
+  <main class="content">
+    <div class="summary">
+      <div class="sum"><b id="progressPct">0%</b><span>必須入力の完了</span><div class="progressBar"><i id="progressFill"></i></div></div>
+      <div class="sum"><b id="enabledModules">0</b><span>使用中モジュール</span></div>
+      <div class="sum"><b id="customFieldsCount">0</b><span>追加した独自項目</span></div>
+      <div class="sum"><b id="lastSaved">未保存</b><span>保存状態</span></div>
+    </div>
+
+    <section class="panel hidden" id="guidePanel">
+      <div class="panelHead guideHead">
+        <div><h1>入力ガイド</h1><p>上から順番に進めれば完成します。すべてを一度に設定する必要はありません。</p></div>
+        <span class="guideNow" id="guideNow">STEP 1</span>
+      </div>
+      <div class="panelBody">
+        <div class="guideLead" id="guideLead"></div>
+        <div class="guideSteps" id="guideSteps"></div>
+        <div class="guideNext" id="guideNext"></div>
+      </div>
+    </section>
+
+    <section class="panel" id="welcomePanel">
+      <div class="panelHead welcomeHead"><div><h1>まず入力するのは2つだけです</h1><p>① どんなイベントか　② イベント名。作成後に「会場・日時・使う機能」を順番に案内します。細かい設定は後で大丈夫です。</p></div></div>
+      <div class="panelBody">
+        <div class="formGrid">
+          <div class="field wide startField"><label>① どんなイベントですか？</label><select id="presetSelect"><option value="free">自由構成</option><option value="record">記録会・競技会</option><option value="road">ロードレース・駅伝</option><option value="camp">合宿・練習会</option><option value="quest">旅ラン・チェックポイント型</option></select><div class="help">これは入力項目を分かりやすく並べるための初期設定です。あとから自由に変更できます。</div></div>
+          <div class="field wide startField"><label>② イベント名 <span class="req">必須</span></label><input id="quickEventName" placeholder="例：豊川長距離競技会 / 知多半島 旅ランQUEST"></div>
+        </div>
+        <div class="actions"><button class="btn primary bigAction" id="startEventBtn">次へ：イベント作成を開始</button></div>
+      </div>
+    </section>
+
+    <section class="panel hidden" id="editorPanel">
+      <div class="panelHead"><div><h1 id="sectionTitle"></h1><p id="sectionHelp"></p></div><button class="btn" id="sectionValidateBtn">この分類を確認</button></div>
+      <div class="panelBody">
+        <div id="sectionFields" class="formGrid"></div>
+        <div id="sectionExtra"></div>
+      </div>
+    </section>
+
+    <section class="panel hidden" id="validatePanel">
+      <div class="panelHead"><div><h1>入力確認</h1><p>公開前に必須項目とモジュール設定を確認します。未入力でもデータは消しません。</p></div></div>
+      <div class="panelBody"><div id="issueList" class="issueList"></div></div>
+    </section>
+  </main>
+</div>
+<div class="footer">設計基準：既存モジュールを凍結し、変更対象だけを追加・交換する。ルートは任意。LIVE・CHAT・参加者・予定はMAP COREに依存させない。QUEST固有ロジックはアダプターとして接続する。</div>
+
+<div class="previewModal" id="previewModal" aria-hidden="true">
+  <div class="previewBackdrop" id="previewBackdrop"></div>
+  <div class="previewSheet">
+    <div class="previewToolbar">
+      <div><b>公開プレビュー</b><span>参加者からどう見えるかを確認</span></div>
+      <button id="previewCloseBtn">閉じる</button>
+    </div>
+    <div class="previewHint" id="previewHint"></div>
+    <div class="phoneFrame">
+      <div class="phoneTop">
+        <small>EVENT</small>
+        <h2 id="pvEventName">イベント名</h2>
+        <span id="pvEventMeta"></span>
+      </div>
+      <div class="phoneTabs" id="pvTabs"></div>
+      <div class="phoneBody" id="pvBody"></div>
+    </div>
+    <div class="previewBottomActions">
+      <button class="btn" id="previewValidateBtn">入力漏れを確認</button>
+      <button class="btn primary" id="previewBackEditBtn">編集に戻る</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="importInput" accept="application/json,.json" class="hidden">
+<script>
+(()=>{'use strict';
+const $=id=>document.getElementById(id);
+const DB_NAME='tabirun_event_builder_v1', STORE='events', META_STORE='meta', DB_VER=1;
+const LEGACY_MAP_KEY='tabirun_map_block_editor_v19_current';
+const MAP_EDITOR_FILE='tabirun_map_system_editor_v20_privacy_operations.html';
+const BUILDER_VERSION='1.1.0';
+
+const CORE_CONTRACT=Object.freeze({
+  id:'tabirun-event-builder-contract-v1',
+  baseline:'LIVE_EVENT_PLATFORM 2.6.0 + MAP SYSTEM EDITOR v20',
+  rules:[
+    'Do not rebuild the whole app to fix one module.',
+    'Freeze working modules and replace only the module under change.',
+    'Every release declares baseline, changed modules, unchanged modules and regression checks.',
+    'Do not remove or rename existing data paths without a migration plan.',
+    'Route is optional. Location sharing, chat, support and monitoring must work without a course.',
+    'LIVE ephemeral data stays separate from records/results.',
+    'QUEST-specific logic stays outside the foundation core and connects through an adapter.',
+    'Editor taxonomy is data-driven: main category > subcategory > field.',
+    'Presets only change recommended visibility/defaults; they never permanently remove capabilities.',
+    'Unknown future fields and classifications can be added without rewriting neighboring modules.'
+  ]
+});
+
+const MODULE_REGISTRY=Object.freeze({
+  map:{label:'MAP',version:'v20-frozen',responsibility:'会場・ルート・CP・注意点・トイレ・拠点・駐車場出入口',frozen:true},
+  participant:{label:'参加者',version:'foundation-1.0',responsibility:'参加者自己登録・役割',frozen:true},
+  schedule:{label:'競技予定',version:'foundation-1.0',responsibility:'競技・招集・予定情報',frozen:true},
+  liveLocation:{label:'LIVE位置共有',version:'privacy-20.0',responsibility:'イベント時間・会場範囲内の位置共有',frozen:true},
+  chatSupport:{label:'CHAT',version:'foundation-1.0',responsibility:'イベント内チャット・支援連絡',frozen:true},
+  privacyGuard:{label:'プライバシー',version:'20.0',responsibility:'共有期限・範囲・正確位置削除',frozen:true},
+  questAdapter:{label:'QUEST',version:'adapter-1.0',responsibility:'クイズ・スタンプ・表彰など旅ラン固有機能',frozen:false},
+  publication:{label:'公開',version:'builder-1.0',responsibility:'プレビュー・公開設定・生成',frozen:false}
+});
+
+const BASE_SCHEMA=[
+  {id:'event',label:'イベント基本情報',icon:'🏁',subs:[
+    {id:'identity',label:'基本情報',help:'イベント名・種類・開催日など、すべてのイベントに共通する情報です。',fields:[
+      {id:'eventName',label:'イベント名',type:'text',required:true,placeholder:'例：豊川長距離競技会'},
+      {id:'eventType',label:'イベント形式',type:'select',required:true,options:[['free','自由構成'],['record','記録会・競技会'],['road','ロードレース・駅伝'],['camp','合宿・練習会'],['quest','旅ラン・チェックポイント型'],['other','その他']]},
+      {id:'startAt',label:'開始日時',type:'datetime-local',required:false},
+      {id:'endAt',label:'終了日時',type:'datetime-local',required:false},
+      {id:'description',label:'説明・メモ',type:'textarea',required:false,wide:true}
+    ]},
+    {id:'venue',label:'会場・中心地点',help:'競技場・公園・集合場所など、イベントの中心となる場所です。ルート型でも会場を設定できます。',fields:[
+      {id:'venueName',label:'会場名',type:'text',required:false,placeholder:'例：OKAKENアスリートフィールド'},
+      {id:'venueAddress',label:'住所・場所',type:'text',required:false,placeholder:'施設名・住所・地域名'},
+      {id:'venueLat',label:'緯度',type:'number',required:false,advanced:true,step:'any'},
+      {id:'venueLng',label:'経度',type:'number',required:false,advanced:true,step:'any'}
+    ]}
+  ]},
+  {id:'map',label:'MAP・会場案内',icon:'🗺️',subs:[
+    {id:'mapConfig',label:'MAP構成',help:'ルートの有無に関係なくMAPを使えます。既存のMAP CORE v20は凍結して再利用します。',fields:[
+      {id:'mapEnabled',label:'MAPを使う',type:'checkbox',required:false,module:'map'},
+      {id:'mapMode',label:'MAPの使い方',type:'select',required:false,options:[['venue','会場・公園中心'],['route','単一路線・コース'],['checkpoint','チェックポイント型'],['staged','STAGE型'],['free','自由MAP']]}
+    ]},
+    {id:'venuePoints',label:'会場ポイント',help:'駐車場出入口・本部・テント・トイレ・注意点など。必要なものだけMAPモジュールで登録します。',fields:[]},
+    {id:'route',label:'ルート・コース',help:'ロード・駅伝・旅ランなどで必要な場合だけ使用します。ルートなしイベントでも他機能は動作します。',fields:[]}
+  ]},
+  {id:'quest',label:'CHECKPOINT・QUEST',icon:'📍',subs:[
+    {id:'checkpoint',label:'チェックポイント',help:'チェックポイント・区間ルートを使うイベント向けです。',fields:[{id:'checkpointEnabled',label:'チェックポイント機能を使う',type:'checkbox',module:'questAdapter'}]},
+    {id:'questGame',label:'クイズ・スタンプ・表彰',help:'旅ラン固有のゲーム要素。基盤本体とは分離したQUESTアダプターです。',fields:[
+      {id:'quizEnabled',label:'クイズ',type:'checkbox'},{id:'stampEnabled',label:'スタンプ・アイコン',type:'checkbox'},{id:'awardEnabled',label:'表彰・完走証',type:'checkbox'}
+    ]}
+  ]},
+  {id:'people',label:'参加者・役割',icon:'👥',subs:[
+    {id:'registration',label:'参加方法',help:'参加者自己登録を基本とし、将来名簿取込などを追加できる構造です。',fields:[
+      {id:'participantEnabled',label:'参加者機能を使う',type:'checkbox',module:'participant'},
+      {id:'registrationMode',label:'登録方法',type:'select',options:[['self','参加者が自分で登録'],['admin','主催者登録'],['mixed','両方']]}
+    ]},
+    {id:'roles',label:'役割',help:'選手・指導者・コーチ・保護者など。通常は既定値を使い、詳細変更は必要な場合だけ行います。',fields:[]}
+  ]},
+  {id:'schedule',label:'予定・競技情報',icon:'⏱️',subs:[
+    {id:'scheduleConfig',label:'競技・予定',help:'競技時間、招集、活動予定など。位置情報とは別データです。',fields:[
+      {id:'scheduleEnabled',label:'予定機能を使う',type:'checkbox',module:'schedule'},
+      {id:'scheduleMode',label:'入力方法',type:'select',options:[['self','参加者が入力'],['admin','主催者が入力'],['mixed','両方']]}
+    ]}
+  ]},
+  {id:'live',label:'LIVE・位置共有',icon:'📡',subs:[
+    {id:'liveConfig',label:'位置共有',help:'位置共有はイベント時間・会場範囲内に限定し、OFF時や期限到達時に正確な位置を残さない設計を基本にします。',fields:[
+      {id:'liveEnabled',label:'LIVE位置共有を使う',type:'checkbox',module:'liveLocation'},
+      {id:'shareRadiusKm',label:'会場共有範囲 km',type:'number',step:'0.5',min:'0.5'},
+      {id:'shareBeforeHours',label:'開始何時間前からON案内',type:'number',step:'0.5',min:'0'},
+      {id:'shareAfterHours',label:'終了後の共有目安 h',type:'number',step:'0.5',min:'0.5'}
+    ]},
+    {id:'privacy',label:'プライバシー',help:'会場外・共有OFF・期限到達時の扱いを固定します。',fields:[
+      {id:'purgeExactOnOff',label:'共有OFF時に正確な位置を削除',type:'checkbox',module:'privacyGuard'},
+      {id:'stopOutsideArea',label:'会場範囲外で共有停止',type:'checkbox',module:'privacyGuard'}
+    ]}
+  ]},
+  {id:'communication',label:'CHAT・連絡',icon:'💬',subs:[
+    {id:'chat',label:'CHAT',help:'イベント単位のチャット。MAPとは独立したモジュールとして接続します。',fields:[
+      {id:'chatEnabled',label:'CHATを使う',type:'checkbox',module:'chatSupport'},
+      {id:'chatMode',label:'CHAT構成',type:'select',options:[['all','全体チャット'],['group','グループ対応を想定'],['support','連絡・支援中心']]}
+    ]}
+  ]},
+  {id:'publish',label:'表示・公開',icon:'🚀',subs:[
+    {id:'home',label:'HOME画面',help:'参加者が最初に見る情報の優先順位を設定します。',fields:[
+      {id:'homePriority',label:'HOMEの優先表示',type:'select',options:[['auto','イベント形式に合わせて自動'],['map','MAP中心'],['schedule','予定中心'],['live','LIVE中心'],['quest','QUEST中心']]}
+    ]},
+    {id:'publication',label:'公開設定',help:'最終的にはここからプレビュー・イベント本体生成・公開へ進みます。',fields:[
+      {id:'publicTitle',label:'公開タイトル',type:'text',required:false},{id:'accessMode',label:'参加方法',type:'select',options:[['code','イベントコード'],['link','限定リンク'],['open','公開']]}
+    ]}
+  ]},
+  {id:'extensions',label:'拡張・独自項目',icon:'🧩',subs:[
+    {id:'customFields',label:'独自入力項目',help:'将来必要になった入力項目を、既存モジュールを書き換えずに追加します。',fields:[]},
+    {id:'structure',label:'分類を追加',help:'主分類・副分類そのものも追加できます。既存分類のIDやデータは変更しません。',fields:[]},
+    {id:'advanced',label:'詳細設定',help:'内部ID・設計情報・JSON入出力など、通常は触らない設定です。',fields:[]}
+  ]}
+];
+
+const PRESETS={
+  free:{eventType:'free',modules:{map:true,participant:true,schedule:true,liveLocation:false,chatSupport:true,privacyGuard:true,questAdapter:false}},
+  record:{eventType:'record',mapMode:'venue',modules:{map:true,participant:true,schedule:true,liveLocation:true,chatSupport:true,privacyGuard:true,questAdapter:false}},
+  road:{eventType:'road',mapMode:'route',modules:{map:true,participant:true,schedule:true,liveLocation:true,chatSupport:true,privacyGuard:true,questAdapter:false}},
+  camp:{eventType:'camp',mapMode:'venue',modules:{map:true,participant:true,schedule:true,liveLocation:true,chatSupport:true,privacyGuard:true,questAdapter:false}},
+  quest:{eventType:'quest',mapMode:'staged',modules:{map:true,participant:false,schedule:false,liveLocation:true,chatSupport:true,privacyGuard:true,questAdapter:true}}
+};
+
+let db=null,current=null,selected={main:'event',sub:'identity'},saveTimer=null;
+function uid(){return 'event-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8)}
+function clone(v){return JSON.parse(JSON.stringify(v))}
+function nowIso(){return new Date().toISOString()}
+function defaultModules(){const out={};Object.entries(MODULE_REGISTRY).forEach(([k,v])=>out[k]={enabled:false,version:v.version,data:{}});out.privacyGuard.enabled=true;return out}
+function makeEvent(preset='free',name=''){
+  const pr=PRESETS[preset]||PRESETS.free,mods=defaultModules();Object.entries(pr.modules||{}).forEach(([k,v])=>{if(mods[k])mods[k].enabled=!!v});
+  return {schemaVersion:1,builderVersion:BUILDER_VERSION,eventId:uid(),createdAt:nowIso(),updatedAt:nowIso(),preset,values:{eventName:name,eventType:pr.eventType||preset,mapMode:pr.mapMode||'venue',mapEnabled:!!mods.map.enabled,participantEnabled:!!mods.participant.enabled,scheduleEnabled:!!mods.schedule.enabled,liveEnabled:!!mods.liveLocation.enabled,chatEnabled:!!mods.chatSupport.enabled,checkpointEnabled:!!mods.questAdapter.enabled,purgeExactOnOff:true,stopOutsideArea:true,shareRadiusKm:3,shareBeforeHours:3,shareAfterHours:2,registrationMode:'self',scheduleMode:'self',chatMode:'all',homePriority:'auto',accessMode:'code'},modules:mods,customSchema:{mains:[],subs:[],fields:[]},mapBridge:{mapBlock:null,lastCapturedAt:null},contract:clone(CORE_CONTRACT)};
+}
+
+function openDb(){return new Promise((res,rej)=>{const r=indexedDB.open(DB_NAME,DB_VER);r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains(STORE))d.createObjectStore(STORE,{keyPath:'eventId'});if(!d.objectStoreNames.contains(META_STORE))d.createObjectStore(META_STORE,{keyPath:'key'})};r.onsuccess=()=>{db=r.result;res(db)};r.onerror=()=>rej(r.error)})}
+function idbTx(store,mode='readonly'){return db.transaction(store,mode).objectStore(store)}
+function idbPut(v){return new Promise((res,rej)=>{const r=idbTx(STORE,'readwrite').put(v);r.onsuccess=()=>res();r.onerror=()=>rej(r.error)})}
+function idbAll(){return new Promise((res,rej)=>{const r=idbTx(STORE).getAll();r.onsuccess=()=>res(r.result||[]);r.onerror=()=>rej(r.error)})}
+function idbGet(id){return new Promise((res,rej)=>{const r=idbTx(STORE).get(id);r.onsuccess=()=>res(r.result||null);r.onerror=()=>rej(r.error)})}
+function idbDelete(id){return new Promise((res,rej)=>{const r=idbTx(STORE,'readwrite').delete(id);r.onsuccess=()=>res();r.onerror=()=>rej(r.error)})}
+
+function mergedSchema(){const s=clone(BASE_SCHEMA),cs=current?.customSchema||{mains:[],subs:[],fields:[]};(cs.mains||[]).forEach(m=>s.push({id:m.id,label:m.label,icon:m.icon||'＋',subs:[]}));(cs.subs||[]).forEach(sub=>{const m=s.find(x=>x.id===sub.mainId);if(m)m.subs.push({id:sub.id,label:sub.label,help:sub.help||'追加した分類です。',fields:[]})});(cs.fields||[]).forEach(f=>{for(const m of s){const sub=m.subs.find(x=>x.id===f.subId);if(sub){sub.fields.push({...f,custom:true});break}}});return s}
+function allFields(){return mergedSchema().flatMap(m=>m.subs.flatMap(s=>s.fields.map(f=>({...f,mainId:m.id,subId:s.id}))))}
+function getSub(mainId,subId){const m=mergedSchema().find(x=>x.id===mainId);return {m,sub:m?.subs.find(x=>x.id===subId)}}
+function value(id){return current?.values?.[id]}
+function setValue(id,v){if(!current)return;current.values[id]=v;syncModuleFromField(id,v);current.updatedAt=nowIso();queueSave();renderSummary();renderTree();renderGuide()}
+function syncModuleFromField(id,v){const map={mapEnabled:'map',participantEnabled:'participant',scheduleEnabled:'schedule',liveEnabled:'liveLocation',chatEnabled:'chatSupport',checkpointEnabled:'questAdapter',purgeExactOnOff:'privacyGuard',stopOutsideArea:'privacyGuard'};const mod=map[id];if(!mod||!current.modules[mod])return;if(id==='purgeExactOnOff'||id==='stopOutsideArea')current.modules[mod].enabled=true;else current.modules[mod].enabled=!!v}
+function syncFieldsFromModules(){if(!current)return;const pairs=[['mapEnabled','map'],['participantEnabled','participant'],['scheduleEnabled','schedule'],['liveEnabled','liveLocation'],['chatEnabled','chatSupport'],['checkpointEnabled','questAdapter']];pairs.forEach(([f,m])=>current.values[f]=!!current.modules[m]?.enabled)}
+function queueSave(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>saveCurrent(true),450)}
+async function saveCurrent(silent=false){if(!current)return;current.updatedAt=nowIso();await idbPut(clone(current));$('lastSaved').textContent=new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'});if(!silent)flashTop('保存しました');await refreshEventSelect()}
+function flashTop(msg){const b=$('saveTopBtn'),old=b.textContent;b.textContent=msg;setTimeout(()=>b.textContent=old,1300)}
+
+function applyPreset(preset,keepExisting=true){if(!current)return;const p=PRESETS[preset]||PRESETS.free;current.preset=preset;current.values.eventType=p.eventType||preset;if(p.mapMode)current.values.mapMode=p.mapMode;Object.entries(p.modules||{}).forEach(([k,v])=>{if(current.modules[k]){if(!keepExisting||current.modules[k].enabled===false)current.modules[k].enabled=!!v}});syncFieldsFromModules();queueSave();renderAll()}
+
+function renderEventSelectOptions(list){const sel=$('eventSelect');const old=current?.eventId||sel.value;sel.innerHTML='<option value="">イベントを選択</option>'+list.sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt))).map(e=>'<option value="'+esc(e.eventId)+'">'+esc(e.values?.eventName||'名称未設定')+'</option>').join('');if(old)sel.value=old}
+async function refreshEventSelect(){renderEventSelectOptions(await idbAll())}
+async function selectEvent(id){if(!id){current=null;renderAll();return}const e=await idbGet(id);if(!e)return;current=e;syncFieldsFromModules();selected={main:'event',sub:'identity'};renderAll()}
+
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
+function fieldComplete(f){if(!f.required)return true;const v=value(f.id);if(f.type==='checkbox')return v===true;return !(v===undefined||v===null||String(v).trim()==='')}
+function subStatus(sub){const req=sub.fields.filter(f=>f.required);if(!req.length)return 'neutral';return req.every(fieldComplete)?'complete':'issue'}
+function renderTree(){const box=$('tree');if(!current){box.innerHTML='<div class="empty">イベントを作成または選択してください</div>';return}const schema=mergedSchema();box.innerHTML='';schema.forEach(m=>{const d=document.createElement('div');d.className='treeMain '+(m.id===selected.main?'open':'');const count=m.subs.length;d.innerHTML='<button class="treeMainHead"><span class="ico">'+esc(m.icon||'•')+'</span><span class="label">'+esc(m.label)+'</span><span class="count">'+count+'</span></button><div class="treeSubs"></div>';d.querySelector('.treeMainHead').onclick=()=>{d.classList.toggle('open')};const subs=d.querySelector('.treeSubs');m.subs.forEach(s=>{const b=document.createElement('button');const st=subStatus(s);b.className='treeSub '+(selected.main===m.id&&selected.sub===s.id?'on ':'')+(st==='complete'?'complete':st==='issue'?'issue':'');b.innerHTML='<span class="dot"></span><span>'+esc(s.label)+'</span>';b.onclick=()=>{selected={main:m.id,sub:s.id};renderTree();renderSection()};subs.appendChild(b)});box.appendChild(d)})}
+
+function renderField(f){const wrap=document.createElement('div');wrap.className='field '+(f.wide?'wide':'');const lab=document.createElement('label');lab.innerHTML=esc(f.label)+(f.required?' <span class="req">必須</span>':'');wrap.appendChild(lab);let el;if(f.type==='select'){el=document.createElement('select');(f.options||[]).forEach(([v,t])=>{const o=document.createElement('option');o.value=v;o.textContent=t;el.appendChild(o)});el.value=value(f.id)??''}else if(f.type==='textarea'){el=document.createElement('textarea');el.placeholder=f.placeholder||'';el.value=value(f.id)??''}else if(f.type==='checkbox'){const row=document.createElement('div');row.className='toggleRow';el=document.createElement('input');el.type='checkbox';el.checked=!!value(f.id);const txt=document.createElement('div');txt.innerHTML='<b>'+esc(f.label)+'</b><span>'+esc(f.help||'ON/OFFを選択')+'</span>';row.append(el,txt);wrap.innerHTML='';wrap.appendChild(row)}else{el=document.createElement('input');el.type=f.type||'text';el.placeholder=f.placeholder||'';if(f.step)el.step=f.step;if(f.min)el.min=f.min;el.value=value(f.id)??''}el.dataset.fieldId=f.id;if(f.type==='checkbox')el.onchange=()=>setValue(f.id,el.checked);else el.oninput=()=>setValue(f.id,el.value);if(f.help&&f.type!=='checkbox'){const h=document.createElement('div');h.className='help';h.textContent=f.help;wrap.appendChild(h)}if(!wrap.contains(el))wrap.appendChild(el);if(f.advanced)wrap.classList.add('advancedField','hidden');return wrap}
+
+function renderSection(){if(!current){$('editorPanel').classList.add('hidden');return}$('welcomePanel').classList.add('hidden');$('editorPanel').classList.remove('hidden');$('validatePanel').classList.add('hidden');const {m,sub}=getSub(selected.main,selected.sub);if(!m||!sub)return;$('sectionTitle').textContent=m.icon+' '+sub.label;$('sectionHelp').textContent=sub.help||'';const fields=$('sectionFields');fields.innerHTML='';sub.fields.forEach(f=>fields.appendChild(renderField(f)));const extra=$('sectionExtra');extra.innerHTML='';renderSpecialSection(extra,m,sub);if(fields.querySelector('.advancedField')){const b=document.createElement('button');b.className='btn';b.textContent='詳細項目を表示';b.onclick=()=>{fields.querySelectorAll('.advancedField').forEach(x=>x.classList.remove('hidden'));b.remove()};extra.prepend(b)}}
+
+function renderSpecialSection(extra,m,sub){
+  if(m.id==='event'&&sub.id==='venue')renderVenueTools(extra);
+  if(m.id==='map'&&['mapConfig','venuePoints','route'].includes(sub.id))renderMapBridge(extra);
+  if(m.id==='people'&&sub.id==='roles')renderRoles(extra);
+  if(m.id==='extensions'&&sub.id==='customFields')renderCustomFieldBuilder(extra);
+  if(m.id==='extensions'&&sub.id==='structure')renderStructureBuilder(extra);
+  if(m.id==='extensions'&&sub.id==='advanced')renderAdvanced(extra);
+  if(m.id==='publish'&&sub.id==='publication')renderPublication(extra);
+  if(!sub.fields.length&&!extra.children.length){const e=document.createElement('div');e.className='empty';e.textContent='この枝にはまだ入力項目がありません。必要になったら「拡張・独自項目」から追加できます。';extra.appendChild(e)}
+}
+
+function renderVenueTools(extra){const box=document.createElement('div');box.className='advancedBox';box.innerHTML='<b style="font-size:11px">会場検索</b><div class="note">Google Maps APIキーが設定済みなら、施設名・住所から会場位置を検索して緯度経度を自動入力できます。</div><div class="actions"><button class="btn primary" id="venueSearchBtn">会場名・住所で検索</button></div><div id="venueSearchState" class="handoffStatus">未検索</div>';extra.appendChild(box);box.querySelector('#venueSearchBtn').onclick=searchVenue}
+function loadGoogleGeocoder(){return new Promise((res,rej)=>{if(window.google?.maps?.Geocoder){res(new google.maps.Geocoder());return}const key=(localStorage.getItem('tabirun_google_maps_api_key')||'').trim();if(!key){rej(new Error('API_KEY'));return}const cb='builderGoogle_'+Date.now();window[cb]=()=>{delete window[cb];res(new google.maps.Geocoder())};const s=document.createElement('script');s.src='https://maps.googleapis.com/maps/api/js?key='+encodeURIComponent(key)+'&v=weekly&language=ja&region=JP&callback='+cb;s.async=true;s.defer=true;s.onerror=()=>rej(new Error('LOAD'));document.head.appendChild(s)})}
+async function searchVenue(){const q=String(value('venueName')||value('venueAddress')||'').trim(),st=$('venueSearchState');if(!q){st.textContent='先に会場名または住所を入力してください。';return}st.textContent='検索中…';try{const geocoder=await loadGoogleGeocoder();geocoder.geocode({address:q,region:'JP'},(results,status)=>{if(status!=='OK'||!results?.length){st.textContent='検索できませんでした。別の施設名・住所を試してください。';return}const r=results[0],p=r.geometry.location;current.values.venueAddress=r.formatted_address||current.values.venueAddress;current.values.venueLat=p.lat();current.values.venueLng=p.lng();queueSave();st.textContent='設定済み：'+r.formatted_address+' / '+p.lat().toFixed(6)+', '+p.lng().toFixed(6);renderSection();})}catch(e){st.textContent=e.message==='API_KEY'?'Google Maps APIキー未設定です。MAP編集側のAPIキー設定後に利用できます。':'Google Mapsを読み込めませんでした。'}}
+
+function blankMapBlock(){const lat=Number(value('venueLat')),lng=Number(value('venueLng'));return {format:'tabirun-map-block-v20',schemaVersion:20,project:{projectId:current.eventId,eventName:value('eventName')||'EVENT',routeId:'main-map',routeName:value('venueName')||'MAP',mode:value('mapMode')==='staged'?'staged':value('mapMode')==='checkpoint'?'checkpoint':'map_only',stage:{order:1,id:'stage-1',name:'STAGE 1'},features:{warnings:true,toilets:true,overviews:true,basePoints:true,parkingEntrances:true,participants:true,schedules:true},privacyGuard:{enabled:true,assemblyTime:value('startAt')||'',eventEndTime:value('endAt')||'',approachHours:Number(value('shareBeforeHours')||3),radiusKm:Number(value('shareRadiusKm')||3),athleteAfterHours:Number(value('shareAfterHours')||2),extensionHours:2,maxSessionHours:10,venueCenter:Number.isFinite(lat)&&Number.isFinite(lng)?{lat,lng}:null,exactOutsideArea:false,purgeExactOnOff:true}},modules:{route:{enabled:true,controls:[],segments:[],segmentTypes:[],path:[]},checkpoints:{enabled:true,items:[]},checkpointRoutes:{enabled:true,items:[]},warnings:{enabled:true,items:[]},toilets:{enabled:true,items:[]},overviews:{enabled:true,items:{}},basePoints:{enabled:true,items:[]},parkingEntrances:{enabled:true,items:[]},roles:{enabled:true,items:[{id:'athlete',name:'選手',icon:'選',color:'#2d7b59',visible:true,builtin:true},{id:'instructor',name:'指導者',icon:'指',color:'#b23a2e',visible:true,builtin:true},{id:'coach',name:'コーチ',icon:'コ',color:'#5b4ab5',visible:true,builtin:true},{id:'guardian',name:'保護者',icon:'保',color:'#6b7780',visible:true,builtin:true}]},participants:{enabled:true,source:'runtime_adapter',items:[]},athleteSchedules:{enabled:true,source:'runtime_adapter',items:[]}},controls:[],segments:[],segmentTypes:[],route:[],warnings:[],checkpoints:[],toilets:[],routeOverviews:{},basePoints:[],parkingEntrances:[],roleConfig:[],participants:[],athleteSchedules:[],savedAt:nowIso()}}
+function renderMapBridge(extra){const mb=current.mapBridge||={mapBlock:null,lastCapturedAt:null};let c=0,cp=0,b=0,p=0;if(mb.mapBlock){const d=mb.mapBlock,m=d.modules||{};c=(m.route?.path||d.route||[]).length;cp=(m.checkpoints?.items||d.checkpoints||[]).length;b=(m.basePoints?.items||d.basePoints||[]).length;p=(m.parkingEntrances?.items||d.parkingEntrances||[]).length}const box=document.createElement('div');box.className='handoff';box.innerHTML='<h3>MAP CORE v20 接続</h3><p>MAP CORE自体は作り直しません。イベントごとにMAP BLOCKをビルダーへ保管し、編集時だけ凍結済みv20へ受け渡します。</p><div class="handoffStatus">'+(mb.mapBlock?'このイベントのMAPあり｜ルート '+c+'点｜CP '+cp+'｜拠点 '+b+'｜駐車場入口 '+p+'｜取込 '+(mb.lastCapturedAt?new Date(mb.lastCapturedAt).toLocaleString('ja-JP'):'未記録'):'このイベントのMAPはまだありません')+'</div><div class="actions"><button class="btn primary" id="openMapBtn">MAP編集を開く</button><button class="btn ok" id="captureMapBtn">MAP編集内容を取り込む</button></div><div class="note important">MAP編集を開く前に、現在v20に残っているデータを自動バックアップします。新しいイベントでは過去MAPを勝手に引き継ぎません。</div>';extra.appendChild(box);box.querySelector('#openMapBtn').onclick=openMapEditor;box.querySelector('#captureMapBtn').onclick=captureMapEditor}
+function backupLegacyMap(){const raw=localStorage.getItem(LEGACY_MAP_KEY);if(!raw)return;const key='tabirun_builder_map_backup_'+Date.now();try{localStorage.setItem(key,raw)}catch(e){}}
+function openMapEditor(){if(!current)return;backupLegacyMap();const block=current.mapBridge?.mapBlock||blankMapBlock();try{localStorage.setItem(LEGACY_MAP_KEY,JSON.stringify(block))}catch(e){alert('MAP編集データを準備できませんでした。');return}saveCurrent(true);window.open(MAP_EDITOR_FILE,'_blank');}
+function captureMapEditor(){if(!current)return;const raw=localStorage.getItem(LEGACY_MAP_KEY);if(!raw){alert('MAP編集データが見つかりません。');return}try{const d=JSON.parse(raw);const rm=d?.modules?.route;const ok=(Array.isArray(d?.segments)&&Array.isArray(d?.route))||(rm&&Array.isArray(rm.segments)&&Array.isArray(rm.path||rm.route));if(!ok)throw new Error('invalid');current.mapBridge={mapBlock:d,lastCapturedAt:nowIso()};current.modules.map.enabled=true;current.values.mapEnabled=true;queueSave();renderSection();renderSummary();alert('このイベントへMAP編集内容を取り込みました。')}catch(e){alert('v20のMAP BLOCKとして読み込めませんでした。現在のイベントデータは変更していません。')}}
+
+function renderRoles(extra){const roles=current.modules.participant.data.roles||[{id:'athlete',name:'選手'},{id:'instructor',name:'指導者'},{id:'coach',name:'コーチ'},{id:'guardian',name:'保護者'}];current.modules.participant.data.roles=roles;const box=document.createElement('div');box.innerHTML='<div class="note">通常はこの既定役割をそのまま使用します。追加が必要なときだけ変更してください。</div><div class="customList" id="roleSimpleList"></div><div class="builderRow" style="margin-top:8px"><input id="roleNameAdd" placeholder="役割名"><span></span><button class="btn" id="roleAddSimple">役割追加</button></div>';extra.appendChild(box);const list=box.querySelector('#roleSimpleList');roles.forEach((r,i)=>{const x=document.createElement('div');x.className='customItem';x.innerHTML='<div><b>'+esc(r.name)+'</b></div>'+(i<4?'<span class="pill">既定</span>':'<button class="btn danger">削除</button>');if(i>=4)x.querySelector('button').onclick=()=>{roles.splice(i,1);queueSave();renderSection()};list.appendChild(x)});box.querySelector('#roleAddSimple').onclick=()=>{const n=box.querySelector('#roleNameAdd').value.trim();if(!n)return;roles.push({id:'role-'+Date.now().toString(36),name:n});queueSave();renderSection()}}
+
+function renderCustomFieldBuilder(extra){const s=mergedSchema();const box=document.createElement('div');box.innerHTML='<div class="builderRow four"><select id="cfMain"></select><select id="cfSub"></select><select id="cfType"><option value="text">1行文字</option><option value="textarea">複数行</option><option value="number">数値</option><option value="date">日付</option><option value="datetime-local">日時</option><option value="checkbox">ON/OFF</option><option value="select">選択式</option></select><select id="cfReq"><option value="0">任意</option><option value="1">必須</option></select></div><input id="cfLabel" style="margin-top:7px" placeholder="追加する項目名"><input id="cfOptions" style="margin-top:7px" placeholder="選択式の場合：選択肢をカンマ区切り"><div class="actions"><button class="btn primary" id="cfAdd">この項目を追加</button></div><div class="customList" id="cfList"></div>';extra.appendChild(box);const main=box.querySelector('#cfMain'),sub=box.querySelector('#cfSub');s.filter(m=>m.id!=='extensions').forEach(m=>{const o=document.createElement('option');o.value=m.id;o.textContent=m.label;main.appendChild(o)});const fillSubs=()=>{const m=s.find(x=>x.id===main.value);sub.innerHTML=(m?.subs||[]).map(x=>'<option value="'+esc(x.id)+'">'+esc(x.label)+'</option>').join('')};main.onchange=fillSubs;fillSubs();box.querySelector('#cfAdd').onclick=()=>{const label=box.querySelector('#cfLabel').value.trim();if(!label||!sub.value)return;const type=box.querySelector('#cfType').value,raw=box.querySelector('#cfOptions').value.trim();const field={id:'custom-'+Date.now().toString(36),subId:sub.value,label,type,required:box.querySelector('#cfReq').value==='1',options:type==='select'?raw.split(',').map(x=>x.trim()).filter(Boolean).map(x=>[x,x]):undefined};current.customSchema.fields.push(field);queueSave();renderSection();renderSummary();renderTree()};const list=box.querySelector('#cfList');(current.customSchema.fields||[]).forEach((f,i)=>{const x=document.createElement('div');x.className='customItem';x.innerHTML='<div><b>'+esc(f.label)+'</b><div><span class="pill">'+esc(f.type)+'</span>'+(f.required?'<span class="pill">必須</span>':'')+'</div></div><button class="btn danger">削除</button>';x.querySelector('button').onclick=()=>{delete current.values[f.id];current.customSchema.fields.splice(i,1);queueSave();renderSection();renderSummary();renderTree()};list.appendChild(x)});if(!current.customSchema.fields.length)list.innerHTML='<div class="empty">独自項目はまだありません</div>'}
+
+function renderStructureBuilder(extra){const box=document.createElement('div');box.innerHTML='<div class="note">既存分類を変更せず、新しい枝だけ追加します。これにより将来の用途が増えても隣のモジュールを触らず拡張できます。</div><h3 style="font-size:11px">主分類を追加</h3><div class="builderRow"><input id="mainLabel" placeholder="例：送迎・バス"><input id="mainIcon" placeholder="絵文字（任意）"><button class="btn primary" id="mainAdd">追加</button></div><h3 style="font-size:11px;margin-top:12px">副分類を追加</h3><div class="builderRow"><select id="subMain"></select><input id="subLabel" placeholder="例：乗車場所"><button class="btn primary" id="subAdd">追加</button></div><div class="customList" id="structureList"></div>';extra.appendChild(box);const sm=box.querySelector('#subMain');mergedSchema().forEach(m=>{const o=document.createElement('option');o.value=m.id;o.textContent=m.label;sm.appendChild(o)});box.querySelector('#mainAdd').onclick=()=>{const label=box.querySelector('#mainLabel').value.trim();if(!label)return;current.customSchema.mains.push({id:'main-'+Date.now().toString(36),label,icon:box.querySelector('#mainIcon').value.trim()||'＋'});queueSave();renderAll()};box.querySelector('#subAdd').onclick=()=>{const label=box.querySelector('#subLabel').value.trim();if(!label)return;current.customSchema.subs.push({id:'sub-'+Date.now().toString(36),mainId:sm.value,label});queueSave();renderAll()};const list=box.querySelector('#structureList'),rows=[...(current.customSchema.mains||[]).map((x,i)=>({kind:'main',i,x})),...(current.customSchema.subs||[]).map((x,i)=>({kind:'sub',i,x}))];rows.forEach(r=>{const x=document.createElement('div');x.className='customItem';x.innerHTML='<div><span class="pill">'+(r.kind==='main'?'主分類':'副分類')+'</span><b>'+esc(r.x.label)+'</b></div><button class="btn danger">削除</button>';x.querySelector('button').onclick=()=>{const hasFields=current.customSchema.fields.some(f=>f.subId===r.x.id);const hasSubs=r.kind==='main'&&current.customSchema.subs.some(s=>s.mainId===r.x.id);if(hasFields||hasSubs){alert('この分類の下に項目または副分類があります。先に下位項目を削除してください。');return}current.customSchema[r.kind==='main'?'mains':'subs'].splice(r.i,1);queueSave();renderAll()};list.appendChild(x)});if(!rows.length)list.innerHTML='<div class="empty">追加分類はまだありません</div>'}
+
+function renderAdvanced(extra){const box=document.createElement('div');box.innerHTML='<div class="note important">ここは通常操作では使いません。内部IDやデータ入出力など、保守・移行時だけ使用します。</div><div class="formGrid" style="margin-top:8px"><div class="field"><label>EVENT ID</label><input value="'+esc(current.eventId)+'" readonly></div><div class="field"><label>Builder version</label><input value="'+BUILDER_VERSION+'" readonly></div></div><div class="actions"><button class="btn" id="exportJsonBtn">イベントJSON保存</button><button class="btn" id="importJsonBtn">イベントJSON読込</button><button class="btn danger" id="deleteEventBtn">このイベントを削除</button></div><details class="advancedBox"><summary>設計契約・モジュール状態</summary><div class="advancedContent"><pre style="white-space:pre-wrap;font-size:9px;line-height:1.55">'+esc(JSON.stringify({contract:CORE_CONTRACT,modules:current.modules},null,2))+'</pre></div></details>';extra.appendChild(box);box.querySelector('#exportJsonBtn').onclick=exportCurrent;box.querySelector('#importJsonBtn').onclick=()=>$('importInput').click();box.querySelector('#deleteEventBtn').onclick=async()=>{if(!confirm('このイベントをビルダーから削除しますか？\nMAP CORE本体や他イベントは削除しません。'))return;const id=current.eventId;await idbDelete(id);current=null;await refreshEventSelect();renderAll()}}
+function exportCurrent(){if(!current)return;const blob=new Blob([JSON.stringify(current,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=(String(value('eventName')||'event').replace(/[\\/:*?"<>|]/g,'_'))+'_event_builder.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+async function importCurrentFile(file){if(!file)return;try{const x=JSON.parse(await file.text());if(!x||!x.eventId||!x.values||!x.modules)throw new Error();x.updatedAt=nowIso();await idbPut(x);current=x;selected={main:'event',sub:'identity'};await refreshEventSelect();renderAll();alert('イベントJSONを読み込みました。')}catch(e){alert('EVENT BUILDER JSONとして読み込めませんでした。')}finally{$('importInput').value=''}}
+
+function renderPublication(extra){const box=document.createElement('div');box.className='moduleCards';Object.entries(MODULE_REGISTRY).forEach(([id,m])=>{const d=document.createElement('div');d.className='moduleCard';const on=!!current.modules[id]?.enabled;d.innerHTML='<div class="moduleCardTop"><h3>'+esc(m.label)+'</h3><span class="moduleState '+(on?'on':'')+'">'+(on?'使用':'未使用')+'</span></div><p>'+esc(m.responsibility)+'</p>';box.appendChild(d)});extra.appendChild(box);const n=document.createElement('div');n.className='note safe';n.textContent='「公開プレビュー」で参加者画面の見え方を確認できます。本番公開用の統合は、各モジュールの接続契約を守って段階的に行い、v20 MAP COREやLIVE基盤を再生成しません。';extra.appendChild(n)}
+
+function validationIssues(scope){if(!current)return[];const fields=allFields().filter(f=>!scope||f.mainId===scope.main&&f.subId===scope.sub);const issues=[];fields.forEach(f=>{if(f.required&&!fieldComplete(f))issues.push({type:'field',text:f.label+' が未入力です',main:f.mainId,sub:f.subId})});if((!scope||scope.main==='live')&&current.modules.liveLocation.enabled){if(!Number(value('venueLat'))||!Number(value('venueLng')))issues.push({type:'rule',text:'LIVE位置共有を使う場合、会場中心位置の設定を推奨します',main:'event',sub:'venue'})}if((!scope||scope.main==='map')&&current.modules.map.enabled&&!current.mapBridge?.mapBlock)issues.push({type:'rule',text:'MAPを使う設定ですが、このイベントのMAP BLOCKがまだありません',main:'map',sub:'mapConfig'});return issues}
+function renderValidation(scope=null){$('welcomePanel').classList.add('hidden');$('editorPanel').classList.add('hidden');$('validatePanel').classList.remove('hidden');const box=$('issueList'),issues=validationIssues(scope);box.innerHTML='';if(!issues.length){box.innerHTML='<div class="okLine">この範囲の必須入力に問題はありません。</div>';return}issues.forEach(it=>{const d=document.createElement('button');d.className='issue';d.style.textAlign='left';d.textContent=it.text;d.onclick=()=>{selected={main:it.main,sub:it.sub};renderTree();renderSection()};box.appendChild(d)})}
+
+
+function guideState(){
+  if(!current)return {step:0};
+  const hasName=String(value('eventName')||'').trim().length>0;
+  const hasType=String(value('eventType')||'').trim().length>0;
+  const hasWhen=!!value('startAt');
+  const hasPlace=!!(String(value('venueName')||'').trim()||String(value('venueAddress')||'').trim()||(Number(value('venueLat'))&&Number(value('venueLng'))));
+  const hasModules=Object.values(current.modules||{}).some(m=>m.enabled);
+  const noCritical=validationIssues().filter(x=>x.type==='field').length===0;
+  let step=1;
+  if(hasName&&hasType)step=2;
+  if(hasPlace||hasWhen)step=3;
+  if(hasModules)step=4;
+  if(noCritical&&hasName&&hasType)step=5;
+  return {step,hasName,hasType,hasWhen,hasPlace,hasModules,noCritical};
+}
+function navTo(main,sub){
+  selected={main,sub};renderTree();renderSection();window.scrollTo({top:0,behavior:'smooth'});
+}
+function renderGuide(){
+  const p=$('guidePanel');if(!p)return;
+  if(!current){p.classList.add('hidden');return}
+  p.classList.remove('hidden');
+  const st=guideState();
+  $('guideNow').textContent='STEP '+st.step+' / 5';
+  const steps=[
+    {n:1,t:'基本情報',d:'イベント名・種類',done:st.hasName&&st.hasType,main:'event',sub:'identity'},
+    {n:2,t:'日時・会場',d:'いつ・どこで',done:st.hasWhen||st.hasPlace,main:'event',sub:'venue'},
+    {n:3,t:'使う機能',d:'MAP・LIVE・CHAT等',done:st.hasModules,main:'map',sub:'mapConfig'},
+    {n:4,t:'詳細設定',d:'必要な枝だけ設定',done:st.noCritical,main:'publish',sub:'home'},
+    {n:5,t:'公開プレビュー',d:'参加者画面を確認',done:false,preview:true}
+  ];
+  $('guideSteps').innerHTML='';
+  steps.forEach(x=>{
+    const b=document.createElement('button');b.className='guideStep '+(x.done?'done ':'')+(st.step===x.n?'now':'');
+    b.innerHTML='<span class="n">'+(x.done?'✓':x.n)+'</span><b>'+x.t+'</b><span>'+x.d+'</span>';
+    b.onclick=()=>x.preview?openPublicPreview():navTo(x.main,x.sub);$('guideSteps').appendChild(b);
+  });
+  const leads={
+    1:'<b>まず「イベント名」と「イベント形式」を入力してください。</b><br>それ以外は後からで大丈夫です。',
+    2:'<b>次に「いつ・どこで」を設定します。</b><br>会場名または住所を入れると、位置共有やMAPの基準にできます。',
+    3:'<b>使う機能を選びます。</b><br>不要な機能はOFFのままで構いません。後から追加できます。',
+    4:'<b>必要な部分だけ詳細設定します。</b><br>主分類 → 副分類から必要な枝だけ開いてください。詳細設定は必須ではありません。',
+    5:'<b>最後に公開プレビューで確認します。</b><br>参加者からどう見えるかを確認し、入力漏れがあれば戻って修正できます。'
+  };
+  $('guideLead').innerHTML=leads[st.step];
+  const next=$('guideNext');next.innerHTML='';
+  const nextDef=st.step===1?['基本情報を入力','event','identity']:st.step===2?['日時・会場を入力','event','venue']:st.step===3?['使う機能を選ぶ','map','mapConfig']:st.step===4?['詳細設定へ','publish','home']:null;
+  if(nextDef){const b=document.createElement('button');b.className='btn primary';b.textContent='次へ：'+nextDef[0];b.onclick=()=>navTo(nextDef[1],nextDef[2]);next.appendChild(b)}
+  const pv=document.createElement('button');pv.className='btn';pv.textContent='👁 公開プレビュー';pv.onclick=openPublicPreview;next.appendChild(pv);
+  const all=document.createElement('button');all.className='btn';all.textContent='すべての設定を見る';all.onclick=()=>document.querySelector('.sidebar')?.scrollIntoView({behavior:'smooth'});next.appendChild(all);
+}
+function previewTabs(){
+  if(!current)return [];
+  const tabs=[{id:'home',label:'HOME'}];
+  if(current.modules.map?.enabled)tabs.push({id:'map',label:'MAP'});
+  if(current.modules.participant?.enabled)tabs.push({id:'people',label:'参加者'});
+  if(current.modules.schedule?.enabled)tabs.push({id:'schedule',label:'予定'});
+  if(current.modules.chatSupport?.enabled)tabs.push({id:'chat',label:'CHAT'});
+  if(current.modules.questAdapter?.enabled)tabs.push({id:'quest',label:'QUEST'});
+  return tabs;
+}
+function pvCard(title,text){return '<div class="pvCard"><b>'+esc(title)+'</b><span>'+esc(text)+'</span></div>'}
+function renderPreviewBody(tab='home'){
+  const body=$('pvBody');if(!body||!current)return;
+  const name=value('eventName')||'イベント名未設定',venue=value('venueName')||value('venueAddress')||'会場未設定';
+  const when=value('startAt')?new Date(value('startAt')).toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'日時未設定';
+  const mb=current.mapBridge?.mapBlock,m=mb?.modules||{};
+  if(tab==='home'){
+    let html='<div class="pvHero"><h3>'+esc(name)+'</h3><p>'+esc(when)+'<br>'+esc(venue)+'</p><div class="pvActions">';
+    if(current.modules.liveLocation?.enabled)html+='<button>位置共有</button>';
+    if(current.modules.participant?.enabled)html+='<button>参加登録</button>';
+    if(current.modules.chatSupport?.enabled)html+='<button>CHAT</button>';
+    if(current.modules.questAdapter?.enabled)html+='<button>QUEST開始</button>';
+    html+='</div></div>';
+    if(current.modules.schedule?.enabled)html+=pvCard('これからの予定','競技・招集・活動予定がここに表示されます');
+    if(current.modules.liveLocation?.enabled)html+=pvCard('位置共有','会場範囲・共有時間に従ってON/OFFを案内します');
+    if(current.modules.map?.enabled)html+=pvCard('会場案内','駐車場出入口・本部・ルート・チェックポイント等を表示します');
+    body.innerHTML=html;return;
+  }
+  if(tab==='map'){
+    const route=(m.route?.path||mb?.route||[]).length,cp=(m.checkpoints?.items||mb?.checkpoints||[]).length,base=(m.basePoints?.items||mb?.basePoints||[]).length,park=(m.parkingEntrances?.items||mb?.parkingEntrances||[]).length;
+    body.innerHTML='<div class="pvHero"><h3>MAP</h3><p>'+esc(venue)+'</p></div><div class="pvMap">'+(mb?'MAP BLOCKを反映<br>ルート '+route+'点 / CP '+cp+' / 拠点 '+base+' / 駐車場入口 '+park:'MAPはまだ編集されていません')+'</div>';return;
+  }
+  if(tab==='people'){body.innerHTML='<div class="pvHero"><h3>参加者</h3><p>参加者登録と役割別の状態を表示します。</p></div>'+pvCard('選手','参加登録後に表示')+pvCard('指導者・コーチ','来場・共有状態などを表示');return}
+  if(tab==='schedule'){body.innerHTML='<div class="pvHero"><h3>予定</h3><p>競技時間・招集・活動予定を位置情報とは別に表示します。</p></div>'+pvCard('次の予定','登録された予定を時刻順に表示');return}
+  if(tab==='chat'){body.innerHTML='<div class="pvHero"><h3>CHAT</h3><p>このイベント専用のチャット画面です。</p></div>'+pvCard('全体チャット','イベント参加者間の連絡を表示');return}
+  if(tab==='quest'){body.innerHTML='<div class="pvHero"><h3>QUEST</h3><p>旅ラン固有のチェックポイント・クイズ・スタンプ等をアダプターとして表示します。</p></div>'+pvCard('次の目的地','QUEST進行画面をここに接続');return}
+}
+function openPublicPreview(){
+  if(!current){alert('先にイベントを作成してください。');return}
+  $('previewModal').classList.add('show');$('previewModal').setAttribute('aria-hidden','false');
+  $('pvEventName').textContent=value('eventName')||'イベント名未設定';
+  const bits=[];if(value('startAt'))bits.push(new Date(value('startAt')).toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}));if(value('venueName'))bits.push(value('venueName'));$('pvEventMeta').textContent=bits.join(' / ')||'日時・会場未設定';
+  const issues=validationIssues();
+  $('previewHint').textContent=issues.length?'プレビューできますが、未設定・確認項目が '+issues.length+' 件あります。下の「入力漏れを確認」から戻れます。':'必須入力は揃っています。参加者画面の見え方を確認してください。';
+  const tabs=previewTabs(),tb=$('pvTabs');tb.innerHTML='';tabs.forEach((t,i)=>{const b=document.createElement('button');b.textContent=t.label;b.className=i===0?'on':'';b.onclick=()=>{tb.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));renderPreviewBody(t.id)};tb.appendChild(b)});renderPreviewBody(tabs[0]?.id||'home');
+}
+function closePublicPreview(){$('previewModal').classList.remove('show');$('previewModal').setAttribute('aria-hidden','true')}
+
+function renderSummary(){if(!current){$('progressPct').textContent='0%';$('progressFill').style.width='0%';$('enabledModules').textContent='0';$('customFieldsCount').textContent='0';$('lastSaved').textContent='未保存';return}const req=allFields().filter(f=>f.required),done=req.filter(fieldComplete).length,pct=req.length?Math.round(done/req.length*100):100;$('progressPct').textContent=pct+'%';$('progressFill').style.width=pct+'%';$('enabledModules').textContent=Object.values(current.modules).filter(m=>m.enabled).length;$('customFieldsCount').textContent=(current.customSchema.fields||[]).length}
+function renderAll(){renderSummary();renderTree();renderGuide();if(!current){$('welcomePanel').classList.remove('hidden');$('editorPanel').classList.add('hidden');$('validatePanel').classList.add('hidden');$('eventSelect').value='';return}$('eventSelect').value=current.eventId;renderSection()}
+
+$('startEventBtn').onclick=async()=>{const name=$('quickEventName').value.trim();if(!name){alert('イベント名を入力してください。');return}current=makeEvent($('presetSelect').value,name);await saveCurrent(true);await refreshEventSelect();selected={main:'event',sub:'identity'};renderAll()};
+$('newEventBtn').onclick=()=>{current=null;$('quickEventName').value='';$('presetSelect').value='free';renderAll()};
+$('eventSelect').onchange=e=>selectEvent(e.target.value);
+$('saveTopBtn').onclick=()=>saveCurrent(false);
+$('previewTopBtn').onclick=openPublicPreview;
+$('previewCloseBtn').onclick=closePublicPreview;
+$('previewBackdrop').onclick=closePublicPreview;
+$('previewBackEditBtn').onclick=closePublicPreview;
+$('previewValidateBtn').onclick=()=>{closePublicPreview();renderValidation();};
+$('validateTopBtn').onclick=()=>renderValidation();
+$('sectionValidateBtn').onclick=()=>renderValidation(selected);
+$('importInput').onchange=e=>importCurrentFile(e.target.files?.[0]);
+
+(async()=>{try{await openDb();await refreshEventSelect();const list=await idbAll();if(list.length)await selectEvent(list.sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt)))[0].eventId);else renderAll()}catch(e){document.body.innerHTML='<div style="padding:24px;color:#fff">このブラウザでEVENT BUILDERの保存領域を初期化できませんでした。<br>'+esc(e.message||e)+'</div>'}})();
+})();
+</script>
+</body>
+</html>
