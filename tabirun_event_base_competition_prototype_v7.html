@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d2832">
+<title>TABIRUN EVENT BASE - 大会試作 v7</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{
+  --ink:#17323b;--muted:#6f8086;--line:#d9e4e7;--paper:#f6f9fa;--card:#fff;
+  --brand:#0d6174;--brand2:#0a8090;--dark:#0d2832;--good:#19805f;--warn:#b77414;
+  --danger:#b93e45;--soft:#eaf4f6;--shadow:0 12px 30px rgba(15,54,66,.10);
+  --radius:22px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif}
+body{padding-bottom:96px;font-size:17px;line-height:1.58;line-break:strict;word-break:normal}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer}
+button,b,h1,h2,h3,.tag,.kicker,.navBtn,.quickTitle,.scheduleAthlete,.scheduleRace,.statusBadge{
+  word-break:keep-all;overflow-wrap:normal;text-wrap:balance
+}
+p,.small,.noticeBody,.messageText{overflow-wrap:anywhere;text-wrap:pretty}
+.hidden{display:none!important}
+.app{max-width:920px;margin:0 auto}
+.topbar{position:sticky;top:0;z-index:900;background:rgba(13,40,50,.97);color:#fff;padding:10px 14px calc(10px + env(safe-area-inset-top));backdrop-filter:blur(12px)}
+.topbarRow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brandMark{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,#29a5b6,#fff);display:grid;place-items:center;color:#0d2832;font-weight:1000;flex:none}
+.brandText{min-width:0}.brandText b{display:block;font-size:17px;white-space:nowrap}.brandText span{display:block;font-size:11px;color:#c8d8dd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topActions{display:flex;gap:7px;flex:none}
+.iconBtn{border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;border-radius:12px;padding:9px 10px;font-weight:900;min-width:44px}
+.iconBtn.on{background:#fff;color:var(--dark)}
+.hero{position:relative;overflow:hidden;background:radial-gradient(circle at 80% 20%,rgba(255,255,255,.18),transparent 35%),linear-gradient(135deg,#0a5569,#0d2832 60%,#0c7c83);color:#fff;padding:24px 18px 20px;min-height:270px}
+.heroImage{position:absolute;inset:0;background-size:cover;background-position:center;opacity:.28;mix-blend-mode:screen}
+.hero:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,22,30,.04),rgba(5,22,30,.72))}
+.heroContent{position:relative;z-index:2}
+.kicker{display:inline-flex;font-size:12px;font-weight:1000;letter-spacing:.12em;background:rgba(255,255,255,.14);padding:7px 10px;border-radius:999px;white-space:nowrap}
+.hero h1{font-size:clamp(28px,7vw,40px);line-height:1.22;margin:14px 0 8px}
+.heroMeta{display:flex;flex-wrap:wrap;gap:8px;color:#e6f4f6;font-size:14px}
+.heroMeta span{background:rgba(255,255,255,.11);padding:7px 9px;border-radius:10px;white-space:nowrap}
+.countdown{margin-top:16px;display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+.countdown strong{font-size:clamp(23px,6vw,30px)}.countdown small{color:#d1e7ea}
+main{padding:14px}
+.section{margin:0 0 18px}
+.sectionHead{display:flex;justify-content:space-between;align-items:end;gap:10px;margin:0 3px 9px}
+.sectionHead h2{font-size:21px;margin:0}.sectionHead span{font-size:12px;color:var(--muted);text-align:right}
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.panel{padding:16px}
+.nextCard{padding:17px;background:linear-gradient(135deg,#fff,#f1f8f9)}
+.nextTop{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.nextLabel{font-size:12px;font-weight:1000;color:var(--brand);letter-spacing:.08em}
+.nextCard h3{font-size:24px;margin:4px 0 3px}
+.tag{display:inline-flex;border-radius:999px;padding:6px 9px;background:#e6f3ee;color:#155e47;font-size:12px;font-weight:900;white-space:nowrap}
+.quickGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.quick{border:0;background:#fff;border-radius:18px;padding:16px;text-align:left;box-shadow:var(--shadow);min-height:105px}
+.quickTitle{display:block;font-size:18px;margin-top:6px}.quick span{display:block;color:var(--muted);font-size:13px;margin-top:3px}.quick .emoji{font-size:25px}
+.noticeList{display:grid;gap:10px}
+.notice{display:grid;grid-template-columns:72px 1fr;gap:12px;padding:12px;background:#fff;border:1px solid var(--line);border-radius:18px}
+.noticeThumb{width:72px;height:72px;border-radius:13px;background:#e8f1f3 center/cover no-repeat;display:grid;place-items:center;font-size:27px;color:#597079;overflow:hidden}
+.notice h3{font-size:17px;margin:0 0 3px}.noticeBody{margin:0;color:#526970;font-size:14px}
+.noticeMeta{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}.noticeMeta span{font-size:11px;padding:4px 7px;border-radius:999px;background:#eef4f5;color:#53676d;white-space:nowrap}
+.linkBtn,.primaryBtn,.ghostBtn,.dangerBtn{border:0;border-radius:14px;padding:12px 14px;font-weight:950;min-height:48px;white-space:nowrap}
+.primaryBtn{background:var(--brand);color:#fff}.ghostBtn{background:#edf3f5;color:var(--ink)}.dangerBtn{background:#fff0f1;color:var(--danger);border:1px solid #f0c7ca}
+.linkBtn{background:#eaf5f7;color:var(--brand);display:inline-flex;align-items:center;gap:6px;margin-top:8px}
+.field{margin-bottom:13px}.field label{display:block;font-size:14px;font-weight:950;margin-bottom:6px}
+.field input,.field textarea,.field select{width:100%;border:1px solid #cbdadd;background:#fff;border-radius:14px;padding:13px;font-size:16px;min-height:50px}
+.field textarea{min-height:100px;resize:vertical}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.adminOnly{display:none}.managerMode .adminOnly{display:block}.managerMode .adminFlex{display:flex}
+.small{font-size:12px;color:var(--muted)}
+.sep{height:1px;background:var(--line);margin:14px 0}
+
+/* REAL LIGHTWEIGHT MAP */
+.mapTabs{display:flex;gap:8px;margin-bottom:10px}
+.mapModeBtn{border:1px solid #cbdadd;background:#fff;border-radius:999px;padding:10px 13px;font-weight:950;white-space:nowrap}
+.mapModeBtn.on{background:var(--dark);border-color:var(--dark);color:#fff}
+.mapCard{overflow:hidden;border-radius:22px;background:#fff;border:1px solid var(--line);box-shadow:var(--shadow)}
+#venueMap,#liveMap{height:min(54vh,520px);min-height:390px;background:#dfe9eb}
+.mapToolbar{padding:10px;background:#fff;display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--line)}
+.mapHint{padding:10px 12px;background:#f6fbfc;border-top:1px solid var(--line);font-size:13px;color:#52676e}
+.placeList{display:grid;gap:10px;margin-top:10px}
+.placeRow{width:100%;display:grid;grid-template-columns:44px 1fr auto;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);padding:12px;border-radius:16px;box-shadow:0 5px 16px rgba(15,54,66,.05);text-align:left}
+.placeIcon{width:44px;height:44px;border-radius:12px;background:#e8f2f4;display:grid;place-items:center;font-weight:1000}
+.placeRow b{display:block;font-size:16px}.placeRow span{font-size:12px;color:var(--muted)}
+.routeBadge{font-size:12px!important;color:var(--brand)!important;font-weight:900;white-space:nowrap}
+.leafPin{background:transparent;border:0}
+.pin{min-width:38px;height:38px;padding:0 8px;border-radius:13px;background:#fff;border:2px solid var(--brand);box-shadow:0 5px 16px rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:1000;color:var(--brand)}
+.pin.parking{border-color:#a36d16;color:#8a5a0c;background:#fff8e9}.pin.base{border-color:#1b805f;color:#17694f;background:#effaf6}.pin.me{border-color:#237db0;color:#237db0;background:#edf8ff;border-radius:50%}.pin.cluster{border-color:#fff;background:#9b5f13;color:#fff;border-radius:999px}
+.routeEmpty{padding:18px;text-align:center;background:#fff7e9;border:1px solid #edd9b6;border-radius:17px;margin-top:10px}.routeEmpty b{display:block;font-size:18px;margin-bottom:4px}
+
+/* SCHEDULE */
+.progressAlert{padding:14px 15px;border-radius:18px;border:1px solid #c8dde1;background:#f2fafb;margin-bottom:10px}
+.progressAlert.delay{background:#fff0e5;border-color:#efc29e}
+.progressAlert strong{display:block;font-size:22px}.progressAlert.delay strong{color:#a45513}
+.progressAlert span{display:block;font-size:13px;color:#60757c;margin-top:2px}
+.focusGrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px}
+.focusCard{background:#fff;border:1px solid var(--line);border-radius:16px;padding:10px;min-height:104px}
+.focusCard small{display:block;font-weight:1000;color:var(--muted);font-size:11px}.focusCard b{display:block;font-size:15px;margin:4px 0}.focusCard span{font-size:12px;color:#61767d}
+.focusCard.current{border-color:#e0ad72;background:#fff7ea}.focusCard.next{border-color:#86c4cf;background:#f3fbfc}
+.scheduleCards{display:grid;gap:10px}
+.scheduleCard{background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px;box-shadow:0 7px 20px rgba(15,54,66,.06)}
+.scheduleCard.done{opacity:.66}.scheduleCard.running{border-color:#e0ad72;background:#fff8e9}.scheduleCard.next{border-color:#86c4cf;background:#f2fbfc}
+.scheduleCard.mine{box-shadow:0 0 0 2px #57aebd inset,0 8px 22px rgba(15,54,66,.08)}
+.scheduleCardTop{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start}
+.scheduleRaceBlock b{display:block;font-size:22px;line-height:1.25}.scheduleRaceBlock span{display:block;font-size:13px;color:var(--muted);margin-top:4px}
+.scheduleTimes{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:11px}
+.scheduleTimeBox{background:#f4f8f9;border-radius:13px;padding:9px 10px}
+.scheduleTimeBox small{display:block;font-size:11px;font-weight:950;color:var(--muted)}.scheduleTimeBox strong{display:block;font-size:19px;color:var(--brand)}
+.timeLate{display:block;color:#a65d17;font-weight:950;font-size:12px;white-space:nowrap;margin-top:2px}
+.statusBadge{display:inline-flex;padding:6px 9px;border-radius:999px;font-size:11px;font-weight:1000;white-space:nowrap;background:#edf2f3;color:#667a81}
+.statusBadge.done{background:#e8f2ee;color:#267158}.statusBadge.running{background:#fff0d6;color:#9a620f}.statusBadge.next{background:#e3f5f8;color:#0d6174}
+.athleteBlock{margin-top:12px}.athleteBlockTitle{font-size:12px;color:var(--muted);font-weight:950;margin-bottom:6px}
+.athleteRows{display:grid;gap:6px}
+.athleteRow{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:10px 11px;background:#f7fafb;border:1px solid #e4edef;border-radius:13px}
+.athleteRow.mine{background:#e9f7fa;border-color:#82c4cf;box-shadow:0 0 0 1px #82c4cf inset}
+.athleteName{font-size:17px;font-weight:1000}.selfBadge{display:inline-flex;margin-left:7px;background:var(--brand);color:#fff;border-radius:999px;padding:3px 7px;font-size:10px;font-weight:1000;vertical-align:middle}
+.editMini{border:0;background:#eaf2f4;color:var(--brand);border-radius:10px;padding:7px 9px;font-size:12px;font-weight:1000;white-space:nowrap}
+.rowAdmin{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid #edf2f3}.rowAdmin button{border:0;border-radius:9px;padding:7px 9px;font-size:11px;font-weight:900}
+.identityBar{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:10px 12px;margin-bottom:10px}
+.identityBar b{font-size:15px}.identityBar span{font-size:12px;color:var(--muted)}
+.roleBadge{display:inline-flex;background:#eef4f5;border-radius:999px;padding:5px 8px;font-size:11px;font-weight:1000;color:#526a72;white-space:nowrap}
+.permissionHint{font-size:12px;color:var(--muted);margin-top:6px}
+.delayControls{display:grid;grid-template-columns:110px 1fr;gap:8px}.delayControls .wide{grid-column:1/-1}
+
+/* LIVE */
+.statusBox{padding:14px;border-radius:16px;background:#eef8f5;border:1px solid #cbe5dc}.statusBox.warn{background:#fff7e9;border-color:#edd9b6}.statusBox strong{display:block;font-size:18px}
+.liveLegend{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}.liveLegend span{font-size:12px;padding:5px 8px;background:#fff;border:1px solid var(--line);border-radius:999px}
+.personList{display:grid;gap:9px;margin-top:10px}.person{display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:center;padding:12px;background:#fff;border:1px solid var(--line);border-radius:16px}
+.avatar{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:#e5eff1;font-weight:1000}.person small{display:block;color:var(--muted)}
+.dot{width:11px;height:11px;border-radius:50%;background:#8ca0a6}.dot.on{background:#21a76f}
+
+/* CHAT */
+.chatTopSticky{position:sticky;top:69px;z-index:120;background:rgba(246,249,250,.96);padding:4px 0 10px;backdrop-filter:blur(10px)}
+.viewTabs{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:8px}
+.viewTab{border:1px solid #cfdde0;background:#fff;border-radius:13px;padding:10px 6px;font-weight:950;color:#657980;white-space:nowrap}.viewTab.on{background:var(--dark);color:#fff;border-color:var(--dark)}
+.pillRow{display:flex;gap:7px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}.pillRow::-webkit-scrollbar{display:none}
+.pill{border:1px solid #cbdadd;background:#fff;border-radius:999px;padding:8px 10px;font-size:13px;font-weight:900;white-space:nowrap}.pill.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+.latestBox{border:1px solid #abd1d7;background:#f3fbfc;border-radius:17px;padding:12px;margin:10px 0}.latestBox small{display:block;color:var(--brand);font-weight:1000}.latestBox b{display:block;margin:3px 0;font-size:16px}
+.chatList{display:flex;flex-direction:column;gap:10px;margin-bottom:12px}.chatMsg{background:#fff;border:1px solid var(--line);border-radius:17px;padding:12px;box-shadow:0 6px 18px rgba(15,54,66,.05)}
+.chatHead{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--muted)}.chatMsg b{color:var(--ink)}.messageText{margin:6px 0 0;white-space:pre-wrap}
+.assetGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.assetCard{background:#fff;border:1px solid var(--line);border-radius:17px;overflow:hidden}
+.assetThumb{aspect-ratio:4/3;background:#e9f1f3 center/cover no-repeat}.assetMeta{padding:10px}.assetMeta b{display:block;font-size:15px}.assetMeta span{font-size:12px;color:var(--muted)}
+.linkList{display:grid;gap:9px}.linkCard{background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px;text-align:left}.linkCard b{display:block}.linkCard span{font-size:12px;color:var(--muted);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chatComposer{position:sticky;bottom:82px;z-index:100;background:rgba(246,249,250,.94);padding:10px 0 0;backdrop-filter:blur(10px)}
+.chatBox{background:#fff;border:1px solid var(--line);border-radius:18px;padding:10px;box-shadow:var(--shadow)}.chatBox textarea{width:100%;border:0;outline:0;min-height:70px;resize:none;font-size:16px}
+.chatTools{display:flex;gap:8px;align-items:center;justify-content:space-between}.chatTools .left{display:flex;gap:7px;flex-wrap:wrap}.fileChip{display:inline-flex;align-items:center;gap:5px;padding:9px 10px;border-radius:12px;background:#eef4f5;font-size:13px;font-weight:900;white-space:nowrap}
+
+/* NAV */
+.tabPage{display:none}.tabPage.active{display:block}
+.bottomNav{position:fixed;left:0;right:0;bottom:0;z-index:1000;background:rgba(255,255,255,.97);border-top:1px solid #d5e1e4;padding:7px 8px calc(7px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(5,1fr);gap:4px;backdrop-filter:blur(15px)}
+.navBtn{position:relative;border:0;background:transparent;color:#718289;padding:7px 2px 6px;font-size:11px;font-weight:900;border-radius:15px;white-space:nowrap;transition:.15s}
+.navBtn i{display:block;font-style:normal;font-size:22px;line-height:1.2}.navBtn.on{color:var(--brand);background:#e6f4f6;box-shadow:inset 0 0 0 1px #c4e0e5}
+.navBtn.on:before{content:"";position:absolute;left:24%;right:24%;top:0;height:4px;border-radius:0 0 6px 6px;background:var(--brand)}
+.navBtn.on:after{content:"表示中";position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:8px;color:#fff;background:var(--brand);border-radius:6px;padding:1px 4px;opacity:.95}
+
+/* MODAL */
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:110px;z-index:1300;background:#102d37;color:#fff;padding:12px 14px;border-radius:14px;box-shadow:var(--shadow);max-width:90%;font-size:14px}
+.modal{position:fixed;inset:0;z-index:1500;background:rgba(8,26,33,.56);display:grid;place-items:end center;padding:20px}.modalCard{width:min(720px,100%);max-height:88vh;overflow:auto;background:#fff;border-radius:24px;padding:18px;box-shadow:var(--shadow)}.modalCard h3{margin:0 0 12px;font-size:22px}
+.destCoord{font-size:12px;color:var(--muted);margin-top:3px}
+
+@media(min-width:720px){body{font-size:18px}.quickGrid{grid-template-columns:repeat(4,1fr)}.hero{padding:34px 28px}.hero h1{font-size:40px}main{padding:20px}.assetGrid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:520px){
+  .topbar{padding-left:10px;padding-right:10px}.brandText b{font-size:15px}.brandText span{font-size:10px}.iconBtn{padding:8px;min-width:40px}
+  .sectionHead span{display:none}.focusGrid{grid-template-columns:1fr}.focusCard{min-height:auto}.delayControls{grid-template-columns:1fr}.delayControls .wide{grid-column:auto}.scheduleCard{padding:13px}.scheduleRaceBlock b{font-size:20px}.athleteName{font-size:18px}
+  .actions>.primaryBtn,.actions>.ghostBtn,.actions>.dangerBtn{flex:1 1 auto}
+}
+
+/* === v6 SCHEDULE VIEW / PROGRESS CONTROL === */
+.scheduleViewSwitch{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+.scheduleViewBtn{border:1px solid #cbdadd;background:#fff;border-radius:14px;padding:11px 8px;font-weight:1000;color:#60757c}
+.scheduleViewBtn.on{background:var(--dark);border-color:var(--dark);color:#fff}
+.progressManager{border:2px solid #b8dce2;background:#f5fbfc}
+.progressManager h3{margin:0 0 4px;font-size:19px}
+.progressManager .managerBadge{display:inline-flex;background:#0d6174;color:#fff;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:1000;margin-bottom:8px}
+.groupStateControl{display:grid;grid-template-columns:1fr;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid #e5edef}
+.groupStateControl label{font-size:12px;font-weight:1000;color:#60757c}
+.groupStateSelect{width:100%;border:1px solid #cbdadd;background:#fff;border-radius:12px;padding:10px;font-weight:950;color:var(--ink)}
+.compactList{display:grid;gap:7px}
+.compactRow{display:grid;grid-template-columns:72px 1fr auto;gap:9px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 11px}
+.compactRow.mine{background:#e9f7fa;border-color:#82c4cf;box-shadow:0 0 0 1px #82c4cf inset}
+.compactTime{font-weight:1000;color:var(--brand);font-size:16px;white-space:nowrap}
+.compactMain b{display:block;font-size:15px}
+.compactMain span{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+.compactRight{display:flex;align-items:center;gap:5px}
+.compactEdit{border:0;background:#edf4f5;color:var(--brand);border-radius:9px;padding:6px 8px;font-size:11px;font-weight:1000}
+.selfLegend{display:flex;align-items:center;gap:8px;margin:8px 0 10px;padding:9px 10px;border-radius:13px;background:#e9f7fa;border:1px solid #82c4cf;font-size:13px}
+.selfLegend b{font-size:14px}
+
+/* === v6 CHAT === */
+.chatGuide{background:#fff;border:1px solid var(--line);border-radius:16px;padding:11px 12px;margin:8px 0}
+.chatGuide b{display:block;font-size:14px}.chatGuide span{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+.chatViewTabs{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:8px}
+.chatViewTab{position:relative;border:1px solid #cfdde0;background:#fff;border-radius:13px;padding:10px 6px;font-weight:950;color:#657980;white-space:nowrap}
+.chatViewTab.on{background:var(--dark);color:#fff;border-color:var(--dark)}
+.countBubble{display:inline-flex;min-width:20px;height:20px;align-items:center;justify-content:center;border-radius:999px;background:#e9f2f4;color:#46616a;font-size:10px;font-weight:1000;margin-left:4px}
+.chatViewTab.on .countBubble{background:#fff;color:var(--dark)}
+.chatFilterLabel{font-size:11px;font-weight:1000;color:var(--muted);margin:4px 0 5px}
+.chatComposer{position:static!important;bottom:auto!important;background:transparent!important;padding:0!important;backdrop-filter:none!important;margin:8px 0 12px}
+.chatComposerToggle{width:100%;border:0;border-radius:16px;background:var(--brand);color:#fff;padding:13px 14px;font-weight:1000;font-size:16px}
+.chatComposerPanel{margin-top:8px}
+.chatComposerPanel.collapsed{display:none}
+.chatBox{box-shadow:none!important}
+.chatList{max-height:none!important}
+.chatMsg.latest{border:2px solid #8cc6d0;background:#f5fbfc}
+.chatEmpty{background:#fff;border:1px dashed #c9dadd;border-radius:16px;padding:18px;text-align:center;color:var(--muted)}
+.testChatBox{margin-top:8px;padding:10px;border-radius:14px;background:#fff7e9;border:1px solid #edd9b6}
+.testChatBox b{display:block;font-size:14px;margin-bottom:5px}
+
+
+/* === v7 PERMISSION / SIMPLE CHAT === */
+.settingsSummary{display:grid;gap:10px}
+.settingsRow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 12px;border:1px solid var(--line);border-radius:14px;background:#f8fbfb}
+.settingsRow b{font-size:14px}.settingsRow span{font-size:12px;color:var(--muted)}
+.secureBox{margin-top:12px;padding:12px;border:1px solid #e3d2b8;background:#fff8eb;border-radius:15px}
+.secureBox h4{margin:0 0 6px;font-size:15px}
+.permissionStatus{display:inline-flex;border-radius:999px;padding:5px 8px;font-size:11px;font-weight:1000;background:#edf3f5;color:#5e737b}
+.permissionStatus.manager{background:#e4f3f6;color:#0d6174}
+.chatSimpleHead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.chatSimpleHead b{font-size:14px}
+.sharedToggle{border:0;background:#edf4f5;color:var(--brand);border-radius:12px;padding:9px 11px;font-size:12px;font-weight:1000;white-space:nowrap}
+.sharedPanel{display:none;margin:8px 0 10px;padding:10px;border:1px solid var(--line);border-radius:16px;background:#fff}
+.sharedPanel.open{display:block}
+.sharedTabs{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:8px}
+.sharedTab{border:1px solid #cfdde0;background:#fff;border-radius:12px;padding:9px;font-size:12px;font-weight:1000}
+.sharedTab.on{background:var(--dark);border-color:var(--dark);color:#fff}
+.simpleComposer{position:sticky;bottom:82px;z-index:110;background:rgba(246,249,250,.97);padding:8px 0 3px;backdrop-filter:blur(10px)}
+.simpleComposerBox{display:grid;grid-template-columns:auto 1fr auto;gap:7px;align-items:end;background:#fff;border:1px solid var(--line);border-radius:18px;padding:8px;box-shadow:var(--shadow)}
+.attachBtn{width:44px;height:44px;border:0;border-radius:13px;background:#eef4f5;color:var(--brand);font-size:24px;font-weight:1000}
+.simpleChatInput{border:0;outline:0;resize:none;min-height:44px;max-height:120px;padding:10px 6px;font-size:16px;background:transparent;width:100%}
+.simpleSend{border:0;border-radius:13px;background:var(--brand);color:#fff;font-weight:1000;min-height:44px;padding:0 14px}
+.attachPanel{display:none;margin:7px 0 0;background:#fff;border:1px solid var(--line);border-radius:15px;padding:10px}
+.attachPanel.open{display:block}
+.attachChoices{display:flex;gap:7px;flex-wrap:wrap}
+.attachChoice{border:0;background:#edf4f5;border-radius:12px;padding:9px 11px;font-size:13px;font-weight:1000;color:var(--ink)}
+.linkInputWrap{display:none;margin-top:8px}
+.linkInputWrap.open{display:block}
+.linkInputWrap input{width:100%;border:1px solid #cbdadd;border-radius:12px;padding:11px}
+.pendingAttachment{display:flex;gap:7px;flex-wrap:wrap;margin-top:7px}
+.pendingChip{display:inline-flex;align-items:center;gap:5px;background:#eaf5f7;color:var(--brand);border-radius:999px;padding:5px 8px;font-size:11px;font-weight:1000}
+.chatMsg.role-admin{background:#eef5f7;border-color:#9fc8d0}
+.chatMsg.role-leader{background:#eef8f4;border-color:#a8d6c3}
+.chatMsg.role-coach{background:#fff8ea;border-color:#e8c78e}
+.staffBadge{display:inline-flex;margin-left:5px;border-radius:999px;padding:2px 6px;font-size:9px;font-weight:1000;vertical-align:middle}
+.role-admin .staffBadge{background:#0d6174;color:#fff}
+.role-leader .staffBadge{background:#19805f;color:#fff}
+.role-coach .staffBadge{background:#b77414;color:#fff}
+.chatInlineMedia{margin-top:8px}
+.chatInlineMedia img{width:100%;max-height:180px;object-fit:cover;border-radius:12px}
+.chatInlineLink{display:inline-flex;margin-top:7px;background:#eaf5f7;color:var(--brand);border-radius:10px;padding:7px 9px;font-size:12px;font-weight:1000}
+
+</style>
+</head>
+<body>
+<div class="app">
+<header class="topbar">
+  <div class="topbarRow">
+    <div class="brand">
+      <div class="brandMark">TR</div>
+      <div class="brandText"><b>TABIRUN EVENT BASE</b><span>大会モード・試作 v7｜権限制御＋シンプルCHAT</span></div>
+    </div>
+    <div class="topActions">
+      <button class="iconBtn" id="adminBtn" title="役割・権限">⚙</button>
+      <button class="iconBtn" id="privacyBtn">📍</button>
+    </div>
+  </div>
+</header>
+
+<section class="tabPage active" id="page-home">
+  <section class="hero">
+    <div class="heroImage" id="heroImage"></div>
+    <div class="heroContent">
+      <div class="kicker">COMPETITION DAY</div>
+      <h1>知多スポーツチャレンジ 2026</h1>
+      <div class="heroMeta"><span>📅 2026.10.4（日）</span><span>🕧 12:30 START</span><span>🏁 終了時刻 未定</span></div>
+      <div class="countdown"><strong id="countdownText">開催まで</strong><small id="countdownSub"></small></div>
+    </div>
+  </section>
+  <main>
+    <section class="section">
+      <div class="sectionHead"><h2>いま確認すること</h2><span>予定時刻だけでNEXTを決めません</span></div>
+      <div class="card nextCard">
+        <div class="nextTop"><div><div class="nextLabel">進行状況</div><h3 id="homeProgressTitle">会場・駐車場を確認</h3><div id="homeProgressText">実際の大会進行を反映して表示します。</div></div><span class="tag" id="eventStateTag">開催前</span></div>
+        <div class="actions" style="margin-top:12px"><button class="primaryBtn" data-go="schedule">進行・予定を見る</button><button class="ghostBtn" data-go="map">MAPを開く</button></div>
+      </div>
+    </section>
+    <section class="section">
+      <div class="sectionHead"><h2>大会メニュー</h2><span>選択中タブは下部で強調</span></div>
+      <div class="quickGrid">
+        <button class="quick" data-go="map"><span class="emoji">🗺️</span><b class="quickTitle">会場MAP</b><span>会場・駐車場・拠点</span></button>
+        <button class="quick" data-go="schedule"><span class="emoji">⏱️</span><b class="quickTitle">予定</b><span>進行・遅延・全員一覧</span></button>
+        <button class="quick" data-go="live"><span class="emoji">📡</span><b class="quickTitle">LIVE</b><span>位置・重なり表示</span></button>
+        <button class="quick" data-go="chat"><span class="emoji">💬</span><b class="quickTitle">CHAT</b><span>連絡・画像・リンク</span></button>
+      </div>
+    </section>
+    <section class="section">
+      <div class="sectionHead"><h2>大会情報・掲示</h2><span>終了後も保持可能</span></div>
+      <div class="noticeList" id="noticeList"></div>
+      <div class="card panel adminOnly" style="margin-top:10px">
+        <b>＋ 掲示を追加</b>
+        <div class="actions" style="margin-top:10px"><button class="primaryBtn" id="addNoticeBtn">掲示を作成</button><button class="ghostBtn" id="heroImageBtn">ホーム画像を変更</button></div>
+        <input id="heroImageInput" type="file" accept="image/*" class="hidden">
+      </div>
+    </section>
+  </main>
+</section>
+
+<section class="tabPage" id="page-map">
+  <main>
+    <section class="section">
+      <div class="sectionHead"><h2>MAP</h2><span>軽量地図／Googleは外部案内のみ</span></div>
+      <div class="mapTabs">
+        <button class="mapModeBtn on" id="venueMapModeBtn">会場MAP</button>
+        <button class="mapModeBtn" id="routeMapModeBtn">ルートMAP</button>
+      </div>
+      <div class="mapCard">
+        <div id="venueMap"></div>
+        <div class="mapToolbar">
+          <button class="primaryBtn" id="fitVenueBtn">全体表示</button>
+          <button class="ghostBtn" id="showMyPosBtn">現在地</button>
+          <button class="ghostBtn adminOnly" id="setBaseGpsBtn">現在地を拠点に設定</button>
+        </div>
+        <div class="mapHint" id="mapHint">地点をタップすると案内画面が開きます。Google マップは外部ナビ起動だけに使用します。</div>
+      </div>
+      <div class="routeEmpty hidden" id="routeEmpty"><b>この大会ではルート未設定</b><span class="small">コースが必要な場合だけ、旅ランと同じ固定ルート方式を表示します。</span></div>
+      <div class="placeList" id="placeList"></div>
+    </section>
+  </main>
+</section>
+
+<section class="tabPage" id="page-schedule">
+  <main>
+    <section class="section">
+      <div class="sectionHead"><h2>タイムスケジュール</h2><span>予定時刻＋実際の進行</span></div>
+
+      <div class="progressAlert" id="progressAlert"><strong id="progressAlertTitle">進行は予定どおり</strong><span id="progressAlertSub">NEXTは現時刻ではなく、実際の進行状態から表示します。</span></div>
+
+      <div class="card panel adminOnly progressManager">
+        <span class="managerBadge">管理者・指導者・コーチ</span>
+        <h3>大会進行・遅延を入力</h3>
+        <p class="small">予定時刻ではなく実際の進行を優先します。遅延を入力すると全体へ「遅延中」と表示します。</p>
+        <div class="delayControls">
+          <div class="field"><label>遅延（分）</label><input id="delayMinutes" type="number" min="0" step="1" value="0"></div>
+          <div class="field"><label>理由・補足</label><input id="delayNote" placeholder="例：競技進行 約15分遅れ"></div>
+          <div class="actions wide"><button class="primaryBtn" id="applyDelayBtn">遅延を反映</button><button class="ghostBtn" id="clearDelayBtn">遅延解除</button></div>
+        </div>
+      </div>
+
+
+      <div class="focusGrid">
+        <div class="focusCard" id="focusPrev"><small>前の組</small><b>－</b><span>－</span></div>
+        <div class="focusCard current" id="focusCurrent"><small>現在</small><b>進行確認中</b><span>運営更新待ち</span></div>
+        <div class="focusCard next" id="focusNext"><small>NEXT</small><b>－</b><span>－</span></div>
+      </div>
+
+      <div class="scheduleViewSwitch">
+        <button class="scheduleViewBtn on" id="cardViewBtn">各組を確認</button>
+        <button class="scheduleViewBtn" id="listViewBtn">全員一覧</button>
+      </div>
+      <div class="selfLegend"><span class="selfBadge">自分</span><b>自分の予定は水色で表示</b><span class="small">全員一覧でも同じ表示です</span></div>
+
+      <div class="identityBar">
+        <div><b id="identityText">あなた：選手A</b><span id="identitySub">自分の予定は水色で強調表示します</span></div>
+        <span class="roleBadge" id="roleBadge">自分</span>
+      </div>
+
+      <div class="scheduleCards" id="scheduleBody"></div>
+
+      <div class="card panel adminOnly" style="margin-top:12px">
+        <b style="font-size:18px">＋ 選手予定を追加</b>
+        <p class="small">同じ種目・同じ組・同じ競技時刻の選手は、自動で1行にまとめて表示します。</p>
+        <div class="field"><label>選手名</label><input id="schAthlete" placeholder="例：選手A"></div>
+        <div class="field"><label>種目</label><input id="schEvent" placeholder="例：3000m"></div>
+        <div class="field"><label>組</label><input id="schHeat" placeholder="例：5組"></div>
+        <div class="field"><label>召集時刻</label><input id="schCall" type="time"></div>
+        <div class="field"><label>競技開始</label><input id="schStart" type="time"></div>
+        <div class="field"><label>補足</label><input id="schNote" placeholder="例：招集所A"></div>
+        <button class="primaryBtn" id="addScheduleBtn">一覧へ追加</button>
+      </div>
+    </section>
+  </main>
+</section>
+
+<section class="tabPage" id="page-live">
+  <main>
+    <section class="section">
+      <div class="sectionHead"><h2>LIVE・位置共有</h2><span>近い人は人数表示</span></div>
+      <div class="statusBox warn" id="privacyStatus"><strong>位置共有はOFFです</strong><div>必要な時間だけONにします。</div></div>
+      <div class="actions" style="margin:10px 0"><button class="primaryBtn" id="toggleShareBtn">位置共有をON</button><button class="ghostBtn adminOnly" id="mockOverlapBtn">重なり表示テスト</button></div>
+      <div class="mapCard"><div id="liveMap"></div><div class="mapHint">近い位置は1つにまとめて人数表示。タップすると内訳を確認できます。</div></div>
+      <div class="liveLegend"><span>● 1人</span><span>● 2人以上は人数表示</span><span>タップで内訳</span></div>
+      <div class="personList" id="personList"></div>
+      <div class="card panel adminOnly" style="margin-top:10px">
+        <b>イベント終了処理</b><p class="small">CHATとLIVE位置情報を削除し、掲示は残します。</p>
+        <button class="dangerBtn" id="closeEventBtn">イベント終了 → 一時データを削除</button>
+      </div>
+    </section>
+  </main>
+</section>
+
+<section class="tabPage" id="page-chat">
+  <main>
+    <section class="section">
+      <div class="sectionHead"><h2>CHAT・連絡</h2><span>通常は文字入力＋送信だけ</span></div>
+
+      <div class="chatSimpleHead">
+        <b>参加者CHAT</b>
+        <button class="sharedToggle" id="sharedToggleBtn">画像・リンクを見る</button>
+      </div>
+
+      <div class="sharedPanel" id="sharedPanel">
+        <div class="sharedTabs">
+          <button class="sharedTab on" id="sharedImageBtn">画像 <span id="imageCount">0</span></button>
+          <button class="sharedTab" id="sharedLinkBtn">リンク <span id="linkCount">0</span></button>
+        </div>
+        <div id="sharedContent"></div>
+      </div>
+
+      <div class="latestBox" id="latestBox"></div>
+      <div id="chatContent"></div>
+
+      <div class="simpleComposer">
+        <div class="simpleComposerBox">
+          <button class="attachBtn" id="attachBtn" aria-label="画像・リンクを追加">＋</button>
+          <textarea class="simpleChatInput" id="chatText" placeholder="メッセージを入力"></textarea>
+          <button class="simpleSend" id="sendChatBtn">送信</button>
+        </div>
+        <div class="attachPanel" id="attachPanel">
+          <div class="attachChoices">
+            <label class="attachChoice">📷 画像を追加<input id="chatImage" type="file" accept="image/*" class="hidden"></label>
+            <button class="attachChoice" id="addLinkBtn">🔗 リンクを追加</button>
+          </div>
+          <div class="linkInputWrap" id="linkInputWrap"><input id="chatLink" placeholder="https://..."></div>
+          <div class="pendingAttachment" id="pendingAttachment"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</section>
+
+<nav class="bottomNav">
+  <button class="navBtn on" data-tab="home" aria-current="page"><i>⌂</i>HOME</button>
+  <button class="navBtn" data-tab="map"><i>🗺</i>MAP</button>
+  <button class="navBtn" data-tab="schedule"><i>⏱</i>予定</button>
+  <button class="navBtn" data-tab="live"><i>📡</i>LIVE</button>
+  <button class="navBtn" data-tab="chat"><i>💬</i>CHAT</button>
+</nav>
+</div>
+
+<div class="modal hidden" id="destinationModal"><div class="modalCard">
+  <h3 id="destTitle">目的地</h3><div id="destType" class="tag"></div><div class="destCoord" id="destCoord"></div><div class="sep"></div><p id="destDesc"></p>
+  <div class="actions"><button class="primaryBtn" id="destDriveBtn">🚗 Googleで車案内</button><button class="ghostBtn" id="destWalkBtn">🚶 Googleで徒歩案内</button></div>
+  <div class="actions" style="margin-top:10px"><button class="ghostBtn" id="destCloseBtn">閉じる</button></div>
+</div></div>
+
+<div class="modal hidden" id="clusterModal"><div class="modalCard"><h3>同じ場所にいるメンバー</h3><div id="clusterPeople" class="personList"></div><div class="actions" style="margin-top:10px"><button class="ghostBtn" id="clusterCloseBtn">閉じる</button></div></div></div>
+
+<div class="modal hidden" id="noticeModal"><div class="modalCard">
+  <h3>掲示を作成</h3>
+  <div class="field"><label>種類</label><select id="noticeType"><option>大会要項</option><option>速報結果</option><option>お知らせ</option><option>連絡事項</option><option>資料</option></select></div>
+  <div class="field"><label>タイトル</label><input id="noticeTitle"></div>
+  <div class="field"><label>説明</label><textarea id="noticeBody"></textarea></div>
+  <div class="field"><label>外部リンク</label><input id="noticeLink" placeholder="https://..."></div>
+  <div class="field"><label>画像</label><input id="noticeImage" type="file" accept="image/*"></div>
+  <div class="field"><label>保持方法</label><select id="noticeRetention"><option value="persistent">管理者が削除するまで残す</option><option value="event">イベント終了時に削除</option></select></div>
+  <div class="actions"><button class="primaryBtn" id="saveNoticeBtn">保存</button><button class="ghostBtn" id="cancelNoticeBtn">キャンセル</button></div>
+</div></div>
+
+
+<div class="modal hidden" id="roleModal"><div class="modalCard">
+  <h3>設定</h3>
+
+  <div class="settingsSummary">
+    <div class="settingsRow">
+      <div><b>現在の表示</b><span id="currentRoleText">参加者（自分）</span></div>
+      <span class="permissionStatus" id="permissionStatus">一般</span>
+    </div>
+  </div>
+
+  <div class="field" style="margin-top:12px">
+    <label>自分の表示名</label>
+    <input id="selfNameInput" value="選手A">
+  </div>
+  <div class="actions">
+    <button class="ghostBtn" id="saveSelfNameBtn">表示名を保存</button>
+  </div>
+
+  <div class="secureBox">
+    <h4>管理権限テスト</h4>
+    <div class="small">管理者・指導者・コーチの操作は、一般参加者からは選択できません。試作確認時だけテストコードで解除します。</div>
+    <div class="field" style="margin-top:9px">
+      <label>テストコード</label>
+      <input id="managerCodeInput" type="password" inputmode="numeric" placeholder="コードを入力">
+    </div>
+    <div class="field">
+      <label>解除する権限</label>
+      <select id="managerRoleSelect">
+        <option value="admin">管理者</option>
+        <option value="leader">指導者</option>
+        <option value="coach">コーチ</option>
+      </select>
+    </div>
+    <div class="actions">
+      <button class="primaryBtn" id="unlockManagerBtn">管理権限でテスト</button>
+      <button class="ghostBtn hidden" id="returnParticipantBtn">参加者に戻る</button>
+    </div>
+  </div>
+
+  <div class="actions" style="margin-top:12px"><button class="ghostBtn" id="closeRoleBtn">閉じる</button></div>
+</div></div>
+
+<div class="modal hidden" id="editScheduleModal"><div class="modalCard">
+  <h3>予定を修正</h3>
+  <div class="field"><label>選手名</label><input id="editAthlete"></div>
+  <div class="field"><label>種目</label><input id="editEvent"></div>
+  <div class="field"><label>組</label><input id="editHeat"></div>
+  <div class="field"><label>召集時刻</label><input id="editCall" type="time"></div>
+  <div class="field"><label>競技開始</label><input id="editStart" type="time"></div>
+  <div class="field"><label>補足</label><input id="editNote"></div>
+  <div class="actions"><button class="primaryBtn" id="saveScheduleEditBtn">修正を保存</button><button class="ghostBtn" id="cancelScheduleEditBtn">キャンセル</button></div>
+</div></div>
+
+<div class="toast hidden" id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(() => {
+'use strict';
+
+const EVENT={
+  title:'知多スポーツチャレンジ 2026',
+  startAt:'2026-10-04T12:30:00+09:00',
+  endAt:null,
+  venue:{id:'venue',name:'大会開催場所',kind:'会場',lat:34.9947003,lng:136.9481809,desc:'大会の基準地点です。'},
+  parking:[
+    {id:'p1',name:'駐車場出入口 A',kind:'駐車場',lat:34.9962337,lng:136.9442297,desc:'駐車場Aの出入口です。'},
+    {id:'p2',name:'駐車場出入口 B',kind:'駐車場',lat:35.0009999,lng:136.9488022,desc:'駐車場Bの出入口です。'}
+  ],
+  route:null
+};
+const K={notices:'teb_v5_notices',schedule:'teb_v5_schedule',progress:'teb_v5_progress',chat:'teb_v5_chat',base:'teb_v5_base',hero:'teb_v5_hero',share:'teb_v5_share',people:'teb_v5_people',role:'teb_v7_role',selfName:'teb_v7_selfName'};
+const $=id=>document.getElementById(id);
+const load=(k,f)=>{try{return JSON.parse(localStorage.getItem(k))??f}catch(e){return f}};
+const save=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+let SELF_NAME=load(K.selfName,'選手A');
+const TEST_MANAGER_CODE='9220';
+let currentRole=load(K.role,'self'),editingScheduleId=null,scheduleView='card',venueMap=null,liveMap=null,venueLayer=null,routeLayer=null,liveLayer=null,myMarker=null,baseMarker=null,currentDestination=null,chatFilter='all',chatView='message',pendingChatImage='',shareWatch=null;
+
+let notices=load(K.notices,[
+  {id:'n1',type:'大会要項',title:'大会要項',body:'競技内容・注意事項・会場案内を掲載する固定掲示です。',link:'',image:'',retention:'persistent',createdAt:1},
+  {id:'n2',type:'速報結果',title:'速報結果',body:'速報ページのリンクを掲示できます。',link:'',image:'',retention:'persistent',createdAt:2},
+  {id:'n3',type:'お知らせ',title:'会場・駐車場を事前に確認してください',body:'駐車場出入口は2か所あります。',link:'',image:'',retention:'persistent',createdAt:3}
+]);
+let schedule=load(K.schedule,[
+  {id:'a1',athlete:'選手C',event:'3000m',heat:'4組',call:'12:35',start:'12:55',note:'招集所A'},
+  {id:'a2',athlete:'選手A',event:'3000m',heat:'5組',call:'13:00',start:'13:20',note:'招集所A'},
+  {id:'a3',athlete:'選手B',event:'3000m',heat:'5組',call:'13:00',start:'13:20',note:'招集所A'},
+  {id:'a4',athlete:'選手D',event:'1500m',heat:'2組',call:'13:30',start:'13:50',note:'招集所B'}
+]);
+let progress=load(K.progress,{delayMin:0,delayNote:'',status:{}});
+let messages=load(K.chat,[{id:'c1',name:'運営',role:'admin',text:'大会CHATのテストです。文字を入力して送信できます。',link:'',image:'',ts:Date.now()-60000}]);
+let base=load(K.base,null);
+let shareState=load(K.share,{on:false,last:null});
+let people=load(K.people,[
+  {id:'coachA',name:'指導者A',role:'指導者',status:'未共有'},
+  {id:'athleteA',name:'選手A',role:'選手',status:'未共有'},
+  {id:'athleteB',name:'選手B',role:'選手',status:'未共有'}
+]);
+
+function toast(msg){const t=$('toast');t.textContent=msg;t.classList.remove('hidden');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.add('hidden'),2300)}
+function fileData(file){return new Promise((res,rej)=>{if(!file)return res('');if(file.size>3*1024*1024)return rej(new Error('画像は3MB以下'));const r=new FileReader();r.onload=()=>res(String(r.result||''));r.onerror=rej;r.readAsDataURL(file)})}
+function eventState(){const n=new Date(),s=new Date(EVENT.startAt);return n<s?'before':'during'}
+function updateCountdown(){const n=new Date(),s=new Date(EVENT.startAt),d=s-n,tag=$('eventStateTag');if(d>0){const dd=Math.floor(d/86400000),h=Math.floor((d%86400000)/3600000);$('countdownText').textContent=`開催まで ${dd}日 ${h}時間`;$('countdownSub').textContent='10月4日（日）12:30 START';tag.textContent='開催前'}else{$('countdownText').textContent='EVENT NOW';$('countdownSub').textContent='大会開催中';tag.textContent='開催中'}updateHomeProgress()}
+
+function groupedSchedule(){
+  const m=new Map();
+  schedule.forEach(x=>{
+    const key=[x.event,x.heat,x.call,x.start].join('|');
+    if(!m.has(key))m.set(key,{key,event:x.event,heat:x.heat,call:x.call,start:x.start,note:x.note||'',records:[]});
+    m.get(key).records.push(x);
+  });
+  return [...m.values()].sort((a,b)=>timeMin(a.start)-timeMin(b.start)||timeMin(a.call)-timeMin(b.call));
+}
+function timeMin(t){if(!t)return 9999;const [h,m]=t.split(':').map(Number);return h*60+m}
+function addMin(t,n){if(!t)return'未定';let v=timeMin(t)+Number(n||0);v=(v+1440)%1440;return String(Math.floor(v/60)).padStart(2,'0')+':'+String(v%60).padStart(2,'0')}
+function statusOf(key){return progress.status[key]||'waiting'}
+function setStatus(key,status){
+  if(status==='running'||status==='next'){
+    Object.keys(progress.status).forEach(k=>{if(progress.status[k]===status)progress.status[k]='waiting'});
+  }
+  progress.status[key]=status;save(K.progress,progress);renderSchedule();updateHomeProgress();
+}
+function focusGroups(){
+  const g=groupedSchedule();
+  let running=g.find(x=>statusOf(x.key)==='running');
+  let next=g.find(x=>statusOf(x.key)==='next');
+  if(!next){
+    const idx=running?g.indexOf(running):-1;
+    next=g.slice(idx+1).find(x=>statusOf(x.key)!=='done')||null;
+  }
+  let anchor=running||next;
+  let prev=null;
+  if(anchor){const i=g.indexOf(anchor);prev=g.slice(0,i).reverse().find(x=>statusOf(x.key)!=='waiting'||true)||null}
+  return {prev,running,next};
+}
+function athleteNames(g){return g?(g.records||[]).map(x=>x.athlete):[]}
+function focusText(g){return g?`${g.event} ${g.heat}｜${athleteNames(g).join('・')}`:'－'}
+function canEditRecord(rec){
+  return currentRole!=='self' || rec.athlete===SELF_NAME;
+}
+function roleLabel(){
+  return ({admin:'管理者',leader:'指導者',coach:'コーチ',self:'参加者'})[currentRole]||'参加者';
+}
+function applyRoleUI(){
+  const manager=currentRole!=='self';
+  document.body.classList.toggle('managerMode',manager);
+  $('roleBadge').textContent=manager?roleLabel():'自分';
+  $('identityText').textContent=manager?`確認中：${roleLabel()}`:`あなた：${SELF_NAME}`;
+  $('identitySub').textContent=manager?'管理者・指導者・コーチは全選手の予定を修正できます':'自分の予定は水色で強調表示します';
+  if($('currentRoleText'))$('currentRoleText').textContent=manager?roleLabel():'参加者（自分）';
+  if($('permissionStatus')){
+    $('permissionStatus').textContent=manager?'管理権限':'一般';
+    $('permissionStatus').classList.toggle('manager',manager);
+  }
+  if($('returnParticipantBtn'))$('returnParticipantBtn').classList.toggle('hidden',!manager);
+  if($('selfNameInput'))$('selfNameInput').value=SELF_NAME;
+}
+function openScheduleEdit(id){
+  const rec=schedule.find(x=>x.id===id);if(!rec)return;
+  if(!canEditRecord(rec)){toast('この予定を修正する権限がありません');return}
+  editingScheduleId=id;
+  $('editAthlete').value=rec.athlete||'';$('editEvent').value=rec.event||'';$('editHeat').value=rec.heat||'';
+  $('editCall').value=rec.call||'';$('editStart').value=rec.start||'';$('editNote').value=rec.note||'';
+  $('editScheduleModal').classList.remove('hidden');
+}
+function renderSchedule(){
+  const groups=groupedSchedule(),f=focusGroups();
+  const delayed=Number(progress.delayMin)>0;
+  applyRoleUI();
+  $('progressAlert').classList.toggle('delay',delayed);
+  $('progressAlertTitle').textContent=delayed?`遅延中 ＋${progress.delayMin}分`:'進行は予定どおり';
+  $('progressAlertSub').textContent=delayed?(progress.delayNote||'予定時刻ではなく実際の進行を確認してください。'):'NEXTは現時刻ではなく、実際の進行状態から表示します。';
+  setFocus('focusPrev','前の組',f.prev);
+  setFocus('focusCurrent','現在',f.running,f.running?'出走中':'進行確認中');
+  setFocus('focusNext','NEXT',f.next);
+  $('delayMinutes').value=progress.delayMin||0;$('delayNote').value=progress.delayNote||'';
+
+  if(scheduleView==='card'){
+    $('scheduleBody').className='scheduleCards';
+    $('scheduleBody').innerHTML=groups.map(g=>{
+      const st=statusOf(g.key), own=(g.records||[]).some(r=>r.athlete===SELF_NAME);
+      const cls=(st==='done'?'done ':st==='running'?'running ':st==='next'?'next ':'')+(own?'mine':'');
+      const badge=st==='done'?'<span class="statusBadge done">終了</span>':st==='running'?'<span class="statusBadge running">出走中</span>':st==='next'?'<span class="statusBadge next">NEXT</span>':'<span class="statusBadge">待機</span>';
+      const callLate=delayed?`<span class="timeLate">見込 ${addMin(g.call,progress.delayMin)}</span>`:'';
+      const startLate=delayed?`<span class="timeLate">見込 ${addMin(g.start,progress.delayMin)}</span>`:'';
+      const athletes=(g.records||[]).map(r=>{
+        const mine=r.athlete===SELF_NAME;
+        const edit=canEditRecord(r)?`<button class="editMini" data-edit="${esc(r.id)}">修正</button>`:'';
+        return `<div class="athleteRow ${mine?'mine':''}">
+          <div class="athleteName">${esc(r.athlete)}${mine?'<span class="selfBadge">自分</span>':''}</div>
+          ${edit}
+        </div>`;
+      }).join('');
+      return `<article class="scheduleCard ${cls}" data-cardkey="${esc(g.key)}">
+        <div class="scheduleCardTop">
+          <div class="scheduleRaceBlock"><b>${esc(g.event)} ${esc(g.heat)}</b><span>${g.note?esc(g.note):'補足なし'}</span></div>
+          ${badge}
+        </div>
+        <div class="scheduleTimes">
+          <div class="scheduleTimeBox"><small>召集</small><strong>${esc(g.call||'未定')}</strong>${callLate}</div>
+          <div class="scheduleTimeBox"><small>競技</small><strong>${esc(g.start||'未定')}</strong>${startLate}</div>
+        </div>
+        <div class="athleteBlock"><div class="athleteBlockTitle">選手</div><div class="athleteRows">${athletes}</div></div>
+        <div class="groupStateControl adminOnly">
+          <label>この組の進行状態</label>
+          <select class="groupStateSelect" data-statekey="${esc(g.key)}">
+            <option value="waiting" ${st==='waiting'?'selected':''}>待機中</option>
+            <option value="next" ${st==='next'?'selected':''}>次の組（NEXT）</option>
+            <option value="running" ${st==='running'?'selected':''}>現在出走中</option>
+            <option value="done" ${st==='done'?'selected':''}>終了</option>
+          </select>
+        </div>
+      </article>`;
+    }).join('');
+  }else{
+    $('scheduleBody').className='compactList';
+    const flat=groups.flatMap(g=>(g.records||[]).map(r=>({g,r})));
+    $('scheduleBody').innerHTML=flat.map(({g,r})=>{
+      const mine=r.athlete===SELF_NAME,st=statusOf(g.key);
+      const badge=st==='done'?'<span class="statusBadge done">終了</span>':st==='running'?'<span class="statusBadge running">出走中</span>':st==='next'?'<span class="statusBadge next">NEXT</span>':'<span class="statusBadge">待機</span>';
+      return `<div class="compactRow ${mine?'mine':''}">
+        <div class="compactTime">${esc(g.call||'未定')}</div>
+        <div class="compactMain">
+          <b>${esc(r.athlete)}${mine?'<span class="selfBadge">自分</span>':''}</b>
+          <span>${esc(g.event)} ${esc(g.heat)}｜競技 ${esc(g.start||'未定')}</span>
+        </div>
+        <div class="compactRight">${badge}${canEditRecord(r)?`<button class="compactEdit" data-edit="${esc(r.id)}">修正</button>`:''}</div>
+      </div>`;
+    }).join('');
+  }
+
+  $('scheduleBody').querySelectorAll('[data-statekey]').forEach(s=>s.onchange=()=>{setStatus(s.dataset.statekey,s.value);toast('進行状態を「'+s.options[s.selectedIndex].text+'」に変更しました')});
+  $('scheduleBody').querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openScheduleEdit(b.dataset.edit));
+  $('cardViewBtn').classList.toggle('on',scheduleView==='card');
+  $('listViewBtn').classList.toggle('on',scheduleView==='list');
+  updateHomeProgress();
+}
+$('cardViewBtn').onclick=()=>{scheduleView='card';renderSchedule()};
+$('listViewBtn').onclick=()=>{scheduleView='list';renderSchedule()};
+
+function setFocus(id,label,g,fallback){
+  const el=$(id);el.querySelector('small').textContent=label;
+  el.querySelector('b').textContent=g?`${g.event} ${g.heat}`:(fallback||'－');
+  el.querySelector('span').textContent=g?`${athleteNames(g).join('・')}｜競技 ${g.start}`:(fallback?'運営更新待ち':'－');
+}
+function updateHomeProgress(){
+  const f=focusGroups(),delayed=Number(progress.delayMin)>0;
+  if(delayed){
+    $('homeProgressTitle').textContent=`遅延中 ＋${progress.delayMin}分`;
+    $('homeProgressText').textContent=f.next?`NEXT：${focusText(f.next)}。前の組・全員一覧は予定画面で確認できます。`:(progress.delayNote||'実際の進行を確認してください。');
+  }else if(f.running){
+    $('homeProgressTitle').textContent=`出走中｜${f.running.event} ${f.running.heat}`;
+    $('homeProgressText').textContent=`${athleteNames(f.running).join('・')} ／ NEXT：${f.next?focusText(f.next):'未設定'}`;
+  }else if(f.next){
+    $('homeProgressTitle').textContent=`NEXT｜${f.next.event} ${f.next.heat}`;
+    $('homeProgressText').textContent=`${athleteNames(f.next).join('・')} ／ 召集 ${f.next.call} ／ 競技 ${f.next.start}`;
+  }else{
+    $('homeProgressTitle').textContent='会場・駐車場を確認';$('homeProgressText').textContent='実際の大会進行を反映して表示します。';
+  }
+}
+$('applyDelayBtn').onclick=()=>{progress.delayMin=Math.max(0,Number($('delayMinutes').value)||0);progress.delayNote=$('delayNote').value.trim();save(K.progress,progress);renderSchedule();toast('遅延を反映しました')};
+$('clearDelayBtn').onclick=()=>{progress.delayMin=0;progress.delayNote='';save(K.progress,progress);renderSchedule();toast('遅延表示を解除しました')};
+$('addScheduleBtn').onclick=()=>{const athlete=$('schAthlete').value.trim(),event=$('schEvent').value.trim(),heat=$('schHeat').value.trim(),call=$('schCall').value,start=$('schStart').value,note=$('schNote').value.trim();if(!athlete||!event)return toast('選手名と種目を入力してください');schedule.push({id:'s'+Date.now(),athlete,event,heat,call,start,note});save(K.schedule,schedule);['schAthlete','schEvent','schHeat','schCall','schStart','schNote'].forEach(id=>$(id).value='');renderSchedule();toast('一覧へ追加しました')};
+$('saveScheduleEditBtn').onclick=()=>{
+  const rec=schedule.find(x=>x.id===editingScheduleId);if(!rec)return;
+  if(!canEditRecord(rec)){toast('修正権限がありません');return}
+  const athlete=$('editAthlete').value.trim(),event=$('editEvent').value.trim();
+  if(!athlete||!event)return toast('選手名と種目を入力してください');
+  Object.assign(rec,{athlete,event,heat:$('editHeat').value.trim(),call:$('editCall').value,start:$('editStart').value,note:$('editNote').value.trim()});
+  save(K.schedule,schedule);$('editScheduleModal').classList.add('hidden');editingScheduleId=null;renderSchedule();toast('予定を修正しました');
+};
+$('cancelScheduleEditBtn').onclick=()=>{$('editScheduleModal').classList.add('hidden');editingScheduleId=null};
+
+
+/* MAP */
+function iconHtml(kind,count){
+  let cls='pin',txt='🏟️';if(kind==='駐車場'){cls+=' parking';txt='P'}if(kind==='拠点'){cls+=' base';txt='★'}if(kind==='現在地'){cls+=' me';txt='●'}if(kind==='cluster'){cls+=' cluster';txt=String(count)}
+  return L.divIcon({className:'leafPin',html:`<div class="${cls}">${txt}</div>`,iconSize:[42,42],iconAnchor:[21,21]});
+}
+function initVenueMap(){
+  if(venueMap||!window.L)return;
+  venueMap=L.map('venueMap',{zoomControl:true}).setView([EVENT.venue.lat,EVENT.venue.lng],15);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(venueMap);
+  renderVenueLayer();
+}
+function renderVenueLayer(){
+  if(!venueMap)return;
+  if(venueLayer)venueMap.removeLayer(venueLayer);venueLayer=L.layerGroup().addTo(venueMap);
+  [EVENT.venue,...EVENT.parking].forEach(p=>{
+    L.marker([p.lat,p.lng],{icon:iconHtml(p.kind)}).addTo(venueLayer).bindTooltip(p.name,{direction:'top'}).on('click',()=>openDestination(p));
+  });
+  if(base)L.marker([base.lat,base.lng],{icon:iconHtml('拠点')}).addTo(venueLayer).bindTooltip('運営拠点',{direction:'top'}).on('click',()=>openDestination({name:'運営拠点',kind:'拠点',lat:base.lat,lng:base.lng,desc:'到着後に設定した運営拠点です。'}));
+}
+function allVenuePts(){const a=[[EVENT.venue.lat,EVENT.venue.lng],...EVENT.parking.map(p=>[p.lat,p.lng])];if(base)a.push([base.lat,base.lng]);return a}
+function fitVenue(){initVenueMap();venueMap.fitBounds(allVenuePts(),{padding:[30,30],maxZoom:16})}
+function openDestination(p){currentDestination=p;$('destTitle').textContent=p.name;$('destType').textContent=p.kind;$('destCoord').textContent=`${p.lat.toFixed(7)}, ${p.lng.toFixed(7)}`;$('destDesc').textContent=p.desc||'外部ナビを起動できます。';$('destinationModal').classList.remove('hidden')}
+function directions(p,mode){return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.lat+','+p.lng)}&travelmode=${mode}`}
+$('destDriveBtn').onclick=()=>currentDestination&&window.open(directions(currentDestination,'driving'),'_blank','noopener');
+$('destWalkBtn').onclick=()=>currentDestination&&window.open(directions(currentDestination,'walking'),'_blank','noopener');
+$('destCloseBtn').onclick=()=>$('destinationModal').classList.add('hidden');
+$('fitVenueBtn').onclick=fitVenue;
+$('showMyPosBtn').onclick=()=>{if(!navigator.geolocation)return toast('位置情報を利用できません');navigator.geolocation.getCurrentPosition(pos=>{initVenueMap();const p=[pos.coords.latitude,pos.coords.longitude];if(myMarker)myMarker.setLatLng(p);else myMarker=L.marker(p,{icon:iconHtml('現在地')}).addTo(venueMap).bindTooltip('現在地');venueMap.setView(p,17)},e=>toast('現在地を取得できません'))};
+$('setBaseGpsBtn').onclick=()=>{if(!navigator.geolocation)return toast('位置情報を利用できません');navigator.geolocation.getCurrentPosition(pos=>{base={lat:pos.coords.latitude,lng:pos.coords.longitude};save(K.base,base);renderVenueLayer();renderPlaceList();toast('運営拠点を設定しました')},e=>toast('現在地を取得できません'))};
+$('venueMapModeBtn').onclick=()=>{$('venueMapModeBtn').classList.add('on');$('routeMapModeBtn').classList.remove('on');$('venueMap').classList.remove('hidden');$('routeEmpty').classList.add('hidden');setTimeout(()=>venueMap?.invalidateSize(),50)};
+$('routeMapModeBtn').onclick=()=>{$('routeMapModeBtn').classList.add('on');$('venueMapModeBtn').classList.remove('on');if(EVENT.route){$('routeEmpty').classList.add('hidden')}else{$('venueMap').classList.add('hidden');$('routeEmpty').classList.remove('hidden')}};
+function renderPlaceList(){const pts=[EVENT.venue,...EVENT.parking,...(base?[{id:'base',name:'運営拠点',kind:'拠点',lat:base.lat,lng:base.lng,desc:'到着後に設定した運営拠点です。'}]:[])];$('placeList').innerHTML=pts.map(p=>`<button class="placeRow" data-id="${esc(p.id)}"><div class="placeIcon">${p.kind==='駐車場'?'P':p.kind==='拠点'?'★':'🏟️'}</div><div><b>${esc(p.name)}</b><span>${esc(p.kind)}</span></div><span class="routeBadge">案内 ›</span></button>`).join('');$('placeList').querySelectorAll('[data-id]').forEach(b=>{const p=pts.find(x=>x.id===b.dataset.id);b.onclick=()=>openDestination(p)})}
+
+/* LIVE */
+function initLiveMap(){
+  if(liveMap||!window.L)return;
+  liveMap=L.map('liveMap',{zoomControl:true}).setView([EVENT.venue.lat,EVENT.venue.lng],16);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(liveMap);
+  renderLiveMap();
+}
+function liveMembers(){const a=people.filter(p=>p.status==='共有中'&&Number.isFinite(p.lat));if(shareState.on&&shareState.last)a.unshift({name:'あなた',role:'参加者',status:'共有中',lat:shareState.last.lat,lng:shareState.last.lng});return a}
+function cluster(members){
+  const groups=[];
+  members.forEach(p=>{let g=groups.find(x=>Math.hypot((x.lat-p.lat)*111000,(x.lng-p.lng)*91000)<18);if(!g){g={lat:p.lat,lng:p.lng,people:[]};groups.push(g)}g.people.push(p)});
+  return groups;
+}
+function renderLiveMap(){
+  if(!liveMap)return;
+  if(liveLayer)liveMap.removeLayer(liveLayer);liveLayer=L.layerGroup().addTo(liveMap);
+  L.marker([EVENT.venue.lat,EVENT.venue.lng],{icon:iconHtml('会場')}).addTo(liveLayer).bindTooltip('大会開催場所');
+  cluster(liveMembers()).forEach(g=>{
+    const kind=g.people.length>1?'cluster':'現在地',m=L.marker([g.lat,g.lng],{icon:iconHtml(kind,g.people.length)}).addTo(liveLayer);
+    m.bindTooltip(g.people.length>1?`${g.people.length}人`:g.people[0].name).on('click',()=>openCluster(g.people));
+  });
+}
+function openCluster(list){$('clusterPeople').innerHTML=list.map(p=>`<div class="person"><div class="avatar">${esc(p.name.slice(0,1))}</div><div><b>${esc(p.name)}</b><small>${esc(p.role)}｜共有中</small></div><span class="dot on"></span></div>`).join('');$('clusterModal').classList.remove('hidden')}
+$('clusterCloseBtn').onclick=()=>$('clusterModal').classList.add('hidden');
+function renderPeople(){const rows=liveMembers().length?liveMembers():people;$('personList').innerHTML=rows.map(p=>`<div class="person"><div class="avatar">${esc(p.name.slice(0,1))}</div><div><b>${esc(p.name)}</b><small>${esc(p.role)}｜${esc(p.status)}</small></div><span class="dot ${p.status==='共有中'?'on':''}"></span></div>`).join('');const on=shareState.on;$('privacyStatus').classList.toggle('warn',!on);$('privacyStatus').innerHTML=on?'<strong>位置共有はONです</strong><div>必要な時間だけ共有します。</div>':'<strong>位置共有はOFFです</strong><div>必要な時間だけONにします。</div>';$('toggleShareBtn').textContent=on?'位置共有をOFF':'位置共有をON'}
+function renderLive(){initLiveMap();renderLiveMap();renderPeople()}
+$('toggleShareBtn').onclick=()=>{if(shareState.on){if(shareWatch!==null)navigator.geolocation.clearWatch(shareWatch);shareWatch=null;shareState={on:false,last:null};save(K.share,shareState);renderLive();return}if(!navigator.geolocation)return toast('位置情報を利用できません');shareState.on=true;save(K.share,shareState);renderLive();shareWatch=navigator.geolocation.watchPosition(pos=>{shareState={on:true,last:{lat:pos.coords.latitude,lng:pos.coords.longitude}};save(K.share,shareState);renderLive()},()=>toast('位置情報を取得できません'),{enableHighAccuracy:true})};
+$('mockOverlapBtn').onclick=()=>{people=[{id:'1',name:'指導者A',role:'指導者',status:'共有中',lat:EVENT.venue.lat+.00010,lng:EVENT.venue.lng+.00008},{id:'2',name:'選手A',role:'選手',status:'共有中',lat:EVENT.venue.lat+.00011,lng:EVENT.venue.lng+.00008},{id:'3',name:'選手B',role:'選手',status:'共有中',lat:EVENT.venue.lat+.00010,lng:EVENT.venue.lng+.00009},{id:'4',name:'選手C',role:'選手',status:'共有中',lat:EVENT.venue.lat-.0007,lng:EVENT.venue.lng+.0005}];save(K.people,people);renderLive();toast('重なり表示テストを配置しました')};
+
+/* BOARD */
+function renderNotices(){$('noticeList').innerHTML=notices.slice().reverse().map(n=>`<article class="notice"><div class="noticeThumb" ${n.image?`style="background-image:url('${n.image.replace(/'/g,"%27")}')"`:''}>${n.image?'':n.type==='大会要項'?'📘':n.type==='速報結果'?'⚡':'📢'}</div><div><h3>${esc(n.title)}</h3><p class="noticeBody">${esc(n.body)}</p><div class="noticeMeta"><span>${esc(n.type)}</span><span>${n.retention==='persistent'?'保持':'終了時削除'}</span></div>${n.link?`<button class="linkBtn" data-link="${esc(n.link)}">↗ 外部リンク</button>`:''}</div></article>`).join('');$('noticeList').querySelectorAll('[data-link]').forEach(b=>b.onclick=()=>window.open(b.dataset.link,'_blank','noopener'))}
+$('addNoticeBtn').onclick=()=>$('noticeModal').classList.remove('hidden');$('cancelNoticeBtn').onclick=()=>$('noticeModal').classList.add('hidden');
+$('saveNoticeBtn').onclick=async()=>{const title=$('noticeTitle').value.trim();if(!title)return toast('タイトルを入力してください');const image=await fileData($('noticeImage').files?.[0]);notices.push({id:'n'+Date.now(),type:$('noticeType').value,title,body:$('noticeBody').value.trim(),link:$('noticeLink').value.trim(),image,retention:$('noticeRetention').value,createdAt:Date.now()});save(K.notices,notices);$('noticeModal').classList.add('hidden');renderNotices()};
+$('heroImageBtn').onclick=()=>$('heroImageInput').click();$('heroImageInput').onchange=async()=>{const x=await fileData($('heroImageInput').files?.[0]);save(K.hero,x);renderHero()};
+function renderHero(){const x=load(K.hero,'');$('heroImage').style.backgroundImage=x?`url("${x}")`:''}
+
+/* CHAT */
+let sharedView='image';
+
+function staffRoleClass(role){
+  return role==='admin'?'role-admin':role==='leader'?'role-leader':role==='coach'?'role-coach':'';
+}
+function staffBadge(role){
+  if(role==='admin')return '<span class="staffBadge">管理者</span>';
+  if(role==='leader')return '<span class="staffBadge">指導者</span>';
+  if(role==='coach')return '<span class="staffBadge">コーチ</span>';
+  return '';
+}
+function renderShared(){
+  $('imageCount').textContent=String(messages.filter(m=>m.image).length);
+  $('linkCount').textContent=String(messages.filter(m=>m.link).length);
+  $('sharedImageBtn').classList.toggle('on',sharedView==='image');
+  $('sharedLinkBtn').classList.toggle('on',sharedView==='link');
+  const root=$('sharedContent');
+  if(sharedView==='image'){
+    const imgs=messages.slice().sort((a,b)=>b.ts-a.ts).filter(m=>m.image);
+    root.innerHTML=imgs.length?'<div class="assetGrid">'+imgs.map(m=>`<button class="assetCard" data-img="${esc(m.id)}"><div class="assetThumb" style="background-image:url('${m.image.replace(/'/g,"%27")}')"></div><div class="assetMeta"><b>${esc(m.name)}</b><span>${new Date(m.ts).toLocaleString('ja-JP')}</span></div></button>`).join('')+'</div>':'<div class="chatEmpty">共有画像はまだありません。</div>';
+    root.querySelectorAll('[data-img]').forEach(b=>{const m=messages.find(x=>x.id===b.dataset.img);b.onclick=()=>window.open(m.image,'_blank')});
+  }else{
+    const links=messages.slice().sort((a,b)=>b.ts-a.ts).filter(m=>m.link);
+    root.innerHTML=links.length?'<div class="linkList">'+links.map(m=>`<button class="linkCard" data-lid="${esc(m.id)}"><b>↗ ${esc(m.name)}</b><span>${esc(m.link)}</span></button>`).join('')+'</div>':'<div class="chatEmpty">共有リンクはまだありません。</div>';
+    root.querySelectorAll('[data-lid]').forEach(b=>{const m=messages.find(x=>x.id===b.dataset.lid);b.onclick=()=>window.open(m.link,'_blank','noopener')});
+  }
+}
+function renderChat(){
+  const sorted=messages.slice().sort((a,b)=>b.ts-a.ts);
+  const latest=sorted[0];
+  $('latestBox').innerHTML=latest
+    ? `<small>最新</small><b>${esc(latest.name)}${staffBadge(latest.role)}</b><div class="messageText">${esc(latest.text||'(画像・リンク投稿)')}</div>`
+    : '<small>最新</small><b>投稿はありません</b>';
+
+  const root=$('chatContent');
+  root.innerHTML=sorted.length?'<div class="chatList">'+sorted.map((m,i)=>{
+    const roleClass=staffRoleClass(m.role);
+    const inlineImg=m.image?`<div class="chatInlineMedia"><img src="${m.image}" alt=""></div>`:'';
+    const inlineLink=m.link?`<button class="chatInlineLink" data-inline-link="${esc(m.id)}">↗ リンクを開く</button>`:'';
+    return `<div class="chatMsg ${i===0?'latest ':''}${roleClass}">
+      <div class="chatHead"><span><b>${esc(m.name)}</b>${staffBadge(m.role)}</span><span>${new Date(m.ts).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})}</span></div>
+      <div class="messageText">${esc(m.text||'(添付のみ)')}</div>
+      ${inlineImg}${inlineLink}
+    </div>`;
+  }).join('')+'</div>':'<div class="chatEmpty">まだメッセージはありません。</div>';
+  root.querySelectorAll('[data-inline-link]').forEach(b=>{const m=messages.find(x=>x.id===b.dataset.inlineLink);b.onclick=()=>window.open(m.link,'_blank','noopener')});
+  renderShared();
+}
+
+$('sharedToggleBtn').onclick=()=>{
+  $('sharedPanel').classList.toggle('open');
+  $('sharedToggleBtn').textContent=$('sharedPanel').classList.contains('open')?'画像・リンクを閉じる':'画像・リンクを見る';
+  renderShared();
+};
+$('sharedImageBtn').onclick=()=>{sharedView='image';renderShared()};
+$('sharedLinkBtn').onclick=()=>{sharedView='link';renderShared()};
+
+$('attachBtn').onclick=()=>{
+  $('attachPanel').classList.toggle('open');
+};
+$('addLinkBtn').onclick=()=>{
+  $('linkInputWrap').classList.toggle('open');
+  if($('linkInputWrap').classList.contains('open'))setTimeout(()=>$('chatLink').focus(),20);
+};
+$('chatImage').onchange=async()=>{
+  pendingChatImage=await fileData($('chatImage').files?.[0]);
+  renderPendingAttachments();
+};
+$('chatLink').oninput=renderPendingAttachments;
+
+function renderPendingAttachments(){
+  const bits=[];
+  if(pendingChatImage)bits.push('<span class="pendingChip">📷 画像</span>');
+  if($('chatLink').value.trim())bits.push('<span class="pendingChip">🔗 リンク</span>');
+  $('pendingAttachment').innerHTML=bits.join('');
+}
+$('sendChatBtn').onclick=()=>{
+  const text=$('chatText').value.trim(),link=$('chatLink').value.trim();
+  if(!text&&!link&&!pendingChatImage)return toast('メッセージを入力してください');
+  messages.push({
+    id:'c'+Date.now(),
+    name:currentRole==='self'?SELF_NAME:roleLabel(),
+    role:currentRole,
+    text,
+    link,
+    image:pendingChatImage,
+    ts:Date.now()
+  });
+  save(K.chat,messages);
+  $('chatText').value='';$('chatLink').value='';$('chatImage').value='';
+  pendingChatImage='';$('pendingAttachment').innerHTML='';
+  $('attachPanel').classList.remove('open');$('linkInputWrap').classList.remove('open');
+  renderChat();toast('送信しました');
+};
+
+/* COMMON */
+function showTab(tab){
+  document.querySelectorAll('.tabPage').forEach(p=>p.classList.toggle('active',p.id==='page-'+tab));
+  document.querySelectorAll('.navBtn').forEach(b=>{const on=b.dataset.tab===tab;b.classList.toggle('on',on);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
+  window.scrollTo({top:0,behavior:'instant'});
+  if(tab==='map'){initVenueMap();setTimeout(()=>{venueMap.invalidateSize();fitVenue()},60)}
+  if(tab==='live'){initLiveMap();setTimeout(()=>{liveMap.invalidateSize();renderLive()},60)}
+}
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>showTab(b.dataset.go));
+$('adminBtn').onclick=()=>{
+  applyRoleUI();
+  $('managerCodeInput').value='';
+  $('roleModal').classList.remove('hidden');
+};
+$('saveSelfNameBtn').onclick=()=>{
+  const n=$('selfNameInput').value.trim();
+  if(!n)return toast('表示名を入力してください');
+  SELF_NAME=n;save(K.selfName,SELF_NAME);applyRoleUI();renderSchedule();renderChat();toast('表示名を保存しました');
+};
+$('unlockManagerBtn').onclick=()=>{
+  if($('managerCodeInput').value!==TEST_MANAGER_CODE){
+    toast('テストコードが違います');return;
+  }
+  currentRole=$('managerRoleSelect').value;
+  save(K.role,currentRole);
+  $('managerCodeInput').value='';
+  applyRoleUI();$('adminBtn').classList.add('on');
+  renderSchedule();renderNotices();renderPlaceList();renderChat();
+  toast(roleLabel()+'権限でテストします');
+};
+$('returnParticipantBtn').onclick=()=>{
+  currentRole='self';save(K.role,currentRole);applyRoleUI();$('adminBtn').classList.remove('on');
+  renderSchedule();renderNotices();renderPlaceList();renderChat();toast('参加者表示に戻しました');
+};
+$('closeRoleBtn').onclick=()=>$('roleModal').classList.add('hidden');
+$('privacyBtn').onclick=()=>showTab('live');
+$('closeEventBtn').onclick=()=>{if(!confirm('CHATとLIVE位置情報を削除しますか？'))return;messages=[];people=people.map(p=>({...p,status:'未共有',lat:null,lng:null}));shareState={on:false,last:null};save(K.chat,messages);save(K.people,people);save(K.share,shareState);renderChat();renderLive();toast('一時データを削除しました')};
+
+applyRoleUI();$('adminBtn').classList.toggle('on',currentRole!=='self');renderHero();renderNotices();renderSchedule();renderPlaceList();renderPeople();renderChat();updateCountdown();setInterval(updateCountdown,60000);
+})();
+</script>
+</body>
+</html>
