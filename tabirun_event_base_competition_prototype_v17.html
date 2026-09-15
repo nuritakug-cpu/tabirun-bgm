@@ -1,0 +1,605 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#112f3a">
+<title>TABIRUN EVENT BASE v17</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{
+  --bg:#f5f8f9;--card:#fff;--ink:#18343d;--muted:#6e8187;--line:#d6e2e5;
+  --brand:#0d6678;--dark:#112f3a;--soft:#eaf5f7;--warn:#b96a13;--danger:#b53c45;
+  --shadow:0 10px 28px rgba(14,53,64,.08)
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;line-height:1.55}
+body{padding-bottom:92px}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+.hidden{display:none!important}
+.top{
+  position:sticky;top:0;z-index:900;background:var(--dark);color:#fff;
+  padding:10px 14px calc(10px + env(safe-area-inset-top));
+  box-shadow:0 3px 14px rgba(0,0,0,.12)
+}
+.topRow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.logo{width:42px;height:42px;border-radius:13px;background:linear-gradient(135deg,#53b7c4,#fff);display:grid;place-items:center;color:var(--dark);font-weight:1000;font-size:20px;flex:none}
+.brandText{min-width:0}
+.brandText b{display:block;font-size:17px;white-space:nowrap}
+.brandText span{display:block;color:#c7d8dd;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.iconBtn{width:46px;height:46px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;border-radius:14px;font-size:23px}
+.page{display:none}
+.page.active{display:block}
+main{max-width:920px;margin:0 auto;padding:14px}
+.hero{background:linear-gradient(135deg,#0e6476,#163742);color:#fff;border-radius:0 0 24px 24px;padding:22px 18px;margin-bottom:14px}
+.hero h1{margin:0 0 8px;font-size:31px;line-height:1.22}
+.heroMeta{display:flex;gap:7px;flex-wrap:wrap}
+.heroMeta span{background:rgba(255,255,255,.12);padding:6px 8px;border-radius:9px;font-size:13px;white-space:nowrap}
+.stateBanner{margin-top:14px;border:1px solid rgba(255,255,255,.22);border-radius:15px;padding:11px 12px;background:rgba(255,255,255,.08)}
+.stateBanner strong{display:block;font-size:18px}
+.section{margin-bottom:17px}
+.sectionHead{display:flex;justify-content:space-between;gap:10px;align-items:end;margin:0 2px 8px}
+.sectionHead h2{margin:0;font-size:21px}
+.sectionHead span{color:var(--muted);font-size:12px;text-align:right}
+.card{background:var(--card);border:1px solid var(--line);border-radius:19px;box-shadow:var(--shadow);padding:14px}
+.quickGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
+.quick{border:0;background:#fff;border-radius:17px;padding:14px;text-align:left;box-shadow:var(--shadow);min-height:98px;color:var(--ink)}
+.quick i{font-style:normal;font-size:24px;display:block}
+.quick b{display:block;margin-top:5px;font-size:17px}
+.quick span{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.docs{display:grid;gap:8px}
+.docItem{display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:center;border:1px solid var(--line);background:#fff;border-radius:15px;padding:11px;text-align:left;color:var(--ink)}
+.docIcon{width:44px;height:44px;border-radius:12px;background:#edf4f5;display:grid;place-items:center;font-size:22px}
+.docItem b{display:block;font-size:16px}
+.docItem span{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.docItem .arrow{font-size:18px;color:var(--brand);font-weight:1000}
+.docItem.disabled{opacity:.55}
+.notice{padding:11px 12px;border:1px solid var(--line);background:#fff;border-radius:15px;margin-bottom:8px}
+.notice b{display:block}
+.notice span{font-size:13px;color:var(--muted)}
+.bottomNav{
+  position:fixed;left:0;right:0;bottom:0;z-index:1000;background:rgba(255,255,255,.97);
+  display:grid;grid-template-columns:repeat(5,1fr);gap:3px;padding:7px 7px calc(7px + env(safe-area-inset-bottom));
+  border-top:1px solid var(--line);backdrop-filter:blur(12px)
+}
+.navBtn{border:0;background:transparent;border-radius:14px;padding:7px 2px;color:#74858b;font-size:11px;font-weight:900}
+.navBtn i{display:block;font-style:normal;font-size:21px}
+.navBtn.on{background:#e8f5f7;color:var(--brand);box-shadow:inset 0 0 0 1px #c8e1e6}
+.manageTop{position:sticky;top:67px;z-index:200;background:rgba(245,248,249,.97);padding:10px 14px;border-bottom:1px solid var(--line);backdrop-filter:blur(10px)}
+.backBtn{border:0;background:var(--dark);color:#fff;border-radius:13px;padding:11px 13px;font-weight:1000}
+.manageMenu{display:grid;gap:9px}
+.manageItem{display:grid;grid-template-columns:42px 1fr auto;gap:10px;align-items:center;border:1px solid var(--line);background:#fff;border-radius:16px;padding:12px;text-align:left;color:var(--ink)}
+.manageItem i{width:42px;height:42px;border-radius:12px;background:#edf4f5;display:grid;place-items:center;font-style:normal;font-size:21px}
+.manageItem b{display:block;font-size:16px}
+.manageItem span{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.manageItem.adminExtra{border-color:#d9c598;background:#fffaf0}
+.editor{display:none}
+.editor.active{display:block}
+.editorHead{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.editorHead button{border:0;background:#edf3f5;color:var(--brand);border-radius:11px;padding:9px 10px;font-weight:1000}
+.editorHead h2{margin:0;font-size:22px}
+.field{margin-bottom:11px}
+.field label{display:block;font-size:13px;font-weight:1000;margin-bottom:5px}
+.field input,.field select,.field textarea{width:100%;border:1px solid #c7d8dc;border-radius:13px;background:#fff;padding:12px;font-size:16px;min-height:48px}
+.field textarea{min-height:90px;resize:vertical}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.primary,.ghost,.danger{border:0;border-radius:12px;padding:11px 13px;font-weight:1000;min-height:46px}
+.primary{background:var(--brand);color:#fff}
+.ghost{background:#edf3f5;color:var(--ink)}
+.danger{background:#fff0f1;color:var(--danger);border:1px solid #efc4c8}
+.statusBox{border:1px solid var(--line);border-radius:14px;padding:11px;background:#f7fafb;margin-bottom:10px}
+.statusBox strong{display:block}
+.statusBox span{font-size:12px;color:var(--muted)}
+.fileState{margin-top:7px;padding:9px 10px;background:#f5f8f9;border-radius:11px;font-size:13px;color:var(--muted)}
+.playerList{display:grid;gap:8px;margin-top:10px}
+.player{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:10px 11px;border:1px solid var(--line);background:#fff;border-radius:13px}
+.player b{display:block}.player span{font-size:12px;color:var(--muted)}
+.playerActions{display:flex;gap:5px}
+.playerActions button{border:0;border-radius:9px;padding:7px 8px;font-size:12px;font-weight:1000}
+.scheduleCards{display:grid;gap:9px}
+.scheduleCard{background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px}
+.scheduleCard h3{margin:0 0 7px;font-size:19px}
+.scheduleMeta{display:flex;gap:6px;flex-wrap:wrap}
+.scheduleMeta span{background:#eef4f5;border-radius:999px;padding:5px 8px;font-size:12px}
+.chatList{display:grid;gap:8px;margin-bottom:10px}
+.msg{padding:10px 11px;border:1px solid var(--line);background:#fff;border-radius:14px}
+.msg.staff{background:#eef7f8;border-color:#9ecad1}
+.msgHead{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--muted)}
+.msg p{margin:5px 0 0}
+.chatComposer{position:sticky;bottom:83px;background:rgba(245,248,249,.96);padding:8px 0}
+.chatBox{display:grid;grid-template-columns:1fr auto;gap:7px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:7px}
+.chatBox textarea{border:0;outline:0;resize:none;min-height:44px;padding:9px 7px;font-size:16px}
+.mapBox{height:55vh;min-height:390px;border-radius:18px;overflow:hidden;border:1px solid var(--line)}
+.toast{position:fixed;left:50%;bottom:104px;transform:translateX(-50%);z-index:1400;background:var(--dark);color:#fff;border-radius:12px;padding:10px 12px;font-size:13px;box-shadow:var(--shadow);max-width:90%}
+.modal{position:fixed;inset:0;z-index:1500;background:rgba(7,25,31,.56);display:grid;place-items:end center;padding:18px}
+.modalCard{width:min(720px,100%);max-height:88vh;overflow:auto;background:#fff;border-radius:22px;padding:16px}
+.viewer{width:100%;height:68vh;border:1px solid var(--line);border-radius:12px}
+@media(max-width:500px){.sectionHead span{display:none}.brandText b{font-size:15px}.hero h1{font-size:28px}}
+
+/* === v17 PDF VIEWER FIX === */
+.pdfModal{
+  position:fixed;
+  inset:0;
+  z-index:1800;
+  background:#eef3f4;
+  display:flex;
+  flex-direction:column;
+  padding:0;
+}
+.pdfModal.hidden{display:none!important}
+.pdfTopbar{
+  position:relative;
+  z-index:5;
+  flex:0 0 auto;
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  align-items:center;
+  gap:8px;
+  min-height:64px;
+  padding:calc(8px + env(safe-area-inset-top)) 10px 8px;
+  background:#112f3a;
+  color:#fff;
+  box-shadow:0 2px 10px rgba(0,0,0,.18);
+}
+.pdfBackBtn,.pdfExternalBtn{
+  border:1px solid rgba(255,255,255,.24);
+  background:rgba(255,255,255,.10);
+  color:#fff;
+  border-radius:12px;
+  min-height:44px;
+  padding:9px 11px;
+  font-weight:1000;
+  white-space:nowrap;
+  touch-action:manipulation;
+}
+.pdfTitleWrap{min-width:0}
+.pdfTitleWrap b{
+  display:block;
+  font-size:15px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.pdfTitleWrap span{
+  display:block;
+  font-size:11px;
+  color:#c9d8dc;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.pdfViewport{
+  flex:1 1 auto;
+  min-height:0;
+  overflow:hidden;
+  background:#d9e1e3;
+}
+.pdfFrame{
+  display:block;
+  width:100%;
+  height:100%;
+  border:0;
+  background:#fff;
+  touch-action:pan-x pan-y;
+}
+body.pdfOpen{
+  overflow:hidden;
+  position:fixed;
+  width:100%;
+}
+
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="topRow">
+    <div class="brand">
+      <div class="logo">TR</div>
+      <div class="brandText"><b>TABIRUN EVENT BASE</b><span>大会試作 v17｜保存処理安定化</span></div>
+    </div>
+    <button class="iconBtn" id="settingsBtn" aria-label="設定">⚙</button>
+  </div>
+</header>
+
+<section class="page active" id="page-home">
+  <div class="hero">
+    <h1>知多スポーツチャレンジ 2026</h1>
+    <div class="heroMeta"><span>2026.10.4（日）</span><span>12:30 START</span><span>終了 未定</span></div>
+    <div class="stateBanner"><strong id="homeEventState">開催予定</strong><span id="homeEventNote">大会情報を確認してください。</span></div>
+  </div>
+  <main>
+    <section class="section">
+      <div class="sectionHead"><h2>大会メニュー</h2><span>全員共通</span></div>
+      <div class="quickGrid">
+        <button class="quick" data-go="map"><i>🗺️</i><b>会場MAP</b><span>会場・駐車場</span></button>
+        <button class="quick" data-go="schedule"><i>⏱️</i><b>予定</b><span>選手・種目・召集</span></button>
+        <button class="quick" data-go="live"><i>📡</i><b>LIVE</b><span>位置共有</span></button>
+        <button class="quick" data-go="chat"><i>💬</i><b>CHAT</b><span>連絡</span></button>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="sectionHead"><h2>大会資料</h2><span>HOMEから直接確認</span></div>
+      <div class="docs" id="homeDocs"></div>
+    </section>
+
+    <section class="section">
+      <div class="sectionHead"><h2>お知らせ</h2><span>終了後も保持可能</span></div>
+      <div id="noticeList"></div>
+    </section>
+  </main>
+</section>
+
+<section class="page" id="page-map">
+  <main>
+    <div class="sectionHead"><h2>会場MAP</h2><span>Googleは外部案内のみ</span></div>
+    <div id="map" class="mapBox"></div>
+  </main>
+</section>
+
+<section class="page" id="page-schedule">
+  <main>
+    <div class="sectionHead"><h2>タイムスケジュール</h2><span>参加者表示</span></div>
+    <div class="statusBox" id="delayPublicBox"><strong>遅延なし</strong><span>実際の進行状況を反映します。</span></div>
+    <div class="scheduleCards" id="publicSchedule"></div>
+  </main>
+</section>
+
+<section class="page" id="page-live">
+  <main>
+    <div class="sectionHead"><h2>LIVE・位置共有</h2><span>試作</span></div>
+    <div class="card"><strong>位置共有は今後Firebase接続後に実地テスト</strong><div style="color:var(--muted);font-size:13px;margin-top:5px">HOMEや管理画面とは分離して開発します。</div></div>
+  </main>
+</section>
+
+<section class="page" id="page-chat">
+  <main>
+    <div class="sectionHead"><h2>CHAT・連絡</h2><span>文字入力＋送信</span></div>
+    <div class="chatList" id="chatList"></div>
+    <div class="chatComposer">
+      <div class="chatBox">
+        <textarea id="chatInput" placeholder="メッセージを入力"></textarea>
+        <button class="primary" id="chatSendBtn">送信</button>
+      </div>
+    </div>
+  </main>
+</section>
+
+<section class="page" id="page-manage">
+  <div class="manageTop"><button class="backBtn" id="manageHomeBtn">← HOMEへ戻る</button></div>
+  <main>
+    <div id="manageMenuView">
+      <div class="sectionHead"><h2>設定・管理</h2><span>管理者／指導者／コーチ向け</span></div>
+      <div class="manageMenu">
+        <button class="manageItem" data-editor="maininfo"><i>🏁</i><span><b>大会主要情報</b><span>開催・中止・変更</span></span><b>›</b></button>
+        <button class="manageItem" data-editor="delay"><i>⏳</i><span><b>遅延</b><span>追加・修正・削除</span></span><b>›</b></button>
+        <button class="manageItem" data-editor="players"><i>👥</i><span><b>選手</b><span>追加・修正・削除</span></span><b>›</b></button>
+        <button class="manageItem" data-editor="guidelines"><i>📘</i><span><b>大会要項</b><span>PDF追加・削除</span></span><b>›</b></button>
+        <button class="manageItem" data-editor="startlist"><i>📋</i><span><b>スタートリスト</b><span>PDF追加・削除</span></span><b>›</b></button>
+        <button class="manageItem" data-editor="eventSchedule"><i>🗓️</i><span><b>大会スケジュール</b><span>PDF追加・削除</span></span><b>›</b></button>
+        <button class="manageItem" data-editor="results"><i>⚡</i><span><b>大会速報</b><span>リンク追加・削除</span></span><b>›</b></button>
+        <div class="sectionHead" style="margin-top:8px"><h2 style="font-size:17px">管理者のみ</h2><span>本番は権限で表示制御</span></div>
+        <button class="manageItem adminExtra" data-editor="sharing"><i>📡</i><span><b>共有情報の操作</b><span>位置情報・共有データ</span></span><b>›</b></button>
+        <button class="manageItem adminExtra" data-editor="chatAdmin"><i>🧹</i><span><b>CHAT管理</b><span>投稿削除</span></span><b>›</b></button>
+      </div>
+    </div>
+
+    <div id="editorView" class="hidden">
+      <div class="editorHead"><button id="editorBackBtn">← 管理メニュー</button><h2 id="editorTitle"></h2></div>
+
+      <section class="editor" id="editor-maininfo">
+        <div class="card">
+          <div class="field"><label>大会状態</label><select id="eventStateInput"><option>開催予定</option><option>開催</option><option>中止</option><option>変更あり</option></select></div>
+          <div class="field"><label>変更・案内内容</label><textarea id="eventNoteInput" placeholder="例：開始時刻を13:00に変更"></textarea></div>
+          <button class="primary" id="saveMainInfoBtn">保存</button>
+        </div>
+      </section>
+
+      <section class="editor" id="editor-delay">
+        <div class="card">
+          <div class="statusBox" id="delayCurrentState"><strong>未登録</strong><span>遅延情報はありません。</span></div>
+          <div class="field"><label>遅延（分）</label><input id="delayMinInput" type="number" min="0" value="0"></div>
+          <div class="field"><label>理由・補足</label><input id="delayNoteInput" placeholder="例：競技進行 約15分遅れ"></div>
+          <div class="actions"><button class="primary" id="saveDelayBtn">追加・修正</button><button class="danger" id="deleteDelayBtn">削除</button></div>
+        </div>
+      </section>
+
+      <section class="editor" id="editor-players">
+        <div class="card">
+          <input type="hidden" id="playerIdInput">
+          <div class="field"><label>選手名</label><input id="playerNameInput" placeholder="例：選手A"></div>
+          <div class="field"><label>種目</label><input id="playerEventInput" placeholder="例：3000m"></div>
+          <div class="field"><label>組</label><input id="playerHeatInput" placeholder="例：5組"></div>
+          <div class="field"><label>召集</label><input id="playerCallInput" type="time"></div>
+          <div class="field"><label>競技</label><input id="playerStartInput" type="time"></div>
+          <div class="actions"><button class="primary" id="savePlayerBtn">追加・修正</button><button class="ghost" id="clearPlayerBtn">入力クリア</button></div>
+        </div>
+        <div class="playerList" id="managePlayerList"></div>
+      </section>
+
+      <section class="editor" id="editor-guidelines">
+        <div class="card">
+          <div class="field"><label>大会要項 PDF</label><input id="guidelinesInput" type="file" accept=".pdf,application/pdf"></div>
+          <div class="fileState" id="guidelinesState">未登録</div>
+          <div class="actions" style="margin-top:9px"><button class="primary" id="saveGuidelinesBtn">選択したPDFを保存</button><button class="ghost" id="openGuidelinesBtn">開く</button><button class="danger" id="deleteGuidelinesBtn">削除</button></div>
+        </div>
+      </section>
+
+      <section class="editor" id="editor-startlist">
+        <div class="card">
+          <div class="field"><label>スタートリスト PDF</label><input id="startlistInput" type="file" accept=".pdf,application/pdf"></div>
+          <div class="fileState" id="startlistState">未登録</div>
+          <div class="actions" style="margin-top:9px"><button class="primary" id="saveStartlistBtn">選択したPDFを保存</button><button class="ghost" id="openStartlistBtn">開く</button><button class="danger" id="deleteStartlistBtn">削除</button></div>
+        </div>
+      </section>
+
+      <section class="editor" id="editor-eventSchedule">
+        <div class="card">
+          <div class="field"><label>大会スケジュール PDF</label><input id="eventScheduleInput" type="file" accept=".pdf,application/pdf"></div>
+          <div class="fileState" id="eventScheduleState">未登録</div>
+          <div class="actions" style="margin-top:9px"><button class="primary" id="saveEventScheduleBtn">選択したPDFを保存</button><button class="ghost" id="openEventScheduleBtn">開く</button><button class="danger" id="deleteEventScheduleBtn">削除</button></div>
+        </div>
+      </section>
+
+      <section class="editor" id="editor-results">
+        <div class="card">
+          <div class="field"><label>大会速報 URL</label><input id="resultsInput" type="url" inputmode="url" placeholder="https://..."></div>
+          <div class="fileState" id="resultsState">未登録</div>
+          <div class="actions" style="margin-top:9px"><button class="primary" id="saveResultsBtn">保存</button><button class="ghost" id="openResultsBtn">開く</button><button class="danger" id="deleteResultsBtn">削除</button></div>
+        </div>
+      </section>
+
+      <section class="editor" id="editor-sharing">
+        <div class="card"><strong>共有情報の操作</strong><p style="color:var(--muted);font-size:13px">Firebase接続後に、共有停止・位置情報削除をここに実装します。</p><button class="danger" id="clearSharingBtn">共有情報を削除（試作）</button></div>
+      </section>
+
+      <section class="editor" id="editor-chatAdmin">
+        <div class="card"><strong>CHAT管理</strong><p style="color:var(--muted);font-size:13px">管理者だけが投稿全削除を実行できます。</p><button class="danger" id="clearChatBtn">CHATを全削除</button></div>
+      </section>
+    </div>
+  </main>
+</section>
+
+<nav class="bottomNav">
+  <button class="navBtn on" data-tab="home"><i>⌂</i>HOME</button>
+  <button class="navBtn" data-tab="map"><i>🗺</i>MAP</button>
+  <button class="navBtn" data-tab="schedule"><i>⏱</i>予定</button>
+  <button class="navBtn" data-tab="live"><i>📡</i>LIVE</button>
+  <button class="navBtn" data-tab="chat"><i>💬</i>CHAT</button>
+</nav>
+
+<div class="pdfModal hidden" id="pdfModal">
+  <div class="pdfTopbar">
+    <button class="pdfBackBtn" id="pdfCloseBtn">← 戻る</button>
+    <div class="pdfTitleWrap">
+      <b id="pdfTitle">PDF</b>
+      <span id="pdfFileName">大会資料</span>
+    </div>
+    <button class="pdfExternalBtn" id="pdfExternalBtn">別画面</button>
+  </div>
+  <div class="pdfViewport">
+    <iframe id="pdfFrame" class="pdfFrame"></iframe>
+  </div>
+</div></div>
+<div class="toast hidden" id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(() => {
+'use strict';
+const $=id=>document.getElementById(id);
+const MEMORY_STORE={};
+let STORAGE_PERSISTENT=true;
+const clone=v=>JSON.parse(JSON.stringify(v));
+const load=(k,f)=>{
+  try{
+    const raw=localStorage.getItem(k);
+    if(raw!==null)return JSON.parse(raw);
+  }catch(e){STORAGE_PERSISTENT=false}
+  return Object.prototype.hasOwnProperty.call(MEMORY_STORE,k)?clone(MEMORY_STORE[k]):clone(f);
+};
+const save=(k,v)=>{
+  MEMORY_STORE[k]=clone(v);
+  try{localStorage.setItem(k,JSON.stringify(v))}catch(e){STORAGE_PERSISTENT=false}
+  return true;
+};
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+function toast(m){const t=$('toast');t.textContent=m;t.classList.remove('hidden');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.add('hidden'),2200)}
+
+const DATA_KEY='tabirun_v17_data';
+let data=load(DATA_KEY,{
+  state:'開催予定',note:'大会情報を確認してください。',
+  delay:null,
+  players:[
+    {id:'p1',name:'選手A',event:'3000m',heat:'5組',call:'13:00',start:'13:20'},
+    {id:'p2',name:'選手B',event:'3000m',heat:'5組',call:'13:00',start:'13:20'}
+  ],
+  docs:{guidelines:'',startlist:'',eventSchedule:''},
+  resultsUrl:'',
+  notices:[{id:'n1',title:'会場・駐車場を確認してください',body:'駐車場出入口は2か所あります。'}],
+  chat:[{id:'c1',name:'指導者',staff:true,text:'大会CHATの試作です。',ts:Date.now()-60000}]
+});
+function persist(){save(DATA_KEY,data)}
+
+let pending={guidelines:null,startlist:null,eventSchedule:null};
+let map=null,pdfUrl=null,pdfScrollY=0;
+const DB_NAME='tabirun_v17_files',STORE='files';
+const PDF_MEMORY={};
+function dbOpen(){
+  return new Promise((res,rej)=>{
+    try{
+      const r=indexedDB.open(DB_NAME,1);
+      r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains(STORE))r.result.createObjectStore(STORE,{keyPath:'key'})};
+      r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);
+    }catch(e){rej(e)}
+  });
+}
+async function dbPut(key,file){
+  PDF_MEMORY[key]={key,blob:file,name:file.name,type:file.type||'application/pdf'};
+  try{
+    const db=await dbOpen();
+    await new Promise((res,rej)=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).put({key,blob:file,name:file.name,type:file.type||'application/pdf'});tx.oncomplete=res;tx.onerror=()=>rej(tx.error)});
+    return true;
+  }catch(e){STORAGE_PERSISTENT=false;return false}
+}
+async function dbGet(key){
+  try{
+    const db=await dbOpen();
+    const row=await new Promise((res,rej)=>{const tx=db.transaction(STORE,'readonly');const r=tx.objectStore(STORE).get(key);r.onsuccess=()=>res(r.result||null);r.onerror=()=>rej(r.error)});
+    if(row)return row;
+  }catch(e){STORAGE_PERSISTENT=false}
+  return PDF_MEMORY[key]||null;
+}
+async function dbDelete(key){
+  delete PDF_MEMORY[key];
+  try{
+    const db=await dbOpen();
+    await new Promise((res,rej)=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).delete(key);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)});
+  }catch(e){STORAGE_PERSISTENT=false}
+  return true;
+}
+
+function showPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+name));
+  document.querySelectorAll('.navBtn').forEach(b=>b.classList.toggle('on',b.dataset.tab===name));
+  window.scrollTo({top:0,behavior:'instant'});
+  if(name==='map')setTimeout(initMap,60);
+}
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>showPage(b.dataset.tab));
+document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>showPage(b.dataset.go));
+
+$('settingsBtn').onclick=()=>{showPage('manage');showManageMenu()};
+$('manageHomeBtn').onclick=()=>showPage('home');
+$('editorBackBtn').onclick=showManageMenu;
+document.querySelectorAll('[data-editor]').forEach(b=>b.onclick=()=>openEditor(b.dataset.editor));
+function showManageMenu(){$('manageMenuView').classList.remove('hidden');$('editorView').classList.add('hidden')}
+function openEditor(name){
+  $('manageMenuView').classList.add('hidden');$('editorView').classList.remove('hidden');
+  document.querySelectorAll('.editor').forEach(e=>e.classList.toggle('active',e.id==='editor-'+name));
+  const titles={maininfo:'大会主要情報',delay:'遅延',players:'選手',guidelines:'大会要項',startlist:'スタートリスト',eventSchedule:'大会スケジュール',results:'大会速報',sharing:'共有情報の操作',chatAdmin:'CHAT管理'};
+  $('editorTitle').textContent=titles[name]||'設定';
+  syncEditors();
+  window.scrollTo({top:0,behavior:'instant'});
+}
+
+function renderHome(){
+  $('homeEventState').textContent=data.state;
+  $('homeEventNote').textContent=data.note||'';
+  const docs=[
+    ['guidelines','📘','大会要項',data.docs.guidelines||'PDF未登録'],
+    ['startlist','📋','スタートリスト',data.docs.startlist||'PDF未登録'],
+    ['eventSchedule','🗓️','大会スケジュール',data.docs.eventSchedule||'PDF未登録'],
+    ['results','⚡','大会速報',data.resultsUrl?'リンク登録済み':'未登録']
+  ];
+  $('homeDocs').innerHTML=docs.map(([k,ic,t,s])=>`<button class="docItem ${s.includes('未登録')?'disabled':''}" data-home-doc="${k}"><span class="docIcon">${ic}</span><span><b>${t}</b><span>${esc(s)}</span></span><span class="arrow">›</span></button>`).join('');
+  $('homeDocs').querySelectorAll('[data-home-doc]').forEach(b=>b.onclick=()=>openHomeDoc(b.dataset.homeDoc));
+  $('noticeList').innerHTML=data.notices.map(n=>`<div class="notice"><b>${esc(n.title)}</b><span>${esc(n.body)}</span></div>`).join('');
+}
+async function openHomeDoc(k){
+  if(k==='results'){if(!data.resultsUrl)return toast('速報リンクは未登録です');window.open(data.resultsUrl,'_blank','noopener');return}
+  if(!data.docs[k])return toast('PDFは未登録です');
+  await openPdf(k,k==='guidelines'?'大会要項':k==='startlist'?'スタートリスト':'大会スケジュール');
+}
+
+function renderSchedule(){
+  const delay=data.delay;
+  $('delayPublicBox').innerHTML=delay?`<strong>遅延中 ＋${delay.min}分</strong><span>${esc(delay.note||'')}</span>`:'<strong>遅延なし</strong><span>実際の進行状況を反映します。</span>';
+  const groups={};
+  data.players.forEach(p=>{const k=[p.event,p.heat,p.call,p.start].join('|');if(!groups[k])groups[k]={event:p.event,heat:p.heat,call:p.call,start:p.start,names:[]};groups[k].names.push(p.name)});
+  $('publicSchedule').innerHTML=Object.values(groups).sort((a,b)=>(a.start||'99:99').localeCompare(b.start||'99:99')).map(g=>`<div class="scheduleCard"><h3>${esc(g.event)} ${esc(g.heat)}</h3><div class="scheduleMeta"><span>召集 ${esc(g.call||'未定')}</span><span>競技 ${esc(g.start||'未定')}</span></div><div style="margin-top:8px;font-weight:900">${g.names.map(esc).join('・')}</div></div>`).join('');
+}
+function syncEditors(){
+  $('eventStateInput').value=data.state;$('eventNoteInput').value=data.note||'';
+  $('delayMinInput').value=data.delay?.min??0;$('delayNoteInput').value=data.delay?.note||'';
+  $('delayCurrentState').innerHTML=data.delay?`<strong>遅延中 ＋${data.delay.min}分</strong><span>${esc(data.delay.note||'')}</span>`:'<strong>未登録</strong><span>遅延情報はありません。</span>';
+  $('guidelinesState').textContent=data.docs.guidelines||'未登録';$('startlistState').textContent=data.docs.startlist||'未登録';$('eventScheduleState').textContent=data.docs.eventSchedule||'未登録';
+  $('resultsInput').value=data.resultsUrl||'';$('resultsState').textContent=data.resultsUrl?'登録済み':'未登録';
+  renderManagePlayers();
+}
+$('saveMainInfoBtn').onclick=()=>{data.state=$('eventStateInput').value;data.note=$('eventNoteInput').value.trim();persist();renderHome();toast('大会主要情報を保存しました')};
+$('saveDelayBtn').onclick=()=>{data.delay={min:Math.max(0,Number($('delayMinInput').value)||0),note:$('delayNoteInput').value.trim()};persist();syncEditors();renderSchedule();toast('遅延情報を保存しました')};
+$('deleteDelayBtn').onclick=()=>{data.delay=null;persist();syncEditors();renderSchedule();toast('遅延情報を削除しました')};
+
+function clearPlayerForm(){['playerIdInput','playerNameInput','playerEventInput','playerHeatInput','playerCallInput','playerStartInput'].forEach(id=>$(id).value='')}
+$('clearPlayerBtn').onclick=clearPlayerForm;
+$('savePlayerBtn').onclick=()=>{
+  const name=$('playerNameInput').value.trim(),event=$('playerEventInput').value.trim();if(!name||!event)return toast('選手名と種目を入力してください');
+  const rec={id:$('playerIdInput').value||'p'+Date.now(),name,event,heat:$('playerHeatInput').value.trim(),call:$('playerCallInput').value,start:$('playerStartInput').value};
+  const i=data.players.findIndex(x=>x.id===rec.id);if(i>=0)data.players[i]=rec;else data.players.push(rec);
+  persist();clearPlayerForm();renderManagePlayers();renderSchedule();toast(i>=0?'選手情報を修正しました':'選手を追加しました')
+};
+function renderManagePlayers(){
+  $('managePlayerList').innerHTML=data.players.map(p=>`<div class="player"><span><b>${esc(p.name)}</b><span>${esc(p.event)} ${esc(p.heat)}｜召集 ${esc(p.call||'未定')}｜競技 ${esc(p.start||'未定')}</span></span><span class="playerActions"><button class="ghost" data-edit-player="${p.id}">修正</button><button class="danger" data-del-player="${p.id}">削除</button></span></div>`).join('');
+  $('managePlayerList').querySelectorAll('[data-edit-player]').forEach(b=>b.onclick=()=>{const p=data.players.find(x=>x.id===b.dataset.editPlayer);if(!p)return;$('playerIdInput').value=p.id;$('playerNameInput').value=p.name;$('playerEventInput').value=p.event;$('playerHeatInput').value=p.heat;$('playerCallInput').value=p.call;$('playerStartInput').value=p.start});
+  $('managePlayerList').querySelectorAll('[data-del-player]').forEach(b=>b.onclick=()=>{data.players=data.players.filter(x=>x.id!==b.dataset.delPlayer);persist();renderManagePlayers();renderSchedule();toast('選手を削除しました')});
+}
+
+function bindPdfInput(id,key){$(id).onchange=e=>{const f=e.target.files?.[0];if(!f)return;if(!(f.type==='application/pdf'||f.name.toLowerCase().endsWith('.pdf'))){toast('PDFファイルを選択してください');e.target.value='';return}pending[key]=f;$(key+'State').textContent='選択中：'+f.name}}
+bindPdfInput('guidelinesInput','guidelines');bindPdfInput('startlistInput','startlist');bindPdfInput('eventScheduleInput','eventSchedule');
+async function savePdf(key,inputId){
+  const f=pending[key];if(!f)return toast('先にPDFを選択してください');
+  try{await dbPut(key,f);data.docs[key]=f.name;persist();pending[key]=null;$(inputId).value='';syncEditors();renderHome();toast(STORAGE_PERSISTENT?'PDFを保存しました':'PDFを登録しました（再読み込み後は保持されない場合があります）')}catch(e){console.error(e);toast('PDF保存に失敗しました')}
+}
+async function deletePdf(key,inputId){try{await dbDelete(key);data.docs[key]='';persist();pending[key]=null;$(inputId).value='';syncEditors();renderHome();toast('PDFを削除しました')}catch(e){console.error(e);toast('PDF削除に失敗しました')}}
+async function openPdf(key,title){
+  const row=await dbGet(key);
+  if(!row?.blob)return toast('保存済みPDFが見つかりません');
+  if(pdfUrl)URL.revokeObjectURL(pdfUrl);
+  pdfUrl=URL.createObjectURL(row.blob);
+  pdfScrollY=window.scrollY||0;
+  $('pdfTitle').textContent=title;
+  $('pdfFileName').textContent=row.name||'PDF';
+  $('pdfFrame').src=pdfUrl;
+  document.body.classList.add('pdfOpen');
+  $('pdfModal').classList.remove('hidden');
+}
+$('saveGuidelinesBtn').onclick=()=>savePdf('guidelines','guidelinesInput');$('deleteGuidelinesBtn').onclick=()=>deletePdf('guidelines','guidelinesInput');$('openGuidelinesBtn').onclick=()=>openPdf('guidelines','大会要項');
+$('saveStartlistBtn').onclick=()=>savePdf('startlist','startlistInput');$('deleteStartlistBtn').onclick=()=>deletePdf('startlist','startlistInput');$('openStartlistBtn').onclick=()=>openPdf('startlist','スタートリスト');
+$('saveEventScheduleBtn').onclick=()=>savePdf('eventSchedule','eventScheduleInput');$('deleteEventScheduleBtn').onclick=()=>deletePdf('eventSchedule','eventScheduleInput');$('openEventScheduleBtn').onclick=()=>openPdf('eventSchedule','大会スケジュール');
+$('pdfCloseBtn').onclick=()=>{
+  $('pdfModal').classList.add('hidden');
+  $('pdfFrame').src='about:blank';
+  document.body.classList.remove('pdfOpen');
+  if(pdfUrl){URL.revokeObjectURL(pdfUrl);pdfUrl=null}
+  setTimeout(()=>window.scrollTo(0,pdfScrollY||0),0);
+};
+
+$('pdfExternalBtn').onclick=()=>{
+  if(!pdfUrl)return;
+  window.open(pdfUrl,'_blank');
+};
+$('pdfFrame').src='about:blank';if(pdfUrl){URL.revokeObjectURL(pdfUrl);pdfUrl=null}};
+
+$('saveResultsBtn').onclick=()=>{const u=$('resultsInput').value.trim();if(!u)return toast('速報URLを入力してください');data.resultsUrl=u;persist();syncEditors();renderHome();toast('速報リンクを保存しました')};
+$('deleteResultsBtn').onclick=()=>{data.resultsUrl='';persist();syncEditors();renderHome();toast('速報リンクを削除しました')};
+$('openResultsBtn').onclick=()=>{if(!data.resultsUrl)return toast('速報リンクは未登録です');window.open(data.resultsUrl,'_blank','noopener')};
+
+$('clearSharingBtn').onclick=()=>toast('共有情報を削除しました（試作）');
+$('clearChatBtn').onclick=()=>{if(!confirm('CHATを全削除しますか？'))return;data.chat=[];persist();renderChat();toast('CHATを全削除しました')};
+
+function renderChat(){
+  $('chatList').innerHTML=data.chat.slice().sort((a,b)=>b.ts-a.ts).map(m=>`<div class="msg ${m.staff?'staff':''}"><div class="msgHead"><span>${esc(m.name)}</span><span>${new Date(m.ts).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})}</span></div><p>${esc(m.text)}</p></div>`).join('');
+}
+$('chatSendBtn').onclick=()=>{const t=$('chatInput').value.trim();if(!t)return;data.chat.push({id:'c'+Date.now(),name:'参加者',staff:false,text:t,ts:Date.now()});persist();$('chatInput').value='';renderChat()};
+
+function initMap(){
+  if(map||!window.L)return;
+  map=L.map('map').setView([34.9947003,136.9481809],15);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);
+  const pts=[
+    {name:'大会開催場所',lat:34.9947003,lng:136.9481809},
+    {name:'駐車場出入口 A',lat:34.9962337,lng:136.9442297},
+    {name:'駐車場出入口 B',lat:35.0009999,lng:136.9488022}
+  ];
+  pts.forEach(p=>L.marker([p.lat,p.lng]).addTo(map).bindPopup('<b>'+p.name+'</b>'));
+  map.fitBounds(pts.map(p=>[p.lat,p.lng]),{padding:[25,25]});
+}
+
+renderHome();renderSchedule();renderChat();syncEditors();
+if(!STORAGE_PERSISTENT)setTimeout(()=>toast('この表示環境では端末保存が制限されています。操作確認はできます。'),300);
+})();
+</script>
+</body>
+</html>
