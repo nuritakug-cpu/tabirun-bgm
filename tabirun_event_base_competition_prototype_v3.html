@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d2832">
+<title>TABIRUN EVENT BASE - 大会試作 v3</title>
+<style>
+:root{
+  --ink:#17323b;--muted:#6f8086;--line:#d9e4e7;--paper:#f6f9fa;--card:#fff;
+  --brand:#0d6174;--brand2:#0a8090;--dark:#0d2832;--good:#19805f;--warn:#b77414;
+  --danger:#b93e45;--soft:#eaf4f6;--shadow:0 12px 30px rgba(15,54,66,.10);
+  --radius:22px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif}
+body{padding-bottom:92px;font-size:17px;line-height:1.58;line-break:strict;word-break:normal}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer}
+button,b,h1,h2,h3,.tag,.kicker,.navBtn,.quickTitle,.scheduleAthlete,.scheduleRace{
+  word-break:keep-all;overflow-wrap:normal;text-wrap:balance
+}
+p,.hint,.small,.noticeBody,.messageText{overflow-wrap:anywhere;text-wrap:pretty}
+.hidden{display:none!important}
+.app{max-width:920px;margin:0 auto}
+.topbar{
+  position:sticky;top:0;z-index:800;background:rgba(13,40,50,.96);color:white;
+  padding:10px 14px calc(10px + env(safe-area-inset-top));backdrop-filter:blur(12px)
+}
+.topbarRow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brandMark{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,#29a5b6,#fff);display:grid;place-items:center;color:#0d2832;font-weight:1000;flex:none}
+.brandText{min-width:0}.brandText b{display:block;font-size:17px;letter-spacing:.02em;white-space:nowrap}.brandText span{display:block;font-size:11px;color:#c8d8dd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topActions{display:flex;gap:7px;flex:none}
+.iconBtn{border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;border-radius:12px;padding:9px 10px;font-weight:900;min-width:44px;white-space:nowrap}
+.iconBtn.on{background:#fff;color:var(--dark)}
+.hero{
+  position:relative;overflow:hidden;margin:0;background:
+  radial-gradient(circle at 80% 20%,rgba(255,255,255,.18),transparent 35%),
+  linear-gradient(135deg,#0a5569,#0d2832 60%,#0c7c83);
+  color:#fff;padding:24px 18px 20px;min-height:270px;
+}
+.heroImage{position:absolute;inset:0;background-size:cover;background-position:center;opacity:.28;mix-blend-mode:screen}
+.hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,22,30,.04),rgba(5,22,30,.72))}
+.heroContent{position:relative;z-index:2}
+.kicker{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:1000;letter-spacing:.12em;background:rgba(255,255,255,.14);padding:7px 10px;border-radius:999px;white-space:nowrap}
+.hero h1{font-size:clamp(28px,7vw,40px);line-height:1.22;margin:14px 0 8px;letter-spacing:.01em}
+.heroMeta{display:flex;flex-wrap:wrap;gap:8px;color:#e6f4f6;font-size:14px}
+.heroMeta span{background:rgba(255,255,255,.11);padding:7px 9px;border-radius:10px;white-space:nowrap}
+.countdown{margin-top:16px;display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+.countdown strong{font-size:clamp(23px,6vw,30px)}.countdown small{color:#d1e7ea}
+main{padding:14px}
+.section{margin:0 0 18px}
+.sectionHead{display:flex;justify-content:space-between;align-items:end;gap:10px;margin:0 3px 9px}
+.sectionHead h2{font-size:21px;margin:0}.sectionHead span{font-size:12px;color:var(--muted);text-align:right}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.panel{padding:16px}
+.nextCard{padding:17px;background:linear-gradient(135deg,#fff,#f1f8f9)}
+.nextTop{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.nextLabel{font-size:12px;font-weight:1000;color:var(--brand);letter-spacing:.08em}
+.nextCard h3{font-size:24px;margin:4px 0 3px}
+.tag{display:inline-flex;border-radius:999px;padding:6px 9px;background:#e6f3ee;color:#155e47;font-size:12px;font-weight:900;white-space:nowrap}
+.quickGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.quick{border:0;background:white;border-radius:18px;padding:16px;text-align:left;box-shadow:var(--shadow);min-height:105px}
+.quickTitle{display:block;font-size:18px;margin-top:6px}.quick span{display:block;color:var(--muted);font-size:13px;margin-top:3px}
+.quick .emoji{font-size:25px}
+.noticeList{display:grid;gap:10px}
+.notice{display:grid;grid-template-columns:72px 1fr;gap:12px;padding:12px;background:#fff;border:1px solid var(--line);border-radius:18px}
+.noticeThumb{width:72px;height:72px;border-radius:13px;background:#e8f1f3 center/cover no-repeat;display:grid;place-items:center;font-size:27px;color:#597079;overflow:hidden}
+.notice h3{font-size:17px;margin:0 0 3px}.noticeBody{margin:0;color:#526970;font-size:14px}
+.noticeMeta{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}.noticeMeta span{font-size:11px;padding:4px 7px;border-radius:999px;background:#eef4f5;color:#53676d;white-space:nowrap}
+.linkBtn,.primaryBtn,.ghostBtn,.dangerBtn{
+  border:0;border-radius:14px;padding:12px 14px;font-weight:950;min-height:48px;white-space:nowrap
+}
+.primaryBtn{background:var(--brand);color:#fff}.ghostBtn{background:#edf3f5;color:var(--ink)}.dangerBtn{background:#fff0f1;color:var(--danger);border:1px solid #f0c7ca}.linkBtn{background:#eaf5f7;color:var(--brand);display:inline-flex;align-items:center;gap:6px;margin-top:8px}
+.field{margin-bottom:13px}.field label{display:block;font-size:14px;font-weight:950;margin-bottom:6px}
+.field input,.field textarea,.field select{width:100%;border:1px solid #cbdadd;background:#fff;border-radius:14px;padding:13px;font-size:16px;min-height:50px}
+.field textarea{min-height:100px;resize:vertical}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.adminOnly{display:none}.adminMode .adminOnly{display:block}.adminMode .adminFlex{display:flex}
+.small{font-size:12px;color:var(--muted)}
+.sep{height:1px;background:var(--line);margin:14px 0}
+
+/* INTERNAL LIGHTWEIGHT MAP */
+.mapTabs{display:flex;gap:8px;margin-bottom:10px}
+.mapModeBtn{border:1px solid #cbdadd;background:#fff;border-radius:999px;padding:10px 13px;font-weight:950;white-space:nowrap}
+.mapModeBtn.on{background:var(--dark);border-color:var(--dark);color:#fff}
+.mapModeBtn:disabled{opacity:.45;cursor:default}
+.mapCard{overflow:hidden;border-radius:22px;background:#fff;border:1px solid var(--line);box-shadow:var(--shadow)}
+.lightMap{
+  position:relative;height:min(54vh,520px);min-height:390px;overflow:hidden;
+  background:
+    linear-gradient(90deg,rgba(26,92,108,.06) 1px,transparent 1px),
+    linear-gradient(rgba(26,92,108,.06) 1px,transparent 1px),
+    radial-gradient(circle at 50% 48%,#f7fbfc 0,#edf5f6 56%,#e3eef0 100%);
+  background-size:32px 32px,32px 32px,auto;
+  touch-action:manipulation;
+}
+.lightMap:after{content:"簡易会場MAP";position:absolute;right:10px;top:10px;color:#6d858c;font-size:11px;font-weight:950;letter-spacing:.08em}
+.mapRoad{position:absolute;background:#fff;border:1px solid #d8e4e6;border-radius:999px;box-shadow:0 2px 6px rgba(29,66,76,.06);transform-origin:center}
+.mapRoad.r1{width:125%;height:18px;left:-12%;top:44%;transform:rotate(-7deg)}
+.mapRoad.r2{width:85%;height:14px;left:30%;top:18%;transform:rotate(68deg)}
+.mapRoad.r3{width:70%;height:12px;left:-10%;top:72%;transform:rotate(35deg)}
+.routeSvg{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none}
+.routeSvg polyline{fill:none;stroke:#0d6174;stroke-width:5;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.routeSvg .done{stroke:#93aeb5}.routeSvg .extra{stroke-dasharray:8 7;stroke:#b77414}
+.mapPoint{
+  position:absolute;transform:translate(-50%,-50%);z-index:5;border:0;background:transparent;padding:0;
+  display:flex;flex-direction:column;align-items:center;gap:4px;max-width:120px
+}
+.mapPin{min-width:44px;height:44px;border-radius:14px;background:#fff;border:2px solid var(--brand);box-shadow:0 6px 18px rgba(0,0,0,.17);display:grid;place-items:center;font-size:21px;font-weight:1000;color:var(--brand);padding:0 8px}
+.mapPin.parking{border-color:#a36d16;color:#8a5a0c;background:#fff8e9}.mapPin.base{border-color:#1b805f;color:#17694f;background:#effaf6}.mapPin.me{border-color:#237db0;color:#237db0;background:#edf8ff;border-radius:50%}.mapPin.cluster{border-color:#a36d16;background:#9b5f13;color:#fff;border-radius:999px}
+.mapLabel{background:rgba(255,255,255,.93);border:1px solid #dbe6e8;border-radius:8px;padding:3px 6px;font-size:11px;font-weight:950;white-space:nowrap;box-shadow:0 3px 10px rgba(0,0,0,.08)}
+.mapToolbar{padding:10px;background:#fff;display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--line)}
+.mapHint{padding:10px 12px;background:#f6fbfc;border-top:1px solid var(--line);font-size:13px;color:#52676e}
+.placeList{display:grid;gap:10px;margin-top:10px}
+.placeRow{width:100%;display:grid;grid-template-columns:44px 1fr auto;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);padding:12px;border-radius:16px;box-shadow:0 5px 16px rgba(15,54,66,.05);text-align:left}
+.placeRow:active{transform:scale(.995)}
+.placeIcon{width:44px;height:44px;border-radius:12px;background:#e8f2f4;display:grid;place-items:center;font-weight:1000}
+.placeRow b{display:block;font-size:16px}.placeRow span{font-size:12px;color:var(--muted)}
+.routeBadge{font-size:12px!important;color:var(--brand)!important;font-weight:900;white-space:nowrap}
+.routeEmpty{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:4;width:min(82%,420px);background:rgba(255,255,255,.95);border:1px solid var(--line);border-radius:18px;padding:18px;text-align:center;box-shadow:var(--shadow)}
+.routeEmpty b{display:block;font-size:19px;margin-bottom:5px}
+
+/* SCHEDULE */
+.scheduleHero{padding:15px;background:linear-gradient(135deg,#0e596c,#0d2d37);color:#fff}
+.scheduleHero strong{display:block;font-size:22px}.scheduleHero span{font-size:13px;color:#d3e8eb}
+.scheduleList{display:grid;gap:10px;margin-top:10px}
+.scheduleItem{background:#fff;border:1px solid var(--line);border-radius:17px;padding:13px;box-shadow:0 6px 18px rgba(15,54,66,.05)}
+.scheduleTop{display:grid;grid-template-columns:78px 1fr auto;gap:10px;align-items:center}
+.scheduleTime{font-weight:1000;color:var(--brand);font-size:19px}
+.scheduleAthlete{font-size:17px;font-weight:1000}.scheduleRace{font-size:14px;color:#4d666e;margin-top:2px}
+.scheduleCall{font-size:12px;font-weight:1000;background:#fff3da;color:#8c5c0b;padding:6px 8px;border-radius:999px;white-space:nowrap}
+.scheduleDetail{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
+.scheduleDetail span{font-size:12px;background:#eef4f5;border-radius:999px;padding:5px 8px;white-space:nowrap}
+.scheduleNow{border-color:#91c9d2;background:#f4fbfc}
+
+/* LIVE */
+.statusBox{padding:14px;border-radius:16px;background:#eef8f5;border:1px solid #cbe5dc}
+.statusBox.warn{background:#fff7e9;border-color:#edd9b6}.statusBox strong{display:block;font-size:18px}
+.liveLegend{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}.liveLegend span{font-size:12px;padding:5px 8px;background:#fff;border:1px solid var(--line);border-radius:999px}
+.personList{display:grid;gap:9px;margin-top:10px}
+.person{display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:center;padding:12px;background:#fff;border:1px solid var(--line);border-radius:16px}
+.avatar{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:#e5eff1;font-weight:1000}.person small{display:block;color:var(--muted)}
+.dot{width:11px;height:11px;border-radius:50%;background:#8ca0a6}.dot.on{background:#21a76f}
+
+/* CHAT */
+.chatTopSticky{position:sticky;top:69px;z-index:120;background:rgba(246,249,250,.96);padding:4px 0 10px;backdrop-filter:blur(10px)}
+.viewTabs{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:8px}
+.viewTab{border:1px solid #cfdde0;background:#fff;border-radius:13px;padding:10px 6px;font-weight:950;color:#657980;white-space:nowrap}
+.viewTab.on{background:var(--dark);color:#fff;border-color:var(--dark)}
+.pillRow{display:flex;gap:7px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}.pillRow::-webkit-scrollbar{display:none}
+.pill{border:1px solid #cbdadd;background:#fff;border-radius:999px;padding:8px 10px;font-size:13px;font-weight:900;white-space:nowrap}.pill.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+.latestBox{border:1px solid #abd1d7;background:#f3fbfc;border-radius:17px;padding:12px;margin:10px 0}
+.latestBox small{display:block;color:var(--brand);font-weight:1000}.latestBox b{display:block;margin:3px 0;font-size:16px}
+.chatList{display:flex;flex-direction:column;gap:10px;margin-bottom:12px}
+.chatMsg{background:#fff;border:1px solid var(--line);border-radius:17px;padding:12px;box-shadow:0 6px 18px rgba(15,54,66,.05)}
+.chatHead{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--muted)}.chatMsg b{color:var(--ink)}.messageText{margin:6px 0 0;white-space:pre-wrap}
+.assetGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.assetCard{background:#fff;border:1px solid var(--line);border-radius:17px;overflow:hidden}
+.assetThumb{aspect-ratio:4/3;background:#e9f1f3 center/cover no-repeat;display:grid;place-items:center;font-size:35px}.assetMeta{padding:10px}.assetMeta b{display:block;font-size:15px}.assetMeta span{font-size:12px;color:var(--muted)}
+.linkList{display:grid;gap:9px}.linkCard{background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px;text-align:left}.linkCard b{display:block}.linkCard span{font-size:12px;color:var(--muted);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chatComposer{position:sticky;bottom:76px;z-index:100;background:rgba(246,249,250,.94);padding:10px 0 0;backdrop-filter:blur(10px)}
+.chatBox{background:#fff;border:1px solid var(--line);border-radius:18px;padding:10px;box-shadow:var(--shadow)}
+.chatBox textarea{width:100%;border:0;outline:0;min-height:70px;resize:none;font-size:16px}
+.chatTools{display:flex;gap:8px;align-items:center;justify-content:space-between}.chatTools .left{display:flex;gap:7px;flex-wrap:wrap}
+.fileChip{display:inline-flex;align-items:center;gap:5px;padding:9px 10px;border-radius:12px;background:#eef4f5;font-size:13px;font-weight:900;white-space:nowrap}
+
+/* NAV + MODAL */
+.tabPage{display:none}.tabPage.active{display:block}
+.bottomNav{position:fixed;left:0;right:0;bottom:0;z-index:900;background:rgba(255,255,255,.96);border-top:1px solid #d5e1e4;padding:7px 8px calc(7px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(5,1fr);backdrop-filter:blur(15px)}
+.navBtn{border:0;background:none;color:#718289;padding:6px 2px;font-size:11px;font-weight:900;white-space:nowrap}.navBtn i{display:block;font-style:normal;font-size:22px;line-height:1.2}.navBtn.on{color:var(--brand)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:105px;z-index:1200;background:#102d37;color:#fff;padding:12px 14px;border-radius:14px;box-shadow:var(--shadow);max-width:90%;font-size:14px}
+.modal{position:fixed;inset:0;z-index:1500;background:rgba(8,26,33,.56);display:grid;place-items:end center;padding:20px}
+.modalCard{width:min(720px,100%);max-height:88vh;overflow:auto;background:#fff;border-radius:24px;padding:18px;box-shadow:var(--shadow)}.modalCard h3{margin:0 0 12px;font-size:22px}
+.destCoord{font-size:12px;color:var(--muted);margin-top:3px}
+
+@media(min-width:720px){
+  body{font-size:18px}.quickGrid{grid-template-columns:repeat(4,1fr)}.hero{padding:34px 28px}.hero h1{font-size:40px}main{padding:20px}.assetGrid{grid-template-columns:repeat(3,1fr)}
+}
+@media(max-width:430px){
+  .topbar{padding-left:10px;padding-right:10px}.brandText b{font-size:15px}.brandText span{font-size:10px}.iconBtn{padding:8px;min-width:40px}
+  .sectionHead span{display:none}.scheduleTop{grid-template-columns:68px 1fr}.scheduleCall{grid-column:2;justify-self:start}.scheduleTime{font-size:17px}
+  .actions>.primaryBtn,.actions>.ghostBtn,.actions>.dangerBtn{flex:1 1 auto}
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+<header class="topbar">
+  <div class="topbarRow">
+    <div class="brand">
+      <div class="brandMark">TR</div>
+      <div class="brandText"><b>TABIRUN EVENT BASE</b><span>大会モード・試作 v3｜軽量MAP＋外部ナビ</span></div>
+    </div>
+    <div class="topActions">
+      <button class="iconBtn" id="adminBtn" title="管理者モード">⚙</button>
+      <button class="iconBtn" id="privacyBtn" title="位置共有">📍</button>
+    </div>
+  </div>
+</header>
+
+<section class="tabPage active" id="page-home">
+  <section class="hero">
+    <div class="heroImage" id="heroImage"></div>
+    <div class="heroContent">
+      <div class="kicker">COMPETITION DAY</div>
+      <h1>知多スポーツチャレンジ 2026</h1>
+      <div class="heroMeta">
+        <span>📅 2026.10.4（日）</span>
+        <span>🕧 12:30 START</span>
+        <span>🏁 終了時刻 未定</span>
+      </div>
+      <div class="countdown"><strong id="countdownText">開催まで</strong><small id="countdownSub">大会情報を準備中</small></div>
+    </div>
+  </section>
+
+  <main>
+    <section class="section">
+      <div class="sectionHead"><h2>いま確認すること</h2><span>当日の行動を最優先</span></div>
+      <div class="card nextCard">
+        <div class="nextTop">
+          <div>
+            <div class="nextLabel">NEXT</div>
+            <h3 id="nextActionTitle">会場・駐車場を確認</h3>
+            <div id="nextActionText">到着前に、会場と2か所の駐車場出入口を確認してください。</div>
+          </div>
+          <span class="tag" id="eventStateTag">開催前</span>
+        </div>
+        <div class="actions" style="margin-top:12px">
+          <button class="primaryBtn" data-go="map">MAPを開く</button>
+          <button class="ghostBtn" data-go="schedule">タイムスケジュール</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="sectionHead"><h2>大会メニュー</h2><span>大きく・迷わない</span></div>
+      <div class="quickGrid">
+        <button class="quick" data-go="map"><span class="emoji">🗺️</span><b class="quickTitle">会場MAP</b><span>会場・駐車場・拠点</span></button>
+        <button class="quick" data-go="schedule"><span class="emoji">⏱️</span><b class="quickTitle">予定</b><span>選手・種目・組・召集</span></button>
+        <button class="quick" data-go="live"><span class="emoji">📡</span><b class="quickTitle">LIVE</b><span>参加者・指導者の位置</span></button>
+        <button class="quick" data-go="chat"><span class="emoji">💬</span><b class="quickTitle">CHAT</b><span>連絡・画像・リンク</span></button>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="sectionHead"><h2>大会情報・掲示</h2><span>終了後も保持可能</span></div>
+      <div class="noticeList" id="noticeList"></div>
+      <div class="card panel adminOnly" style="margin-top:10px">
+        <b style="font-size:18px">＋ 掲示を追加</b>
+        <p class="small">要項・速報結果・お知らせ・旅ラン案内・合宿資料などに共通利用。管理者が削除するまで残すこともできます。</p>
+        <div class="actions"><button class="primaryBtn" id="addNoticeBtn">掲示を作成</button><button class="ghostBtn" id="heroImageBtn">ホーム画像を変更</button></div>
+        <input id="heroImageInput" type="file" accept="image/*" class="hidden">
+      </div>
+    </section>
+  </main>
+</section>
+
+<section class="tabPage" id="page-map">
+  <main>
+    <section class="section">
+      <div class="sectionHead"><h2>MAP</h2><span>表示は軽く・案内だけ外部へ</span></div>
+      <div class="mapTabs">
+        <button class="mapModeBtn on" id="venueMapModeBtn">会場MAP</button>
+        <button class="mapModeBtn" id="routeMapModeBtn">ルートMAP</button>
+      </div>
+      <div class="mapCard">
+        <div class="lightMap" id="venueMap">
+          <div class="mapRoad r1"></div><div class="mapRoad r2"></div><div class="mapRoad r3"></div>
+          <svg class="routeSvg hidden" id="routeSvg" viewBox="0 0 1000 1000" preserveAspectRatio="none"></svg>
+          <div id="mapPointLayer"></div>
+          <div class="routeEmpty hidden" id="routeEmpty">
+            <b>この大会ではルート未設定</b>
+            <div class="small">コースが必要なイベントだけ、旅ランと同じ固定ルート方式を読み込みます。</div>
+          </div>
+        </div>
+        <div class="mapToolbar">
+          <button class="primaryBtn" id="fitVenueBtn">会場全体</button>
+          <button class="ghostBtn" id="showMyPosBtn">現在地を表示</button>
+          <button class="ghostBtn adminOnly" id="setBaseGpsBtn">現在地を拠点に設定</button>
+          <button class="ghostBtn adminOnly" id="setBaseTapBtn">地図タップで拠点設定</button>
+        </div>
+        <div class="mapHint" id="mapHint">地点をタップすると案内画面が開きます。Google マップは「外部ナビ」にだけ使います。</div>
+      </div>
+      <div class="placeList" id="placeList"></div>
+    </section>
+  </main>
+</section>
+
+<section class="tabPage" id="page-schedule">
+  <main>
+    <section class="section">
+      <div class="sectionHead"><h2>タイムスケジュール</h2><span>選手ごとの行動管理</span></div>
+      <div class="card scheduleHero">
+        <strong id="scheduleNextTitle">次の予定を計算中</strong>
+        <span id="scheduleNextSub">召集時刻を基準に並びます</span>
+      </div>
+      <div class="scheduleList" id="scheduleList"></div>
+
+      <div class="card panel adminOnly" style="margin-top:12px">
+        <b style="font-size:18px">＋ 選手予定を追加</b>
+        <p class="small">例：選手A／3000m／5組／召集13:00／競技13:20 と入力すると、タイムスケジュールへ反映します。</p>
+        <div class="field"><label>選手名</label><input id="schAthlete" placeholder="例：選手A"></div>
+        <div class="field"><label>種目</label><input id="schEvent" placeholder="例：3000m"></div>
+        <div class="field"><label>組</label><input id="schHeat" placeholder="例：5組"></div>
+        <div class="field"><label>召集時刻</label><input id="schCall" type="time"></div>
+        <div class="field"><label>競技開始</label><input id="schStart" type="time"></div>
+        <div class="field"><label>補足</label><input id="schNote" placeholder="例：招集所A／ユニフォーム確認"></div>
+        <div class="actions"><button class="primaryBtn" id="addScheduleBtn">タイムスケジュールへ追加</button></div>
+      </div>
+    </section>
+  </main>
+</section>
+
+<section class="tabPage" id="page-live">
+  <main>
+    <section class="section">
+      <div class="sectionHead"><h2>LIVE・位置共有</h2><span>重なり表示対応</span></div>
+      <div class="statusBox warn" id="privacyStatus">
+        <strong>位置共有はOFFです</strong>
+        <div>必要な時間だけONにします。イベント終了処理で位置データは削除します。</div>
+      </div>
+      <div class="actions" style="margin:10px 0">
+        <button class="primaryBtn" id="toggleShareBtn">位置共有をON</button>
+        <button class="ghostBtn adminOnly" id="mockOverlapBtn">重なり表示をテスト</button>
+      </div>
+
+      <div class="mapCard">
+        <div class="lightMap" id="liveMap">
+          <div class="mapRoad r1"></div><div class="mapRoad r2"></div><div class="mapRoad r3"></div>
+          <div id="livePointLayer"></div>
+        </div>
+        <div class="mapHint">近い位置は自動でまとめて人数表示します。数字をタップすると内訳を確認できます。</div>
+      </div>
+      <div class="liveLegend"><span>● 1人</span><span>● 2人以上は人数表示</span><span>タップで内訳</span></div>
+
+      <div class="personList" id="personList"></div>
+      <div class="card panel adminOnly" style="margin-top:10px">
+        <b style="font-size:18px">イベント終了処理</b>
+        <p class="small">CHATとLIVE位置情報を削除します。要項・速報結果・お知らせなどの掲示は残します。</p>
+        <button class="dangerBtn" id="closeEventBtn">イベント終了 → 一時データを削除</button>
+      </div>
+    </section>
+  </main>
+</section>
+
+<section class="tabPage" id="page-chat">
+  <main>
+    <section class="section">
+      <div class="sectionHead"><h2>CHAT・連絡</h2><span>情報を埋もれさせない</span></div>
+
+      <div class="chatTopSticky">
+        <div class="viewTabs">
+          <button class="viewTab on" data-chatview="message">メッセージ</button>
+          <button class="viewTab" data-chatview="image">画像</button>
+          <button class="viewTab" data-chatview="link">リンク</button>
+        </div>
+        <div class="pillRow" id="chatFilters">
+          <button class="pill on" data-filter="all">すべて</button>
+          <button class="pill" data-filter="運営">運営</button>
+          <button class="pill" data-filter="質問">質問</button>
+          <button class="pill" data-filter="応援">応援</button>
+          <button class="pill" data-filter="落とし物">落とし物</button>
+        </div>
+      </div>
+
+      <div class="latestBox" id="latestBox"></div>
+      <div id="chatContent"></div>
+
+      <div class="chatComposer">
+        <div class="chatBox">
+          <textarea id="chatText" placeholder="メッセージを入力"></textarea>
+          <div class="field" style="margin:6px 0"><input id="chatLink" placeholder="外部リンク（任意・リンク一覧へ分離表示）"></div>
+          <div class="chatTools">
+            <div class="left">
+              <select id="chatCategory" class="fileChip">
+                <option>運営</option><option>質問</option><option>応援</option><option>落とし物</option>
+              </select>
+              <label class="fileChip">📷 画像<input id="chatImage" type="file" accept="image/*" class="hidden"></label>
+            </div>
+            <button class="primaryBtn" id="sendChatBtn">送信</button>
+          </div>
+          <div class="small" id="chatImageName"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</section>
+
+<nav class="bottomNav">
+  <button class="navBtn on" data-tab="home"><i>⌂</i>HOME</button>
+  <button class="navBtn" data-tab="map"><i>🗺</i>MAP</button>
+  <button class="navBtn" data-tab="schedule"><i>⏱</i>予定</button>
+  <button class="navBtn" data-tab="live"><i>📡</i>LIVE</button>
+  <button class="navBtn" data-tab="chat"><i>💬</i>CHAT</button>
+</nav>
+</div>
+
+<div class="modal hidden" id="noticeModal">
+  <div class="modalCard">
+    <h3>掲示を作成</h3>
+    <div class="field"><label>種類</label><select id="noticeType"><option>大会要項</option><option>速報結果</option><option>お知らせ</option><option>連絡事項</option><option>資料</option><option>その他</option></select></div>
+    <div class="field"><label>タイトル</label><input id="noticeTitle" placeholder="例：大会要項"></div>
+    <div class="field"><label>説明</label><textarea id="noticeBody" placeholder="内容や補足"></textarea></div>
+    <div class="field"><label>外部リンク</label><input id="noticeLink" placeholder="https://..."></div>
+    <div class="field"><label>画像</label><input id="noticeImage" type="file" accept="image/*"></div>
+    <div class="field"><label>保持方法</label><select id="noticeRetention"><option value="persistent">管理者が削除するまで残す</option><option value="event">イベント終了時に削除</option></select></div>
+    <div class="actions"><button class="primaryBtn" id="saveNoticeBtn">保存</button><button class="ghostBtn" id="cancelNoticeBtn">キャンセル</button></div>
+  </div>
+</div>
+
+<div class="modal hidden" id="destinationModal">
+  <div class="modalCard">
+    <h3 id="destTitle">目的地</h3>
+    <div id="destType" class="tag"></div>
+    <div class="destCoord" id="destCoord"></div>
+    <div class="sep"></div>
+    <p id="destDesc">この地点まで外部ナビを起動できます。</p>
+    <div class="actions">
+      <button class="primaryBtn" id="destDriveBtn">🚗 Googleで車案内</button>
+      <button class="ghostBtn" id="destWalkBtn">🚶 Googleで徒歩案内</button>
+      <button class="ghostBtn" id="destShowBtn">アプリ内MAPで表示</button>
+    </div>
+    <div class="actions adminOnly" style="margin-top:10px">
+      <button class="ghostBtn" id="destSetBaseBtn">この地点を運営拠点に設定</button>
+    </div>
+    <div class="actions" style="margin-top:10px"><button class="ghostBtn" id="destCloseBtn">閉じる</button></div>
+  </div>
+</div>
+
+<div class="modal hidden" id="clusterModal">
+  <div class="modalCard">
+    <h3>同じ場所にいるメンバー</h3>
+    <div id="clusterPeople" class="personList"></div>
+    <div class="actions" style="margin-top:10px"><button class="ghostBtn" id="clusterCloseBtn">閉じる</button></div>
+  </div>
+</div>
+
+<div class="toast hidden" id="toast"></div>
+
+<script>
+(() => {
+'use strict';
+
+/* =========================================================
+   DESIGN CONTRACT
+   1. 実用ベースを先に完成 → 後でビルダーへ分解
+   2. 安定済みモジュールを局所修正で壊さない
+   3. MAPは二重構造:
+      - 会場/駐車場/LIVE = 軽量内部MAP
+      - コース/STAGE/CP = 旅ラン固定ルート方式
+   4. Google Mapsはアプリ本体に埋め込まず外部ナビ起動だけ
+   5. HOME/MAP/SCHEDULE/LIVE/CHAT/BOARDは大会・旅ラン・合宿共通
+   6. LIVE/CHATはイベント終了で削除可能
+   7. BOARDは管理者削除まで保持可能
+   8. 位置共有は必要時間・範囲だけ。近接位置はクラスタ表示
+   ========================================================= */
+
+const DESIGN_CONTRACT = Object.freeze({
+  runtimeFirst:true,
+  map:{
+    venue:'lightweight-internal',
+    course:'tabirun-fixed-route',
+    google:'external-navigation-only'
+  },
+  commonModules:['home','map','schedule','live','chat','board'],
+  ephemeral:['live','chat'],
+  persistent:['board'],
+  preserveStableModules:true
+});
+
+const EVENT = {
+  id:'demo-competition-2026-10-04',
+  kind:'competition',
+  title:'知多スポーツチャレンジ 2026',
+  startAt:'2026-10-04T12:30:00+09:00',
+  endAt:null,
+  venue:{id:'venue',name:'大会開催場所',kind:'会場',lat:34.9947003,lng:136.9481809,desc:'大会の基準地点です。'},
+  parking:[
+    {id:'p1',name:'駐車場出入口 A',kind:'駐車場',lat:34.9962337,lng:136.9442297,desc:'駐車場Aの出入口です。入口位置へ直接案内します。'},
+    {id:'p2',name:'駐車場出入口 B',kind:'駐車場',lat:35.0009999,lng:136.9488022,desc:'駐車場Bの出入口です。入口位置へ直接案内します。'}
+  ],
+  route:null, /* 将来: {points:[{lat,lng},...], checkpoints:[...]} を旅ラン方式で投入 */
+  live:{radiusKm:3,beforeHours:3,afterHours:2,deleteAtEnd:true}
+};
+
+const K={
+  notices:'tabirun_proto_v3_notices',
+  schedule:'tabirun_proto_v3_schedule',
+  chat:'tabirun_proto_v3_chat',
+  base:'tabirun_proto_v3_base',
+  hero:'tabirun_proto_v3_hero',
+  share:'tabirun_proto_v3_share',
+  people:'tabirun_proto_v3_people',
+  eventClosed:'tabirun_proto_v3_closed'
+};
+const $=id=>document.getElementById(id);
+const load=(k,f)=>{try{const v=JSON.parse(localStorage.getItem(k));return v??f}catch(e){return f}};
+const save=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const now=()=>new Date();
+
+let admin=false,chatFilter='all',chatView='message',pendingChatImage='',shareWatch=null,currentDestination=null;
+let mapMode='venue',baseTapMode=false,myPosition=null;
+
+let notices=load(K.notices,[
+  {id:'n1',type:'大会要項',title:'大会要項',body:'競技内容・注意事項・会場案内を掲載する固定掲示です。',link:'',image:'',retention:'persistent',createdAt:Date.now()-10000},
+  {id:'n2',type:'速報結果',title:'速報結果',body:'大会当日は速報ページへの外部リンクをここに掲示できます。',link:'',image:'',retention:'persistent',createdAt:Date.now()-9000},
+  {id:'n3',type:'お知らせ',title:'会場・駐車場を事前に確認してください',body:'駐車場出入口は2か所あります。到着後、運営拠点を設定します。',link:'',image:'',retention:'persistent',createdAt:Date.now()-8000}
+]);
+let schedule=load(K.schedule,[
+  {id:'s-demo',athlete:'選手A',event:'3000m',heat:'5組',call:'13:00',start:'13:20',note:'招集所A',createdAt:Date.now()-1000}
+]);
+let messages=load(K.chat,[
+  {id:'c1',name:'運営',category:'運営',text:'大会用CHATの試作です。新しい投稿を上に表示し、画像・リンクは別画面に分けています。',link:'',image:'',ts:Date.now()-60000}
+]);
+let base=load(K.base,null);
+let shareState=load(K.share,{on:false,last:null});
+let people=load(K.people,[
+  {id:'coachA',name:'指導者A',role:'指導者',status:'未共有',lat:null,lng:null,updatedAt:null},
+  {id:'athleteA',name:'選手A',role:'選手',status:'未共有',lat:null,lng:null,updatedAt:null},
+  {id:'athleteB',name:'選手B',role:'選手',status:'未共有',lat:null,lng:null,updatedAt:null}
+]);
+
+function toast(msg){
+  const t=$('toast');t.textContent=msg;t.classList.remove('hidden');
+  clearTimeout(t._t);t._t=setTimeout(()=>t.classList.add('hidden'),2500);
+}
+function dataUrlFromFile(file,maxMb=3){
+  return new Promise((resolve,reject)=>{
+    if(!file)return resolve('');
+    if(file.size>maxMb*1024*1024)return reject(new Error('画像は'+maxMb+'MB以下にしてください'));
+    const r=new FileReader();r.onload=()=>resolve(String(r.result||''));r.onerror=reject;r.readAsDataURL(file);
+  });
+}
+function eventState(){
+  const n=now(),s=new Date(EVENT.startAt),e=EVENT.endAt?new Date(EVENT.endAt):null;
+  if(n<s)return'before';if(e&&n>e)return'after';return'during';
+}
+function updateCountdown(){
+  const n=now(),s=new Date(EVENT.startAt),diff=s-n,state=eventState(),tag=$('eventStateTag');
+  if(state==='before'){
+    const d=Math.floor(diff/86400000),h=Math.floor((diff%86400000)/3600000),m=Math.max(0,Math.floor((diff%3600000)/60000));
+    $('countdownText').textContent=d>0?`開催まで ${d}日 ${h}時間`:`開催まで ${h}時間 ${m}分`;
+    $('countdownSub').textContent='10月4日（日）12:30 START';tag.textContent='開催前';
+  }else if(state==='during'){
+    $('countdownText').textContent='EVENT NOW';$('countdownSub').textContent='大会開催中';tag.textContent='開催中';
+  }else{
+    $('countdownText').textContent='EVENT FINISHED';$('countdownSub').textContent='掲示資料は引き続き確認できます';tag.textContent='終了';
+  }
+  updateHomeNext();
+}
+function updateHomeNext(){
+  const nxt=getNextSchedule();
+  if(nxt){
+    $('nextActionTitle').textContent=`${nxt.athlete}｜${nxt.event} ${nxt.heat}`;
+    $('nextActionText').textContent=`召集 ${nxt.call||'未定'} ／ 競技 ${nxt.start||'未定'}${nxt.note?' ／ '+nxt.note:''}`;
+  }else{
+    $('nextActionTitle').textContent='会場・駐車場を確認';
+    $('nextActionText').textContent='会場と2か所の駐車場出入口を確認してください。';
+  }
+}
+function renderHero(){
+  const h=load(K.hero,'');$('heroImage').style.backgroundImage=h?`url("${h}")`:'';
+}
+
+/* ---------- BOARD ---------- */
+function renderNotices(){
+  const box=$('noticeList');
+  box.innerHTML=notices.slice().sort((a,b)=>b.createdAt-a.createdAt).map(n=>{
+    const icon=n.type==='大会要項'?'📘':n.type==='速報結果'?'⚡':n.type==='お知らせ'?'📢':'📄';
+    const thumb=n.image?`style="background-image:url('${n.image.replace(/'/g,"%27")}')"`:'';
+    return `<article class="notice">
+      <div class="noticeThumb" ${thumb}>${n.image?'':icon}</div>
+      <div>
+        <h3>${esc(n.title)}</h3>
+        <p class="noticeBody">${esc(n.body)}</p>
+        <div class="noticeMeta"><span>${esc(n.type)}</span><span>${n.retention==='persistent'?'管理者削除まで保持':'イベント終了で削除'}</span></div>
+        ${n.link?`<button class="linkBtn" data-open="${esc(n.link)}">↗ 外部リンクを開く</button>`:`<span class="small" style="display:block;margin-top:7px">リンク未設定</span>`}
+        <div class="adminOnly" style="margin-top:8px"><button class="dangerBtn" data-delnotice="${esc(n.id)}">削除</button></div>
+      </div>
+    </article>`;
+  }).join('');
+  box.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>window.open(b.dataset.open,'_blank','noopener'));
+  box.querySelectorAll('[data-delnotice]').forEach(b=>b.onclick=()=>{if(confirm('この掲示を削除しますか？')){notices=notices.filter(x=>x.id!==b.dataset.delnotice);save(K.notices,notices);renderNotices()}});
+}
+
+/* ---------- MAP CORE (LIGHTWEIGHT) ---------- */
+function mapSourcePoints(extra=[]){
+  const a=[EVENT.venue,...EVENT.parking];
+  if(base)a.push({id:'base',name:'運営拠点',kind:'拠点',lat:base.lat,lng:base.lng,desc:'到着後に設定した運営拠点です。'});
+  if(myPosition)a.push({id:'me',name:'現在地',kind:'現在地',lat:myPosition.lat,lng:myPosition.lng});
+  return a.concat(extra);
+}
+function boundsFor(points){
+  let minLat=Infinity,maxLat=-Infinity,minLng=Infinity,maxLng=-Infinity;
+  points.forEach(p=>{if(Number.isFinite(p.lat)&&Number.isFinite(p.lng)){minLat=Math.min(minLat,p.lat);maxLat=Math.max(maxLat,p.lat);minLng=Math.min(minLng,p.lng);maxLng=Math.max(maxLng,p.lng)}});
+  if(!Number.isFinite(minLat))return {minLat:EVENT.venue.lat-.003,maxLat:EVENT.venue.lat+.003,minLng:EVENT.venue.lng-.003,maxLng:EVENT.venue.lng+.003};
+  const latPad=Math.max((maxLat-minLat)*.28,.0007),lngPad=Math.max((maxLng-minLng)*.28,.0007);
+  return {minLat:minLat-latPad,maxLat:maxLat+latPad,minLng:minLng-lngPad,maxLng:maxLng+lngPad};
+}
+function project(p,b){
+  return {
+    x:5+90*(p.lng-b.minLng)/(b.maxLng-b.minLng||1),
+    y:5+90*(b.maxLat-p.lat)/(b.maxLat-b.minLat||1)
+  };
+}
+function unprojectPercent(xPct,yPct,b){
+  return {
+    lng:b.minLng+(xPct-5)/90*(b.maxLng-b.minLng),
+    lat:b.maxLat-(yPct-5)/90*(b.maxLat-b.minLat)
+  };
+}
+function pinHtml(p,pos,liveClusterCount=0){
+  let cls='mapPin',inside='🏟️';
+  if(p.kind==='駐車場'){cls+=' parking';inside='P'}
+  if(p.kind==='拠点'){cls+=' base';inside='★'}
+  if(p.kind==='現在地'){cls+=' me';inside='●'}
+  if(liveClusterCount>1){cls+=' cluster';inside=String(liveClusterCount)}
+  const label=liveClusterCount>1?`${liveClusterCount}人`:p.name;
+  return `<button class="mapPoint" style="left:${pos.x}%;top:${pos.y}%" data-point="${esc(p.id)}"><span class="${cls}">${inside}</span><span class="mapLabel">${esc(label)}</span></button>`;
+}
+function routeDataPoints(){
+  return EVENT.route?.points||[];
+}
+function renderVenueMap(){
+  const layer=$('mapPointLayer'),routeEmpty=$('routeEmpty'),svg=$('routeSvg');
+  const extras=mapMode==='route'?routeDataPoints():[];
+  const points=mapSourcePoints(extras),b=boundsFor(points);
+  layer.dataset.bounds=JSON.stringify(b);
+  if(mapMode==='route'){
+    if(!EVENT.route||!routeDataPoints().length){
+      routeEmpty.classList.remove('hidden');svg.classList.add('hidden');
+      layer.innerHTML='';
+      $('mapHint').textContent='ルートがあるイベントでは、旅ランと同じ固定ルート方式をここへ表示します。';
+      return;
+    }
+    routeEmpty.classList.add('hidden');svg.classList.remove('hidden');
+    const coords=routeDataPoints().map(p=>{const q=project(p,b);return `${q.x*10},${q.y*10}`}).join(' ');
+    svg.innerHTML=`<polyline points="${coords}"></polyline>`;
+  }else{
+    routeEmpty.classList.add('hidden');svg.classList.add('hidden');svg.innerHTML='';
+  }
+  const visible=mapMode==='route' ? [
+    EVENT.venue,
+    ...(EVENT.route?.checkpoints||[])
+  ] : mapSourcePoints();
+  layer.innerHTML=visible.map(p=>pinHtml(p,project(p,b))).join('');
+  layer.querySelectorAll('[data-point]').forEach(btn=>btn.onclick=e=>{
+    e.stopPropagation();
+    const id=btn.dataset.point;
+    if(id==='me'){toast('現在地です');return}
+    const p=destinations().find(x=>x.id===id)||(EVENT.route?.checkpoints||[]).find(x=>x.id===id);
+    if(p)openDestinationObject(p);
+  });
+}
+function destinations(){
+  const x=[EVENT.venue,...EVENT.parking];
+  if(base)x.push({id:'base',name:'運営拠点',kind:'拠点',lat:base.lat,lng:base.lng,desc:'到着後に設定した運営拠点です。'});
+  return x;
+}
+function googleDirectionsUrl(p,mode='driving'){
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.lat+','+p.lng)}&travelmode=${encodeURIComponent(mode)}`;
+}
+function renderPlaceList(){
+  const box=$('placeList');
+  box.innerHTML=destinations().map(p=>`<button class="placeRow" data-dest="${esc(p.id)}">
+    <div class="placeIcon">${p.kind==='駐車場'?'P':p.kind==='拠点'?'★':'🏟️'}</div>
+    <div><b>${esc(p.name)}</b><span>${esc(p.kind)}｜${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}</span></div>
+    <span class="routeBadge">案内 ›</span>
+  </button>`).join('') + (!base?`<div class="placeRow adminOnly"><div class="placeIcon">★</div><div><b>運営拠点</b><span>到着後に現在地または地図タップで設定</span></div><span></span></div>`:'');
+  box.querySelectorAll('[data-dest]').forEach(b=>b.onclick=()=>openDestination(b.dataset.dest));
+}
+function openDestination(id){
+  const p=destinations().find(x=>x.id===id);if(p)openDestinationObject(p);
+}
+function openDestinationObject(p){
+  currentDestination=p;
+  $('destTitle').textContent=p.name;$('destType').textContent=p.kind||'地点';
+  $('destCoord').textContent=`${p.lat.toFixed(7)}, ${p.lng.toFixed(7)}`;
+  $('destDesc').textContent=p.desc||'この地点まで外部ナビを起動できます。';
+  $('destinationModal').classList.remove('hidden');
+}
+function setBase(p){
+  base={lat:p.lat,lng:p.lng,setAt:Date.now()};save(K.base,base);baseTapMode=false;
+  renderPlaceList();renderVenueMap();renderLiveMap();toast('運営拠点を設定しました');
+}
+$('destDriveBtn').onclick=()=>currentDestination&&window.open(googleDirectionsUrl(currentDestination,'driving'),'_blank','noopener');
+$('destWalkBtn').onclick=()=>currentDestination&&window.open(googleDirectionsUrl(currentDestination,'walking'),'_blank','noopener');
+$('destShowBtn').onclick=()=>{if(currentDestination){mapMode='venue';updateMapModeButtons();$('destinationModal').classList.add('hidden');showTab('map');renderVenueMap()}};
+$('destSetBaseBtn').onclick=()=>{if(currentDestination){setBase(currentDestination);$('destinationModal').classList.add('hidden')}};
+$('destCloseBtn').onclick=()=>$('destinationModal').classList.add('hidden');
+$('destinationModal').onclick=e=>{if(e.target===$('destinationModal'))$('destinationModal').classList.add('hidden')};
+
+function updateMapModeButtons(){
+  $('venueMapModeBtn').classList.toggle('on',mapMode==='venue');
+  $('routeMapModeBtn').classList.toggle('on',mapMode==='route');
+  $('fitVenueBtn').textContent=mapMode==='venue'?'会場全体':'ルート全体';
+}
+$('venueMapModeBtn').onclick=()=>{mapMode='venue';updateMapModeButtons();renderVenueMap()};
+$('routeMapModeBtn').onclick=()=>{mapMode='route';updateMapModeButtons();renderVenueMap()};
+$('fitVenueBtn').onclick=()=>{myPosition=null;renderVenueMap();toast(mapMode==='venue'?'会場全体を表示':'ルート全体を表示')};
+$('showMyPosBtn').onclick=()=>{
+  if(!navigator.geolocation)return toast('位置情報を利用できません');
+  navigator.geolocation.getCurrentPosition(pos=>{
+    myPosition={lat:pos.coords.latitude,lng:pos.coords.longitude,ts:Date.now()};
+    mapMode='venue';updateMapModeButtons();renderVenueMap();toast('現在地を表示しました');
+  },e=>toast('現在地を取得できません: '+e.message),{enableHighAccuracy:true,timeout:15000});
+};
+$('setBaseGpsBtn').onclick=()=>{
+  if(!navigator.geolocation)return toast('位置情報を利用できません');
+  navigator.geolocation.getCurrentPosition(pos=>setBase({lat:pos.coords.latitude,lng:pos.coords.longitude}),e=>toast('現在地を取得できません: '+e.message),{enableHighAccuracy:true,timeout:15000});
+};
+$('setBaseTapBtn').onclick=()=>{
+  mapMode='venue';updateMapModeButtons();renderVenueMap();baseTapMode=true;
+  $('mapHint').textContent='拠点にしたい位置を会場MAP上で1回タップしてください。';
+  toast('拠点設定モード：地図をタップしてください');
+};
+$('venueMap').addEventListener('click',e=>{
+  if(!baseTapMode)return;
+  const r=$('venueMap').getBoundingClientRect(),x=(e.clientX-r.left)/r.width*100,y=(e.clientY-r.top)/r.height*100;
+  const raw=$('mapPointLayer').dataset.bounds;if(!raw)return;
+  const b=JSON.parse(raw),p=unprojectPercent(x,y,b);setBase(p);
+  $('mapHint').textContent='地点をタップすると案内画面が開きます。Google マップは「外部ナビ」にだけ使います。';
+});
+
+/* ---------- SCHEDULE ---------- */
+function timeToMin(t){if(!t||!/^\d\d:\d\d$/.test(t))return 9999;const [h,m]=t.split(':').map(Number);return h*60+m}
+function sortedSchedule(){return schedule.slice().sort((a,b)=>timeToMin(a.call)-timeToMin(b.call)||timeToMin(a.start)-timeToMin(b.start))}
+function getNextSchedule(){
+  const today=new Date(EVENT.startAt),n=now();
+  if(n.toDateString()!==today.toDateString())return sortedSchedule()[0]||null;
+  const nm=n.getHours()*60+n.getMinutes();
+  return sortedSchedule().find(x=>timeToMin(x.call)>=nm)||sortedSchedule().find(x=>timeToMin(x.start)>=nm)||null;
+}
+function renderSchedule(){
+  const rows=sortedSchedule(),next=getNextSchedule();
+  if(next){$('scheduleNextTitle').textContent=`NEXT｜${next.athlete} ${next.event} ${next.heat}`;$('scheduleNextSub').textContent=`召集 ${next.call||'未定'} ／ 競技 ${next.start||'未定'}${next.note?' ／ '+next.note:''}`}
+  else{$('scheduleNextTitle').textContent='予定は登録されていません';$('scheduleNextSub').textContent='管理者モードから追加できます'}
+  $('scheduleList').innerHTML=rows.map(s=>`<div class="scheduleItem ${next&&s.id===next.id?'scheduleNow':''}">
+    <div class="scheduleTop">
+      <div class="scheduleTime">${esc(s.call||'未定')}</div>
+      <div><div class="scheduleAthlete">${esc(s.athlete)}</div><div class="scheduleRace">${esc(s.event)} ${esc(s.heat)}</div></div>
+      <div class="scheduleCall">召集</div>
+    </div>
+    <div class="scheduleDetail"><span>競技 ${esc(s.start||'未定')}</span>${s.note?`<span>${esc(s.note)}</span>`:''}</div>
+    <div class="adminOnly" style="margin-top:8px"><button class="dangerBtn" data-delschedule="${esc(s.id)}">削除</button></div>
+  </div>`).join('');
+  $('scheduleList').querySelectorAll('[data-delschedule]').forEach(b=>b.onclick=()=>{schedule=schedule.filter(x=>x.id!==b.dataset.delschedule);save(K.schedule,schedule);renderSchedule();updateHomeNext()});
+  updateHomeNext();
+}
+$('addScheduleBtn').onclick=()=>{
+  const athlete=$('schAthlete').value.trim(),event=$('schEvent').value.trim(),heat=$('schHeat').value.trim(),call=$('schCall').value,start=$('schStart').value,note=$('schNote').value.trim();
+  if(!athlete||!event)return toast('選手名と種目を入力してください');
+  schedule.push({id:'s'+Date.now(),athlete,event,heat,call,start,note,createdAt:Date.now()});save(K.schedule,schedule);
+  ['schAthlete','schEvent','schHeat','schCall','schStart','schNote'].forEach(id=>$(id).value='');
+  renderSchedule();toast('タイムスケジュールへ反映しました');
+};
+
+/* ---------- LIVE + OVERLAP ---------- */
+function liveMembers(){
+  const arr=people.filter(p=>p.status==='共有中'&&Number.isFinite(p.lat)&&Number.isFinite(p.lng));
+  if(shareState.on&&shareState.last)arr.unshift({id:'me-live',name:'あなた',role:'参加者',status:'共有中',lat:shareState.last.lat,lng:shareState.last.lng,updatedAt:shareState.last.ts});
+  return arr;
+}
+function clusterMembers(members,b){
+  const groups=[];
+  members.forEach(p=>{
+    const q=project(p,b);
+    let g=groups.find(g=>Math.hypot(g.x-q.x,g.y-q.y)<6.5);
+    if(!g){g={x:q.x,y:q.y,people:[]};groups.push(g)}
+    g.people.push(p);
+  });
+  return groups;
+}
+function renderLiveMap(){
+  const members=liveMembers();
+  const fixed=destinations();
+  const b=boundsFor([...fixed,...members]);
+  const layer=$('livePointLayer');
+  const fixedHtml=fixed.map(p=>pinHtml(p,project(p,b))).join('');
+  const groups=clusterMembers(members,b);
+  const groupHtml=groups.map((g,i)=>{
+    const p={id:'cluster-'+i,name:g.people.length>1?`${g.people.length}人`:g.people[0].name,kind:'LIVE'};
+    return pinHtml(p,{x:g.x,y:g.y},g.people.length).replace(`data-point="${p.id}"`,`data-cluster="${i}"`);
+  }).join('');
+  layer.innerHTML=fixedHtml+groupHtml;
+  layer.querySelectorAll('[data-point]').forEach(btn=>btn.onclick=()=>{
+    const p=destinations().find(x=>x.id===btn.dataset.point);if(p)openDestinationObject(p);
+  });
+  layer.querySelectorAll('[data-cluster]').forEach(btn=>btn.onclick=()=>openCluster(groups[Number(btn.dataset.cluster)].people));
+}
+function openCluster(list){
+  $('clusterPeople').innerHTML=list.map(p=>`<div class="person"><div class="avatar">${esc(p.name.slice(0,1))}</div><div><b>${esc(p.name)}</b><small>${esc(p.role)}｜共有中</small></div><span class="dot on"></span></div>`).join('');
+  $('clusterModal').classList.remove('hidden');
+}
+$('clusterCloseBtn').onclick=()=>$('clusterModal').classList.add('hidden');
+$('clusterModal').onclick=e=>{if(e.target===$('clusterModal'))$('clusterModal').classList.add('hidden')};
+
+function renderPeople(){
+  const rows=liveMembers().length?liveMembers():people;
+  $('personList').innerHTML=rows.map(p=>`<div class="person">
+    <div class="avatar">${esc((p.name||'?').slice(0,1))}</div>
+    <div><b>${esc(p.name)}</b><small>${esc(p.role)}｜${esc(p.status)}${p.updatedAt?'｜'+new Date(p.updatedAt).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):''}</small></div>
+    <span class="dot ${p.status==='共有中'?'on':''}"></span>
+  </div>`).join('');
+  const st=$('privacyStatus');
+  if(shareState.on){st.classList.remove('warn');st.innerHTML='<strong>位置共有はONです</strong><div>必要な時間だけ共有します。OFFにすると、この端末の位置送信を停止します。</div>';$('toggleShareBtn').textContent='位置共有をOFF';$('privacyBtn').classList.add('on')}
+  else{st.classList.add('warn');st.innerHTML='<strong>位置共有はOFFです</strong><div>必要な時間だけONにします。イベント終了処理で位置データは削除します。</div>';$('toggleShareBtn').textContent='位置共有をON';$('privacyBtn').classList.remove('on')}
+}
+function renderLive(){renderLiveMap();renderPeople()}
+function startSharing(){
+  if(!navigator.geolocation)return toast('この端末では位置情報を利用できません');
+  shareState.on=true;save(K.share,shareState);renderLive();
+  shareWatch=navigator.geolocation.watchPosition(pos=>{
+    shareState={on:true,last:{lat:pos.coords.latitude,lng:pos.coords.longitude,accuracy:pos.coords.accuracy,ts:Date.now()}};
+    save(K.share,shareState);renderLive();
+  },e=>toast('位置情報を取得できません: '+e.message),{enableHighAccuracy:true,maximumAge:10000,timeout:15000});
+  toast('位置共有をONにしました');
+}
+function stopSharing(silent=false){
+  if(shareWatch!==null){navigator.geolocation.clearWatch(shareWatch);shareWatch=null}
+  shareState={on:false,last:null};save(K.share,shareState);renderLive();if(!silent)toast('位置共有をOFFにしました');
+}
+$('toggleShareBtn').onclick=()=>shareState.on?stopSharing():startSharing();
+$('mockOverlapBtn').onclick=()=>{
+  people=[
+    {id:'coachA',name:'指導者A',role:'指導者',status:'共有中',lat:EVENT.venue.lat+0.00010,lng:EVENT.venue.lng+0.00008,updatedAt:Date.now()},
+    {id:'athleteA',name:'選手A',role:'選手',status:'共有中',lat:EVENT.venue.lat+0.00011,lng:EVENT.venue.lng+0.00008,updatedAt:Date.now()},
+    {id:'athleteB',name:'選手B',role:'選手',status:'共有中',lat:EVENT.venue.lat+0.00010,lng:EVENT.venue.lng+0.00009,updatedAt:Date.now()},
+    {id:'athleteC',name:'選手C',role:'選手',status:'共有中',lat:EVENT.venue.lat-0.00075,lng:EVENT.venue.lng+0.00055,updatedAt:Date.now()}
+  ];
+  save(K.people,people);renderLive();toast('重なり表示テストを配置しました');
+};
+
+/* ---------- CHAT ---------- */
+function renderChat(){
+  const sorted=messages.slice().sort((a,b)=>b.ts-a.ts);
+  const filtered=sorted.filter(m=>chatFilter==='all'||m.category===chatFilter);
+  const latest=filtered[0]||sorted[0];
+  $('latestBox').innerHTML=latest?`<small>最新</small><b>${esc(latest.name)}｜${esc(latest.category)}</b><div class="messageText">${esc(latest.text||'(本文なし)')}</div>`:'<small>最新</small><b>投稿はありません</b>';
+  const root=$('chatContent');
+  if(chatView==='message'){
+    root.innerHTML='<div class="chatList">'+filtered.map(m=>`<div class="chatMsg">
+      <div class="chatHead"><span><b>${esc(m.name)}</b> ・ ${esc(m.category)}</span><span>${new Date(m.ts).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})}</span></div>
+      <div class="messageText">${esc(m.text||'(画像・リンク投稿)')}</div>
+      ${(m.image||m.link)?`<div class="noticeMeta">${m.image?'<span>画像あり</span>':''}${m.link?'<span>リンクあり</span>':''}</div>`:''}
+    </div>`).join('')+'</div>';
+  }else if(chatView==='image'){
+    const imgs=filtered.filter(m=>m.image);
+    root.innerHTML=imgs.length?'<div class="assetGrid">'+imgs.map(m=>`<button class="assetCard" data-imgid="${esc(m.id)}"><div class="assetThumb" style="background-image:url('${m.image.replace(/'/g,"%27")}')"></div><div class="assetMeta"><b>${esc(m.name)}｜${esc(m.category)}</b><span>${new Date(m.ts).toLocaleString('ja-JP')}</span></div></button>`).join('')+'</div>':'<div class="small">画像投稿はありません。</div>';
+    root.querySelectorAll('[data-imgid]').forEach(b=>b.onclick=()=>{const m=messages.find(x=>x.id===b.dataset.imgid);if(m)window.open(m.image,'_blank')});
+  }else{
+    const links=filtered.filter(m=>m.link);
+    root.innerHTML=links.length?'<div class="linkList">'+links.map(m=>`<button class="linkCard" data-linkid="${esc(m.id)}"><b>↗ ${esc(m.name)}｜${esc(m.category)}</b><span>${esc(m.link)}</span></button>`).join('')+'</div>':'<div class="small">リンク投稿はありません。</div>';
+    root.querySelectorAll('[data-linkid]').forEach(b=>b.onclick=()=>{const m=messages.find(x=>x.id===b.dataset.linkid);if(m)window.open(m.link,'_blank','noopener')});
+  }
+}
+document.querySelectorAll('[data-chatview]').forEach(b=>b.onclick=()=>{
+  chatView=b.dataset.chatview;document.querySelectorAll('[data-chatview]').forEach(x=>x.classList.toggle('on',x===b));renderChat();
+});
+$('chatFilters').querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>{
+  chatFilter=b.dataset.filter;$('chatFilters').querySelectorAll('.pill').forEach(x=>x.classList.toggle('on',x===b));renderChat();
+});
+$('chatImage').onchange=async()=>{
+  try{pendingChatImage=await dataUrlFromFile($('chatImage').files?.[0],3);$('chatImageName').textContent=$('chatImage').files?.[0]?.name||''}
+  catch(e){pendingChatImage='';toast(e.message||'画像を読み込めませんでした')}
+};
+$('sendChatBtn').onclick=()=>{
+  const text=$('chatText').value.trim(),link=$('chatLink').value.trim();
+  if(!text&&!link&&!pendingChatImage)return toast('メッセージ・リンク・画像のいずれかを入力してください');
+  messages.push({id:'c'+Date.now(),name:admin?'運営':'参加者',category:$('chatCategory').value,text,link,image:pendingChatImage,ts:Date.now()});
+  save(K.chat,messages);$('chatText').value='';$('chatLink').value='';$('chatImage').value='';$('chatImageName').textContent='';pendingChatImage='';chatView='message';
+  document.querySelectorAll('[data-chatview]').forEach(x=>x.classList.toggle('on',x.dataset.chatview==='message'));renderChat();toast('投稿しました');
+};
+
+/* ---------- COMMON ---------- */
+function showTab(tab){
+  document.querySelectorAll('.tabPage').forEach(p=>p.classList.toggle('active',p.id==='page-'+tab));
+  document.querySelectorAll('.navBtn').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
+  window.scrollTo({top:0,behavior:'instant'});
+  if(tab==='map')renderVenueMap();
+  if(tab==='live')renderLive();
+}
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>showTab(b.dataset.go));
+$('adminBtn').onclick=()=>{admin=!admin;document.body.classList.toggle('adminMode',admin);$('adminBtn').classList.toggle('on',admin);renderNotices();renderPlaceList();renderSchedule();toast(admin?'管理者モード ON':'管理者モード OFF')};
+$('privacyBtn').onclick=()=>showTab('live');
+
+$('addNoticeBtn').onclick=()=>$('noticeModal').classList.remove('hidden');
+$('cancelNoticeBtn').onclick=()=>$('noticeModal').classList.add('hidden');
+$('noticeModal').onclick=e=>{if(e.target===$('noticeModal'))$('noticeModal').classList.add('hidden')};
+$('saveNoticeBtn').onclick=async()=>{
+  const title=$('noticeTitle').value.trim();if(!title)return toast('タイトルを入力してください');
+  try{
+    const image=await dataUrlFromFile($('noticeImage').files?.[0],3);
+    notices.push({id:'n'+Date.now(),type:$('noticeType').value,title,body:$('noticeBody').value.trim(),link:$('noticeLink').value.trim(),image,retention:$('noticeRetention').value,createdAt:Date.now()});
+    save(K.notices,notices);$('noticeModal').classList.add('hidden');['noticeTitle','noticeBody','noticeLink'].forEach(id=>$(id).value='');$('noticeImage').value='';renderNotices();toast('掲示を保存しました');
+  }catch(e){toast(e.message||'画像を保存できませんでした')}
+};
+$('heroImageBtn').onclick=()=>$('heroImageInput').click();
+$('heroImageInput').onchange=async()=>{
+  try{const x=await dataUrlFromFile($('heroImageInput').files?.[0],3);save(K.hero,x);renderHero();toast('ホーム画像を変更しました')}
+  catch(e){toast(e.message||'画像を保存できませんでした')}
+};
+$('closeEventBtn').onclick=()=>{
+  if(!confirm('CHATとLIVE位置情報を削除します。掲示は残します。実行しますか？'))return;
+  messages=[];save(K.chat,messages);stopSharing(true);people=people.map(p=>({...p,status:'未共有',lat:null,lng:null,updatedAt:null}));save(K.people,people);
+  notices=notices.filter(n=>n.retention==='persistent');save(K.notices,notices);localStorage.setItem(K.eventClosed,'1');
+  renderChat();renderLive();renderNotices();toast('一時データを削除しました。掲示は保持しています。');
+};
+function checkAutoCleanup(){
+  if(EVENT.endAt&&now()>new Date(EVENT.endAt)&&localStorage.getItem(K.eventClosed)!=='1'){
+    messages=[];save(K.chat,messages);stopSharing(true);people=people.map(p=>({...p,status:'未共有',lat:null,lng:null,updatedAt:null}));save(K.people,people);
+    notices=notices.filter(n=>n.retention==='persistent');save(K.notices,notices);localStorage.setItem(K.eventClosed,'1');
+  }
+}
+
+checkAutoCleanup();
+renderHero();renderNotices();renderSchedule();renderPlaceList();updateMapModeButtons();renderVenueMap();renderLive();renderChat();updateCountdown();
+setInterval(updateCountdown,60000);
+})();
+</script>
+</body>
+</html>
