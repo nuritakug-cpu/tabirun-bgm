@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>EVENT BASE Firebase Auth Persistence Gate v2</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0;background:#f4f6f8;color:#111}
+main{max-width:680px;margin:auto;padding:20px}
+.card{background:#fff;border:1px solid #ddd;border-radius:16px;padding:18px;margin:14px 0}
+h1{font-size:20px;margin:0 0 8px}.big{font-size:24px;font-weight:800}
+.ok{color:#087f23}.ng{color:#b00020}.wait{color:#755c00}
+button{font-size:16px;padding:12px 16px;border:0;border-radius:10px;background:#111;color:#fff;margin:4px}
+pre{white-space:pre-wrap;word-break:break-all;background:#f1f3f5;padding:12px;border-radius:10px}
+small{color:#555}
+</style>
+</head><body><main>
+<h1>EVENT BASE / Firebase採用判定</h1>
+<div class="card">
+<div id="status" class="big wait">未実行</div>
+<p id="detail">専用Firebase設定をこのテスト自身に固定し、Firebase Authの公式LOCAL永続化だけを検証します。EVENT BASE旧共有処理は一切使用しません。</p>
+<button id="start">認証を作成 / 確認</button>
+<button id="clear">このテスト認証を解除</button>
+</div>
+<div class="card"><b>今回のUID</b><pre id="uid">—</pre>
+<b>前回保存UID</b><pre id="prev">—</pre>
+<b>判定</b><pre id="judge">初回はUIDを保存後、ブラウザを完全に閉じて同じURLを開いてください。</pre></div>
+<div class="card"><small>PASS条件：ブラウザ終了後もFirebase自身が同一UIDを復元すること。ローカル保存値は比較用だけで、認証復元には使いません。</small></div>
+<script type="module">
+const SDK='12.19.0';
+const CONFIG_KEY='toprun_eventbase_isolated_firebase_config';
+const EXPECTED_PROJECT='top-run-event-base';
+const EXPECTED_HOST='top-run-event-base-default-rtdb.asia-southeast1.firebasedatabase.app';
+const $=id=>document.getElementById(id);
+const DEFAULT_CONFIG=Object.freeze({
+  apiKey:'AIzaSyBRL_MnyqqTa0YviGDIzuPp9kARbXLMwa0',
+  authDomain:'top-run-event-base.firebaseapp.com',
+  databaseURL:'https://top-run-event-base-default-rtdb.asia-southeast1.firebasedatabase.app/',
+  projectId:'top-run-event-base',
+  storageBucket:'top-run-event-base.firebasestorage.app',
+  messagingSenderId:'55962935111',
+  appId:'1:55962935111:web:fb77b096d493ba31217662'
+});
+function cfg(){
+  const c={...DEFAULT_CONFIG};
+  if(c.projectId!==EXPECTED_PROJECT) throw new Error('別Firebase projectです: '+c.projectId);
+  const host=String(c.databaseURL||'').replace(/^https?:\/\//,'').replace(/\/.*$/,'');
+  if(host!==EXPECTED_HOST) throw new Error('別Realtime Databaseです: '+host);
+  return c;
+}
+async function modules(){
+  return Promise.all([
+    import(`https://www.gstatic.com/firebasejs/${SDK}/firebase-app.js`),
+    import(`https://www.gstatic.com/firebasejs/${SDK}/firebase-auth.js`)
+  ]);
+}
+async function run(){
+  $('status').className='big wait';$('status').textContent='Firebase認証確認中…';
+  try{
+    const c=cfg(),[am,au]=await modules();
+    const app=am.initializeApp(c,'eventbase-auth-gate');
+    // Firebase公式のLOCAL persistenceを明示。独自binding/creatorClaimsは使わない。
+    const auth=au.initializeAuth(app,{persistence:[au.indexedDBLocalPersistence,au.browserLocalPersistence]});
+    await au.authStateReady(auth);
+    const before=auth.currentUser?.uid||null;
+    if(!auth.currentUser) await au.signInAnonymously(auth);
+    await au.setPersistence(auth,au.browserLocalPersistence);
+    const uid=auth.currentUser.uid;
+    const prev=localStorage.getItem('eventbase_auth_gate_prev_uid')||'—';
+    $('uid').textContent=uid;$('prev').textContent=prev;
+    if(prev==='—'){
+      localStorage.setItem('eventbase_auth_gate_prev_uid',uid);
+      $('status').className='big ok';$('status').textContent='初回認証 OK';
+      $('judge').textContent='次にブラウザを完全に閉じ、同じURLを開いて「認証を作成 / 確認」を押してください。';
+    }else if(prev===uid && before===uid){
+      $('status').className='big ok';$('status').textContent='PASS：Firebaseが同一UIDを復元';
+      $('judge').textContent='Firebase AuthのLOCAL永続化はこの端末/URLで成立。EVENT BASEはこの公式認証モデルで再構築可能です。';
+    }else{
+      $('status').className='big ng';$('status').textContent='FAIL：同一UIDを復元できず';
+      $('judge').textContent='EVENT BASEへのFirebase再統合を停止し、Firebase採用自体を見直す判定です。';
+    }
+    $('detail').textContent=`起動時UID: ${before||'なし'} / 現在UID: ${uid}`;
+  }catch(e){
+    $('status').className='big ng';$('status').textContent='FAIL';
+    $('detail').textContent=String(e?.message||e);
+    $('judge').textContent='この状態ではEVENT BASE本体へFirebaseを再統合しません。';
+  }
+}
+$('start').onclick=run;
+$('clear').onclick=async()=>{
+  try{
+    const c=cfg(),[am,au]=await modules();
+    const app=am.getApps().find(x=>x.name==='eventbase-auth-gate')||am.initializeApp(c,'eventbase-auth-gate');
+    let auth; try{auth=au.getAuth(app)}catch(e){auth=au.initializeAuth(app,{persistence:[au.indexedDBLocalPersistence,au.browserLocalPersistence]})}
+    await au.signOut(auth);
+  }catch(e){}
+  localStorage.removeItem('eventbase_auth_gate_prev_uid');
+  location.reload();
+};
+</script></main></body></html>
