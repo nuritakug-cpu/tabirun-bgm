@@ -1,0 +1,36 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>EVENT BASE Firebase Standalone Diagnostic v3</title>
+<style>:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#090b0d;color:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}main{max-width:760px;margin:auto;padding:22px 18px 70px}h1{font-size:24px;margin:0 0 6px}.sub,.note{color:#9aa2a9}.card{border:1px solid #343b41;border-radius:22px;padding:18px;margin:14px 0;background:#101417}button{width:100%;border:0;border-radius:18px;padding:18px;font-weight:800;font-size:18px;background:#ffd400;color:#111;margin:7px 0}button:disabled{opacity:.55}pre{white-space:pre-wrap;word-break:break-word;background:#080a0c;border-radius:16px;padding:15px;min-height:110px;color:#c9d0d5;font-size:13px;line-height:1.55}.note{font-size:13px;line-height:1.6}</style></head>
+<body><main><h1>EVENT BASE Firebase 単独診断</h1><p class="sub">本体から完全分離｜v3・long-polling検証</p>
+<div class="card"><strong>目的</strong><p class="note">v2ではFirebase Authと通常HTTPSは到達しましたが、Realtime Database SDK接続だけがタイムアウトしました。今回はFirebase公式のlong-polling強制モードで同じ接続を検査します。大会データ・LIVE・CHAT・位置情報は変更しません。</p>
+<button id="run">long-polling単独診断を開始</button><pre id="out">未実行</pre></div>
+<div class="card"><strong>判定</strong><p class="note">ここでRTDB接続が成立すれば、通常のRealtime transportではなくlong-pollingを使う方向が有力です。ここでも失敗する場合はRTDB SDK通信全体をさらに切り分けます。</p></div>
+<script type="module">
+const SDK='12.19.0',APP='toprun-eventbase-standalone-longpoll-v3';
+const CFG={apiKey:'AIzaSyBRL_MnyqqTa0YviGDIzuPp9kARbXLMwa0',authDomain:'top-run-event-base.firebaseapp.com',databaseURL:'https://top-run-event-base-default-rtdb.asia-southeast1.firebasedatabase.app/',projectId:'top-run-event-base',storageBucket:'top-run-event-base.firebasestorage.app',messagingSenderId:'55962935111',appId:'1:55962935111:web:fb77b096d493ba31217662'};
+const $=id=>document.getElementById(id),state={steps:{}};
+function timeout(p,ms,label){let timer;return Promise.race([Promise.resolve(p),new Promise((_,rej)=>timer=setTimeout(()=>rej(new Error(label+' timeout')),ms))]).finally(()=>clearTimeout(timer))}
+function render(current=''){const a=Object.entries(state.steps).map(([k,v])=>`${v.ok?'✓':'✕'} ${k} ${v.ms}ms${v.info?' | '+v.info:''}${v.error?' | '+v.error:''}`);if(current)a.push(`… ${current}`);$('out').textContent=a.join('\n')||'開始します…'}
+async function step(name,fn,ms=8000,{fatal=true}={}){render(name+' 実行中');const st=performance.now();try{const v=await timeout(Promise.resolve().then(fn),ms,name);state.steps[name]={ok:true,ms:Math.round(performance.now()-st),info:v||''};render();return v}catch(e){state.steps[name]={ok:false,ms:Math.round(performance.now()-st),error:String(e?.code||e?.message||e)};render();if(fatal)throw e}}
+$('run').onclick=async()=>{$('run').disabled=true;state.steps={};render();try{
+ let appMod,authMod,dbMod,app,auth,db;
+ await step('SDK import',async()=>{[appMod,authMod,dbMod]=await Promise.all([import(`https://www.gstatic.com/firebasejs/${SDK}/firebase-app.js`),import(`https://www.gstatic.com/firebasejs/${SDK}/firebase-auth.js`),import(`https://www.gstatic.com/firebasejs/${SDK}/firebase-database.js`)]);return 'OK'},12000);
+ await step('Firebase app',async()=>{app=appMod.initializeApp(CFG,APP);return CFG.projectId});
+ await step('Auth object',async()=>{try{auth=authMod.initializeAuth(app,{persistence:[authMod.indexedDBLocalPersistence,authMod.browserLocalPersistence,authMod.browserSessionPersistence]})}catch(_){auth=authMod.getAuth(app)}return auth.currentUser?'sessionあり':'sessionなし'});
+ if(!auth.currentUser&&typeof auth.authStateReady==='function'){try{await step('Auth restore',()=>auth.authStateReady(),2500)}catch(_){}}
+ if(!auth.currentUser)await step('Anonymous sign-in',async()=>{const c=await authMod.signInAnonymously(auth);return c?.user?.uid?'UID取得':'UIDなし'},12000);
+ const token=await step('ID token',async()=>{const x=await authMod.getIdToken(auth.currentUser,false);return x?'取得':'なし'},8000);
+ await step('RTDB HTTPS reachability',async()=>{const u=CFG.databaseURL.replace(/\/$/,'')+`/.json?shallow=true&auth=${encodeURIComponent(await authMod.getIdToken(auth.currentUser,false))}`;const r=await fetch(u,{cache:'no-store'}),body=(await r.text()).slice(0,120).replace(/\s+/g,' ');if(r.status>=500)throw new Error(`HTTP ${r.status}`);return `HTTP ${r.status} ${body}`},8000,{fatal:false});
+ await step('Force long-polling',async()=>{dbMod.forceLongPolling();return 'ON'});
+ await step('Database object',async()=>{db=dbMod.getDatabase(app);return 'OK'});
+ await step('SDK serverTimeOffset',async()=>{const s=await dbMod.get(dbMod.ref(db,'.info/serverTimeOffset'));return `value=${String(s.val())}`},8000,{fatal:false});
+ await step('RTDB realtime connected',()=>new Promise((resolve,reject)=>{let done=false,unsub;const timer=setTimeout(()=>{if(!done){done=true;try{unsub&&unsub()}catch{};reject(new Error('connected signal timeout'))}},8000);unsub=dbMod.onValue(dbMod.ref(db,'.info/connected'),s=>{if(s.val()===true&&!done){done=true;clearTimeout(timer);try{unsub&&unsub()}catch{};resolve('ONLINE')}},e=>{if(!done){done=true;clearTimeout(timer);reject(e)}})}),9000,{fatal:false});
+ const ok=state.steps['SDK serverTimeOffset']?.ok&&state.steps['RTDB realtime connected']?.ok;
+ $('out').textContent+=ok?'\n\n✓ 強制long-pollingでRTDB接続まで成立しました。':'\n\n✕ 強制long-pollingでもRTDB接続に失敗しました。';
+}catch(e){$('out').textContent+='\n\n✕ 基礎認証段階で停止しました。'}finally{$('run').disabled=false}};
+</script>
+<!-- EVENT_BASE_FIREBASE_STANDALONE_DIAGNOSTIC_V3
+V2_DEVICE_EVIDENCE: Auth OK; ID token OK; HTTPS reached RTDB and returned HTTP 401 Permission denied at protected root; SDK .info/serverTimeOffset and .info/connected both timed out around 8s.
+V3: calls Firebase RTDB official forceLongPolling() BEFORE getDatabase(), then repeats SDK .info probes.
+NO_EVENT_MUTATION=true; NO_LIVE_WRITE=true; NO_CHAT_WRITE=true; NO_LOCATION_ACCESS=true.
+--></main></body></html>
