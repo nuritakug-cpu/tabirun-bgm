@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EVENT BASE Firebase Rebuild Lab v1</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0;background:#f5f5f7;color:#111}
+main{max-width:760px;margin:auto;padding:18px}.card{background:#fff;border-radius:14px;padding:16px;margin:12px 0}
+button,input{font:inherit;padding:11px;margin:5px 0}button{width:100%}input{width:100%;box-sizing:border-box}
+pre{white-space:pre-wrap;font-size:12px;background:#111;color:#eee;padding:12px;border-radius:10px;min-height:120px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ok{font-weight:700}
+</style></head><body><main>
+<h1>Firebase Rebuild Lab v1</h1>
+<div class="card"><b>目的</b><p>EVENT BASE本体を変更せず、認証→大会接続→CHAT→LIVEの通信層だけを一本の状態機械で検証します。</p></div>
+<div class="card">
+<label>Firebase config JSON</label><input id="cfg" placeholder='{"apiKey":"...","authDomain":"...","databaseURL":"...","projectId":"top-run-event-base",...}'>
+<label>大会ID</label><input id="eventId" placeholder="event id">
+<div class="row"><button id="connect">接続</button><button id="disconnect">切断</button></div>
+<div id="state" class="ok">IDLE</div>
+</div>
+<div class="card"><h2>CHAT</h2><input id="msg" placeholder="メッセージ"><button id="send">送信</button><div id="chat"></div></div>
+<div class="card"><h2>LIVE通信テスト</h2><button id="liveWrite">テスト位置レコード送信</button><div id="live"></div></div>
+<div class="card"><h2>ログ</h2><pre id="log"></pre></div>
+<script type="module">
+const SDK='12.19.0';
+const EXPECTED='top-run-event-base';
+const S={phase:'IDLE',app:null,auth:null,db:null,uid:'',eventId:'',mods:null,unsubs:[]};
+const $=id=>document.getElementById(id);
+function log(...a){$('log').textContent+=new Date().toLocaleTimeString()+' '+a.map(x=>typeof x==='string'?x:JSON.stringify(x)).join(' ')+'\n'}
+function phase(p){S.phase=p;$('state').textContent=p;log('STATE',p)}
+function stopSubs(){for(const u of S.unsubs.splice(0)){try{u()}catch{}}}
+async function connect(){
+ if(!['IDLE','ERROR','READY'].includes(S.phase))return;
+ stopSubs(); phase('IMPORTING');
+ try{
+  const cfg=JSON.parse($('cfg').value); if(cfg.projectId!==EXPECTED)throw Error('projectId mismatch');
+  const appMod=await import(`https://www.gstatic.com/firebasejs/${SDK}/firebase-app.js`);
+  const authMod=await import(`https://www.gstatic.com/firebasejs/${SDK}/firebase-auth.js`);
+  const dbMod=await import(`https://www.gstatic.com/firebasejs/${SDK}/firebase-database.js`);
+  dbMod.forceLongPolling();
+  S.mods={appMod,authMod,dbMod};
+  S.app=appMod.initializeApp(cfg,'eventbase-rebuild-lab');
+  S.auth=authMod.getAuth(S.app); S.db=dbMod.getDatabase(S.app);
+  phase('AUTHENTICATING');
+  if(!S.auth.currentUser) await authMod.signInAnonymously(S.auth);
+  S.uid=S.auth.currentUser.uid;
+  S.eventId=$('eventId').value.trim(); if(!S.eventId)throw Error('event id required');
+  phase('SUBSCRIBING');
+  const {ref,onValue}=dbMod;
+  S.unsubs.push(onValue(ref(S.db,`events/${S.eventId}/chat`),snap=>{
+    const rows=Object.values(snap.val()||{}).filter(Boolean).sort((a,b)=>(a.ts||0)-(b.ts||0));
+    $('chat').innerHTML=rows.map(x=>`<div>${new Date(x.ts||0).toLocaleTimeString()} ${String(x.text||'')}</div>`).join('');
+    log('CHAT SNAP',rows.length);
+  },e=>log('CHAT ERROR',e.message)));
+  S.unsubs.push(onValue(ref(S.db,`events/${S.eventId}/live`),snap=>{
+    const rows=Object.values(snap.val()||{}).filter(Boolean);
+    $('live').textContent=`LIVE records: ${rows.length}`;
+    log('LIVE SNAP',rows.length);
+  },e=>log('LIVE ERROR',e.message)));
+  phase('READY'); log('UID',S.uid);
+ }catch(e){phase('ERROR');log('ERROR',e.message)}
+}
+async function send(){
+ if(S.phase!=='READY')return log('NOT READY');
+ const text=$('msg').value.trim(); if(!text)return;
+ const id=`m_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+ const row={id,text,ts:Date.now(),senderUid:S.uid};
+ try{await S.mods.dbMod.set(S.mods.dbMod.ref(S.db,`events/${S.eventId}/chat/${id}`),row);log('SEND ACK',id);$('msg').value=''}catch(e){log('SEND ERROR',e.message)}
+}
+async function liveWrite(){
+ if(S.phase!=='READY')return log('NOT READY');
+ const row={uid:S.uid,lat:0,lng:0,accuracy:999,ts:Date.now(),lab:true};
+ try{await S.mods.dbMod.set(S.mods.dbMod.ref(S.db,`events/${S.eventId}/live/${S.uid}`),row);log('LIVE WRITE ACK')}catch(e){log('LIVE WRITE ERROR',e.message)}
+}
+function disconnect(){stopSubs();phase('IDLE')}
+$('connect').onclick=connect;$('disconnect').onclick=disconnect;$('send').onclick=send;$('liveWrite').onclick=liveWrite;
+</script></main></body></html>
