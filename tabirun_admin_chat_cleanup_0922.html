@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#062f42">
+<title>旅ランQUEST｜CHAT履歴クリア</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#071f2b;color:#17313b;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",Meiryo,sans-serif}body{padding:calc(24px + env(safe-area-inset-top)) 18px calc(28px + env(safe-area-inset-bottom));background:linear-gradient(155deg,#042638,#08758b)}.wrap{width:min(100%,520px);margin:0 auto}.kicker{font-size:11px;letter-spacing:.18em;color:#ffd071;font-weight:900}h1{margin:8px 0 8px;color:#fff;font-size:30px;line-height:1.2}.lead{color:#d9edf2;font-size:14px;line-height:1.7;margin:0 0 18px}.card{background:#fff;border-radius:22px;padding:20px;box-shadow:0 14px 34px rgba(0,0,0,.24)}.state{border-radius:14px;padding:14px 16px;background:#eef5f6;font-size:14px;line-height:1.6}.state.ok{background:#e5f7ed;color:#17633d}.state.ng{background:#fff0ed;color:#8c3025}.info{margin-top:14px;padding:13px 15px;border:1px solid #dbe5e7;border-radius:14px;font-size:13px;line-height:1.7}.info b{color:#0b667b}button{width:100%;border:0;border-radius:15px;padding:16px 14px;margin-top:16px;font:inherit;font-weight:950;font-size:16px}button.primary{background:linear-gradient(135deg,#f6c34f,#f09f21);color:#352400}button.primary:disabled{background:#d8e0e2;color:#819097}button.secondary{background:#edf3f4;color:#21424d}.warn{margin-top:16px;padding:14px 15px;border-radius:14px;background:#fff7e2;color:#7a4c00;font-size:13px;line-height:1.65}.small{margin-top:15px;color:#cfe3e8;font-size:12px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">CHITA TABIRUN QUEST / ADMIN UTILITY</div>
+  <h1>CHAT履歴だけ削除</h1>
+  <p class="lead">本番QUEST本体は変更しません。管理者確認後、テストで残ったCHAT履歴だけを削除します。</p>
+  <div class="card">
+    <div id="state" class="state">管理者情報を確認しています…</div>
+    <div class="info"><b>削除対象</b><br>知多半島 旅ランQUEST 2026/9/22 の CHAT履歴のみ<br><br><b>削除しないもの</b><br>参加者登録 / LIVE位置 / 参加権限 / 管理者権限 / QUEST走行記録</div>
+    <button id="deleteBtn" class="primary" type="button" disabled>CHAT履歴だけ削除</button>
+    <button id="retryBtn" class="secondary" type="button">管理者確認をやり直す</button>
+    <div class="warn">「イベント終了」は行いません。<br>このページは <b>CHATの枝だけ</b> を削除する専用ページです。</div>
+  </div>
+  <div class="small">管理者確認できない場合は、同じSafariで本番QUESTを開き、LIVE MAPに「管理者」と表示されることを確認してから、このページを再読み込みしてください。</div>
+</div>
+<script type="module">
+const EVENT_ID='2026-09-22-chita-tabirun-eventday';
+const FIREBASE_CONFIG={apiKey:'AIzaSyB0DLoOQa5MQ67jGj6GmqO7XgwrbvQnLl4',authDomain:'sports-live-hub-aichi.firebaseapp.com',databaseURL:'https://sports-live-hub-aichi-default-rtdb.asia-southeast1.firebasedatabase.app',projectId:'sports-live-hub-aichi',storageBucket:'sports-live-hub-aichi.firebasestorage.app',messagingSenderId:'931508195062',appId:'1:931508195062:web:90881ea409003f909c66d7',measurementId:'G-0TGNM4W9XF'};
+const APP_NAME='tabirun-live-production-v1';
+const stateEl=document.getElementById('state'),delBtn=document.getElementById('deleteBtn'),retryBtn=document.getElementById('retryBtn');let ctx=null;
+function setState(msg,kind=''){stateEl.className='state'+(kind?' '+kind:'');stateEl.textContent=msg}
+async function waitAuth(authMod,auth){if(typeof auth.authStateReady==='function'){await Promise.race([auth.authStateReady(),new Promise((_,rej)=>setTimeout(()=>rej(new Error('認証復元タイムアウト')),8000))]);return auth.currentUser}return await new Promise((resolve,reject)=>{let unsub=()=>{};const timer=setTimeout(()=>{try{unsub()}catch{};reject(new Error('認証復元タイムアウト'))},8000);unsub=authMod.onAuthStateChanged(auth,u=>{clearTimeout(timer);try{unsub()}catch{};resolve(u)},e=>{clearTimeout(timer);reject(e)})})}
+async function verifyOwner(){delBtn.disabled=true;ctx=null;setState('管理者情報を確認しています…');try{const [appMod,authMod,dbMod]=await Promise.all([import('https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js'),import('https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js'),import('https://www.gstatic.com/firebasejs/12.18.0/firebase-database.js')]);let app=appMod.getApps().find(a=>a.name===APP_NAME);if(!app)app=appMod.initializeApp(FIREBASE_CONFIG,APP_NAME);let auth;try{auth=authMod.initializeAuth(app,{persistence:[authMod.indexedDBLocalPersistence,authMod.browserSessionPersistence,authMod.inMemoryPersistence]})}catch{auth=authMod.getAuth(app)}const user=await waitAuth(authMod,auth);if(!user){setState('このブラウザでは管理者ログインを確認できません。本番QUESTを同じSafariで一度開いてから再試行してください。','ng');return}const db=dbMod.getDatabase(app);const ownerSnap=await dbMod.get(dbMod.ref(db,`eventSecrets/${EVENT_ID}/ownerUid`));const ownerUid=ownerSnap.exists()?String(ownerSnap.val()||''):'';if(!ownerUid||ownerUid!==user.uid){setState('このブラウザはイベント管理者ではありません。削除操作はできません。','ng');return}const chatSnap=await dbMod.get(dbMod.ref(db,`events/${EVENT_ID}/chat`));const count=chatSnap.exists()?Object.keys(chatSnap.val()||{}).length:0;ctx={dbMod,db,user,count};if(count===0){setState('管理者確認OK。現在CHAT履歴は0件です。削除は不要です。','ok');return}setState(`管理者確認OK。現在のCHAT履歴は ${count}件 です。`,'ok');delBtn.disabled=false}catch(e){console.error(e);setState('確認に失敗しました。通信状態を確認して、もう一度お試しください。','ng')}}
+delBtn.addEventListener('click',async()=>{if(!ctx)return;if(!confirm(`CHAT履歴 ${ctx.count}件 を削除します。\n\n参加者・LIVE位置・QUEST記録は削除しません。\nよろしいですか？`))return;if(!confirm('最終確認：CHAT履歴だけを削除します。'))return;delBtn.disabled=true;setState('CHAT履歴を削除しています…');try{await ctx.dbMod.remove(ctx.dbMod.ref(ctx.db,`events/${EVENT_ID}/chat`));setState('完了しました。CHAT履歴だけを削除しました。参加者・LIVE位置・QUEST記録には触れていません。','ok');ctx.count=0}catch(e){console.error(e);setState('CHAT履歴を削除できませんでした。権限または通信状態を確認してください。','ng')}});
+retryBtn.addEventListener('click',verifyOwner);verifyOwner();
+</script>
+</body>
+</html>
