@@ -20,7 +20,7 @@
 <!-- BUILD: release301-production-live-cluster-list-20260913 -->
 <!-- BUILD: release301-production-game-guide-20260913 -->
 <!-- BUILD: release301-production-step-label-unified-20260913 -->
-<!-- BUILD: release301-production-fullscreen-owner-history-20260913 -->
+<!-- BUILD: release320-prerun-name-restore-owner-lock-20260921 -->
 <!-- BUILD: release301-production-ui-cleanup-20260913-1117 -->
 <html lang="ja">
 <head>
@@ -18897,6 +18897,7 @@ window.__TABIRUN_RELEASE301_PRODUCTION__={
   const QUEST_JOIN_TOKEN = 'c4693a97f08c0df07509f56b83ace8b6dc47849bc0e2827600ffd60d7eebb751';
   const QUEST_AUTH_KEY = 'tabirun_participant_auth_v222';
   const QUEST_AUTH_TOKEN = 'ok:v1';
+  const PROFILE_BACKUP_KEY = `tabirun_live_profile_backup_${EVENT_ID}`;
 
   const DEFAULT_CENTER = [34.84, 136.92];
   const DEFAULT_ZOOM = 10;
@@ -19249,51 +19250,28 @@ window.__TABIRUN_RELEASE301_PRODUCTION__={
         );
         state.member=true;
       }catch(firstError){
-        const firstCode=String(firstError?.code||'');
-        if(!state.bootstrapTried && firstCode.includes('PERMISSION_DENIED')){
-          state.bootstrapTried=true;
-          bootStatus('イベントを初期化しています…');
-          try{
-            await withTimeout(
-              set(ref(state.db,`eventSecrets/${EVENT_ID}`),{
-                ownerUid:state.user.uid,
-                joinCode:QUEST_JOIN_TOKEN,
-                status:'active',
-                createdAt:now()
-              }),
-              8000,
-              'イベント初期化が8秒で完了しませんでした'
-            );
-            state.owner=true;
-
-            await withTimeout(
-              set(ref(state.db,memberPath()),QUEST_JOIN_TOKEN),
-              8000,
-              'イベント参加書込が8秒で完了しませんでした'
-            );
-            state.member=true;
-
-            await withTimeout(
-              set(ref(state.db,eventPath('meta')),{
-                name:EVENT_NAME,
-                routeMode:'multi',
-                start:'',
-                end:'',
-                createdAt:now(),
-                ownerUid:state.user.uid,
-                source:'quest-production-v1'
-              }),
-              8000,
-              'イベント情報保存が8秒で完了しませんでした'
-            );
-          }catch(createError){
-            const code=createError?.code?` [${createError.code}]`:'';
-            throw new Error(`イベントを作成できません${code}: ${createError?.message||String(createError)}`);
-          }
-        }else{
-          const code=firstError?.code?` [${firstError.code}]`:'';
-          throw new Error(`イベント参加に失敗しました${code}: ${firstError?.message||String(firstError)}`);
+        /* release320 safety:
+           A participant must NEVER create the event or become owner as a fallback.
+           Owner is accepted only when eventSecrets/{EVENT_ID}/ownerUid already exists
+           and matches this authenticated Firebase UID. */
+        const code=firstError?.code?` [${firstError.code}]`:'';
+        let existingOwner='';
+        try{
+          const own=await withTimeout(
+            get(ref(state.db,`eventSecrets/${EVENT_ID}/ownerUid`)),
+            5000,
+            'owner確認タイムアウト'
+          );
+          existingOwner=own.exists()?String(own.val()||''):'';
+        }catch(_){}
+        if(existingOwner&&existingOwner===state.user.uid){
+          state.owner=true;
+          throw new Error(`管理者端末の参加状態を復旧できません${code}: ${firstError?.message||String(firstError)}`);
         }
+        if(!existingOwner){
+          throw new Error('イベントが主催者によって準備されていません。参加者端末から管理者作成は行いません。');
+        }
+        throw new Error(`イベント参加に失敗しました${code}: ${firstError?.message||String(firstError)}`);
       }
     }
 
@@ -19414,6 +19392,9 @@ window.__TABIRUN_RELEASE301_PRODUCTION__={
     const {ref,get}=state.firebase.db;
     const snap=await get(ref(state.db,eventPath(`participants/${state.user.uid}`)));
     state.profile=snap.exists()?snap.val():null;
+    if(state.profile?.name){
+      try{localStorage.setItem(PROFILE_BACKUP_KEY,JSON.stringify({name:String(state.profile.name||''),team:String(state.profile.team||'')}))}catch(_){}
+    }
     return state.profile;
   }
 
@@ -19434,6 +19415,7 @@ window.__TABIRUN_RELEASE301_PRODUCTION__={
     };
     await set(ref(state.db,eventPath(`participants/${state.user.uid}`)),profile);
     state.profile={...profile,createdAt:existing.createdAt||now(),updatedAt:now()};
+    try{localStorage.setItem(PROFILE_BACKUP_KEY,JSON.stringify({name,team}))}catch(_){}
     return state.profile;
   }
 
@@ -20282,7 +20264,20 @@ try{if(String(state?.r168EndMode||'').startsWith('idle-')&&String(state?.phase||
 const R303_VERSION='release301-production-profile-simple-v2';
 
 function api(){return window.__TABIRUN_LIVE_CHAT__||null}
-function profile(){try{return api()?.profile||null}catch(e){return null}}
+function profile(){
+  try{
+    const p=api()?.profile||null;
+    if(p?.name){
+      try{localStorage.setItem('tabirun_live_profile_backup_2026-09-22-chita-tabirun-eventday',JSON.stringify({name:String(p.name||''),team:String(p.team||'')}))}catch(_){}
+      return p;
+    }
+    try{
+      const b=JSON.parse(localStorage.getItem('tabirun_live_profile_backup_2026-09-22-chita-tabirun-eventday')||'null');
+      if(b?.name)return{name:String(b.name||''),team:String(b.team||'')};
+    }catch(_){}
+    return null;
+  }catch(e){return null}
+}
 
 function cardHtml(){
   return `<div class="startTitle r303StepTitle">STEP 1 / LIVE CHAT</div>
@@ -20352,7 +20347,7 @@ function renderState(){
     saved.classList.remove('on');
     const lead=card.querySelector('.r303Lead'); if(lead)lead.textContent='イベントは終了しました。共有データは削除済みです。';
   }else if(p?.name){
-    pill.textContent='登録済';
+    pill.textContent=api()?.status?.owner?'管理者':'登録済';
     pill.className='r303Pill ok';
     form.style.display='none';
     saved.classList.add('on');
@@ -20483,6 +20478,19 @@ if(typeof renderStart==='function'){
     return out;
   };
   window.renderStart=renderStart;
+}
+
+/* release320: QUEST RESET must return to the title with the saved identity visible.
+   QUEST progress reset never clears profile/admin identity. */
+if(typeof performReset==='function'){
+  const r320OldReset=performReset;
+  performReset=async function(...args){
+    const out=await r320OldReset.apply(this,args);
+    requestAnimationFrame(startTicker);
+    setTimeout(startTicker,250);
+    return out;
+  };
+  window.performReset=performReset;
 }
 
 requestAnimationFrame(startTicker);
@@ -21659,6 +21667,23 @@ console.log(R319_VERSION,'loaded');
 })();
 </script>
 
+
+<!-- release320: prereg name restore + owner hard lock -->
+<script id="r320-owner-lock-name-restore-meta">
+window.__TABIRUN_RELEASE320__={
+  base:'release319',
+  scope:['pre-run name persistence','QUEST RESET title restore','owner hard lock'],
+  ownerRule:'owner can only be the pre-existing Firebase eventSecrets ownerUid; participant bootstrap creation removed',
+  firstParticipantCannotBecomeOwner:true,
+  questResetKeepsProfile:true,
+  questResetKeepsFirebaseAuth:true,
+  liveMapLogic:'unchanged',
+  chatLogic:'unchanged',
+  gpsLogic:'unchanged',
+  bgmLogic:'unchanged'
+};
+console.log('release320 owner-lock/name-restore loaded');
+</script>
 </body>
 </html>
 
