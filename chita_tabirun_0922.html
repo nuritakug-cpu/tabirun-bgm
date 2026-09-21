@@ -20,7 +20,7 @@
 <!-- BUILD: release301-production-live-cluster-list-20260913 -->
 <!-- BUILD: release301-production-game-guide-20260913 -->
 <!-- BUILD: release301-production-step-label-unified-20260913 -->
-<!-- BUILD: release320-prerun-name-restore-owner-lock-20260921 -->
+<!-- BUILD: release321-owner-recovery-monitor-compat-20260921 -->
 <!-- BUILD: release301-production-ui-cleanup-20260913-1117 -->
 <html lang="ja">
 <head>
@@ -19265,13 +19265,17 @@ window.__TABIRUN_RELEASE301_PRODUCTION__={
           existingOwner=own.exists()?String(own.val()||''):'';
         }catch(_){}
         if(existingOwner&&existingOwner===state.user.uid){
+          /* release321: verified pre-existing owner must recover even when the ordinary
+             member write is denied. This does NOT promote a participant: ownerUid must
+             already exist in Firebase and exactly match the authenticated UID. */
           state.owner=true;
-          throw new Error(`管理者端末の参加状態を復旧できません${code}: ${firstError?.message||String(firstError)}`);
-        }
-        if(!existingOwner){
+          state.member=true;
+          bootStatus('管理者端末として復旧しました');
+        }else if(!existingOwner){
           throw new Error('イベントが主催者によって準備されていません。参加者端末から管理者作成は行いません。');
+        }else{
+          throw new Error(`イベント参加に失敗しました${code}: ${firstError?.message||String(firstError)}`);
         }
-        throw new Error(`イベント参加に失敗しました${code}: ${firstError?.message||String(firstError)}`);
       }
     }
 
@@ -21683,6 +21687,24 @@ window.__TABIRUN_RELEASE320__={
   bgmLogic:'unchanged'
 };
 console.log('release320 owner-lock/name-restore loaded');
+</script>
+
+<!-- release321: verified owner recovery / admin monitor compatibility -->
+<script id="r321-owner-recovery-monitor-compat-meta">
+window.__TABIRUN_RELEASE321__={
+  base:'release320',
+  scope:['verified owner recovery','admin monitor compatibility'],
+  ownerRecovery:'existing Firebase ownerUid must exactly match authenticated UID',
+  firstParticipantCannotBecomeOwner:true,
+  participantBootstrapOwnerCreation:false,
+  adminMonitorPath:'unchanged',
+  questResetProfile:'preserved',
+  liveMapLogic:'unchanged',
+  chatLogic:'unchanged',
+  gpsLogic:'unchanged',
+  bgmLogic:'unchanged'
+};
+console.log('release321 verified owner recovery loaded');
 </script>
 </body>
 </html>
