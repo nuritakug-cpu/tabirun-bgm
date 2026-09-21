@@ -20940,15 +20940,17 @@ console.log('TABIRUN MODULES',window.__TABIRUN_MODULES__);
 <style id="r308-event-normal-mode-style">
 body.r308NormalMode .r297LiveBtn,
 body.r308NormalMode .r297ChatBtn,
-body.r308NormalMode .r301PostLive,
-body.r308NormalMode #r303LiveProfile,
-body.r308NormalMode .r303StepTitle{display:none!important}
+body.r308NormalMode .r301PostLive{display:none!important}
+/* 9/21 is preregistration day: keep only the name/profile card visible for tomorrow's event. */
+body.r308NormalMode:not(.r308PreEventMode) #r303LiveProfile,
+body.r308NormalMode:not(.r308PreEventMode) .r303StepTitle{display:none!important}
 </style>
 <script id="r308-event-normal-mode-switch">
 (()=>{
 'use strict';
 const R308_VERSION='release308-event-normal-mode-switch-v1';
 const R308_EVENT_DATE='2026-09-22';
+const R308_PREREG_DATE='2026-09-21';
 
 function r308JstToday(){
   try{
@@ -20960,14 +20962,19 @@ function r308JstToday(){
   }
 }
 function r308IsEventMode(){return r308JstToday()===R308_EVENT_DATE}
+function r308IsPreEventMode(){return r308JstToday()===R308_PREREG_DATE}
 window.tabirunIsEventMode=r308IsEventMode;
+window.tabirunIsPreEventMode=r308IsPreEventMode;
 window.__TABIRUN_EVENT_MODE__=r308IsEventMode();
 
 function r308ApplyBodyMode(){
   const event=r308IsEventMode();
+  const prereg=r308IsPreEventMode();
   document.body?.classList.toggle('r308EventMode',event);
   document.body?.classList.toggle('r308NormalMode',!event);
+  document.body?.classList.toggle('r308PreEventMode',prereg);
   window.__TABIRUN_EVENT_MODE__=event;
+  window.__TABIRUN_PREREG_MODE__=prereg;
 }
 
 function r308FindStartButton(cover){
@@ -20977,6 +20984,9 @@ function r308FindStartButton(cover){
 function r308NormalStartUi(){
   if(r308IsEventMode())return;
   r308ApplyBodyMode();
+  /* On 9/21 keep the profile/name registration card available for preregistration.
+     LIVE MAP / CHAT still remain unavailable until the event day. */
+  if(r308IsPreEventMode())return;
   try{clearInterval(window.__r303Ticker);window.__r303Ticker=null}catch(e){}
   const cover=document.querySelector('#app .cover');
   if(!cover)return;
@@ -21104,8 +21114,11 @@ if(!r308IsEventMode()){
 window.__TABIRUN_RELEASE308__={
   version:R308_VERSION,
   eventDate:R308_EVENT_DATE,
+  preregDate:R308_PREREG_DATE,
   eventMode:r308IsEventMode(),
+  preregMode:r308IsPreEventMode(),
   eventDay:'existing 9/22 flow preserved',
+  preregDay:'9/21 name/profile registration enabled; LIVE MAP and CHAT remain event-day only',
   normalDay:'no LIVE profile requirement / no LIVE MAP / no CHAT / no post-run LIVE panel',
   certificate:'event day keeps 開催日 2026.9.22; normal day uses actual challenge date',
   coreQuestUntouched:true,
