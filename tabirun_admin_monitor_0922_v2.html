@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#082f3b">
+<title>旅ランQUEST｜管理者モニター</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{--navy:#082f3b;--navy2:#0c4656;--paper:#f7f6f1;--ink:#15343e;--muted:#71848b;--line:#d9e3e5;--gold:#f1b73a;--green:#2c8a66;--red:#a84838}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--paper);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",Meiryo,sans-serif}
+body{padding-bottom:calc(22px + env(safe-area-inset-bottom))}
+header{background:linear-gradient(145deg,#062d39,#0d5a6c);color:#fff;padding:calc(18px + env(safe-area-inset-top)) 18px 16px;position:sticky;top:0;z-index:1000;box-shadow:0 4px 18px rgba(0,0,0,.18)}
+.head{max-width:760px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.kicker{font-size:9px;font-weight:1000;letter-spacing:.2em;opacity:.7}
+h1{font-size:22px;margin:4px 0 0;line-height:1.15}
+.badge{flex:none;padding:6px 9px;border-radius:999px;background:var(--gold);color:#352500;font-size:10px;font-weight:1000}
+.wrap{max-width:760px;margin:auto;padding:14px}
+.guard,.card{background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:0 3px 12px rgba(0,0,0,.05)}
+.guard{padding:16px;margin-bottom:12px}
+.guard.ok{background:#eaf8f1;border-color:#b9dfcf}.guard.ng{background:#fff0ed;border-color:#efc3ba;color:#873426}
+.guard b{display:block;font-size:14px;margin-bottom:3px}.small{font-size:11px;color:var(--muted);line-height:1.55}
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.stat{background:#fff;border:1px solid var(--line);border-radius:15px;padding:12px 8px;text-align:center}.stat b{display:block;font-size:22px;color:var(--navy2)}.stat span{font-size:9px;color:var(--muted);font-weight:900}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:0 0 12px}
+.tabs button{border:1px solid #cbdadd;background:#fff;border-radius:13px;padding:11px 5px;font:inherit;font-size:11px;font-weight:1000;color:#49646d}.tabs button.on{background:var(--navy2);color:#fff;border-color:var(--navy2)}
+.panel{display:none}.panel.on{display:block}
+.card{padding:13px;margin-bottom:10px}
+.titleRow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}.titleRow h2{font-size:14px;margin:0}.count{font-size:10px;font-weight:1000;color:#52717a}
+.member{display:grid;grid-template-columns:42px 1fr auto;gap:9px;align-items:center;padding:11px 0;border-top:1px solid #eef2f2}.member:first-child{border-top:0}
+.avatar{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:#d8e8eb;color:#173b45;font-weight:1000}
+.member b{font-size:13px}.meta{font-size:10px;color:var(--muted);margin-top:3px;line-height:1.45}.cp{font-size:10px;color:#315d69;margin-top:3px}
+.status{font-size:9px;font-weight:1000;padding:5px 7px;border-radius:999px;white-space:nowrap}.status.on{background:#dff3e9;color:#19704c}.status.warn{background:#fff1cf;color:#8a5b00}.status.off{background:#f0f1f1;color:#7a8589}
+#mapCanvas{height:52vh;min-height:330px;border-radius:15px;overflow:hidden;background:#e9eef0}
+.mapnote{font-size:10px;color:var(--muted);margin-top:8px;line-height:1.5}
+.chat{padding:10px 0;border-top:1px solid #eef2f2}.chat:first-child{border-top:0}.chatHead{display:flex;justify-content:space-between;gap:10px;font-size:10px;color:var(--muted);margin-bottom:4px}.chatHead b{font-size:11px;color:#254b56}.chatText{font-size:13px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+.empty{padding:20px 8px;text-align:center;color:#7c8c92;font-size:12px}
+.actions{display:flex;gap:8px;margin-top:10px}.actions button{flex:1;border:0;border-radius:12px;padding:11px;font:inherit;font-size:11px;font-weight:1000}.retry{background:#edf3f4;color:#284b55}
+.readonly{background:#fff6dc;border:1px solid #efd08a;border-radius:14px;padding:11px 12px;color:#775000;font-size:10px;line-height:1.55;margin-bottom:12px}
+.doticon{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#08778d;color:#fff;border:3px solid #fff;box-shadow:0 2px 7px rgba(0,0,0,.25);font-size:11px;font-weight:1000}
+@media(max-width:410px){.wrap{padding:10px}.summary{gap:6px}.stat b{font-size:19px}.member{grid-template-columns:38px 1fr auto}.avatar{width:34px;height:34px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="head">
+    <div><div class="kicker">CHITA TABIRUN QUEST</div><h1>管理者モニター</h1></div>
+    <div class="badge">ADMIN ONLY</div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="guard" class="guard"><b>管理者確認中…</b><div class="small">本番QUESTと同じSafariのFirebase認証を確認しています。</div></div>
+
+  <div id="app" hidden>
+    <div class="readonly">閲覧専用です。このページから参加者データ・LIVE位置・CHATを変更／削除する操作は行いません。</div>
+
+    <div class="summary">
+      <div class="stat"><b id="pCount">0</b><span>登録参加者</span></div>
+      <div class="stat"><b id="lCount">0</b><span>位置データあり</span></div>
+      <div class="stat"><b id="cCount">0</b><span>CHAT</span></div>
+    </div>
+
+    <div class="tabs">
+      <button class="on" data-tab="people">参加者</button>
+      <button data-tab="map">LIVE MAP</button>
+      <button data-tab="chat">CHAT</button>
+    </div>
+
+    <section id="people" class="panel on">
+      <div class="card">
+        <div class="titleRow"><h2>参加者全員</h2><div id="peopleCount" class="count">0人</div></div>
+        <div class="small">位置共有OFFの登録者も表示します。</div>
+        <div id="members"><div class="empty">読み込み中…</div></div>
+      </div>
+    </section>
+
+    <section id="map" class="panel">
+      <div class="card">
+        <div class="titleRow"><h2>LIVE MAP</h2><div id="mapCount" class="count">0人</div></div>
+        <div id="mapCanvas"></div>
+        <div class="mapnote">位置データがある参加者だけを表示します。位置共有OFFの参加者は「参加者」タブで確認できます。</div>
+      </div>
+    </section>
+
+    <section id="chat" class="panel">
+      <div class="card">
+        <div class="titleRow"><h2>EVENT CHAT</h2><div id="chatCount" class="count">0件</div></div>
+        <div id="messages"><div class="empty">読み込み中…</div></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="actions"><button id="retry" class="retry" type="button">管理者確認をやり直す</button></div>
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module">
+const EVENT_ID='2026-09-22-chita-tabirun-eventday';
+const FIREBASE_CONFIG={
+  apiKey:'AIzaSyB0DLoOQa5MQ67jGj6GmqO7XgwrbvQnLl4',
+  authDomain:'sports-live-hub-aichi.firebaseapp.com',
+  databaseURL:'https://sports-live-hub-aichi-default-rtdb.asia-southeast1.firebasedatabase.app',
+  projectId:'sports-live-hub-aichi',
+  storageBucket:'sports-live-hub-aichi.firebasestorage.app',
+  messagingSenderId:'931508195062',
+  appId:'1:931508195062:web:90881ea409003f909c66d7',
+  measurementId:'G-0TGNM4W9XF'
+};
+const APP_NAME='tabirun-live-production-v1';
+const STALE_MS=2*60*1000, STOP_MS=5*60*1000;
+let dbMod=null,db=null,auth=null,user=null;
+let participants={},live={},messages=[],unsubs=[];
+let map=null,markers=new Map();
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+const now=()=>Date.now();
+
+function setGuard(title,sub,kind=''){
+  const g=$('#guard');g.className='guard'+(kind?' '+kind:'');
+  g.innerHTML=`<b>${esc(title)}</b><div class="small">${esc(sub)}</div>`;
+}
+function fmtTime(ts){
+  const n=Number(ts);if(!Number.isFinite(n)||!n)return'—';
+  return new Date(n).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'});
+}
+function ageText(ts){
+  const n=Number(ts);if(!Number.isFinite(n)||!n)return'更新なし';
+  const s=Math.max(0,Math.floor((now()-n)/1000));
+  if(s<10)return'たった今';if(s<60)return`${s}秒前`;
+  const m=Math.floor(s/60);if(m<60)return`${m}分前`;
+  const h=Math.floor(m/60);return`${h}時間前`;
+}
+function liveStatus(l){
+  if(!l||!Number.isFinite(Number(l.lat))||!Number.isFinite(Number(l.lng)))return{label:'共有OFF',cls:'off'};
+  const ts=Number(l.ts)||0,age=ts?now()-ts:Infinity;
+  if(!ts||age>STALE_MS)return{label:'更新途絶',cls:'off'};
+  const lm=Number(l.lastMoveAt)||ts;
+  if(now()-lm>=STOP_MS||l.motion==='stopped')return{label:'停止中',cls:'warn'};
+  return{label:'移動中',cls:'on'};
+}
+function cpText(l){
+  if(!l)return'';
+  const a=[];
+  if(l.stage)a.push(`STAGE ${l.stage}`);
+  if(l.nextPointName)a.push(`次 ${l.nextPointName}`);
+  if(l.runState==='finished'||l.finalGoalAt)a.push('完走');
+  else if(l.runState==='stage_finished'||l.stageGoalAt)a.push('STAGE GOAL');
+  else if(l.runState==='stopped')a.push('今日はここまで');
+  return a.join(' / ');
+}
+function allIds(){return [...new Set([...Object.keys(participants),...Object.keys(live)])]}
+function renderMembers(){
+  const ids=allIds().sort((a,b)=>(participants[a]?.name||'').localeCompare(participants[b]?.name||'','ja'));
+  $('#pCount').textContent=Object.keys(participants).length;
+  $('#lCount').textContent=Object.values(live).filter(x=>Number.isFinite(Number(x?.lat))&&Number.isFinite(Number(x?.lng))).length;
+  $('#peopleCount').textContent=`${ids.length}人`;
+  const wrap=$('#members');
+  if(!ids.length){wrap.innerHTML='<div class="empty">まだ登録参加者はいません。</div>';return}
+  wrap.innerHTML=ids.map(uid=>{
+    const p=participants[uid]||{},l=live[uid],st=liveStatus(l);
+    const update=l?.ts?`最終更新 ${ageText(l.ts)}${l.accuracy?` / ±${Math.round(l.accuracy)}m`:''}`:'位置共有なし';
+    const cp=cpText(l),me=uid===user?.uid?'（自分）':'';
+    return `<div class="member">
+      <div class="avatar">${esc((p.name||'?').slice(0,1))}</div>
+      <div><b>${esc(p.name||'参加者')}${me}</b><div class="meta">${esc(p.team||'所属なし')} / ${esc(update)}</div>${cp?`<div class="cp">${esc(cp)}</div>`:''}</div>
+      <span class="status ${st.cls}">${esc(st.label)}</span>
+    </div>`;
+  }).join('');
+}
+function ensureMap(){
+  if(map||!window.L)return;
+  map=L.map('mapCanvas',{zoomControl:true}).setView([34.84,136.92],10);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);
+}
+function renderMap(){
+  ensureMap();if(!map)return;
+  const present=new Set(),bounds=[];
+  for(const [uid,l] of Object.entries(live)){
+    const lat=Number(l?.lat),lng=Number(l?.lng);if(!Number.isFinite(lat)||!Number.isFinite(lng))continue;
+    present.add(uid);bounds.push([lat,lng]);
+    const p=participants[uid]||{},name=p.name||'参加者',st=liveStatus(l);
+    const icon=L.divIcon({className:'',html:`<div class="doticon">${esc(name.slice(0,1))}</div>`,iconSize:[28,28],iconAnchor:[14,14]});
+    let m=markers.get(uid);
+    if(!m){m=L.marker([lat,lng],{icon}).addTo(map);markers.set(uid,m)}
+    else{m.setLatLng([lat,lng]);m.setIcon(icon)}
+    m.bindPopup(`<b>${esc(name)}</b><br>${esc(st.label)}<br>${esc(cpText(l)||'進行情報なし')}<br><small>${esc(l.ts?`最終更新 ${ageText(l.ts)}`:'更新なし')}</small>`);
+  }
+  for(const [uid,m] of markers){if(!present.has(uid)){map.removeLayer(m);markers.delete(uid)}}
+  $('#mapCount').textContent=`${bounds.length}人`;
+  if(bounds.length)try{map.fitBounds(bounds,{padding:[30,30],maxZoom:15})}catch{}
+}
+function renderChat(){
+  $('#cCount').textContent=messages.length;$('#chatCount').textContent=`${messages.length}件`;
+  const wrap=$('#messages');
+  if(!messages.length){wrap.innerHTML='<div class="empty">まだメッセージはありません。</div>';return}
+  wrap.innerHTML=messages.map(m=>`<div class="chat"><div class="chatHead"><b>${esc(m.senderName||'参加者')}</b><span>${esc(fmtTime(m.createdAt))}</span></div><div class="chatText">${esc(m.text||'')}</div></div>`).join('');
+}
+function stopListeners(){for(const fn of unsubs){try{fn()}catch{}}unsubs=[]}
+function startListeners(){
+  stopListeners();
+  const {ref,onValue,query,orderByChild,limitToLast}=dbMod;
+  unsubs.push(onValue(ref(db,`events/${EVENT_ID}/participants`),s=>{participants=s.val()||{};renderMembers();renderMap()}));
+  unsubs.push(onValue(ref(db,`events/${EVENT_ID}/live`),s=>{live=s.val()||{};renderMembers();renderMap()}));
+  const q=query(ref(db,`events/${EVENT_ID}/chat`),orderByChild('createdAt'),limitToLast(100));
+  unsubs.push(onValue(q,s=>{const v=s.val()||{};messages=Object.entries(v).map(([id,m])=>({id,...m})).sort((a,b)=>Number(a.createdAt||0)-Number(b.createdAt||0));renderChat()}));
+}
+function withTimeout(promise,ms,message){
+  let timer;
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(message)),ms)})
+  ]).finally(()=>clearTimeout(timer));
+}
+function waitForAuthUser(authMod,auth,ms=8000){
+  if(auth.currentUser)return Promise.resolve(auth.currentUser);
+  return new Promise((resolve,reject)=>{
+    let done=false,unsub=()=>{};
+    const timer=setTimeout(()=>{if(done)return;done=true;try{unsub()}catch{};reject(new Error('管理者認証の復元がタイムアウトしました。通信状態を確認して再試行してください。'))},ms);
+    unsub=authMod.onAuthStateChanged(auth,u=>{
+      if(done)return;
+      if(u){done=true;clearTimeout(timer);try{unsub()}catch{};resolve(u)}
+    },err=>{
+      if(done)return;done=true;clearTimeout(timer);try{unsub()}catch{};reject(err)
+    });
+  });
+}
+async function verify(){
+  stopListeners();$('#app').hidden=true;
+  setGuard('管理者確認中…','① Firebaseを読み込んでいます…');
+  try{
+    const modules=await withTimeout(Promise.all([
+      import('https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js'),
+      import('https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js'),
+      import('https://www.gstatic.com/firebasejs/12.18.0/firebase-database.js')
+    ]),12000,'Firebaseの読み込みがタイムアウトしました。通信状態を確認してください。');
+    const [appMod,authMod,databaseMod]=modules;
+    dbMod=databaseMod;
+    setGuard('管理者確認中…','② Safariの管理者認証を復元しています…');
+    let app=appMod.getApps().find(a=>a.name===APP_NAME);
+    if(!app)app=appMod.initializeApp(FIREBASE_CONFIG,APP_NAME);
+    try{
+      auth=authMod.initializeAuth(app,{persistence:[authMod.indexedDBLocalPersistence,authMod.browserSessionPersistence,authMod.inMemoryPersistence]});
+    }catch{auth=authMod.getAuth(app)}
+
+    user=auth.currentUser;
+    if(!user){
+      try{
+        if(typeof auth.authStateReady==='function')await withTimeout(auth.authStateReady(),5000,'認証復元待機');
+      }catch{}
+      user=auth.currentUser;
+    }
+    if(!user)user=await waitForAuthUser(authMod,auth,7000);
+    if(!user)throw new Error('このSafariに管理者認証が見つかりません。本番QUESTを同じSafariで一度開いてから再試行してください。');
+
+    setGuard('管理者確認中…','③ 管理者UIDを確認しています…');
+    db=databaseMod.getDatabase(app);
+    const own=await withTimeout(
+      databaseMod.get(databaseMod.ref(db,`eventSecrets/${EVENT_ID}/ownerUid`)),
+      7000,
+      '管理者情報の読み込みがタイムアウトしました。'
+    );
+    if(!own.exists()||String(own.val())!==String(user.uid))throw new Error('このSafariはイベント管理者ではありません。');
+
+    setGuard('管理者確認OK','管理者専用・閲覧モードです。イベント日ロックとは無関係に確認できます。','ok');
+    $('#app').hidden=false;
+    startListeners();
+    setTimeout(()=>{renderMembers();renderChat();renderMap()},80);
+  }catch(e){
+    console.error(e);
+    setGuard('管理者画面を開けません',e?.message||String(e),'ng');
+  }
+}
+document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('on',p.id===b.dataset.tab));
+  if(b.dataset.tab==='map')setTimeout(()=>{ensureMap();map?.invalidateSize();renderMap()},80);
+}));
+$('#retry').addEventListener('click',verify);
+verify();
+</script>
+</body>
+</html>
