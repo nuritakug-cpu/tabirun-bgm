@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#082f3b">
+<title>旅ランQUEST｜管理者本人 重複整理</title>
+<style>
+:root{--navy:#082f3b;--navy2:#0c4656;--paper:#f7f6f1;--ink:#15343e;--muted:#71848b;--line:#d9e3e5;--red:#a84838;--green:#2c8a66}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--paper);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",Meiryo,sans-serif}
+.wrap{max-width:720px;margin:auto;padding:18px}
+h1{font-size:22px;margin:0 0 6px}.sub{font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:14px}
+.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:15px;margin-bottom:12px;box-shadow:0 4px 14px rgba(0,0,0,.05)}
+.ok{background:#eaf8f1;border-color:#b9dfcf}.ng{background:#fff0ed;border-color:#efc3ba}.warn{background:#fff8e6;border-color:#edd08a}
+.row{padding:12px 0;border-top:1px solid #edf1f2}.row:first-child{border-top:0}
+.name{font-size:16px;font-weight:900}.meta{font-size:11px;color:var(--muted);line-height:1.5;margin-top:4px;overflow-wrap:anywhere}
+.badge{display:inline-block;font-size:9px;font-weight:900;border-radius:999px;padding:4px 7px;margin-left:6px;background:#e7eef0;color:#31505b}
+.badge.owner{background:#dff3e9;color:#19704c}
+button{width:100%;border:0;border-radius:13px;padding:13px;font:inherit;font-weight:900;margin-top:9px}
+.delete{background:#a84838;color:#fff}.retry{background:#edf3f4;color:#284b55}
+.hidden{display:none}.small{font-size:11px;color:var(--muted);line-height:1.55}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <h1>管理者本人の重複整理</h1>
+  <div class="sub">管理者UIDは削除できません。同じ表示名で作られた別UIDだけを整理します。</div>
+
+  <div id="guard" class="card"><b>管理者確認中…</b><div class="small">旅ランQUESTと同じブラウザのFirebase認証を確認しています。</div></div>
+
+  <div id="result" class="card hidden"></div>
+
+  <div class="card warn">
+    <b>削除対象</b>
+    <div class="small">削除するのは対象UIDの「参加者プロフィール」「LIVE位置」「参加権限」だけです。管理者UID・QUEST走行記録・他の参加者は変更しません。</div>
+  </div>
+
+  <button id="retry" class="retry" type="button">再確認</button>
+</main>
+
+<script type="module">
+const EVENT_ID='2026-09-22-chita-tabirun-eventday';
+const PROFILE_BACKUP_KEY=`tabirun_live_profile_backup_${EVENT_ID}`;
+const FIREBASE_CONFIG={
+  apiKey:'AIzaSyB0DLoOQa5MQ67jGj6GmqO7XgwrbvQnLl4',
+  authDomain:'sports-live-hub-aichi.firebaseapp.com',
+  databaseURL:'https://sports-live-hub-aichi-default-rtdb.asia-southeast1.firebasedatabase.app',
+  projectId:'sports-live-hub-aichi',
+  storageBucket:'sports-live-hub-aichi.firebasestorage.app',
+  messagingSenderId:'931508195062',
+  appId:'1:931508195062:web:90881ea409003f909c66d7',
+  measurementId:'G-0TGNM4W9XF'
+};
+const APP_NAME='tabirun-live-production-v1';
+
+let dbMod=null, db=null, auth=null, user=null, ownerUid='', participants={};
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+const norm=s=>String(s??'').trim().replace(/\s+/g,' ');
+function setGuard(title,sub,kind=''){
+  const g=$('#guard'); g.className='card'+(kind?' '+kind:'');
+  g.innerHTML=`<b>${esc(title)}</b><div class="small">${esc(sub)}</div>`;
+}
+function ownerBackupName(){
+  try{
+    const b=JSON.parse(localStorage.getItem(PROFILE_BACKUP_KEY)||'null');
+    return norm(b?.name||'');
+  }catch{return''}
+}
+async function load(){
+  $('#result').classList.add('hidden');
+  setGuard('管理者確認中…','旅ランQUESTと同じブラウザのFirebase認証を確認しています。');
+  try{
+    const [appMod,authMod,databaseMod]=await Promise.all([
+      import('https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js'),
+      import('https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js'),
+      import('https://www.gstatic.com/firebasejs/12.18.0/firebase-database.js')
+    ]);
+    dbMod=databaseMod;
+    let app=appMod.getApps().find(a=>a.name===APP_NAME);
+    if(!app)app=appMod.initializeApp(FIREBASE_CONFIG,APP_NAME);
+    try{
+      auth=authMod.initializeAuth(app,{persistence:[
+        authMod.indexedDBLocalPersistence,
+        authMod.browserSessionPersistence,
+        authMod.inMemoryPersistence
+      ]});
+    }catch{auth=authMod.getAuth(app)}
+    if(typeof auth.authStateReady==='function')await auth.authStateReady();
+    user=auth.currentUser;
+    if(!user)throw new Error('このブラウザに管理者認証がありません。管理者として使っている旅ランQUESTを同じブラウザで一度開いてください。');
+
+    db=databaseMod.getDatabase(app);
+
+    const own=await databaseMod.get(databaseMod.ref(db,`eventSecrets/${EVENT_ID}/ownerUid`));
+    ownerUid=own.exists()?String(own.val()||''):'';
+    if(!ownerUid || ownerUid!==String(user.uid))throw new Error('このブラウザは旅ランQUESTの管理者端末ではありません。');
+
+    const ps=await databaseMod.get(databaseMod.ref(db,`events/${EVENT_ID}/participants`));
+    participants=ps.val()||{};
+
+    const ownerProfile=participants[ownerUid]||null;
+    const ownerName=norm(ownerProfile?.name||ownerBackupName());
+
+    setGuard('管理者確認OK','管理者UIDを保護した状態で重複候補を確認できます。','ok');
+    render(ownerName);
+  }catch(e){
+    console.error(e);
+    setGuard('確認できません',e?.message||String(e),'ng');
+  }
+}
+
+function render(ownerName){
+  const box=$('#result'); box.classList.remove('hidden');
+  if(!ownerName){
+    box.innerHTML='<b>管理者の表示名を特定できません</b><div class="small">旅ランQUESTのタイトル画面で管理者名が表示される状態にしてから再確認してください。</div>';
+    return;
+  }
+
+  const exact=Object.entries(participants).filter(([uid,p])=>norm(p?.name)===ownerName);
+  const others=exact.filter(([uid])=>uid!==ownerUid);
+
+  let html=`<b>管理者名：${esc(ownerName)}</b><div class="small">同じ表示名の登録 ${exact.length}件</div>`;
+  html+=`<div class="row"><div class="name">${esc(ownerName)}<span class="badge owner">管理者・保持</span></div><div class="meta">UID: <code>${esc(ownerUid)}</code></div></div>`;
+
+  if(!others.length){
+    html+='<div class="row"><b>重複候補はありません。</b><div class="small">現在は1人として登録されています。</div></div>';
+  }else{
+    for(const [uid,p] of others){
+      html+=`<div class="row" data-uid="${esc(uid)}">
+        <div class="name">${esc(p?.name||'参加者')}<span class="badge">別UID・削除候補</span></div>
+        <div class="meta">所属: ${esc(p?.team||'なし')}<br>UID: <code>${esc(uid)}</code></div>
+        <button class="delete" data-delete="${esc(uid)}" type="button">この重複登録だけ削除</button>
+      </div>`;
+    }
+  }
+  box.innerHTML=html;
+  box.querySelectorAll('[data-delete]').forEach(btn=>btn.addEventListener('click',()=>removeDuplicate(btn.dataset.delete,ownerName)));
+}
+
+async function removeDuplicate(uid,ownerName){
+  uid=String(uid||'');
+  if(!uid || uid===ownerUid){
+    alert('管理者UIDは削除できません。');
+    return;
+  }
+  const p=participants[uid];
+  if(!p || norm(p.name)!==ownerName){
+    alert('安全確認に失敗しました。削除しません。');
+    return;
+  }
+  const ok=confirm(`「${p.name}」の重複登録を1件だけ削除します。\n\n管理者側の登録は残します。よろしいですか？`);
+  if(!ok)return;
+
+  try{
+    const {ref,remove}=dbMod;
+    await remove(ref(db,`events/${EVENT_ID}/live/${uid}`));
+    await remove(ref(db,`events/${EVENT_ID}/participants/${uid}`));
+    await remove(ref(db,`members/${EVENT_ID}/${uid}`));
+    delete participants[uid];
+    setGuard('重複整理完了','管理者UIDを残し、別UIDの参加者登録・LIVE位置・参加権限を削除しました。','ok');
+    render(ownerName);
+  }catch(e){
+    console.error(e);
+    setGuard('削除できませんでした',e?.message||String(e),'ng');
+  }
+}
+
+$('#retry').addEventListener('click',load);
+load();
+</script>
+</body>
+</html>
