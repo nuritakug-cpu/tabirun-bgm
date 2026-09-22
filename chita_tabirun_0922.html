@@ -21,6 +21,7 @@
 <!-- BUILD: release301-production-game-guide-20260913 -->
 <!-- BUILD: release301-production-step-label-unified-20260913 -->
 <!-- BUILD: release321-owner-recovery-monitor-compat-20260921 -->
+<!-- BUILD: release322-admin-live-owner-repair-20260922 -->
 <!-- BUILD: release301-production-ui-cleanup-20260913-1117 -->
 <html lang="ja">
 <head>
@@ -19217,6 +19218,29 @@ window.__TABIRUN_RELEASE301_PRODUCTION__={
     });
   }
 
+  async function ensureOwnerMembershipForLive(){
+    if(!state.owner||!state.user||!state.db||!state.firebase?.db)return true;
+    const {ref,get,set}=state.firebase.db;
+    const ownRef=ref(state.db,`eventSecrets/${EVENT_ID}/ownerUid`);
+    const memberRef=ref(state.db,memberPath());
+
+    const own=await withTimeout(get(ownRef),5000,'管理者確認が5秒で完了しませんでした');
+    if(!own.exists()||String(own.val()||'')!==String(state.user.uid||'')){
+      state.owner=false;
+      throw new Error('管理者認証を確認できませんでした');
+    }
+
+    let member=await withTimeout(get(memberRef),5000,'管理者の参加状態確認が5秒で完了しませんでした');
+    if(!member.exists()){
+      bootStatus('管理者の参加権限を復旧しています…');
+      await withTimeout(set(memberRef,QUEST_JOIN_TOKEN),8000,'管理者の参加権限復旧が8秒で完了しませんでした');
+      member=await withTimeout(get(memberRef),5000,'管理者の参加権限確認が5秒で完了しませんでした');
+      if(!member.exists())throw new Error('管理者の参加権限を復旧できませんでした');
+    }
+    state.member=true;
+    return true;
+  }
+
   async function ensureMembership(){
     if(state.member)return true;
     const {ref,set,get}=state.firebase.db;
@@ -19265,11 +19289,13 @@ window.__TABIRUN_RELEASE301_PRODUCTION__={
           existingOwner=own.exists()?String(own.val()||''):'';
         }catch(_){}
         if(existingOwner&&existingOwner===state.user.uid){
-          /* release321: verified pre-existing owner must recover even when the ordinary
-             member write is denied. This does NOT promote a participant: ownerUid must
-             already exist in Firebase and exactly match the authenticated UID. */
+          /* release322: a verified owner must also have a real members entry.
+             Never fake state.member=true: repair the Firebase membership first so
+             profile/LIVE/CHAT permissions stay consistent. */
           state.owner=true;
-          state.member=true;
+          state.member=false;
+          bootStatus('管理者端末として復旧しています…');
+          await ensureOwnerMembershipForLive();
           bootStatus('管理者端末として復旧しました');
         }else if(!existingOwner){
           throw new Error('イベントが主催者によって準備されていません。参加者端末から管理者作成は行いません。');
@@ -19287,7 +19313,10 @@ window.__TABIRUN_RELEASE301_PRODUCTION__={
         'owner確認タイムアウト'
       );
       state.owner=own.exists()&&own.val()===state.user.uid;
-    }catch{}
+      if(state.owner)await ensureOwnerMembershipForLive();
+    }catch(err){
+      if(state.owner)throw err;
+    }
     return true;
   }
 
@@ -19941,10 +19970,18 @@ window.__TABIRUN_RELEASE301_PRODUCTION__={
     return true;
   }
 
+  let shareStartBusy=false;
   async function startSharing(){
+    if(shareStartBusy){toast('位置共有を開始しています…');return}
+    shareStartBusy=true;
+    const shareBtn=state.root?$('#tlc-share-on',state.root):null;
+    if(shareBtn){shareBtn.disabled=true;shareBtn.textContent='共有開始中…'}
     try{
+      /* release322: owner mode must repair/verify its real membership before
+         profile or LIVE writes. This prevents "管理者表示だけ復旧して共有できない". */
       await ensureFirebase();
       if(state.eventEnded){toast('このイベントは終了しています');return}
+      if(state.owner)await ensureOwnerMembershipForLive();
       const p=await ensureProfile(); if(!p)return;
       if(isExpired()){toast('このイベントの位置共有期間は終了しています');return}
 
@@ -19954,7 +19991,7 @@ window.__TABIRUN_RELEASE301_PRODUCTION__={
 
       try{
         const {ref,onDisconnect}=state.firebase.db;
-        await onDisconnect(ref(state.db,eventPath(`live/${state.user.uid}`))).cancel();
+        await withTimeout(onDisconnect(ref(state.db,eventPath(`live/${state.user.uid}`))).cancel(),4000,'onDisconnect解除タイムアウト');
       }catch(e){console.warn('[TABIRUN LIVE] onDisconnect reset',e)}
 
       state.sharing=true;
@@ -19965,16 +20002,19 @@ window.__TABIRUN_RELEASE301_PRODUCTION__={
       const age=current&&Number.isFinite(Number(current.time))?Math.max(0,now()-Number(current.time)):Infinity;
       const recent=!!current&&age<=30000;
 
-      if(recent)await writePosition(current,true);
+      if(recent)await withTimeout(writePosition(current,true),8000,'LIVE位置の初回送信が8秒で完了しませんでした');
       requestQuestGps();
 
-      toast(recent?'位置共有を再開しました｜GPS更新中':'位置共有ON｜QUEST GPSを再取得します');
+      toast(recent?'位置共有を開始しました｜GPS更新中':'位置共有ON｜QUEST GPSを再取得します');
     }catch(e){
-      console.error(e);
+      console.error('[TABIRUN LIVE] share start failed',e);
       state.sharing=false;
       await prefSet(false);
       updateShareUI();
-      toast('位置共有を開始できません');
+      toast(state.owner?'管理者の位置共有を開始できません｜参加権限を再確認してください':'位置共有を開始できません');
+    }finally{
+      shareStartBusy=false;
+      if(shareBtn){shareBtn.disabled=false;shareBtn.textContent='位置共有を開始'}
     }
   }
 
@@ -21687,6 +21727,23 @@ window.__TABIRUN_RELEASE320__={
   bgmLogic:'unchanged'
 };
 console.log('release320 owner-lock/name-restore loaded');
+</script>
+
+
+<!-- release322: admin LIVE owner membership repair -->
+<script id="r322-admin-live-owner-repair-meta">
+window.__TABIRUN_RELEASE322__={
+  base:'release321',
+  scope:['admin owner membership repair','admin LIVE start feedback/timeouts'],
+  ownerIdentity:'pre-existing eventSecrets ownerUid exact match only',
+  ownerMembership:'real Firebase members entry required and repaired before LIVE/profile writes',
+  participantPermissions:'unchanged',
+  gpsArrivalLogic:'unchanged',
+  bgmLogic:'unchanged',
+  mapLogic:'unchanged',
+  chatLogic:'unchanged'
+};
+console.log('release322 admin LIVE owner repair loaded');
 </script>
 
 <!-- release321: verified owner recovery / admin monitor compatibility -->
