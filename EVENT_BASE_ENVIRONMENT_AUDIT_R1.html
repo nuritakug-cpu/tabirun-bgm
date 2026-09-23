@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101214">
+<title>EVENT BASE 環境監査</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;background:#101214;color:#f4f6f7;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif}
+body{padding:16px;min-height:100vh}
+main{max-width:760px;margin:0 auto}
+.card{border:1px solid #353c42;background:#171b1f;border-radius:18px;padding:18px;margin:14px 0}
+.brand{color:#ffd400;font-size:12px;font-weight:900;letter-spacing:.15em}
+h1{font-size:27px;margin:7px 0 8px}
+p{color:#b8c0c6;line-height:1.65}
+.status{padding:13px;border-radius:12px;background:#0d1013;border:1px solid #40484f;white-space:pre-wrap;line-height:1.6}
+.ok{border-color:#2d7650;color:#b4f3cc}
+.warn{border-color:#7c6720;color:#ffe58a}
+.bad{border-color:#91393f;color:#ffb7bc}
+.row{display:grid;grid-template-columns:minmax(130px,.8fr) minmax(0,1.5fr);gap:8px;border-top:1px solid #2c3237;padding:10px 0}
+.row:first-child{border-top:0}
+.k{color:#919ba3;font-size:13px}
+.v{font-weight:700;word-break:break-all}
+.tag{display:inline-block;padding:2px 7px;border:1px solid #444d55;border-radius:999px;font-size:12px;margin-right:5px}
+button{width:100%;border:0;border-radius:12px;padding:14px;background:#ffd400;color:#080808;font-weight:900;font-size:16px;margin-top:12px}
+small{color:#8e979f}
+pre{white-space:pre-wrap;word-break:break-word;background:#0b0e10;border:1px solid #343b41;border-radius:12px;padding:12px;font-size:12px;line-height:1.55}
+</style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <div class="brand">TOP RUN AGUI / EVENT BASE</div>
+    <h1>環境監査 R1</h1>
+    <p>このページは<strong>読むだけ</strong>です。匿名ユーザー作成、PIN登録、Firebase Databaseへの書き込み、位置共有ONは一切行いません。</p>
+    <div id="summary" class="status">監査中…</div>
+  </div>
+
+  <div class="card">
+    <div id="rows"></div>
+    <button id="copyBtn" type="button">監査結果をコピー</button>
+    <small>SafariとChromeでそれぞれ1回だけ開き、結果をそのまま送れば比較できます。</small>
+  </div>
+
+  <div class="card">
+    <strong>詳細ログ</strong>
+    <pre id="log"></pre>
+  </div>
+</main>
+
+<script type="module">
+const SDK='12.19.0';
+const APP_NAME='toprun-eventbase';
+const CFG={
+  apiKey:'AIzaSyBRL_MnyqqTa0YviGDIzuPp9kARbXLMwa0',
+  authDomain:'top-run-event-base.firebaseapp.com',
+  databaseURL:'https://top-run-event-base-default-rtdb.asia-southeast1.firebasedatabase.app/',
+  projectId:'top-run-event-base',
+  storageBucket:'top-run-event-base.firebasestorage.app',
+  messagingSenderId:'55962935111',
+  appId:'1:55962935111:web:fb77b096d493ba31217662'
+};
+
+const qs=new URLSearchParams(location.search);
+const OWNER_KEY=qs.get('ownerKey')||'';
+const results={};
+const logLines=[];
+const rows=document.getElementById('rows');
+const summary=document.getElementById('summary');
+const logEl=document.getElementById('log');
+
+function add(k,v,level=''){
+  results[k]=v;
+  const r=document.createElement('div');
+  r.className='row';
+  r.innerHTML=`<div class="k">${esc(k)}</div><div class="v ${esc(level)}">${esc(String(v))}</div>`;
+  rows.appendChild(r);
+}
+function log(s){logLines.push(String(s));logEl.textContent=logLines.join('\n')}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function errText(e){return String(e?.code||e?.message||e||'unknown')}
+function timeout(p,ms,label){
+  let t;
+  return Promise.race([
+    Promise.resolve(p).finally(()=>clearTimeout(t)),
+    new Promise((_,rej)=>t=setTimeout(()=>rej(new Error(label+' timeout')),ms))
+  ]);
+}
+function browserName(){
+  const ua=navigator.userAgent||'';
+  if(/CriOS/i.test(ua))return 'Chrome iOS';
+  if(/FxiOS/i.test(ua))return 'Firefox iOS';
+  if(/EdgiOS/i.test(ua))return 'Edge iOS';
+  if(/Version\/.+Safari/i.test(ua))return 'Safari';
+  return 'Other';
+}
+async function testLocalStorage(){
+  const k='__eventbase_audit_'+Date.now();
+  try{localStorage.setItem(k,'1');const ok=localStorage.getItem(k)==='1';localStorage.removeItem(k);return ok?'OK':'READ_MISMATCH'}
+  catch(e){return 'ERROR '+errText(e)}
+}
+async function testIndexedDB(){
+  if(!window.indexedDB)return 'UNAVAILABLE';
+  const name='__eventbase_audit_db';
+  return await new Promise(resolve=>{
+    let done=false;
+    const finish=v=>{if(done)return;done=true;resolve(v)};
+    try{
+      const req=indexedDB.open(name,1);
+      req.onupgradeneeded=()=>{};
+      req.onsuccess=()=>{try{req.result.close();indexedDB.deleteDatabase(name)}catch(_){}finish('OK')};
+      req.onerror=()=>finish('ERROR '+String(req.error?.name||'unknown'));
+      req.onblocked=()=>finish('BLOCKED');
+      setTimeout(()=>finish('TIMEOUT'),4000);
+    }catch(e){finish('ERROR '+errText(e))}
+  });
+}
+async function fetchPublicProjectConfig(){
+  const u=new URL('https://identitytoolkit.googleapis.com/v1/projects');
+  u.searchParams.set('key',CFG.apiKey);
+  u.searchParams.set('firebaseAppId',CFG.appId);
+  const r=await timeout(fetch(u.href,{cache:'no-store'}),7000,'public project config');
+  const txt=await r.text();
+  let data=null;try{data=JSON.parse(txt)}catch(_){data=txt}
+  if(!r.ok)throw new Error('HTTP '+r.status+' '+JSON.stringify(data));
+  return data;
+}
+async function restGet(path,user){
+  if(!user)throw new Error('NO_USER');
+  const tk=await timeout(user.getIdToken(false),7000,'id token');
+  const u=CFG.databaseURL.replace(/\/+$/,'')+'/'+path+'.json?auth='+encodeURIComponent(tk);
+  const r=await timeout(fetch(u,{cache:'no-store'}),7000,'RTDB '+path);
+  const txt=await r.text();
+  let data=null;try{data=txt?JSON.parse(txt):null}catch(_){data=txt}
+  if(!r.ok)throw new Error('HTTP '+r.status+' '+String(typeof data==='string'?data:JSON.stringify(data)));
+  return data;
+}
+
+(async()=>{
+  add('監査時刻',new Date().toISOString());
+  add('ブラウザ判定',browserName());
+  add('User-Agent',navigator.userAgent||'');
+  add('iOS系',/iPhone|iPad|iPod/i.test(navigator.userAgent||'')?'YES':'NO');
+  add('localStorage',await testLocalStorage());
+  add('IndexedDB',await testIndexedDB());
+
+  if(navigator.storage?.estimate){
+    try{
+      const s=await navigator.storage.estimate();
+      add('Storage quota',Math.round((s.quota||0)/1024/1024)+' MB');
+      add('Storage usage',Math.round((s.usage||0)/1024/1024)+' MB');
+    }catch(e){add('Storage estimate','ERROR '+errText(e))}
+  }
+
+  // Public Identity Toolkit config: no sign-in, no account creation.
+  try{
+    const pc=await fetchPublicProjectConfig();
+    add('Auth public config','OK','ok');
+    if(pc?.projectId)add('Auth projectId',pc.projectId);
+    if(Array.isArray(pc?.authorizedDomains)){
+      add('Authorized domains',pc.authorizedDomains.join(', '));
+      add('GitHub Pages authorized',pc.authorizedDomains.includes('nuritakug-cpu.github.io')?'YES':'NO',
+          pc.authorizedDomains.includes('nuritakug-cpu.github.io')?'ok':'bad');
+    }
+    if(typeof pc?.allowPasswordUser==='boolean')add('Email/Password allowed',pc.allowPasswordUser?'YES':'NO');
+    if(typeof pc?.enableAnonymousUser==='boolean')add('Anonymous allowed',pc.enableAnonymousUser?'YES':'NO');
+    log('Public project config: '+JSON.stringify(pc,null,2));
+  }catch(e){
+    add('Auth public config','ERROR '+errText(e),'warn');
+    log('Public config error: '+errText(e));
+  }
+
+  let auth=null,authMod=null,user=null;
+  try{
+    const [appMod,aMod]=await Promise.all([
+      import(`https://www.gstatic.com/firebasejs/${SDK}/firebase-app.js`),
+      import(`https://www.gstatic.com/firebasejs/${SDK}/firebase-auth.js`)
+    ]);
+    authMod=aMod;
+    let app=appMod.getApps().find(a=>a.name===APP_NAME);
+    if(!app)app=appMod.initializeApp(CFG,APP_NAME);
+    auth=aMod.getAuth(app);
+
+    if(typeof auth.authStateReady==='function'){
+      try{await timeout(auth.authStateReady(),5000,'authStateReady')}catch(e){log('authStateReady: '+errText(e))}
+    }
+    user=auth.currentUser||null;
+
+    add('Firebase Auth SDK','LOADED','ok');
+    add('保存済みFirebaseユーザー',user?'YES':'NO',user?'ok':'warn');
+
+    if(user){
+      add('Firebase UID',user.uid);
+      add('匿名UID',user.isAnonymous?'YES':'NO',user.isAnonymous?'warn':'ok');
+      add('Provider',((user.providerData||[]).map(x=>x.providerId).join(', ')||'(none)'));
+
+      // Read-only Auth backend probes. No signup/link/write.
+      try{
+        await timeout(aMod.reload(user),7000,'auth reload');
+        add('Auth backend reload','OK','ok');
+      }catch(e){
+        add('Auth backend reload','ERROR '+errText(e),'bad');
+        log('Auth reload error: '+errText(e));
+      }
+
+      try{
+        await timeout(user.getIdToken(true),7000,'token refresh');
+        add('Auth token refresh','OK','ok');
+      }catch(e){
+        add('Auth token refresh','ERROR '+errText(e),'bad');
+        log('Token refresh error: '+errText(e));
+      }
+
+      let dev=null;
+      try{
+        dev=await restGet('developerDevices/'+user.uid,user);
+        add('developerDevices/currentUid',dev?'FOUND':'NOT FOUND',dev?'ok':'warn');
+        if(dev)log('developerDevice: '+JSON.stringify(dev,null,2));
+      }catch(e){
+        add('developerDevices/currentUid','ERROR '+errText(e),'bad');
+        log('developerDevices error: '+errText(e));
+      }
+
+      try{
+        const initialized=await restGet('developerRoot/initialized',user);
+        add('developerRoot/initialized',String(initialized),initialized===true?'ok':'warn');
+      }catch(e){
+        add('developerRoot/initialized','ERROR '+errText(e),'bad');
+        log('developerRoot initialized error: '+errText(e));
+      }
+
+      if(dev){
+        try{
+          const root=await restGet('developerRoot',user);
+          add('developerRoot read','OK','ok');
+          add('developerRoot.ownerUid',root?.ownerUid||'');
+          add('developerRoot.currentEventId',root?.currentEventId||'');
+          add('UID = ownerUid',String(root?.ownerUid||'')===String(user.uid)?'YES':'NO',
+              String(root?.ownerUid||'')===String(user.uid)?'ok':'warn');
+          log('developerRoot: '+JSON.stringify(root,null,2));
+
+          const eventId=String(root?.currentEventId||root?.bootstrapEventId||'');
+          if(eventId){
+            try{
+              const sec=await restGet('eventSecrets/'+eventId,user);
+              add('eventSecrets read','OK','ok');
+              add('event ownerUid',sec?.ownerUid||'');
+              add('UID = event ownerUid',String(sec?.ownerUid||'')===String(user.uid)?'YES':'NO',
+                  String(sec?.ownerUid||'')===String(user.uid)?'ok':'warn');
+            }catch(e){
+              add('eventSecrets read','ERROR '+errText(e),'bad');
+              log('eventSecrets error: '+errText(e));
+            }
+          }
+        }catch(e){
+          add('developerRoot read','ERROR '+errText(e),'bad');
+          log('developerRoot error: '+errText(e));
+        }
+      }
+    }
+  }catch(e){
+    add('Firebase Auth SDK','ERROR '+errText(e),'bad');
+    log('Firebase init error: '+errText(e));
+  }
+
+  // Browser/platform interpretation only; no mutation.
+  const problems=[];
+  if(results['localStorage']!=='OK')problems.push('localStorageが使用できない');
+  if(results['IndexedDB']!=='OK')problems.push('IndexedDBが正常でない');
+  if(results['GitHub Pages authorized']==='NO')problems.push('GitHub PagesがAuthorized domainsにない');
+  if(results['保存済みFirebaseユーザー']==='NO')problems.push('このブラウザにFirebase認証状態が残っていない');
+  if(String(results['Auth backend reload']||'').startsWith('ERROR'))problems.push('Firebase Authentication backendが既存ユーザーの再確認を拒否');
+  if(String(results['Auth token refresh']||'').startsWith('ERROR'))problems.push('Firebaseトークン更新が失敗');
+  if(results['developerDevices/currentUid']==='NOT FOUND')problems.push('現在UIDが開発者端末として登録されていない');
+  if(results['UID = ownerUid']==='NO')problems.push('現在UIDとdeveloperRoot.ownerUidが不一致');
+  if(results['UID = event ownerUid']==='NO')problems.push('現在UIDと大会ownerUidが不一致');
+
+  if(!problems.length){
+    summary.className='status ok';
+    summary.textContent='読み取り監査では致命的な異常を検出していません。\nこの場合は、EVENT BASE本体の起動ゲート／認証フロー設計側を疑います。';
+  }else{
+    summary.className='status warn';
+    summary.textContent='検出した項目：\n・'+problems.join('\n・');
+  }
+
+  log('SUMMARY: '+summary.textContent);
+})();
+
+document.getElementById('copyBtn').onclick=async()=>{
+  const text=[
+    'EVENT BASE ENVIRONMENT AUDIT R1',
+    ...Object.entries(results).map(([k,v])=>`${k}: ${v}`),
+    '',
+    'SUMMARY:',
+    summary.textContent,
+    '',
+    'LOG:',
+    logLines.join('\n')
+  ].join('\n');
+  try{
+    await navigator.clipboard.writeText(text);
+    const b=document.getElementById('copyBtn');
+    b.textContent='コピーしました';
+    setTimeout(()=>b.textContent='監査結果をコピー',1500);
+  }catch(_){
+    prompt('この内容をコピーしてください',text);
+  }
+};
+</script>
+</body>
+</html>
