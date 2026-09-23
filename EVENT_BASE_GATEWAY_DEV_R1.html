@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#090b0d">
+<title>EVENT BASE 開発者入口</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;background:#090b0d;color:#f2f4f5;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif}
+body{min-height:100vh;padding:20px}
+main{max-width:640px;margin:0 auto}
+.card{margin-top:34px;border:1px solid #343b42;border-radius:18px;background:#14181c;padding:22px}
+.brand{font-size:14px;letter-spacing:.18em;font-weight:900;color:#ffd400;margin-bottom:12px}
+h1{font-size:30px;line-height:1.2;margin:0 0 12px}
+p{color:#b7bec5;line-height:1.7}
+.state{border:1px solid #384047;border-radius:12px;background:#0c0f12;padding:14px;margin:18px 0;line-height:1.65}
+.state.ok{border-color:#2f7450;color:#aef2c8}
+.state.warn{border-color:#7d681e;color:#ffe482}
+.state.bad{border-color:#8b3338;color:#ffb7ba}
+label{display:block;font-weight:800;margin:16px 0 7px}
+input{width:100%;font-size:22px;padding:15px;border:1px solid #4a535b;border-radius:12px;background:#080a0c;color:#fff}
+button{width:100%;margin-top:14px;padding:15px 12px;border:0;border-radius:12px;background:#ffd400;color:#080808;font-size:18px;font-weight:900}
+button:disabled{opacity:.45}
+.hidden{display:none!important}
+.small{font-size:13px;color:#8f989f}
+</style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <div class="brand">TOP RUN AGUI / EVENT BASE</div>
+    <h1>開発者入口</h1>
+    <p>認証だけをこの軽いページで完了し、その後EVENT BASE本体へ移動します。本体の中ではPIN認証を行いません。</p>
+
+    <div id="state" class="state">登録済みの開発者情報を確認しています…</div>
+
+    <div id="pinBox" class="hidden">
+      <label for="pin">開発者PIN（8桁）</label>
+      <input id="pin" type="password" inputmode="numeric" maxlength="8" autocomplete="current-password" placeholder="••••••••">
+      <button id="loginBtn" type="button">このブラウザを認証してEVENT BASEへ</button>
+      <p class="small">このブラウザだけ未認証の場合にだけ表示されます。開発者登録を作り直す画面ではありません。</p>
+    </div>
+  </div>
+</main>
+
+<script type="module">
+const SDK='12.19.0';
+const APP_NAME='toprun-eventbase';
+const CFG={
+  apiKey:'AIzaSyBRL_MnyqqTa0YviGDIzuPp9kARbXLMwa0',
+  authDomain:'top-run-event-base.firebaseapp.com',
+  databaseURL:'https://top-run-event-base-default-rtdb.asia-southeast1.firebasedatabase.app/',
+  projectId:'top-run-event-base',
+  storageBucket:'top-run-event-base.firebasestorage.app',
+  messagingSenderId:'55962935111',
+  appId:'1:55962935111:web:fb77b096d493ba31217662'
+};
+
+const qs=new URLSearchParams(location.search);
+const OWNER_KEY=qs.get('ownerKey')||'';
+const TARGET_FILE='EVENT_BASE_v237_LIVE_SESSION_CHAT_LAYOUT.html';
+const REMOTE_BINDING_KEY='toprun_eventbase_remote_binding';
+const OWNER_EVENT_KEY='toprun_eventbase_owner_event_v132';
+const DEV_RESET_KEY='eventbase_dev_fresh_reset_v181';
+const SHARE_NAME_KEY='eventbase_share_name';
+
+const $=id=>document.getElementById(id);
+let app,auth,uid='',authMod;
+
+function setState(msg,kind=''){
+  const el=$('state');
+  el.className='state '+kind;
+  el.textContent=msg;
+}
+function timeout(p,ms,label){
+  let timer;
+  return Promise.race([
+    p.finally(()=>clearTimeout(timer)),
+    new Promise((_,rej)=>timer=setTimeout(()=>rej(new Error(label+' timeout')),ms))
+  ]);
+}
+async function tokenNow(){
+  if(!auth?.currentUser)throw new Error('Firebase匿名認証を確認できません');
+  uid=auth.currentUser.uid;
+  return await timeout(auth.currentUser.getIdToken(false),8000,'ID token');
+}
+async function rest(path,method='GET',body=undefined,ms=8000){
+  const tk=await tokenNow();
+  const url=CFG.databaseURL.replace(/\/+$/,'')+'/'+path+'.json?auth='+encodeURIComponent(tk);
+  const opt={method,headers:{}};
+  if(body!==undefined){
+    opt.headers['Content-Type']='application/json';
+    opt.body=JSON.stringify(body);
+  }
+  const r=await timeout(fetch(url,opt),ms,'REST '+path);
+  const txt=await r.text();
+  let data=null;
+  try{data=txt?JSON.parse(txt):null}catch(_){data=txt}
+  if(!r.ok)throw new Error(typeof data==='string'?data:JSON.stringify(data));
+  return data;
+}
+function hex(buf){return [...new Uint8Array(buf)].map(x=>x.toString(16).padStart(2,'0')).join('')}
+async function sha256(s){
+  return hex(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(s))));
+}
+async function pbkdf2(secret,salt,iterations){
+  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(String(secret)),'PBKDF2',false,['deriveBits']);
+  const bits=await crypto.subtle.deriveBits({
+    name:'PBKDF2',hash:'SHA-256',
+    salt:new TextEncoder().encode(String(salt)),
+    iterations:Number(iterations)
+  },key,256);
+  return hex(bits);
+}
+async function developerProof(pin){
+  const meta=await rest('developerAuthMeta').catch(()=>null);
+  const algo=meta?.algorithm||'pbkdf2-sha256-v2';
+  const iterations=Number(meta?.iterations)||120000;
+  if(algo==='sha256-v1')return await sha256('developer-v1|'+pin);
+  return await pbkdf2(pin,'eventbase|developer|v2',iterations);
+}
+async function initAuth(){
+  if(!OWNER_KEY || OWNER_KEY.length<10)throw new Error('開発者URLの認証キーがありません');
+  const [{initializeApp,getApps},{initializeAuth,browserLocalPersistence,signInAnonymously}]=await Promise.all([
+    import(`https://www.gstatic.com/firebasejs/${SDK}/firebase-app.js`),
+    import(`https://www.gstatic.com/firebasejs/${SDK}/firebase-auth.js`)
+  ]);
+  authMod={initializeAuth,browserLocalPersistence,signInAnonymously};
+  app=getApps().find(a=>a.name===APP_NAME)||initializeApp(CFG,APP_NAME);
+  try{
+    auth=initializeAuth(app,{persistence:browserLocalPersistence});
+  }catch(_){
+    const mod=await import(`https://www.gstatic.com/firebasejs/${SDK}/firebase-auth.js`);
+    auth=mod.getAuth(app);
+    try{await mod.setPersistence(auth,browserLocalPersistence)}catch(__){}
+  }
+  try{
+    if(typeof auth.authStateReady==='function')await timeout(auth.authStateReady(),3500,'auth restore');
+  }catch(_){}
+  if(!auth.currentUser){
+    await timeout(signInAnonymously(auth),12000,'anonymous sign-in');
+  }
+  uid=auth.currentUser.uid;
+}
+async function linkThisBrowser(pin){
+  if(!/^\d{8}$/.test(pin))throw new Error('開発者PINは8桁です');
+  const proofHash=await developerProof(pin);
+  await rest('developerLoginChallenges/'+uid,'PUT',{
+    uid,proofHash,attemptedAt:{'.sv':'timestamp'}
+  });
+  await rest('developerDevices/'+uid,'PUT',{
+    uid,linkedAt:{'.sv':'timestamp'},method:'pin'
+  });
+  await rest('developerLoginChallenges/'+uid,'DELETE').catch(()=>{});
+}
+function saveBridgeState(eventId,secret){
+  const participantCode=String(secret?.participantCode||secret?.joinCode||'');
+  const managementCode=String(secret?.managementCode||'');
+  const binding={
+    eventId,
+    role:'owner',
+    participantCode,
+    managementCode,
+    joinCode:participantCode,
+    displayName:'開発者',
+    accessVersion:233,
+    boundAt:Date.now()
+  };
+  localStorage.setItem(REMOTE_BINDING_KEY,JSON.stringify(binding));
+  localStorage.setItem(OWNER_EVENT_KEY,eventId);
+  localStorage.setItem(DEV_RESET_KEY,'1');
+  if(!localStorage.getItem(SHARE_NAME_KEY))localStorage.setItem(SHARE_NAME_KEY,'開発者');
+
+  // Safety: a page transition/reopen must never restore LIVE sharing.
+  const eventDataKey='tabirun_eventbase_event_'+eventId;
+  try{
+    const raw=localStorage.getItem(eventDataKey);
+    if(raw){
+      const d=JSON.parse(raw);
+      d.liveShareEnabled=false;
+      localStorage.setItem(eventDataKey,JSON.stringify(d));
+    }
+  }catch(_){}
+}
+async function prepareAndEnter(){
+  setState('登録済み開発者として大会情報を確認しています…','warn');
+
+  // The developer claim is only for this authenticated Firebase UID.
+  await rest('creatorClaims/'+uid,'PUT',OWNER_KEY);
+
+  const root=await rest('developerRoot');
+  const eventId=String(root?.currentEventId||root?.bootstrapEventId||'');
+  if(!eventId || eventId.startsWith('__'))throw new Error('開発者の大会IDを取得できません');
+
+  const secret=await rest('eventSecrets/'+eventId);
+  if(!secret || secret.status==='ended')throw new Error('大会共有が終了しているか、大会情報を取得できません');
+
+  saveBridgeState(eventId,secret);
+  setState('認証完了。EVENT BASE本体へ移動します。','ok');
+
+  const target=new URL(TARGET_FILE,location.href);
+  target.searchParams.set('ownerKey',OWNER_KEY);
+  target.searchParams.set('event',eventId);
+  target.searchParams.set('gateway','dev-r1');
+  setTimeout(()=>location.replace(target.href),450);
+}
+async function boot(){
+  try{
+    await initAuth();
+    const [initialized,device]=await Promise.all([
+      rest('developerRoot/initialized').catch(()=>false),
+      rest('developerDevices/'+uid).catch(()=>null)
+    ]);
+
+    if(initialized!==true){
+      throw new Error('開発者PINの初回設定が完了していません');
+    }
+
+    if(device){
+      await prepareAndEnter();
+      return;
+    }
+
+    setState('このブラウザだけ未認証です。登録済みの8桁PINを1回入力してください。','warn');
+    $('pinBox').classList.remove('hidden');
+  }catch(e){
+    setState('入口で停止しました：'+String(e?.message||e),'bad');
+  }
+}
+$('loginBtn').onclick=async()=>{
+  const btn=$('loginBtn');
+  btn.disabled=true;
+  try{
+    setState('PINを確認しています…','warn');
+    await linkThisBrowser($('pin').value.trim());
+    await prepareAndEnter();
+  }catch(e){
+    setState('PIN認証できません：'+String(e?.message||e),'bad');
+    btn.disabled=false;
+  }
+};
+
+boot();
+</script>
+</body>
+</html>
