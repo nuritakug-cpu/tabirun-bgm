@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>EVENT BASE Storage Inventory R2</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;padding:16px;background:#0d1012;color:#f5f6f7;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif}
+main{max-width:760px;margin:auto}
+.card{background:#171b1f;border:1px solid #353c42;border-radius:16px;padding:16px;margin:12px 0}
+h1{font-size:25px;margin:6px 0 10px}
+p{color:#b8c0c6;line-height:1.6}
+.summary{padding:12px;border-radius:10px;background:#0b0e10;border:1px solid #3e464d;white-space:pre-wrap;line-height:1.55}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid #2c3237;vertical-align:top}
+td:nth-child(2),th:nth-child(2){text-align:right;white-space:nowrap}
+code{word-break:break-all}
+button{width:100%;padding:13px;border:0;border-radius:11px;background:#ffd400;color:#080808;font-weight:900;font-size:16px;margin-top:12px}
+.err{color:#ffb7bc}
+.ok{color:#aef0c7}
+</style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <h1>Storage 容量監査 R2</h1>
+    <p>読み取り専用です。削除・追加・変更は一切しません。</p>
+    <div id="summary" class="summary">JavaScript開始待ち…</div>
+    <button id="copy" type="button">結果をコピー</button>
+  </div>
+
+  <div class="card">
+    <strong>localStorage 大きい順</strong>
+    <table><thead><tr><th>キー</th><th>概算サイズ</th></tr></thead><tbody id="localRows"></tbody></table>
+  </div>
+
+  <div class="card">
+    <strong>sessionStorage 大きい順</strong>
+    <table><thead><tr><th>キー</th><th>概算サイズ</th></tr></thead><tbody id="sessionRows"></tbody></table>
+  </div>
+
+  <div class="card">
+    <strong>実行ログ</strong>
+    <div id="log" class="summary"></div>
+  </div>
+</main>
+
+<script>
+(function(){
+  var summary=document.getElementById('summary');
+  var logEl=document.getElementById('log');
+  var logs=[];
+  function log(s){logs.push(String(s));logEl.textContent=logs.join('\n');}
+  function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function fmt(n){
+    if(n>=1024*1024)return (n/1024/1024).toFixed(2)+' MB';
+    if(n>=1024)return (n/1024).toFixed(1)+' KB';
+    return n+' B';
+  }
+  function errName(e){
+    if(!e)return 'UNKNOWN';
+    return String(e.name||e.code||e.message||e);
+  }
+  function safeStore(name){
+    try{
+      var s=window[name];
+      if(!s)return {ok:false,error:'UNAVAILABLE',store:null};
+      return {ok:true,error:'',store:s};
+    }catch(e){
+      return {ok:false,error:errName(e),store:null};
+    }
+  }
+  function inspectStore(name){
+    log(name+': getter確認');
+    var got=safeStore(name);
+    if(!got.ok){
+      log(name+': getter ERROR '+got.error);
+      return {name:name,error:'getter '+got.error,items:[],total:0,count:0};
+    }
+    var store=got.store;
+    var items=[],total=0,len=0;
+    try{
+      len=store.length;
+      log(name+': length='+len);
+    }catch(e){
+      log(name+': length ERROR '+errName(e));
+      return {name:name,error:'length '+errName(e),items:[],total:0,count:0};
+    }
+    for(var i=0;i<len;i++){
+      var k='';
+      try{k=store.key(i)||'';}
+      catch(e){items.push({key:'[key '+i+' ERROR '+errName(e)+']',bytes:0});continue;}
+      var v='';
+      try{v=store.getItem(k)||'';}
+      catch(e){
+        items.push({key:k+' [getItem ERROR '+errName(e)+']',bytes:0});
+        continue;
+      }
+      var bytes=(String(k).length+String(v).length)*2;
+      total+=bytes;
+      items.push({key:k,bytes:bytes});
+    }
+    items.sort(function(a,b){return b.bytes-a.bytes;});
+    log(name+': 読取完了 '+items.length+' keys / '+fmt(total));
+    return {name:name,error:'',items:items,total:total,count:items.length};
+  }
+  function render(id,data){
+    var el=document.getElementById(id);
+    if(data.error){
+      el.innerHTML='<tr><td colspan="2" class="err">'+esc(data.error)+'</td></tr>';
+      return;
+    }
+    if(!data.items.length){
+      el.innerHTML='<tr><td colspan="2">なし</td></tr>';
+      return;
+    }
+    var html='';
+    for(var i=0;i<Math.min(50,data.items.length);i++){
+      var x=data.items[i];
+      html+='<tr><td><code>'+esc(x.key)+'</code></td><td>'+fmt(x.bytes)+'</td></tr>';
+    }
+    el.innerHTML=html;
+  }
+
+  window.onerror=function(message,source,line,col,error){
+    var msg='GLOBAL ERROR: '+String(message)+' @'+line+':'+col;
+    log(msg);
+    summary.textContent=msg;
+    summary.className='summary err';
+    return false;
+  };
+
+  try{
+    summary.textContent='JavaScript起動 OK\nlocalStorageを確認しています…';
+    log('JS START');
+
+    var local=inspectStore('localStorage');
+    summary.textContent='localStorage確認完了\nsessionStorageを確認しています…';
+
+    var session=inspectStore('sessionStorage');
+
+    render('localRows',local);
+    render('sessionRows',session);
+
+    var eventItems=[];
+    var oldKeys=[];
+    for(var i=0;i<local.items.length;i++){
+      var x=local.items[i];
+      if(/^tabirun_eventbase_event_/i.test(x.key))eventItems.push(x);
+      if(/v[0-9]+|test|diag|prototype|backup|legacy/i.test(x.key))oldKeys.push(x);
+    }
+    var eventBytes=0,oldBytes=0;
+    for(var j=0;j<eventItems.length;j++)eventBytes+=eventItems[j].bytes;
+    for(var k=0;k<oldKeys.length;k++)oldBytes+=oldKeys[k].bytes;
+
+    var lines=[];
+    lines.push('localStorage: '+(local.error?'ERROR '+local.error:fmt(local.total)+' / '+local.count+' keys'));
+    lines.push('sessionStorage: '+(session.error?'ERROR '+session.error:fmt(session.total)+' / '+session.count+' keys'));
+    lines.push('EVENT BASE大会データキー: '+eventItems.length+'件 / '+fmt(eventBytes));
+    lines.push('旧版・テストらしきキー: '+oldKeys.length+'件 / '+fmt(oldBytes));
+    if(local.items.length)lines.push('最大キー: '+local.items[0].key+' / '+fmt(local.items[0].bytes));
+    lines.push('');
+    lines.push('※書き込み・削除はしていません。');
+
+    summary.textContent=lines.join('\n');
+    summary.className='summary '+((local.error||session.error)?'err':'ok');
+    log('DONE');
+
+    document.getElementById('copy').onclick=function(){
+      var text='EVENT BASE STORAGE INVENTORY R2\n'+summary.textContent+'\n\nLOCAL TOP:\n';
+      for(var a=0;a<Math.min(50,local.items.length);a++){
+        text+=local.items[a].key+'\t'+local.items[a].bytes+'\t'+fmt(local.items[a].bytes)+'\n';
+      }
+      text+='\nSESSION TOP:\n';
+      for(var b=0;b<Math.min(30,session.items.length);b++){
+        text+=session.items[b].key+'\t'+session.items[b].bytes+'\t'+fmt(session.items[b].bytes)+'\n';
+      }
+      text+='\nLOG:\n'+logs.join('\n');
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(function(){
+          document.getElementById('copy').textContent='コピーしました';
+          setTimeout(function(){document.getElementById('copy').textContent='結果をコピー';},1500);
+        }).catch(function(){window.prompt('この内容をコピーしてください',text);});
+      }else{
+        window.prompt('この内容をコピーしてください',text);
+      }
+    };
+  }catch(e){
+    var fatal='FATAL: '+errName(e);
+    summary.textContent=fatal;
+    summary.className='summary err';
+    log(fatal);
+  }
+})();
+</script>
+</body>
+</html>
