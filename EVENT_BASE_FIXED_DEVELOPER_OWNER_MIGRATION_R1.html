@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0d0f">
+<title>EVENT BASE 開発者認証 正式移行</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;background:#0b0d0f;color:#f4f6f7;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif}
+body{min-height:100vh;padding:18px}
+main{max-width:680px;margin:0 auto}
+.card{margin-top:24px;border:1px solid #343b41;border-radius:18px;background:#15191d;padding:20px}
+.brand{color:#ffd400;font-weight:900;letter-spacing:.16em;font-size:13px;margin-bottom:10px}
+h1{margin:0 0 10px;font-size:28px;line-height:1.25}
+p{color:#b9c0c6;line-height:1.7}
+.state{margin:16px 0;padding:14px;border:1px solid #41484f;border-radius:12px;background:#0d1013;line-height:1.65;white-space:pre-wrap}
+.state.ok{border-color:#2f7751;color:#b8f5d0}
+.state.warn{border-color:#806b20;color:#ffe68a}
+.state.bad{border-color:#91373d;color:#ffb8bc}
+label{display:block;font-weight:900;margin:14px 0 7px}
+input{width:100%;padding:15px;border:1px solid #4a535b;border-radius:12px;background:#080a0c;color:#fff;font-size:22px;letter-spacing:.08em}
+button{width:100%;margin-top:14px;padding:15px;border:0;border-radius:12px;background:#ffd400;color:#090909;font-size:17px;font-weight:900}
+button.secondary{background:#2a3035;color:#fff;border:1px solid #4a5259}
+button:disabled{opacity:.45}
+.hidden{display:none!important}
+.note{margin-top:14px;padding:12px;border-left:3px solid #5b646c;background:#101316;color:#aeb6bd;font-size:13px;line-height:1.65}
+.step{display:grid;grid-template-columns:28px 1fr;gap:8px;margin:8px 0;color:#c5cbd0}
+.num{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#2b3136;font-size:12px;font-weight:900}
+.good{color:#9ff0bf}.muted{color:#7f888f}
+</style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <div class="brand">TOP RUN AGUI / EVENT BASE</div>
+    <h1>開発者認証の正式移行</h1>
+    <p>ブラウザごとの匿名UIDを終了し、1つの固定Firebase UIDへ統一します。既存大会の所有権も同じUIDへ揃えます。</p>
+
+    <div id="state" class="state">現在の認証状態を確認しています…</div>
+
+    <div id="steps" class="note">
+      <div class="step"><span class="num">1</span><span>現在の開発者端末を確認</span></div>
+      <div class="step"><span class="num">2</span><span>固定ログインを同じUIDへ追加</span></div>
+      <div class="step"><span class="num">3</span><span>既存大会の ownerUid を固定UIDへ統一</span></div>
+      <div class="step"><span class="num">4</span><span>古い匿名開発者端末を無効化</span></div>
+      <div class="step"><span class="num">5</span><span>ログアウト→再ログインで同じUIDを確認</span></div>
+    </div>
+
+    <div id="pinBox" class="hidden">
+      <label for="pin">今後使う開発者PIN（8桁）</label>
+      <input id="pin" type="password" inputmode="numeric" maxlength="8" autocomplete="current-password" placeholder="••••••••">
+      <div id="pin2Box" class="hidden">
+        <label for="pin2">同じPINをもう一度</label>
+        <input id="pin2" type="password" inputmode="numeric" maxlength="8" autocomplete="new-password" placeholder="••••••••">
+      </div>
+      <button id="mainBtn" type="button">続ける</button>
+    </div>
+
+    <button id="eventBtn" class="secondary hidden" type="button">EVENT BASEへ移動</button>
+    <div id="detail" class="note hidden"></div>
+  </div>
+</main>
+
+<script type="module">
+const SDK='12.19.0';
+const APP_NAME='toprun-eventbase';
+const CFG={
+  apiKey:'AIzaSyBRL_MnyqqTa0YviGDIzuPp9kARbXLMwa0',
+  authDomain:'top-run-event-base.firebaseapp.com',
+  databaseURL:'https://top-run-event-base-default-rtdb.asia-southeast1.firebasedatabase.app/',
+  projectId:'top-run-event-base',
+  storageBucket:'top-run-event-base.firebasestorage.app',
+  messagingSenderId:'55962935111',
+  appId:'1:55962935111:web:fb77b096d493ba31217662'
+};
+const OWNER_KEY=new URLSearchParams(location.search).get('ownerKey')||'';
+const TARGET_FILE='EVENT_BASE_v249_IDENTITY_DELETE_AND_TEST_CLEANUP.html';
+
+const $=id=>document.getElementById(id);
+let auth=null,authApi=null;
+let mode='inspect';
+let currentUid='';
+let rootBefore=null;
+
+function setState(msg,kind=''){const e=$('state');e.className='state '+kind;e.textContent=msg}
+function setDetail(msg){const e=$('detail');e.textContent=msg;e.classList.toggle('hidden',!msg)}
+function timeout(p,ms,label){
+  let t;
+  return Promise.race([
+    Promise.resolve(p).finally(()=>clearTimeout(t)),
+    new Promise((_,rej)=>t=setTimeout(()=>rej(new Error(label+' timeout')),ms))
+  ]);
+}
+async function sha256hex(s){
+  const d=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(s)));
+  return [...new Uint8Array(d)].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+async function pbkdf2hex(secret,salt,iterations=120000){
+  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(String(secret)),'PBKDF2',false,['deriveBits']);
+  const bits=await crypto.subtle.deriveBits({
+    name:'PBKDF2',hash:'SHA-256',
+    salt:new TextEncoder().encode(String(salt)),
+    iterations:Number(iterations)
+  },key,256);
+  return [...new Uint8Array(bits)].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+async function fixedCredentials(pin){
+  const ownerHash=(await sha256hex('eventbase-dev-email-v2|'+OWNER_KEY)).slice(0,32);
+  const email=`dev.${ownerHash}@eventbase.invalid`;
+  const password=await pbkdf2hex(pin,'eventbase-dev-fixed-login-v2|'+OWNER_KEY,120000);
+  return {email,password};
+}
+async function developerProof(pin,meta){
+  const algo=String(meta?.algorithm||'sha256-v1');
+  if(algo==='pbkdf2-sha256-v2'){
+    return await pbkdf2hex(pin,'eventbase|developer|v2',Number(meta?.iterations)||120000);
+  }
+  return await sha256hex('developer-v1|'+pin);
+}
+async function initFirebase(){
+  const [appMod,authMod]=await Promise.all([
+    import(`https://www.gstatic.com/firebasejs/${SDK}/firebase-app.js`),
+    import(`https://www.gstatic.com/firebasejs/${SDK}/firebase-auth.js`)
+  ]);
+  let app=appMod.getApps().find(a=>a.name===APP_NAME);
+  if(!app)app=appMod.initializeApp(CFG,APP_NAME);
+
+  try{
+    auth=authMod.initializeAuth(app,{
+      persistence:[
+        authMod.indexedDBLocalPersistence,
+        authMod.browserLocalPersistence,
+        authMod.browserSessionPersistence
+      ]
+    });
+  }catch(_){
+    auth=authMod.getAuth(app);
+  }
+  authApi=authMod;
+  if(typeof auth.authStateReady==='function'){
+    try{await timeout(auth.authStateReady(),4000,'auth restore')}catch(_){}
+  }
+}
+async function token(){
+  if(!auth?.currentUser)throw new Error('Firebaseログインがありません');
+  return await timeout(auth.currentUser.getIdToken(false),8000,'ID token');
+}
+async function rest(path,method='GET',body=undefined,ms=9000){
+  const tk=await token();
+  const url=CFG.databaseURL.replace(/\/+$/,'')+'/'+path+'.json?auth='+encodeURIComponent(tk);
+  const opt={method,headers:{},cache:'no-store'};
+  if(body!==undefined){
+    opt.headers['Content-Type']='application/json';
+    opt.body=JSON.stringify(body);
+  }
+  const r=await timeout(fetch(url,opt),ms,'RTDB '+path);
+  const txt=await r.text();
+  let data=null;
+  try{data=txt?JSON.parse(txt):null}catch(_){data=txt}
+  if(!r.ok)throw new Error('RTDB '+path+' '+r.status+' '+(typeof data==='string'?data:''));
+  return data;
+}
+async function ensureDeveloperDevice(pin){
+  const uid=String(auth.currentUser?.uid||'');
+  if(!uid)throw new Error('UIDを確認できません');
+
+  let existing=await rest('developerDevices/'+uid).catch(()=>null);
+  if(existing)return existing;
+
+  const meta=await rest('developerAuthMeta').catch(()=>null);
+  const proof=await developerProof(pin,meta);
+
+  await rest('developerLoginChallenges/'+uid,'PUT',{
+    uid,
+    proofHash:proof,
+    attemptedAt:{'.sv':'timestamp'}
+  });
+
+  await rest('developerDevices/'+uid,'PUT',{
+    uid,
+    linkedAt:{'.sv':'timestamp'},
+    method:'pin'
+  });
+
+  existing=await rest('developerDevices/'+uid);
+  if(!existing)throw new Error('開発者端末を固定UIDへ紐付けできません');
+  return existing;
+}
+async function ensureCreatorClaim(){
+  const uid=String(auth.currentUser?.uid||'');
+  await rest('creatorClaims/'+uid,'PUT',OWNER_KEY);
+}
+function showPin(nextMode,msg){
+  mode=nextMode;
+  $('pinBox').classList.remove('hidden');
+  $('pin2Box').classList.toggle('hidden',nextMode!=='migrate');
+  $('mainBtn').textContent=nextMode==='migrate'?'固定UIDへの正式移行を開始':'固定UIDでログイン';
+  setState(msg,'warn');
+}
+async function inspect(){
+  if(!OWNER_KEY||OWNER_KEY.length<10)throw new Error('ownerKey付きURLで開いてください');
+
+  if(!auth.currentUser){
+    showPin('login','このブラウザには保存済み認証がありません。\n固定開発者UIDが作成済みなら、8桁PINでログインできます。');
+    return;
+  }
+
+  currentUid=String(auth.currentUser.uid||'');
+  const providers=(auth.currentUser.providerData||[]).map(x=>x.providerId);
+
+  if(!auth.currentUser.isAnonymous && providers.includes('password')){
+    try{
+      const device=await rest('developerDevices/'+currentUid);
+      const root=await rest('developerRoot');
+      const eventId=String(root?.currentEventId||root?.bootstrapEventId||'');
+      const secret=eventId?await rest('eventSecrets/'+eventId).catch(()=>null):null;
+      if(device && root?.ownerUid===currentUid && (!secret||secret.ownerUid===currentUid)){
+        setState('固定開発者UIDへの移行は完了済みです。\nFirebase UID: '+currentUid,'ok');
+        setDetail('Safari/Chromeとも同じ8桁PINでこのUIDへログインします。');
+        $('eventBtn').classList.remove('hidden');
+        return;
+      }
+    }catch(_){}
+    showPin('login','固定ログインは存在しますが、所有権の整合を確認できません。\n8桁PINで再ログインして移行を続行します。');
+    return;
+  }
+
+  const device=await rest('developerDevices/'+currentUid).catch(()=>null);
+  if(!device){
+    showPin('login','現在のUIDは開発者端末として登録されていません。\nすでに固定UIDを作成済みなら、8桁PINでログインしてください。');
+    setDetail('現在UID: '+currentUid);
+    return;
+  }
+
+  rootBefore=await rest('developerRoot');
+  if(!rootBefore?.initialized)throw new Error('developerRootを確認できません');
+
+  showPin(
+    'migrate',
+    '既存の開発者端末を確認しました。\n現在UID: '+currentUid+
+    '\n現在ownerUid: '+String(rootBefore.ownerUid||'')+
+    '\n\nこの開発者権限を1つの固定Firebase UIDへ正式移行します。'
+  );
+  setDetail('この操作では大会データを作り直しません。所有権と認証だけを揃えます。');
+}
+async function linkOrLoginFixed(pin){
+  const {email,password}=await fixedCredentials(pin);
+  const beforeUid=String(auth.currentUser?.uid||'');
+
+  if(auth.currentUser){
+    try{
+      const cred=authApi.EmailAuthProvider.credential(email,password);
+      const linked=await timeout(authApi.linkWithCredential(auth.currentUser,cred),15000,'credential link');
+      return {uid:String(linked.user.uid||''),email,password,linkedFrom:beforeUid};
+    }catch(e){
+      const code=String(e?.code||'');
+      if(!(code.includes('credential-already-in-use')||code.includes('email-already-in-use')||code.includes('provider-already-linked'))){
+        throw e;
+      }
+    }
+  }
+
+  await authApi.signOut(auth).catch(()=>{});
+  const signed=await timeout(authApi.signInWithEmailAndPassword(auth,email,password),15000,'fixed login');
+  return {uid:String(signed.user.uid||''),email,password,linkedFrom:beforeUid};
+}
+async function migrate(pin){
+  setState('固定ログインを準備しています…','warn');
+  const fixed=await linkOrLoginFixed(pin);
+  const canonicalUid=String(auth.currentUser?.uid||fixed.uid||'');
+  if(!canonicalUid)throw new Error('固定UIDを取得できません');
+
+  setState('開発者PINと固定UIDを結び付けています…','warn');
+  await ensureDeveloperDevice(pin);
+  await ensureCreatorClaim();
+
+  const root=await rest('developerRoot');
+  const previousOwner=String(root?.ownerUid||'');
+  if(!previousOwner)throw new Error('現在のownerUidを取得できません');
+
+  setState('既存大会の所有権を固定UIDへ移しています…','warn');
+  const allSecrets=await rest('eventSecrets').catch(()=>({}));
+  const targets=Object.entries(allSecrets||{}).filter(([eventId,secret])=>
+    secret && String(secret.ownerUid||'')===previousOwner && previousOwner!==canonicalUid
+  );
+
+  let moved=0;
+  for(const [eventId] of targets){
+    await rest('eventSecrets/'+eventId+'/ownerUid','PUT',canonicalUid);
+    moved++;
+  }
+
+  setState('開発者ルートを固定UIDへ統一しています…','warn');
+  await rest('developerRoot/ownerUid','PUT',canonicalUid);
+  await rest('developerRoot/updatedAt','PUT',Date.now()).catch(()=>{});
+  await rest('developerAuth/ownerUid','PUT',canonicalUid);
+  await rest('developerAuth/updatedAt','PUT',Date.now()).catch(()=>{});
+
+  // Re-read after canonical owner is established, then revoke stale anonymous developer devices.
+  let removed=0;
+  const devices=await rest('developerDevices').catch(()=>null);
+  if(devices && typeof devices==='object'){
+    for(const uid of Object.keys(devices)){
+      if(uid===canonicalUid)continue;
+      try{
+        await rest('developerDevices/'+uid,'DELETE');
+        removed++;
+      }catch(_){}
+    }
+  }
+
+  setState('再ログインで固定UIDを検証しています…','warn');
+  const {email,password}=await fixedCredentials(pin);
+  await authApi.signOut(auth);
+  const again=await timeout(authApi.signInWithEmailAndPassword(auth,email,password),15000,'fixed re-login');
+  const finalUid=String(again.user.uid||'');
+  if(finalUid!==canonicalUid)throw new Error('再ログイン後のUIDが一致しません');
+
+  const [finalDevice,finalRoot,finalSecrets]=await Promise.all([
+    rest('developerDevices/'+finalUid),
+    rest('developerRoot'),
+    rest('eventSecrets').catch(()=>({}))
+  ]);
+
+  if(!finalDevice)throw new Error('固定UIDのdeveloperDevicesを確認できません');
+  if(String(finalRoot?.ownerUid||'')!==finalUid)throw new Error('developerRoot.ownerUidが一致しません');
+
+  const remainingOld=Object.values(finalSecrets||{}).filter(s=>
+    s && previousOwner!==finalUid && String(s.ownerUid||'')===previousOwner
+  ).length;
+  if(remainingOld)throw new Error('旧ownerUidの大会が'+remainingOld+'件残っています');
+
+  setState(
+    '正式移行が完了しました。\n固定Firebase UID: '+finalUid+
+    '\n移管した大会: '+moved+'件'+
+    '\n無効化した旧開発者UID: '+removed+'件',
+    'ok'
+  );
+  setDetail('次にChromeで同じURLを開き、同じ8桁PINでログインすると同じFirebase UIDになります。');
+  $('pinBox').classList.add('hidden');
+  $('eventBtn').classList.remove('hidden');
+}
+async function login(pin){
+  setState('固定開発者UIDへログインしています…','warn');
+  const {email,password}=await fixedCredentials(pin);
+  if(auth.currentUser)await authApi.signOut(auth).catch(()=>{});
+  const r=await timeout(authApi.signInWithEmailAndPassword(auth,email,password),15000,'fixed login');
+  const uid=String(r.user.uid||'');
+  const [device,root]=await Promise.all([
+    rest('developerDevices/'+uid).catch(()=>null),
+    rest('developerRoot').catch(()=>null)
+  ]);
+  if(!device||String(root?.ownerUid||'')!==uid){
+    throw new Error('固定UIDの開発者所有権を確認できません');
+  }
+  setState('固定UIDでログイン成功。\nFirebase UID: '+uid,'ok');
+  setDetail('SafariとChromeでこのUIDが同じなら、ブラウザ別匿名UID方式は終了です。');
+  $('pinBox').classList.add('hidden');
+  $('eventBtn').classList.remove('hidden');
+}
+function goEventBase(){
+  const u=new URL(TARGET_FILE,location.href);
+  u.searchParams.set('ownerKey',OWNER_KEY);
+  u.searchParams.set('fixedAuth','v1');
+  location.href=u.href;
+}
+
+$('mainBtn').onclick=async()=>{
+  const pin=String($('pin').value||'').trim();
+  if(!/^\d{8}$/.test(pin))return setState('開発者PINは8桁です。','bad');
+  if(mode==='migrate'){
+    const pin2=String($('pin2').value||'').trim();
+    if(pin!==pin2)return setState('PINが一致しません。','bad');
+  }
+  const btn=$('mainBtn');btn.disabled=true;
+  try{
+    if(mode==='migrate')await migrate(pin);
+    else await login(pin);
+  }catch(e){
+    const code=String(e?.code||'');
+    let msg=String(e?.message||e);
+    if(code.includes('operation-not-allowed')){
+      msg='Firebase Authenticationの「メール/パスワード」がまだ有効になっていません。';
+    }else if(code.includes('invalid-credential')||code.includes('invalid-login-credentials')||code.includes('wrong-password')||code.includes('user-not-found')){
+      msg='固定ログインがまだ作成されていないか、PINが一致しません。最初は開発者として復帰できるSafariで移行してください。';
+    }else if(/403|permission|denied/i.test(msg)){
+      msg='Firebase Rules v147 がまだ反映されていないか、開発者権限を確認できません。';
+    }
+    setState('停止しました：'+msg,'bad');
+    btn.disabled=false;
+  }
+};
+$('eventBtn').onclick=goEventBase;
+
+(async()=>{
+  try{
+    await initFirebase();
+    await inspect();
+  }catch(e){
+    setState('開始できません：'+String(e?.message||e),'bad');
+  }
+})();
+</script>
+</body>
+</html>
