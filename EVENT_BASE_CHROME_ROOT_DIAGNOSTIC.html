@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>EVENT BASE Chrome Root Diagnostic</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:#090b0d;color:#f3f5f7;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:760px;margin:auto;padding:18px 16px 60px}
+h1{font-size:24px;margin:4px 0 6px}
+.lead{color:#aeb6bf;line-height:1.6;margin:0 0 16px}
+.card{border:1px solid #343a40;background:#13171b;border-radius:16px;padding:15px;margin:12px 0}
+.card h2{font-size:18px;margin:0 0 10px}
+button{width:100%;border:0;border-radius:12px;padding:14px 12px;margin:6px 0;font-size:16px;font-weight:800;background:#ffd400;color:#080808}
+button.secondary{background:#242a30;color:#eef2f5;border:1px solid #46505a}
+button:disabled{opacity:.45}
+input{width:100%;border:1px solid #46505a;border-radius:12px;background:#080a0c;color:#fff;padding:14px;font-size:18px;margin:6px 0}
+.ok{color:#77efa8}.warn{color:#ffd86b}.bad{color:#ff9191}
+pre{white-space:pre-wrap;word-break:break-word;background:#080a0c;border-radius:10px;padding:12px;min-height:72px;font-size:12px;line-height:1.55}
+.small{font-size:13px;color:#aeb6bf;line-height:1.55}
+.pill{display:inline-block;border:1px solid #46505a;border-radius:999px;padding:4px 8px;margin:2px 3px 2px 0;font-size:12px}
+</style>
+</head>
+<body>
+<main>
+<h1>EVENT BASE Chrome 原因診断</h1>
+<p class="lead">EVENT BASE本体を一切起動せず、Chromeで「認証 → PIN → 大会データ → Realtime」の順に個別確認します。ここで落ちれば、その直前の段階を端末に保存します。</p>
+
+<div class="card">
+  <h2>前回の停止記録</h2>
+  <div id="previous" class="small">なし</div>
+  <button class="secondary" id="clearMarker">停止記録を消す</button>
+</div>
+
+<div class="card">
+  <h2>① Firebase匿名認証だけ確認</h2>
+  <button id="authBtn">① 認証を確認</button>
+  <div id="authState" class="small">未実行</div>
+</div>
+
+<div class="card">
+  <h2>② 開発者PIN</h2>
+  <p class="small">①で「このChromeはすでに開発者端末として登録済み」と出た場合、ここは不要です。</p>
+  <input id="pin" type="password" inputmode="numeric" maxlength="8" placeholder="開発者PIN 8桁">
+  <button id="pinCalcBtn" class="secondary">②-A PIN計算だけテスト</button>
+  <button id="pinLinkBtn">②-B このChromeを開発者端末として認証</button>
+  <div id="pinState" class="small">未実行</div>
+</div>
+
+<div class="card">
+  <h2>③ 大会データ取得だけ確認</h2>
+  <button id="eventBtn">③ 大会データを取得</button>
+  <div id="eventState" class="small">未実行</div>
+</div>
+
+<div class="card">
+  <h2>④ Realtimeだけ段階テスト</h2>
+  <p class="small">EVENT BASEの画面・地図・LIVE描画は起動しません。.info → config → LIVE → CHAT のリスナーだけ2秒ずつ順番に確認します。</p>
+  <button id="rtBtn">④ Realtimeを段階テスト</button>
+  <div id="rtState" class="small">未実行</div>
+</div>
+
+<div class="card">
+  <h2>診断ログ</h2>
+  <pre id="log"></pre>
+</div>
+</main>
+
+<script type="module">
+const SDK='12.19.0';
+const APP_NAME='toprun-eventbase';
+const CFG={
+  apiKey:'AIzaSyBRL_MnyqqTa0YviGDIzuPp9kARbXLMwa0',
+  authDomain:'top-run-event-base.firebaseapp.com',
+  databaseURL:'https://top-run-event-base-default-rtdb.asia-southeast1.firebasedatabase.app/',
+  projectId:'top-run-event-base',
+  storageBucket:'top-run-event-base.firebasestorage.app',
+  messagingSenderId:'55962935111',
+  appId:'1:55962935111:web:fb77b096d493ba31217662'
+};
+const OWNER_KEY=new URLSearchParams(location.search).get('ownerKey')||'';
+const MARK='eventbase_chrome_root_diag_marker_v1';
+const LOG='eventbase_chrome_root_diag_log_v1';
+
+let app=null,auth=null,uid='',token='',authMeta=null,proofHash='',eventId='';
+const $=id=>document.getElementById(id);
+const now=()=>performance.now();
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+
+function escText(v){return String(v??'')}
+function loadLog(){try{return JSON.parse(localStorage.getItem(LOG)||'[]')}catch(_){return[]}}
+function saveLog(a){try{localStorage.setItem(LOG,JSON.stringify(a.slice(-80)))}catch(_){}}
+function log(msg,kind=''){
+  const a=loadLog();
+  a.push({t:new Date().toLocaleTimeString('ja-JP'),msg:escText(msg),kind});
+  saveLog(a);
+  $('log').textContent=a.map(x=>`${x.t} ${x.msg}`).join('\n');
+}
+function marker(stage,detail=''){
+  const v={stage,detail,at:Date.now()};
+  try{localStorage.setItem(MARK,JSON.stringify(v))}catch(_){}
+  renderPrevious();
+}
+function clearMarker(){
+  try{localStorage.removeItem(MARK)}catch(_){}
+  renderPrevious();
+}
+function renderPrevious(){
+  let v=null;
+  try{v=JSON.parse(localStorage.getItem(MARK)||'null')}catch(_){}
+  $('previous').innerHTML=v
+    ? `<span class="warn">前回の最終開始段階：${escText(v.stage)}</span><br>${escText(v.detail||'')}`
+    : '<span class="ok">未完了の停止記録はありません。</span>';
+}
+function setState(id,text,cls=''){
+  const el=$(id); el.className='small '+cls; el.textContent=text;
+}
+async function timeout(p,ms,label){
+  let t;
+  try{
+    return await Promise.race([
+      p,
+      new Promise((_,rej)=>t=setTimeout(()=>rej(new Error(label+' timeout')),ms))
+    ]);
+  }finally{clearTimeout(t)}
+}
+async function tokenNow(){
+  if(!auth?.currentUser)throw new Error('Firebase認証がありません');
+  token=await timeout(auth.currentUser.getIdToken(false),8000,'ID token');
+  uid=auth.currentUser.uid;
+  return token;
+}
+async function rest(path,method='GET',body=undefined,ms=8000){
+  const tk=await tokenNow();
+  const base=CFG.databaseURL.replace(/\/+$/,'');
+  const url=`${base}/${path}.json?auth=${encodeURIComponent(tk)}`;
+  const opt={method,headers:{}};
+  if(body!==undefined){
+    opt.headers['Content-Type']='application/json';
+    opt.body=JSON.stringify(body);
+  }
+  const r=await timeout(fetch(url,opt),ms,'REST '+path);
+  const txt=await r.text();
+  let data=null;
+  try{data=txt?JSON.parse(txt):null}catch(_){data=txt}
+  if(!r.ok)throw new Error(`REST ${path} ${r.status}: ${typeof data==='string'?data:JSON.stringify(data)}`);
+  return data;
+}
+function hex(buf){return [...new Uint8Array(buf)].map(x=>x.toString(16).padStart(2,'0')).join('')}
+async function sha256(s){
+  return hex(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(s))));
+}
+async function pbkdf2(secret,salt,iterations){
+  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(String(secret)),'PBKDF2',false,['deriveBits']);
+  const bits=await crypto.subtle.deriveBits({
+    name:'PBKDF2',hash:'SHA-256',
+    salt:new TextEncoder().encode(String(salt)),
+    iterations:Number(iterations)
+  },key,256);
+  return hex(bits);
+}
+async function initAuth(){
+  marker('AUTH_IMPORT','Firebase app/auth module import');
+  const t0=now();
+  const [{initializeApp,getApps},{initializeAuth,browserLocalPersistence,signInAnonymously}]=await Promise.all([
+    import(`https://www.gstatic.com/firebasejs/${SDK}/firebase-app.js`),
+    import(`https://www.gstatic.com/firebasejs/${SDK}/firebase-auth.js`)
+  ]);
+  log(`Firebase modules imported ${Math.round(now()-t0)}ms`);
+  app=getApps().find(a=>a.name===APP_NAME)||initializeApp(CFG,APP_NAME);
+  auth=initializeAuth(app,{persistence:browserLocalPersistence});
+  marker('AUTH_RESTORE','browserLocalPersistence auth restore');
+  const r0=now();
+  try{await timeout(auth.authStateReady(),3500,'authStateReady')}catch(e){log(e.message,'warn')}
+  if(!auth.currentUser){
+    marker('AUTH_ANON_SIGNIN','signInAnonymously');
+    const s0=now();
+    await timeout(signInAnonymously(auth),12000,'signInAnonymously');
+    log(`anonymous sign-in ${Math.round(now()-s0)}ms`);
+  }
+  await tokenNow();
+  log(`Auth ready uid=${uid.slice(0,8)}… total ${Math.round(now()-r0)}ms`);
+  marker('AUTH_STATUS_READ','developer device/meta read');
+  const [initialized,device,meta]=await Promise.all([
+    rest('developerRoot/initialized').catch(e=>({__error:e.message})),
+    rest('developerDevices/'+uid).catch(e=>({__error:e.message})),
+    rest('developerAuthMeta').catch(e=>({__error:e.message}))
+  ]);
+  authMeta=meta&&typeof meta==='object'&&!meta.__error?meta:null;
+  clearMarker();
+  const linked=!!(device&&typeof device==='object'&&!device.__error);
+  setState('authState',
+    `認証OK / uid ${uid.slice(0,10)}… / developerRoot=${initialized===true?'設定済み':'未設定'} / このChrome=${linked?'開発者端末として登録済み':'未登録'}`,
+    'ok'
+  );
+  log(`developerRoot=${JSON.stringify(initialized)} device=${linked?'LINKED':'NOT LINKED'} meta=${JSON.stringify(authMeta)}`);
+  return {linked,initialized};
+}
+async function ensureAuth(){
+  if(auth?.currentUser&&uid)return;
+  await initAuth();
+}
+async function calcPin(){
+  await ensureAuth();
+  const pin=$('pin').value.trim();
+  if(!/^\d{8}$/.test(pin))throw new Error('PINは8桁です');
+  authMeta=authMeta||await rest('developerAuthMeta').catch(()=>null);
+  const algo=authMeta?.algorithm||'pbkdf2-sha256-v2';
+  const iterations=Number(authMeta?.iterations)||120000;
+  marker('PIN_HASH',`${algo} iterations=${iterations}`);
+  setState('pinState',`PINを計算中… ${algo} / ${iterations}回`,'warn');
+  const t0=now();
+  if(algo==='sha256-v1'){
+    proofHash=await sha256('developer-v1|'+pin);
+  }else{
+    proofHash=await pbkdf2(pin,'eventbase|developer|v2',iterations);
+  }
+  const ms=Math.round(now()-t0);
+  clearMarker();
+  setState('pinState',`PIN計算OK：${ms}ms`,'ok');
+  log(`PIN hash ${algo} ${iterations} iterations = ${ms}ms`);
+  return proofHash;
+}
+async function linkDevice(){
+  await ensureAuth();
+  const existing=await rest('developerDevices/'+uid).catch(()=>null);
+  if(existing){
+    clearMarker();
+    setState('pinState','このChromeはすでに開発者端末として登録済みです。','ok');
+    log('developerDevices already linked');
+    return;
+  }
+  if(!proofHash)await calcPin();
+  marker('PIN_CHALLENGE_WRITE','developerLoginChallenges write');
+  const t0=now();
+  await rest('developerLoginChallenges/'+uid,'PUT',{
+    uid,proofHash,attemptedAt:{'.sv':'timestamp'}
+  });
+  marker('DEVICE_LINK_WRITE','developerDevices write');
+  await rest('developerDevices/'+uid,'PUT',{
+    uid,linkedAt:{'.sv':'timestamp'},method:'pin'
+  });
+  await rest('developerLoginChallenges/'+uid,'DELETE').catch(()=>{});
+  clearMarker();
+  setState('pinState',`開発者端末認証OK：${Math.round(now()-t0)}ms`,'ok');
+  log(`developer device linked ${Math.round(now()-t0)}ms`);
+}
+async function fetchEvent(){
+  await ensureAuth();
+  const dev=await rest('developerDevices/'+uid).catch(()=>null);
+  if(!dev)throw new Error('このChromeはまだ開発者端末として登録されていません');
+  if(!OWNER_KEY)throw new Error('URLにownerKeyがありません');
+  marker('CREATOR_CLAIM','creatorClaim write');
+  await rest('creatorClaims/'+uid,'PUT',OWNER_KEY);
+  marker('DEVELOPER_ROOT_READ','developerRoot read');
+  const root=await rest('developerRoot');
+  eventId=String(root?.currentEventId||root?.bootstrapEventId||'');
+  if(!eventId||eventId.startsWith('__'))throw new Error('対象大会IDを取得できません');
+  marker('EVENT_DATA_READ','secret/meta/config read '+eventId);
+  const t0=now();
+  const [secret,meta,cfg]=await Promise.all([
+    rest('eventSecrets/'+eventId),
+    rest('events/'+eventId+'/meta').catch(e=>({__error:e.message})),
+    rest('events/'+eventId+'/config').catch(e=>({__error:e.message}))
+  ]);
+  clearMarker();
+  setState('eventState',
+    `大会データ取得OK：${Math.round(now()-t0)}ms / event ${eventId.slice(0,24)}… / status=${secret?.status||'?'}`,
+    'ok'
+  );
+  log(`event fetch ${Math.round(now()-t0)}ms eventId=${eventId} meta=${meta?.__error?'ERR':'OK'} config=${cfg?.__error?'ERR':'OK'}`);
+}
+async function realtimeTest(){
+  await ensureAuth();
+  if(!eventId)await fetchEvent();
+  marker('RTDB_SDK_IMPORT','firebase-database import');
+  setState('rtState','Database SDKを読み込み中…','warn');
+  const t0=now();
+  const dbMod=await import(`https://www.gstatic.com/firebasejs/${SDK}/firebase-database.js`);
+  try{dbMod.forceLongPolling()}catch(_){}
+  const db=dbMod.getDatabase(app);
+  log(`database module+getDatabase ${Math.round(now()-t0)}ms`);
+
+  async function listenStage(stage,path,label){
+    marker(stage,path);
+    setState('rtState',`${label} を2秒テスト中…`,'warn');
+    return await new Promise((resolve,reject)=>{
+      let done=false,off=null;
+      const timer=setTimeout(()=>{
+        if(done)return; done=true;
+        try{off&&off()}catch(_){}
+        log(`${label}: 2秒生存 OK`);
+        resolve();
+      },2000);
+      try{
+        off=dbMod.onValue(dbMod.ref(db,path),snap=>{
+          log(`${label}: value received`);
+        },err=>{
+          if(done)return; done=true; clearTimeout(timer);
+          try{off&&off()}catch(_){}
+          reject(err);
+        });
+      }catch(e){
+        clearTimeout(timer); reject(e);
+      }
+    });
+  }
+
+  await listenStage('RT_INFO','.info/connected','.info/connected');
+  await listenStage('RT_CONFIG','events/'+eventId+'/config','config listener');
+  await listenStage('RT_LIVE','events/'+eventId+'/live','LIVE listener');
+  await listenStage('RT_CHAT','events/'+eventId+'/chat','CHAT listener');
+
+  clearMarker();
+  setState('rtState','Realtime 4段階すべてOK','ok');
+  log('Realtime staged test ALL OK');
+}
+
+$('clearMarker').onclick=()=>{clearMarker();log('marker cleared')};
+$('authBtn').onclick=async()=>{
+  try{setState('authState','確認中…','warn');await initAuth()}
+  catch(e){setState('authState',e.message,'bad');log('AUTH ERROR '+e.message,'bad')}
+};
+$('pinCalcBtn').onclick=async()=>{
+  try{await calcPin()}catch(e){setState('pinState',e.message,'bad');log('PIN HASH ERROR '+e.message,'bad')}
+};
+$('pinLinkBtn').onclick=async()=>{
+  try{await linkDevice()}catch(e){setState('pinState',e.message,'bad');log('PIN LINK ERROR '+e.message,'bad')}
+};
+$('eventBtn').onclick=async()=>{
+  try{setState('eventState','取得中…','warn');await fetchEvent()}
+  catch(e){setState('eventState',e.message,'bad');log('EVENT ERROR '+e.message,'bad')}
+};
+$('rtBtn').onclick=async()=>{
+  try{await realtimeTest()}catch(e){setState('rtState',e.message,'bad');log('RT ERROR '+e.message,'bad')}
+};
+
+renderPrevious();
+$('log').textContent=loadLog().map(x=>`${x.t} ${x.msg}`).join('\n');
+log(`diagnostic opened / UA=${navigator.userAgent}`);
+</script>
+</body>
+</html>
