@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d1012">
+<title>EVENT BASE Storage Rescue R3</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;padding:16px;background:#0d1012;color:#f5f6f7;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif}
+main{max-width:760px;margin:auto}
+.card{background:#171b1f;border:1px solid #353c42;border-radius:18px;padding:18px;margin:12px 0}
+.brand{color:#ffd400;font-size:12px;font-weight:900;letter-spacing:.14em}
+h1{font-size:27px;margin:7px 0 10px}
+p{color:#b8c0c6;line-height:1.65}
+.state{padding:13px;border-radius:12px;background:#0b0e10;border:1px solid #414950;white-space:pre-wrap;line-height:1.6}
+.ok{border-color:#2e7751;color:#b5f2cc}
+.warn{border-color:#806b20;color:#ffe58a}
+.bad{border-color:#91383e;color:#ffb6bb}
+button{width:100%;border:0;border-radius:12px;padding:15px;background:#ffd400;color:#080808;font-weight:900;font-size:17px;margin-top:14px}
+button.secondary{background:#2a3035;color:#fff;border:1px solid #4b535a}
+button:disabled{opacity:.45}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:8px 5px;border-bottom:1px solid #2b3237;vertical-align:top}
+td:nth-child(2),th:nth-child(2){text-align:right;white-space:nowrap}
+code{word-break:break-all}
+.small{font-size:12px;color:#9099a1;line-height:1.6}
+</style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <div class="brand">TOP RUN AGUI / EVENT BASE</div>
+    <h1>Storage Rescue R3</h1>
+    <p>旅ランの旧ルートエディタ保存データを<strong>IndexedDBへ完全バックアップしてから</strong>localStorageから整理します。EVENT BASE・旅ラン記録・現在のv16ルート本体・Stage2/3本体・Google Maps APIキーは削除しません。</p>
+    <div id="state" class="state">対象を確認しています…</div>
+    <button id="rescueBtn" type="button">バックアップして容量を復旧</button>
+    <button id="checkBtn" class="secondary" type="button">容量を再確認</button>
+    <div class="small">この操作はSafariとChromeで保存領域が別なので、両方で1回ずつ実行してください。</div>
+  </div>
+
+  <div class="card">
+    <strong>整理対象</strong>
+    <table><thead><tr><th>キー</th><th>概算</th></tr></thead><tbody id="rows"></tbody></table>
+  </div>
+
+  <div class="card">
+    <strong>保護対象（削除しない）</strong>
+    <div id="protected" class="small"></div>
+  </div>
+</main>
+
+<script>
+(function(){
+'use strict';
+var DB_NAME='eventbase_storage_rescue_v1';
+var STORE='localStorageBackup';
+var state=document.getElementById('state');
+var btn=document.getElementById('rescueBtn');
+var rows=document.getElementById('rows');
+var protectedEl=document.getElementById('protected');
+
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function fmt(n){
+  if(n>=1024*1024)return (n/1024/1024).toFixed(2)+' MB';
+  if(n>=1024)return (n/1024).toFixed(1)+' KB';
+  return n+' B';
+}
+function itemSize(k,v){return (String(k).length+String(v||'').length)*2;}
+
+function isProtected(k){
+  return (
+    k==='tabirun_route_editor_v16_section1' ||
+    /^tabirun_route_editor_stage2_v1(?:_|$)/.test(k) ||
+    /^tabirun_route_editor_stage3_v1(?:_|$)/.test(k) ||
+    k==='tabirun_google_maps_api_key' ||
+    /^tabirun_run_record_/.test(k) ||
+    /^tabirun_run_archive_/.test(k) ||
+    /^tabirunLastGps/.test(k) ||
+    /^toprun_eventbase_/.test(k) ||
+    /^eventbase_/.test(k) ||
+    /^teb_/.test(k) ||
+    /^firebase:/.test(k)
+  );
+}
+
+function isCleanupCandidate(k){
+  if(isProtected(k))return false;
+  if(/^tabirun_route_editor_v16_section1_history$/.test(k))return true;
+  if(/^tabirun_route_editor_v(?:2|3|4|5|6|7|8|9|10|11|12|13|14|15)(?:_|$)/.test(k))return true;
+  return false;
+}
+
+function inventory(){
+  var candidates=[],protectedItems=[],total=0,all=0;
+  try{
+    for(var i=0;i<localStorage.length;i++){
+      var k=localStorage.key(i)||'';
+      var v='';
+      try{v=localStorage.getItem(k)||'';}catch(_){}
+      var bytes=itemSize(k,v);
+      all+=bytes;
+      if(isCleanupCandidate(k)){candidates.push({key:k,value:v,bytes:bytes});total+=bytes;}
+      else if(isProtected(k)){protectedItems.push({key:k,bytes:bytes});}
+    }
+  }catch(e){
+    state.className='state bad';
+    state.textContent='localStorageを読み取れません：'+String(e.name||e.code||e.message||e);
+    return {candidates:[],protectedItems:[],total:0,all:0,error:e};
+  }
+  candidates.sort(function(a,b){return b.bytes-a.bytes;});
+  protectedItems.sort(function(a,b){return b.bytes-a.bytes;});
+  rows.innerHTML=candidates.length?candidates.map(function(x){
+    return '<tr><td><code>'+esc(x.key)+'</code></td><td>'+fmt(x.bytes)+'</td></tr>';
+  }).join(''):'<tr><td colspan="2">整理対象なし</td></tr>';
+  protectedEl.innerHTML=protectedItems.length?protectedItems.map(function(x){
+    return '<div><code>'+esc(x.key)+'</code>｜'+fmt(x.bytes)+'</div>';
+  }).join(''):'保護対象なし';
+
+  if(candidates.length){
+    state.className='state warn';
+    state.textContent=
+      '現在のlocalStorage：約'+fmt(all)+'\n'+
+      '整理対象：'+candidates.length+'件 / 約'+fmt(total)+'\n'+
+      '先にIndexedDBへ完全コピーし、照合成功後だけlocalStorageから削除します。';
+    btn.disabled=false;
+  }else{
+    state.className='state ok';
+    state.textContent='整理対象はありません。\nlocalStorage：約'+fmt(all);
+    btn.disabled=true;
+  }
+  return {candidates:candidates,protectedItems:protectedItems,total:total,all:all,error:null};
+}
+
+function openDb(){
+  return new Promise(function(resolve,reject){
+    var req=indexedDB.open(DB_NAME,1);
+    req.onupgradeneeded=function(){
+      var db=req.result;
+      if(!db.objectStoreNames.contains(STORE))db.createObjectStore(STORE,{keyPath:'key'});
+    };
+    req.onsuccess=function(){resolve(req.result);};
+    req.onerror=function(){reject(req.error||new Error('IndexedDB open error'));};
+  });
+}
+
+function putBackup(db,rec){
+  return new Promise(function(resolve,reject){
+    var tx=db.transaction(STORE,'readwrite');
+    tx.objectStore(STORE).put(rec);
+    tx.oncomplete=function(){resolve();};
+    tx.onerror=function(){reject(tx.error||new Error('backup write error'));};
+    tx.onabort=function(){reject(tx.error||new Error('backup abort'));};
+  });
+}
+
+function getBackup(db,key){
+  return new Promise(function(resolve,reject){
+    var tx=db.transaction(STORE,'readonly');
+    var req=tx.objectStore(STORE).get(key);
+    req.onsuccess=function(){resolve(req.result||null);};
+    req.onerror=function(){reject(req.error||new Error('backup read error'));};
+  });
+}
+
+async function rescue(){
+  var inv=inventory();
+  if(inv.error||!inv.candidates.length)return;
+  btn.disabled=true;
+  state.className='state warn';
+  state.textContent='IndexedDBへバックアップ中…\n0 / '+inv.candidates.length;
+
+  var db;
+  try{
+    db=await openDb();
+    var stamp=Date.now();
+
+    for(var i=0;i<inv.candidates.length;i++){
+      var x=inv.candidates[i];
+      await putBackup(db,{
+        key:x.key,
+        value:x.value,
+        bytes:x.bytes,
+        backedUpAt:stamp,
+        sourceOrigin:location.origin,
+        rescueVersion:'R3'
+      });
+      var verify=await getBackup(db,x.key);
+      if(!verify || verify.value!==x.value){
+        throw new Error('バックアップ照合失敗：'+x.key);
+      }
+      state.textContent='IndexedDBへバックアップ中…\n'+(i+1)+' / '+inv.candidates.length;
+    }
+
+    state.textContent='バックアップ照合完了。\nlocalStorageを整理しています…';
+
+    var removed=0,freed=0;
+    for(var j=0;j<inv.candidates.length;j++){
+      var y=inv.candidates[j];
+      var verify2=await getBackup(db,y.key);
+      if(!verify2 || verify2.value!==y.value){
+        throw new Error('削除直前のバックアップ照合失敗：'+y.key);
+      }
+      localStorage.removeItem(y.key);
+      removed++;
+      freed+=y.bytes;
+    }
+
+    // Real write test after cleanup.
+    var testKey='__eventbase_storage_health_r3__';
+    try{
+      localStorage.setItem(testKey,'ok');
+      if(localStorage.getItem(testKey)!=='ok')throw new Error('readback mismatch');
+      localStorage.removeItem(testKey);
+    }catch(e){
+      throw new Error('整理後もlocalStorageへ書き込めません：'+String(e.name||e.code||e.message||e));
+    }
+
+    var after=inventory();
+    state.className='state ok';
+    state.textContent=
+      '容量復旧 完了\n'+
+      'IndexedDBへバックアップ：'+removed+'件\n'+
+      'localStorageから解放：約'+fmt(freed)+'\n'+
+      '現在のlocalStorage：約'+fmt(after.all)+'\n'+
+      '書き込みテスト：OK';
+  }catch(e){
+    state.className='state bad';
+    state.textContent='停止しました：'+String(e.message||e)+'\nバックアップ照合前のデータは削除していません。';
+    btn.disabled=false;
+  }finally{
+    try{if(db)db.close();}catch(_){}
+  }
+}
+
+btn.onclick=rescue;
+document.getElementById('checkBtn').onclick=inventory;
+inventory();
+})();
+</script>
+</body>
+</html>
