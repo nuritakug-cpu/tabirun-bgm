@@ -17031,39 +17031,87 @@ async function verifyChatServerRecord201(eventId,id){
     return !!row && String(row.id||'')===String(id);
   }catch(_){return false}
 }
-async function portalRestSendChatConfirmR1(eventId,id,remoteMsg){
+async function portalRestChatPutSilentR2(eventId,id,remoteMsg,timeoutMs=8000){
   const path=`events/${eventId}/chat/${id}`;
-  let firstError=null;
+  let ses=await portalRestEnsureSessionR1(false);
 
-  // PORTAL developer route is REST-native. Do not route CHAT through the
-  // legacy SDK-style completion/ACK chain; Safari can outlive the wrapper timeout.
-  try{
-    await portalRestRequestR1(path,'PUT',remoteMsg,12000);
-  }catch(e){
-    firstError=e;
-    console.warn('PORTAL CHAT REST PUT R1',e);
+  async function once(token){
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),timeoutMs);
+    try{
+      const url=portalRestUrlR1(path,token)+'&print=silent';
+      const res=await fetch(url,{
+        method:'PUT',
+        signal:controller.signal,
+        cache:'no-store',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(remoteMsg)
+      });
+      if(res.status===401||res.status===403)return {authRetry:true,status:res.status};
+      if(!res.ok){
+        let detail='';
+        try{detail=await res.text()}catch(_){}
+        throw new Error(`PORTAL CHAT REST ${res.status}${detail?': '+detail:''}`);
+      }
+      return {ok:true,status:res.status};
+    }catch(e){
+      if(e?.name==='AbortError')throw new Error('PORTAL CHAT REST timeout');
+      throw e;
+    }finally{
+      clearTimeout(timer);
+    }
   }
 
-  // Authoritative confirmation is the exact same message id read back from RTDB.
+  let out=await once(ses.idToken);
+  if(out?.authRetry){
+    ses=await portalRestEnsureSessionR1(true);
+    out=await once(ses.idToken);
+  }
+  if(!out?.ok)throw new Error('PORTAL CHAT REST write failed');
+  return true;
+}
+function portalRestFirstTrueR2(promises,timeoutMs=10000){
+  return new Promise(resolve=>{
+    let done=false,pending=promises.length;
+    let timer=null;
+    const finish=v=>{if(done)return;done=true;if(timer)clearTimeout(timer);resolve(!!v)};
+    timer=setTimeout(()=>finish(false),timeoutMs);
+    for(const p of promises){
+      Promise.resolve(p).then(v=>{
+        if(done)return;
+        if(v){finish(true);return}
+        pending--;
+        if(pending<=0)finish(false);
+      }).catch(()=>{
+        if(done)return;
+        pending--;
+        if(pending<=0)finish(false);
+      });
+    }
+  });
+}
+async function portalRestSendChatConfirmR2(eventId,id,remoteMsg){
+  // Start same-message SSE acknowledgement BEFORE the REST write.
+  // Safari/4G may commit the RTDB write before fetch completion becomes visible.
+  const ackPromise=waitChatServerAck201(eventId,id,10000);
+  let writeError=null;
+  const writePromise=portalRestChatPutSilentR2(eventId,id,remoteMsg,8000)
+    .then(()=>true)
+    .catch(e=>{writeError=e;console.warn('PORTAL CHAT REST PUT R2',e);return false});
+
+  const confirmed=await portalRestFirstTrueR2([ackPromise,writePromise],10000);
+  if(confirmed)return true;
+
+  // Final exact-id REST verification is read-only and bounded.
   try{
-    const row=await portalRestRequestR1(path,'GET',undefined,8000);
+    const row=await portalRestRequestR1(`events/${eventId}/chat/${id}`,'GET',undefined,4000);
     if(row && String(row.id||'')===String(id))return true;
   }catch(e){
-    console.warn('PORTAL CHAT REST verify R1',e);
+    console.warn('PORTAL CHAT REST final verify R2',e);
+    if(!writeError)writeError=e;
   }
 
-  // Retry is idempotent because the Firebase path/message id is identical.
-  // It cannot create a duplicate CHAT row.
-  try{
-    await portalRestRequestR1(path,'PUT',remoteMsg,12000);
-    const row=await portalRestRequestR1(path,'GET',undefined,8000);
-    if(row && String(row.id||'')===String(id))return true;
-  }catch(e){
-    console.warn('PORTAL CHAT REST retry R1',e);
-    if(!firstError)firstError=e;
-  }
-
-  if(firstError)throw firstError;
+  if(writeError)throw writeError;
   throw new Error('PORTAL CHAT REST confirmation failed');
 }
 
@@ -17124,14 +17172,13 @@ async function remoteSendChat108(text){
   let confirmed=false;
 
   if(portalRestModeR1()){
-    // R1: PORTAL developer mode is REST + SSE only.
-    // Use the proven REST write path directly and confirm the exact same id by REST GET.
-    // Do not use the legacy SDK-style ACK chain in this mode.
+    // R2: PORTAL developer mode is REST + SSE only.
+    // REST write and same-id SSE acknowledgement run in parallel.
     try{
-      confirmed=await portalRestSendChatConfirmR1(b.eventId,id,remoteMsg);
+      confirmed=await portalRestSendChatConfirmR2(b.eventId,id,remoteMsg);
     }catch(e){
       sdkError=e;
-      console.warn('PORTAL CHAT send R1',e);
+      console.warn('PORTAL CHAT send R2',e);
     }
   }else{
     // Original v237 participant/manager path remains unchanged.
@@ -17185,7 +17232,7 @@ async function remoteSendChat108(text){
   toast(denied
     ? 'CHAT送信権限を確認できません'
     : 'CHAT送信を確認できません。通信状態を確認してください');
-  Promise.resolve().then(()=>verifyRemoteBinding86()).catch(()=>{});
+  if(!portalRestModeR1())Promise.resolve().then(()=>verifyRemoteBinding86()).catch(()=>{});
   return false;
 }
 async function remoteClearChat108(){
@@ -18586,6 +18633,25 @@ SAFETY:
 RULES: unchanged
 -->
 
+
+<!-- REST_SSE_R2_CHAT_STABILITY_20260924
+TARGET: PORTAL REST developer CHAT only.
+DEVICE EVIDENCE:
+- PORTAL -> HOME succeeds.
+- Safari/4G CHAT remained pending and then timed out.
+- the CHAT failure branch then invoked legacy verifyRemoteBinding86 and returned the developer to the participant/manager number gate.
+CHANGES:
+1) portal=1 CHAT uses REST PUT with print=silent.
+2) REST write and same-message SSE acknowledgement run in parallel; either confirms success.
+3) final exact-id REST GET is bounded to 4 seconds; the previous long sequential retry chain is removed.
+4) portal=1 CHAT failure never invokes legacy verifyRemoteBinding86, so an already verified PORTAL owner session is not discarded.
+FROZEN:
+- normal participant/manager v237 CHAT path
+- LIVE/location sharing
+- Firebase Rules
+- PORTAL fixed UID/owner verification
+- SSE subscription architecture
+-->
 
 <!-- REST_SSE_R1_CHAT_FIX_20260924
 TARGET: PORTAL REST developer CHAT send only.
