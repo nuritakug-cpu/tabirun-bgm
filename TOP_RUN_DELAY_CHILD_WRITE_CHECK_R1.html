@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#090a0b">
+<title>TOP RUN DELAY CHILD WRITE CHECK</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#090a0b;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;padding:24px 18px 48px}.wrap{max-width:720px;margin:auto}.card{background:#17191c;border:1px solid #34393e;border-radius:18px;padding:16px;margin:12px 0}.row{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid #2d3135}.row:last-child{border:0}.row span{text-align:right;color:#a5adb2;word-break:break-all}.ok{color:#46d17d!important;font-weight:900}.bad{color:#ff6b74!important;font-weight:900}.warn{color:#ffbd54!important;font-weight:900}button{width:100%;min-height:58px;border:0;border-radius:15px;background:#ffd400;color:#080808;font-size:18px;font-weight:1000;margin-top:10px}.log{white-space:pre-wrap;background:#070809;border:1px solid #2b3034;border-radius:14px;padding:13px;font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-word}.final{font-size:21px;font-weight:1000;line-height:1.45}.note{color:#9aa2a7;font-size:12px;line-height:1.6}</style>
+</head>
+<body><div class="wrap">
+<h1>delay 子項目書込み確認</h1>
+<p class="note">config全体ではなく、進行調整の <b>delay</b> だけをFirebaseへ直接保存して確認します。</p>
+<div class="card">
+<div class="row"><b>固定UID認証</b><span id="auth">確認中</span></div>
+<div class="row"><b>大会</b><span id="event">確認中</span></div>
+<div class="row"><b>現在のdelay</b><span id="before">未確認</span></div>
+</div>
+<div class="card">
+<button id="run" disabled>delay 1分 / REST TEST を直接保存</button>
+<p class="note">変更するのは <code>events/&lt;eventId&gt;/config/delay</code> だけです。大会名・選手・位置共有・CHATには触れません。</p>
+</div>
+<div class="card">
+<div class="row"><b>delay PUT</b><span id="put">—</span></div>
+<div class="row"><b>delay GET</b><span id="get">—</span></div>
+</div>
+<div class="card"><div id="final" class="final">待機中</div><div id="log" class="log" style="margin-top:12px">準備中</div></div>
+</div>
+<script>
+(()=>{
+'use strict';
+const API_KEY='AIzaSyBRL_MnyqqTa0YviGDIzuPp9kARbXLMwa0';
+const DB='https://top-run-event-base-default-rtdb.asia-southeast1.firebasedatabase.app';
+const UID='qKf1l0vlc7XS2LlypaEC3oyz6eA2';
+const ADB='top_run_portal_auth', STORE='sessions', KEY='developer';
+let session=null,eventId='';
+const $=id=>document.getElementById(id);
+function state(id,t,k=''){const e=$(id);e.textContent=t;e.className=k}
+function log(t,k=''){const e=$('log');e.textContent=(e.textContent==='準備中'?'':e.textContent+'\n')+(k?'['+k.toUpperCase()+'] ':'')+t}
+function openDb(){return new Promise((ok,ng)=>{const r=indexedDB.open(ADB);r.onsuccess=()=>ok(r.result);r.onerror=()=>ng(r.error)})}
+async function saved(){const db=await openDb();try{return await new Promise((ok,ng)=>{if(!db.objectStoreNames.contains(STORE))return ok(null);const tx=db.transaction(STORE,'readonly');const r=tx.objectStore(STORE).get(KEY);r.onsuccess=()=>ok(r.result||null);r.onerror=()=>ng(r.error)})}finally{db.close()}}
+async function tf(url,opt={},ms=10000){const c=new AbortController(),t=setTimeout(()=>c.abort(),ms),st=performance.now();try{const r=await fetch(url,{...opt,signal:c.signal,cache:'no-store',credentials:'omit'});const raw=await r.text().catch(()=> '');return {ok:r.ok,status:r.status,raw,ms:Math.round(performance.now()-st)}}catch(e){return {ok:false,status:0,raw:e?.name==='AbortError'?'TIMEOUT':String(e?.message||e),ms:Math.round(performance.now()-st)}}finally{clearTimeout(t)}}
+async function refresh(rt){const b='grant_type=refresh_token&refresh_token='+encodeURIComponent(rt);const r=await tf('https://securetoken.googleapis.com/v1/token?key='+encodeURIComponent(API_KEY),{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b},12000);if(!r.ok)throw new Error('TOKEN '+r.status+' '+r.raw);const d=JSON.parse(r.raw||'{}');if(String(d.user_id||'')!==UID)throw new Error('UID不一致');return {idToken:String(d.id_token),refreshToken:String(d.refresh_token),uid:String(d.user_id)}}
+function url(path){return DB+'/'+String(path).replace(/^\/+|\/+$/g,'')+'.json?auth='+encodeURIComponent(session.idToken)}
+async function req(path,method='GET',body,ms=9000){const opt={method,headers:{}};if(body!==undefined){opt.headers['Content-Type']='application/json';opt.body=JSON.stringify(body)}return tf(url(path),opt,ms)}
+function parse(s){try{return s?JSON.parse(s):null}catch(_){return s}}
+function label(r){return r.status?`HTTP ${r.status} / ${r.ms}ms`:`${r.raw} / ${r.ms}ms`}
+async function init(){
+ try{
+  const sv=await saved();if(!sv?.refreshToken)throw new Error('PORTAL保存済みログインなし');
+  session=await refresh(sv.refreshToken);state('auth','OK','ok');log('Fresh token OK','ok');
+  const [rootR,secR]=await Promise.all([req('developerRoot'),req('eventSecrets')]);
+  if(!rootR.ok||!secR.ok)throw new Error('大会情報取得失敗');
+  const root=parse(rootR.raw)||{}, secs=parse(secR.raw)||{};
+  const owned=Object.entries(secs).filter(([id,x])=>x&&String(x.ownerUid||'')===UID&&String(x.status||'')!=='ended');
+  eventId=String(root.currentEventId||root.bootstrapEventId||owned[0]?.[0]||'');
+  if(!eventId||String(secs[eventId]?.ownerUid||'')!==UID)eventId=String(owned[0]?.[0]||'');
+  if(!eventId)throw new Error('所有大会なし');
+  state('event',eventId,'ok');
+  const d=await req(`events/${eventId}/config/delay`);
+  if(d.ok){const v=parse(d.raw);state('before',v?JSON.stringify(v):'delay=null',v?'ok':'warn');log('before delay: '+(v?JSON.stringify(v):'null'),v?'ok':'warn')}
+  else state('before',label(d),'bad');
+  $('run').disabled=false;
+ }catch(e){state('auth','失敗','bad');$('final').textContent='準備失敗';$('final').className='final bad';log(String(e?.message||e),'bad')}
+}
+$('run').onclick=async()=>{
+ $('run').disabled=true;$('log').textContent='';
+ state('put','—');state('get','—');$('final').textContent='確認中…';$('final').className='final';
+ try{
+  const sv=await saved();session=await refresh(sv.refreshToken);log('Fresh token OK','ok');
+  const body={mode:'delay',min:1,note:'REST TEST'};
+  const p=await req(`events/${eventId}/config/delay`,'PUT',body,9000);
+  state('put',label(p),p.ok?'ok':'bad');log('delay PUT: '+label(p)+(p.raw?' '+p.raw:''),p.ok?'ok':'bad');
+  const g=await req(`events/${eventId}/config/delay`,'GET',undefined,9000);
+  const v=parse(g.raw);
+  const exact=g.ok&&v&&v.mode==='delay'&&Number(v.min)===1&&String(v.note||'')==='REST TEST';
+  state('get',label(g)+(exact?' / exact=YES':' / exact=NO'),exact?'ok':'bad');log('delay GET: '+label(g)+' '+JSON.stringify(v),exact?'ok':'bad');
+  if(p.ok&&exact){$('final').textContent='PASS｜delay子項目のREST保存は正常';$('final').className='final ok';log('親config一括PATCH側が問題候補です','ok')}
+  else{$('final').textContent='FAIL｜結果をそのまま共有してください';$('final').className='final bad'}
+ }catch(e){$('final').textContent='FAIL｜エラー';$('final').className='final bad';log(String(e?.message||e),'bad')}
+ finally{$('run').disabled=false}
+};
+init();
+})();
+</script>
+</body></html>
