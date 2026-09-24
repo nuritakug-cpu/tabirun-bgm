@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a0c0e">
+<title>TOP RUN EVENT REST STREAM PROOF R1</title>
+<style>
+:root{color-scheme:dark;--bg:#0a0c0e;--card:#161a1e;--line:#343b41;--muted:#99a2a9;--yellow:#ffd400;--green:#b8f5d0;--red:#ffb8bd}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:#f5f7f8;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif}
+body{min-height:100vh;padding:16px}
+main{max-width:760px;margin:auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin:12px 0}
+.brand{color:var(--yellow);font-size:12px;font-weight:900;letter-spacing:.15em}
+h1{font-size:27px;margin:7px 0 10px}p{color:#aeb6bd;line-height:1.65}
+.state{padding:13px;border:1px solid #414950;border-radius:12px;background:#0b0e10;white-space:pre-wrap;line-height:1.6}
+.ok{border-color:#2f7751;color:var(--green)}.bad{border-color:#8f393f;color:var(--red)}.warn{border-color:#806b20;color:#ffe78f}
+.grid{display:grid;grid-template-columns:150px 1fr;gap:9px 12px;margin-top:14px;font-size:13px}.k{color:#919aa1}.v{word-break:break-all;font-weight:700}
+label{display:block;margin:18px 0 7px;font-weight:900}input{width:100%;padding:15px;border:1px solid #4a5259;border-radius:12px;background:#080a0c;color:#fff;font-size:22px;letter-spacing:.08em}
+button{width:100%;margin-top:14px;padding:15px;border:0;border-radius:12px;background:#ffd400;color:#080808;font-weight:900;font-size:17px}button:disabled{opacity:.45}
+.log{margin-top:13px;padding:12px;border-radius:12px;background:#0b0e10;color:#8e979e;font-size:12px;white-space:pre-wrap;line-height:1.55}
+.small{font-size:12px;color:#8e979e;line-height:1.6}
+</style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <div class="brand">TOP RUN AGUI / REST + STREAM PROOF</div>
+    <h1>EVENT BASE通信基盤検証</h1>
+    <p>Firebase JavaScript Auth SDK / Realtime Database SDKを一切使わず、PORTALで成立した固定開発者認証をRESTとSSEストリームだけでEVENT BASEへ引き継げるかを検証します。</p>
+    <div id="state" class="state">保存済みPORTALログインを確認しています…</div>
+    <div id="facts" class="grid"></div>
+  </div>
+
+  <div id="pinCard" class="card" style="display:none">
+    <label for="pin">開発者PIN（8桁）</label>
+    <input id="pin" type="password" inputmode="numeric" maxlength="8" autocomplete="current-password" placeholder="••••••••">
+    <button id="login" type="button">RESTでログインして検証</button>
+    <div class="small" style="margin-top:10px">PINは保存しません。Firebase SDKも使いません。</div>
+  </div>
+
+  <div class="card">
+    <div class="brand">LIVE TEST</div>
+    <div id="streamState" class="state">待機中</div>
+    <div id="log" class="log"></div>
+  </div>
+</main>
+
+<script>
+(function(){
+'use strict';
+
+var API_KEY='AIzaSyBRL_MnyqqTa0YviGDIzuPp9kARbXLMwa0';
+var DB_URL='https://top-run-event-base-default-rtdb.asia-southeast1.firebasedatabase.app';
+var OWNER_KEY='TR-GSBWUAZ5KNSEQKPHZS';
+var CANONICAL_UID='qKf1l0vlc7XS2LlypaEC3oyz6eA2';
+var CANONICAL_EMAIL='dev.9493d07a07056c22fd2a967b1ddb209e@example.com';
+var AUTH_SOURCES=[
+  ['top_run_portal_auth_v5','sessions','developer'],
+  ['top_run_portal_auth_v3','sessions','developer']
+];
+
+var session=null,rootData=null,eventId='';
+var logs=[];
+
+function $(id){return document.getElementById(id)}
+function setState(id,msg,kind){var e=$(id);e.className='state'+(kind?' '+kind:'');e.textContent=String(msg||'')}
+function log(s){logs.push(String(s));$('log').textContent=logs.join('\n')}
+function fact(k,v){var box=$('facts');var a=document.createElement('div');a.className='k';a.textContent=k;var b=document.createElement('div');b.className='v';b.textContent=String(v);box.appendChild(a);box.appendChild(b)}
+function errText(e){return String((e&&e.message)||e||'unknown')}
+function timeout(p,ms,label){var t;return Promise.race([Promise.resolve(p).finally(function(){clearTimeout(t)}),new Promise(function(_,rej){t=setTimeout(function(){rej(new Error(label+' timeout'))},ms)})])}
+
+async function sha256hex(s){
+  var d=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(s)));
+  return Array.from(new Uint8Array(d)).map(function(x){return x.toString(16).padStart(2,'0')}).join('');
+}
+async function pbkdf2hex(secret,salt,it){
+  it=it||120000;
+  var key=await crypto.subtle.importKey('raw',new TextEncoder().encode(String(secret)),'PBKDF2',false,['deriveBits']);
+  var bits=await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt:new TextEncoder().encode(String(salt)),iterations:it},key,256);
+  return Array.from(new Uint8Array(bits)).map(function(x){return x.toString(16).padStart(2,'0')}).join('');
+}
+async function credentials(pin){
+  var h=(await sha256hex('eventbase-dev-email-v1|'+OWNER_KEY)).slice(0,32);
+  var email='dev.'+h+'@example.com';
+  if(email!==CANONICAL_EMAIL)throw new Error('固定email生成式不一致');
+  return {email:email,password:await pbkdf2hex(pin,'eventbase-dev-password-v1|'+OWNER_KEY,120000)};
+}
+async function signIn(email,password){
+  log('REST Auth signInWithPassword start');
+  var u='https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key='+encodeURIComponent(API_KEY);
+  var r=await timeout(fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,password:password,returnSecureToken:true}),cache:'no-store'}),12000,'REST login');
+  var txt=await r.text(),d=null;try{d=txt?JSON.parse(txt):null}catch(_){d={raw:txt}}
+  if(!r.ok)throw new Error((d&&d.error&&d.error.message)||('HTTP '+r.status));
+  if(String(d.localId||'')!==CANONICAL_UID)throw new Error('固定UID不一致');
+  log('REST Auth login OK uid='+d.localId);
+  return {uid:String(d.localId),idToken:String(d.idToken),refreshToken:String(d.refreshToken),expiresAt:Date.now()+(Number(d.expiresIn||3600)*1000)-60000};
+}
+async function refresh(refreshToken){
+  log('REST refreshToken start');
+  var u='https://securetoken.googleapis.com/v1/token?key='+encodeURIComponent(API_KEY);
+  var body='grant_type=refresh_token&refresh_token='+encodeURIComponent(refreshToken);
+  var r=await timeout(fetch(u,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body,cache:'no-store'}),12000,'refresh');
+  var txt=await r.text(),d=null;try{d=txt?JSON.parse(txt):null}catch(_){d={raw:txt}}
+  if(!r.ok)throw new Error((d&&d.error&&d.error.message)||('HTTP '+r.status));
+  if(String(d.user_id||'')!==CANONICAL_UID)throw new Error('復元UID不一致');
+  log('REST refreshToken OK uid='+d.user_id);
+  return {uid:String(d.user_id),idToken:String(d.id_token),refreshToken:String(d.refresh_token),expiresAt:Date.now()+(Number(d.expires_in||3600)*1000)-60000};
+}
+function openDb(name,store){
+  return new Promise(function(resolve,reject){
+    var req=indexedDB.open(name);
+    req.onsuccess=function(){resolve(req.result)};
+    req.onerror=function(){reject(req.error||new Error('IndexedDB open error'))};
+  });
+}
+async function readSaved(){
+  for(var i=0;i<AUTH_SOURCES.length;i++){
+    var src=AUTH_SOURCES[i],db=null;
+    try{
+      db=await openDb(src[0],src[1]);
+      if(!db.objectStoreNames.contains(src[1])){db.close();continue}
+      var row=await new Promise(function(resolve,reject){
+        var tx=db.transaction(src[1],'readonly');
+        var req=tx.objectStore(src[1]).get(src[2]);
+        req.onsuccess=function(){resolve(req.result||null)};
+        req.onerror=function(){reject(req.error||new Error('read error'))};
+      });
+      db.close();
+      if(row&&row.refreshToken){
+        log('IndexedDB session FOUND: '+src[0]);
+        return row;
+      }
+    }catch(e){
+      try{if(db)db.close()}catch(_){}
+      log('IndexedDB '+src[0]+' skip: '+errText(e));
+    }
+  }
+  return null;
+}
+async function ensureSession(){
+  if(session&&session.idToken&&Date.now()<Number(session.expiresAt||0))return session;
+  if(session&&session.refreshToken){session=await refresh(session.refreshToken);return session}
+  throw new Error('有効なRESTセッションがありません');
+}
+async function dbGet(path){
+  var s=await ensureSession();
+  var u=DB_URL.replace(/\/+$/,'')+'/'+path+'.json?auth='+encodeURIComponent(s.idToken);
+  var r=await timeout(fetch(u,{cache:'no-store'}),9000,'RTDB '+path);
+  var txt=await r.text(),d=null;try{d=txt?JSON.parse(txt):null}catch(_){d=txt}
+  if(!r.ok)throw new Error('RTDB '+path+' HTTP '+r.status);
+  return d;
+}
+async function verify(){
+  var pair=await Promise.all([dbGet('developerDevices/'+CANONICAL_UID),dbGet('developerRoot')]);
+  if(!pair[0])throw new Error('developerDevices fixed UID not found');
+  if(!pair[1]||String(pair[1].ownerUid||'')!==CANONICAL_UID)throw new Error('developerRoot.ownerUid不一致');
+  rootData=pair[1];
+  eventId=String(rootData.currentEventId||rootData.bootstrapEventId||'');
+  if(!eventId)throw new Error('currentEventIdなし');
+  var sec=await dbGet('eventSecrets/'+eventId);
+  if(!sec||String(sec.ownerUid||'')!==CANONICAL_UID)throw new Error('event ownerUid不一致');
+  var cfg=await dbGet('events/'+eventId+'/config').catch(function(){return null});
+  fact('固定UID',CANONICAL_UID);
+  fact('eventId',eventId);
+  fact('大会名',String((cfg&&cfg.title)||eventId));
+  fact('status',String(sec.status||''));
+  fact('通信方式','REST + SSE / Firebase JS SDKなし');
+  log('REST developer/event verification OK');
+}
+
+async function streamPath(path,label,signal){
+  var s=await ensureSession();
+  var u=DB_URL.replace(/\/+$/,'')+'/'+path+'.json?auth='+encodeURIComponent(s.idToken);
+  log('SSE connect '+label+': '+path);
+  var r=await timeout(fetch(u,{headers:{'Accept':'text/event-stream'},cache:'no-store',signal:signal,redirect:'follow'}),12000,'SSE '+label);
+  if(!r.ok)throw new Error('SSE '+label+' HTTP '+r.status);
+  if(!r.body)throw new Error('SSE '+label+' body unavailable');
+  var reader=r.body.getReader(),decoder=new TextDecoder(),buf='',seen=false;
+  while(true){
+    var x=await reader.read();
+    if(x.done)break;
+    buf+=decoder.decode(x.value,{stream:true});
+    var blocks=buf.split(/\r?\n\r?\n/);
+    buf=blocks.pop()||'';
+    for(var i=0;i<blocks.length;i++){
+      var lines=blocks[i].split(/\r?\n/),ev='',dataLines=[];
+      for(var j=0;j<lines.length;j++){
+        if(lines[j].indexOf('event:')===0)ev=lines[j].slice(6).trim();
+        if(lines[j].indexOf('data:')===0)dataLines.push(lines[j].slice(5).trim());
+      }
+      if(ev){
+        seen=true;
+        log('SSE '+label+' event='+ev+' data='+dataLines.join(' ').slice(0,220));
+        return {event:ev,data:dataLines.join('\n')};
+      }
+    }
+  }
+  if(!seen)throw new Error('SSE '+label+' first eventなし');
+}
+
+async function runStreams(){
+  setState('streamState','Firebase RESTストリームへ接続しています…','warn');
+  var ac1=new AbortController(),ac2=new AbortController();
+  try{
+    var res=await Promise.all([
+      streamPath('eventSecrets/'+eventId+'/status','STATUS',ac1.signal),
+      streamPath('events/'+eventId+'/config','CONFIG',ac2.signal)
+    ]);
+    setState('streamState',
+      'REST + SSE 完全接続OK\n'+
+      'STATUS stream: '+res[0].event+'\n'+
+      'CONFIG stream: '+res[1].event+'\n\n'+
+      'Firebase JavaScript Auth SDK / Database SDKなしで、固定UID権限のリアルタイム受信まで確認できました。',
+      'ok'
+    );
+  }finally{
+    ac1.abort();ac2.abort();
+  }
+}
+async function bootWithSession(s){
+  session=s;
+  if(Date.now()>=Number(session.expiresAt||0))session=await refresh(session.refreshToken);
+  await verify();
+  setState('state','固定開発者REST認証・大会owner確認 OK\n次にリアルタイムストリームを確認します。','ok');
+  await runStreams();
+}
+async function boot(){
+  try{
+    if(!window.indexedDB)throw new Error('IndexedDB unavailable');
+    var saved=await readSaved();
+    if(saved){
+      try{await bootWithSession(saved);return}catch(e){log('saved session path failed: '+errText(e))}
+    }
+    setState('state','保存済みPORTALセッションだけでは確認できません。\nPINを1回入力してください。','warn');
+    $('pinCard').style.display='';
+  }catch(e){
+    setState('state','開始エラー：'+errText(e),'bad');
+    $('pinCard').style.display='';
+  }
+}
+$('login').onclick=async function(){
+  var pin=String($('pin').value||'').trim();
+  if(!/^\d{8}$/.test(pin)){setState('state','PINは8桁です。','bad');return}
+  this.disabled=true;
+  try{
+    var c=await credentials(pin);
+    var s=await signIn(c.email,c.password);
+    await bootWithSession(s);
+    $('pinCard').style.display='none';
+  }catch(e){
+    setState('state','検証失敗：'+errText(e),'bad');
+    log('FAIL: '+errText(e));
+    this.disabled=false;
+  }
+};
+
+boot();
+})();
+</script>
+</body>
+</html>
