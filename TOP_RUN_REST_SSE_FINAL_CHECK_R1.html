@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0c0e">
+<title>TOP RUN REST + SSE FINAL CHECK</title>
+<style>
+:root{--bg:#0b0c0e;--card:#17191c;--line:#343a3f;--ink:#fff;--muted:#9aa3a8;--y:#ffd400;--ok:#47d17d;--bad:#ff6670;--warn:#ffb84d}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;padding:22px 18px 48px}
+.wrap{max-width:760px;margin:auto}h1{margin:0 0 6px;font-size:25px}.sub{color:var(--muted);font-size:13px;margin-bottom:18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:15px;margin:12px 0}
+.row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #292e32;font-size:13px}.row:last-child{border:0}.row span{text-align:right;color:var(--muted);word-break:break-word}
+select,button{width:100%;min-height:52px;border-radius:14px;font:inherit}select{background:#0f1113;color:#fff;border:1px solid #454b50;padding:0 12px}
+button{border:0;background:var(--y);color:#111;font-weight:1000;font-size:17px;margin-top:11px}button:disabled{opacity:.5}
+.ok{color:var(--ok)!important;font-weight:900}.bad{color:var(--bad)!important;font-weight:900}.warn{color:var(--warn)!important;font-weight:900}
+.log{white-space:pre-wrap;background:#090a0b;border:1px solid #2c3034;border-radius:14px;padding:12px;font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;min-height:150px;word-break:break-word}
+.final{font-size:20px;font-weight:1000;line-height:1.4}
+.note{color:var(--muted);font-size:12px;line-height:1.6;margin-top:9px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>REST + SSE 最終確認</h1>
+  <div class="sub">EVENT BASE / PORTAL開発者経路 — 最後の通信基盤チェック</div>
+
+  <div class="card">
+    <div class="row"><b>固定UID認証</b><span id="auth">確認中</span></div>
+    <div class="row"><b>大会</b><span id="eventState">確認中</span></div>
+    <div class="row"><b>現在の遅延設定</b><span id="delayState">未確認</span></div>
+  </div>
+
+  <div class="card">
+    <label style="font-weight:900;display:block;margin-bottom:7px">対象大会</label>
+    <select id="eventSelect"><option>読み込み中…</option></select>
+    <button id="runBtn" disabled>REST + SSE を確認</button>
+    <div class="note">
+      ①現在のconfigをREST GET → ②updatedAtだけPATCH → ③その変更をSSEで受信 → ④REST GETで再確認します。<br>
+      大会名・開催日・選手・位置共有・CHATは変更しません。
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row"><b>config REST GET</b><span id="getState">—</span></div>
+    <div class="row"><b>保存済み遅延</b><span id="delayCheck">—</span></div>
+    <div class="row"><b>REST PATCH</b><span id="patchState">—</span></div>
+    <div class="row"><b>SSE受信</b><span id="sseState">—</span></div>
+    <div class="row"><b>最終REST GET</b><span id="finalGetState">—</span></div>
+  </div>
+
+  <div class="card">
+    <div id="final" class="final">待機中</div>
+    <div id="log" class="log" style="margin-top:12px">準備中</div>
+  </div>
+</div>
+
+<script>
+(()=>{
+'use strict';
+const API_KEY='AIzaSyBRL_MnyqqTa0YviGDIzuPp9kARbXLMwa0';
+const DB_URL='https://top-run-event-base-default-rtdb.asia-southeast1.firebasedatabase.app';
+const UID='qKf1l0vlc7XS2LlypaEC3oyz6eA2';
+const AUTH_DB='top_run_portal_auth', AUTH_STORE='sessions', AUTH_KEY='developer';
+
+let session=null, events=[];
+const $=id=>document.getElementById(id);
+function st(id,text,kind=''){const e=$(id);e.textContent=text;e.className=kind}
+function log(s,k=''){const p=k?`[${k.toUpperCase()}] `:'';$('log').textContent=($('log').textContent==='準備中'?'':$('log').textContent+'\n')+p+s}
+function toJson(v){try{return JSON.stringify(v)}catch(_){return String(v)}}
+function openDb(){return new Promise((resolve,reject)=>{const q=indexedDB.open(AUTH_DB);q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error||new Error('IndexedDB open error'))})}
+async function readSaved(){
+  const db=await openDb();
+  try{
+    if(!db.objectStoreNames.contains(AUTH_STORE))return null;
+    return await new Promise((resolve,reject)=>{
+      const tx=db.transaction(AUTH_STORE,'readonly');
+      const q=tx.objectStore(AUTH_STORE).get(AUTH_KEY);
+      q.onsuccess=()=>resolve(q.result||null);q.onerror=()=>reject(q.error||new Error('session read error'));
+    });
+  }finally{db.close()}
+}
+function timedFetch(url,opt={},ms=10000){
+  const c=new AbortController(), t=setTimeout(()=>c.abort(),ms), started=performance.now();
+  return fetch(url,{...opt,signal:c.signal,cache:'no-store',credentials:'omit'})
+   .then(async r=>{clearTimeout(t);const raw=await r.text().catch(()=> '');return {ok:r.ok,status:r.status,raw,ms:Math.round(performance.now()-started)}})
+   .catch(e=>{clearTimeout(t);return {ok:false,status:0,raw:e?.name==='AbortError'?'TIMEOUT':String(e?.message||e),ms:Math.round(performance.now()-started)}})
+}
+async function refresh(rt){
+  const body='grant_type=refresh_token&refresh_token='+encodeURIComponent(rt);
+  const r=await timedFetch('https://securetoken.googleapis.com/v1/token?key='+encodeURIComponent(API_KEY),
+    {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body},12000);
+  if(!r.ok)throw new Error('TOKEN '+r.status+' '+r.raw);
+  const d=JSON.parse(r.raw||'{}');
+  if(String(d.user_id||'')!==UID)throw new Error('固定UID不一致');
+  return {uid:String(d.user_id),idToken:String(d.id_token),refreshToken:String(d.refresh_token)};
+}
+function url(path,extra=''){
+  const p=String(path||'').replace(/^\/+|\/+$/g,'');
+  return DB_URL+'/'+p+'.json?auth='+encodeURIComponent(session.idToken)+(extra?'&'+extra:'');
+}
+async function req(path,method='GET',body,ms=9000,extra=''){
+  const opt={method,headers:{}};
+  if(body!==undefined){opt.headers['Content-Type']='application/json';opt.body=JSON.stringify(body)}
+  return await timedFetch(url(path,extra),opt,ms);
+}
+function parse(raw){try{return raw?JSON.parse(raw):null}catch(_){return raw}}
+function label(r){return r.status===0?`${r.raw} ${r.ms}ms`:`HTTP ${r.status} / ${r.ms}ms`}
+
+async function init(){
+  try{
+    const saved=await readSaved();
+    if(!saved?.refreshToken)throw new Error('PORTAL保存済みログインなし');
+    session=await refresh(saved.refreshToken);
+    st('auth','OK','ok');
+    log('固定UID REST認証 OK','ok');
+
+    const [rootR,secretsR]=await Promise.all([req('developerRoot'),req('eventSecrets')]);
+    if(!rootR.ok||!secretsR.ok)throw new Error('大会一覧を取得できません');
+    const root=parse(rootR.raw)||{}, secrets=parse(secretsR.raw)||{};
+    events=Object.entries(secrets)
+      .filter(([id,s])=>s&&String(s.ownerUid||'')===UID&&String(s.status||'')!=='ended')
+      .map(([id,s])=>({id,secret:s}));
+    const preferred=String(root.currentEventId||root.bootstrapEventId||'');
+    events.sort((a,b)=>(a.id===preferred?-1:b.id===preferred?1:0));
+    const sel=$('eventSelect');sel.innerHTML='';
+    for(const e of events){const o=document.createElement('option');o.value=e.id;o.textContent=e.id;sel.appendChild(o)}
+    if(!events.length)throw new Error('固定UID所有のactive大会なし');
+    st('eventState',events[0].id,'ok');
+    $('runBtn').disabled=false;
+    await preview(events[0].id);
+  }catch(e){
+    st('auth','失敗','bad');$('final').textContent='準備に失敗しました';$('final').className='final bad';log(String(e?.message||e),'bad');
+  }
+}
+async function preview(eventId){
+  const r=await req(`events/${eventId}/config`,'GET',undefined,9000);
+  if(!r.ok){st('delayState','取得失敗','bad');return}
+  const cfg=parse(r.raw)||{};
+  const d=cfg.delay;
+  if(d){
+    const txt=`${d.mode==='delay'?'遅延':d.mode==='ahead'?'早い進行':d.mode} ${Number(d.min)||0}分${d.note?' / '+d.note:''}`;
+    st('delayState',txt,'ok');
+  }else st('delayState','定刻（delay=null）','warn');
+}
+
+function waitForSsePing(eventId,ping,timeoutMs=9000){
+  return new Promise(async resolve=>{
+    const controller=new AbortController();
+    let done=false, timer=setTimeout(()=>finish(false,'TIMEOUT'),timeoutMs);
+    function finish(ok,detail){
+      if(done)return;done=true;clearTimeout(timer);try{controller.abort()}catch(_){}
+      resolve({ok,detail});
+    }
+    try{
+      const r=await fetch(url(`events/${eventId}/config`),{
+        headers:{Accept:'text/event-stream'},cache:'no-store',credentials:'omit',signal:controller.signal
+      });
+      if(!r.ok)return finish(false,'HTTP '+r.status);
+      if(!r.body)return finish(false,'SSE body unavailable');
+      const reader=r.body.getReader(), dec=new TextDecoder(); let buf='';
+      (async()=>{
+        try{
+          while(!done){
+            const ch=await reader.read();if(ch.done)break;
+            buf+=dec.decode(ch.value,{stream:true});
+            const blocks=buf.split(/\r?\n\r?\n/);buf=blocks.pop()||'';
+            for(const block of blocks){
+              let ev='', lines=[];
+              for(const line of block.split(/\r?\n/)){
+                if(line.startsWith('event:'))ev=line.slice(6).trim();
+                else if(line.startsWith('data:'))lines.push(line.slice(5).trim());
+              }
+              if(ev!=='put'&&ev!=='patch')continue;
+              let payload=null;try{payload=JSON.parse(lines.join('\n'))}catch(_){}
+              if(!payload)continue;
+              const p=String(payload.path||'/');
+              const data=payload.data;
+              let seen=false;
+              if(p==='/updatedAt' && Number(data)===ping)seen=true;
+              if(p==='/' && data && Number(data.updatedAt)===ping)seen=true;
+              if(p==='/' && data && typeof data==='object' && Number(data?.updatedAt)===ping)seen=true;
+              if(seen)return finish(true,`${ev} ${p}`);
+            }
+          }
+          if(!done)finish(false,'stream ended');
+        }catch(e){
+          if(!done&&e?.name!=='AbortError')finish(false,String(e?.message||e));
+        }
+      })();
+    }catch(e){finish(false,String(e?.message||e))}
+  });
+}
+
+async function run(){
+  $('runBtn').disabled=true;$('log').textContent='';
+  ['getState','delayCheck','patchState','sseState','finalGetState'].forEach(id=>st(id,'—',''));
+  $('final').textContent='確認中…';$('final').className='final';
+  const eventId=$('eventSelect').value;st('eventState',eventId,'ok');
+
+  try{
+    // fresh token
+    const saved=await readSaved();session=await refresh(saved.refreshToken);log('Fresh token OK','ok');
+
+    const before=await req(`events/${eventId}/config`,'GET',undefined,9000);
+    st('getState',label(before),before.ok?'ok':'bad');log('config GET: '+label(before),before.ok?'ok':'bad');
+    if(!before.ok)throw new Error('config GET failed: '+before.raw);
+    const cfg=parse(before.raw)||{};
+    const d=cfg.delay;
+    if(d){
+      const expected=String(d.mode)==='delay' && Number(d.min)===1 && String(d.note||'')==='REST TEST';
+      const txt=`${d.mode} / ${Number(d.min)||0}分 / ${String(d.note||'')||'(補足なし)'}`;
+      st('delayCheck',txt,expected?'ok':'warn');
+      log('delay='+toJson(d),expected?'ok':'warn');
+    }else{
+      st('delayCheck','delay=null','warn');log('delay=null','warn');
+    }
+
+    const ping=Date.now();
+
+    // Start SSE first, then PATCH only updatedAt.
+    const ssePromise=waitForSsePing(eventId,ping,10000);
+    await new Promise(r=>setTimeout(r,700));
+
+    const patch=await req(`events/${eventId}/config`,'PATCH',{updatedAt:ping},9000,'print=silent');
+    st('patchState',label(patch),patch.ok?'ok':'bad');log('config PATCH updatedAt: '+label(patch),patch.ok?'ok':'bad');
+
+    const sse=await ssePromise;
+    st('sseState',sse.ok?'受信 OK / '+sse.detail:'失敗 / '+sse.detail,sse.ok?'ok':'bad');
+    log('SSE: '+(sse.ok?'OK ':'NG ')+sse.detail,sse.ok?'ok':'bad');
+
+    const after=await req(`events/${eventId}/config`,'GET',undefined,9000);
+    const afterCfg=parse(after.raw)||{};
+    const exact=after.ok && Number(afterCfg.updatedAt)===ping;
+    st('finalGetState',label(after)+(exact?' / exact=YES':' / exact=NO'),exact?'ok':'bad');
+    log('final GET: '+label(after)+' updatedAt exact='+(exact?'YES':'NO'),exact?'ok':'bad');
+
+    if(patch.ok && sse.ok && exact){
+      $('final').textContent='PASS｜REST書込み + SSEリアルタイム受信 正常';
+      $('final').className='final ok';
+      log('通信基盤の最終確認 PASS','ok');
+    }else{
+      $('final').textContent='未完了｜上の結果をそのまま共有してください';
+      $('final').className='final bad';
+    }
+  }catch(e){
+    $('final').textContent='未完了｜診断中にエラー';
+    $('final').className='final bad';log(String(e?.message||e),'bad');
+  }finally{$('runBtn').disabled=false}
+}
+
+$('eventSelect').addEventListener('change',()=>{st('eventState',$('eventSelect').value,'ok');preview($('eventSelect').value)});
+$('runBtn').addEventListener('click',run);
+init();
+})();
+</script>
+</body>
+</html>
