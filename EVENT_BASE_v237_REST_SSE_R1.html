@@ -17090,42 +17090,79 @@ function portalRestFirstTrueR2(promises,timeoutMs=10000){
     }
   });
 }
-async function portalRestSendChatConfirmR3(eventId,id,remoteMsg){
-  // Device proof 2026-09-24:
-  // fresh token -> CHAT PUT print=silent = HTTP 204 in 378ms,
-  // exact-id GET = HTTP 200 / exact=YES.
-  // Therefore PORTAL developer CHAT must use that proven path directly.
-  const saved=await portalRestReadSavedR1();
-  if(!saved?.refreshToken)throw new Error('PORTAL保存済みログインがありません');
+async function portalRestChatDirectR4(eventId,id,remoteMsg,token,method='PUT',timeoutMs=7000){
+  const path=`events/${eventId}/chat/${id}`;
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),timeoutMs);
+  try{
+    const url=portalRestUrlR1(path,token)+(method==='PUT'?'&print=silent':'');
+    const options={
+      method,
+      signal:controller.signal,
+      cache:'no-store',
+      credentials:'omit',
+      headers:{}
+    };
+    if(method==='PUT'){
+      options.headers['Content-Type']='application/json';
+      options.body=JSON.stringify(remoteMsg);
+    }
+    const res=await fetch(url,options);
+    const raw=method==='GET' ? await res.text() : '';
+    if(!res.ok)throw new Error(`PORTAL CHAT ${method} HTTP ${res.status}${raw?': '+raw:''}`);
+    if(method==='GET'){
+      let row=null;
+      try{row=raw?JSON.parse(raw):null}catch(_){row=null}
+      return row;
+    }
+    return true; // Firebase REST PUT + print=silent returns HTTP 204
+  }catch(e){
+    if(e?.name==='AbortError')throw new Error(`PORTAL CHAT ${method} timeout`);
+    throw e;
+  }finally{
+    clearTimeout(timer);
+  }
+}
 
-  // Always refresh immediately before a developer CHAT write.
-  // This removes ambiguity from any in-memory token/session state.
-  portalRestSessionR1=await portalRestRefreshR1(saved.refreshToken);
-  await portalRestWriteSavedR1(portalRestSessionR1);
+async function portalRestSendChatConfirmR4(eventId,id,remoteMsg){
+  // Exact device-proven diagnostic path:
+  // in-memory refreshToken -> fresh token -> direct PUT(print=silent) -> HTTP 204 success.
+  // No IndexedDB read/write and no SSE ACK wait are allowed on the send critical path.
+  const refreshToken=String(portalRestSessionR1?.refreshToken||'');
+  if(!refreshToken)throw new Error('PORTAL refreshTokenがありません');
+
+  const fresh=await portalRestRefreshR1(refreshToken);
+  portalRestSessionR1=fresh;
 
   try{
-    // HTTP 204 from Firebase REST PUT + print=silent is authoritative success.
-    await portalRestChatPutSilentR2(eventId,id,remoteMsg,7000);
+    await portalRestChatDirectR4(eventId,id,remoteMsg,fresh.idToken,'PUT',7000);
+
+    // Persistence is non-blocking. CHAT UI must never wait on IndexedDB.
+    Promise.resolve()
+      .then(()=>portalRestWriteSavedR1(fresh))
+      .catch(e=>console.warn('PORTAL session persist after CHAT R4',e));
+
     return true;
   }catch(writeError){
-    console.warn('PORTAL CHAT REST PUT R3',writeError);
+    console.warn('PORTAL CHAT REST PUT R4',writeError);
 
-    // A fetch error can occur after the server has already committed the row.
-    // Read the exact same id once before declaring failure.
+    // If transport failed after Firebase committed, verify the exact same id once.
     try{
-      const row=await portalRestRequestR1(
-        `events/${eventId}/chat/${id}`,
-        'GET',
-        undefined,
-        4500
+      const row=await portalRestChatDirectR4(
+        eventId,id,undefined,fresh.idToken,'GET',4500
       );
       if(
         row &&
         String(row.id||'')===String(id) &&
         String(row.senderUid||'')===String(firebase82.uid||PORTAL_REST_UID_R1)
-      )return true;
+      ){
+        Promise.resolve()
+          .then(()=>portalRestWriteSavedR1(fresh))
+          .catch(e=>console.warn('PORTAL session persist after CHAT verify R4',e));
+        return true;
+      }
     }catch(verifyError){
-      console.warn('PORTAL CHAT REST verify R3',verifyError);
+      console.warn('PORTAL CHAT REST verify R4',verifyError);
     }
     throw writeError;
   }
@@ -17188,13 +17225,12 @@ async function remoteSendChat108(text){
   let confirmed=false;
 
   if(portalRestModeR1()){
-    // R3: PORTAL developer CHAT uses the device-proven fresh-token REST path.
-    // HTTP 204 from PUT(print=silent) is immediate authoritative success.
+    // R4: exact diagnostic path; no IndexedDB or SSE wait on send critical path.
     try{
-      confirmed=await portalRestSendChatConfirmR3(b.eventId,id,remoteMsg);
+      confirmed=await portalRestSendChatConfirmR4(b.eventId,id,remoteMsg);
     }catch(e){
       sdkError=e;
-      console.warn('PORTAL CHAT send R3',e);
+      console.warn('PORTAL CHAT send R4',e);
     }
   }else{
     // Original v237 participant/manager path remains unchanged.
@@ -18649,6 +18685,34 @@ SAFETY:
 RULES: unchanged
 -->
 
+
+<!-- REST_SSE_R4_CHAT_DIRECT_20260924
+TARGET: PORTAL REST developer CHAT only.
+DEVICE EVIDENCE:
+- standalone diagnostic on the same Safari/4G session:
+  fresh token OK
+  CHAT PUT print=silent HTTP 204 in 378ms
+  CHAT GET HTTP 200 exact=YES
+  CHAT DELETE HTTP 204
+- R3 EVENT BASE still stayed at 送信中 for more than one minute.
+ROOT DIFFERENCE:
+- R3 re-read and synchronously re-wrote top_run_portal_auth IndexedDB before CHAT PUT.
+- standalone diagnostic did not wait for an IndexedDB write on the send critical path.
+R4:
+1) use portalRestSessionR1.refreshToken already restored at EVENT BASE startup.
+2) refresh token directly through Secure Token REST.
+3) call Firebase CHAT PUT directly with the returned idToken.
+4) HTTP 204 = immediate send success.
+5) no SSE ACK wait and no IndexedDB read/write before success.
+6) refreshed session persistence is fire-and-forget after CHAT success and cannot block UI.
+7) if PUT throws, perform one direct same-token exact-id GET.
+FROZEN:
+- normal participant/manager v237 CHAT path
+- SSE receive
+- LIVE/location
+- Firebase Rules
+- PORTAL verified binding
+-->
 
 <!-- REST_SSE_R3_CHAT_CONFIRMED_20260924
 TARGET: PORTAL REST developer CHAT success determination only.
