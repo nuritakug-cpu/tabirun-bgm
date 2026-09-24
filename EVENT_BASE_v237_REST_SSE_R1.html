@@ -10433,7 +10433,52 @@ async function remotePushEventConfig107(force=false){
 }
 function scheduleRemoteConfigSync107(force=false){
   const b=readRemoteBinding84();
-  if(!b?.eventId||!currentUserIsAdmin97()||firebase82.status!=='ready')return;
+  if(!b?.eventId||!currentUserIsAdmin97())return;
+
+  // R5 / PORTAL developer route:
+  // capture the exact locally-saved config NOW, then write it through the
+  // already device-proven REST path. Do not wait on legacy firebase82.status,
+  // and do not rebuild cfg 220ms later after an incoming SSE snapshot may have
+  // replaced local data with older server values.
+  if(portalRestModeR1() && b.role==='owner'){
+    const cfg=sharedEventConfig107();
+    const stable=JSON.stringify({...cfg,updatedAt:0,version:''});
+
+    clearTimeout(remoteConfigTimer107);
+    remoteConfigTimer107=setTimeout(async()=>{
+      try{
+        await portalRestRequestR1(
+          `events/${b.eventId}/config`,
+          'PATCH',
+          cfg,
+          9000
+        );
+        await portalRestRequestR1(
+          `events/${b.eventId}/meta`,
+          'PATCH',
+          {
+            title:cfg.title,
+            eventDays:(cfg.eventDays||[]).map(x=>typeof x==='string'?x:x?.date).filter(Boolean),
+            updatedAt:Date.now(),
+            version:APP_VERSION
+          },
+          8000
+        );
+        lastRemoteConfigJSON107=stable;
+        lastAppliedRemoteConfigTs158=Math.max(
+          lastAppliedRemoteConfigTs158,
+          Number(cfg.updatedAt)||0
+        );
+        console.info('PORTAL config sync R5 OK',b.eventId,cfg.updatedAt);
+      }catch(e){
+        console.warn('PORTAL config sync R5',e);
+      }
+    },20);
+    return;
+  }
+
+  // Existing participant/manager/legacy route stays unchanged.
+  if(firebase82.status!=='ready')return;
   clearTimeout(remoteConfigTimer107);
   remoteConfigTimer107=setTimeout(()=>remotePushEventConfig107(force).catch(e=>console.warn('event config sync v107',e)),220);
 }
@@ -18685,6 +18730,24 @@ SAFETY:
 RULES: unchanged
 -->
 
+
+<!-- REST_SSE_R5_PORTAL_CONFIG_SYNC_20260924
+TARGET: PORTAL developer management-save -> Firebase config synchronization only.
+EVIDENCE:
+- local management save works: schedule/HOME reflect the saved value.
+- standalone REST/SSE final check passed: GET 200, PATCH 204, SSE patch received, final GET exact=YES.
+- Firebase config still showed delay=null after the EVENT BASE local save.
+ROOT:
+- persist() called legacy scheduleRemoteConfigSync107().
+- legacy path waited 220ms and rebuilt sharedEventConfig107() later.
+- PORTAL developer route did not use the already-proven portal REST path here.
+FIX:
+1) PORTAL owner mode snapshots sharedEventConfig107() immediately at local persist time.
+2) writes that captured snapshot through portalRestRequestR1() directly.
+3) reduces delay to 20ms and does not gate on legacy firebase82.status.
+4) incoming SSE cannot change the payload already captured for this save.
+5) participant/manager legacy path remains unchanged.
+-->
 
 <!-- REST_SSE_R4_CHAT_DIRECT_20260924
 TARGET: PORTAL REST developer CHAT only.
