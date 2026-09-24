@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0c0e">
+<title>TOP RUN CHAT REST DIAG R1</title>
+<style>
+:root{--bg:#0b0c0e;--card:#17191c;--line:#353a3f;--ink:#fff;--muted:#9aa2a8;--y:#ffd400;--ok:#44d17a;--bad:#ff626d;--warn:#ffb84d}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;padding:22px 18px 50px}
+.wrap{max-width:760px;margin:auto}
+h1{font-size:25px;margin:0 0 6px} .sub{color:var(--muted);font-size:13px;margin-bottom:18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:15px;margin:12px 0}
+.row{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid #292d31;padding:8px 0;font-size:13px}
+.row:last-child{border-bottom:0}.row span{color:var(--muted);text-align:right;word-break:break-all}
+select,button{width:100%;min-height:52px;border-radius:14px;font:inherit}
+select{background:#0f1113;color:#fff;border:1px solid #454b50;padding:0 12px}
+button{border:0;background:var(--y);color:#111;font-weight:1000;font-size:17px;margin-top:11px}
+button:disabled{opacity:.55}
+.log{white-space:pre-wrap;background:#090a0b;border:1px solid #2c3034;border-radius:14px;padding:12px;font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;min-height:160px;word-break:break-word}
+.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}
+.badge{display:inline-block;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:900;background:#272b2f;color:#ddd}
+.note{color:var(--muted);font-size:12px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>CHAT REST 診断</h1>
+  <div class="sub">TOP RUN PORTAL / EVENT BASE — SDKを使わず直接確認</div>
+
+  <div class="card">
+    <div class="row"><b>固定UID</b><span id="uid">未確認</span></div>
+    <div class="row"><b>認証</b><span id="auth">未確認</span></div>
+    <div class="row"><b>回線</b><span id="net">確認中</span></div>
+    <div class="row"><b>大会</b><span id="eventState">未選択</span></div>
+  </div>
+
+  <div class="card">
+    <label style="font-weight:900;display:block;margin-bottom:7px">診断する大会</label>
+    <select id="eventSelect"><option>読み込み中…</option></select>
+    <button id="runBtn" disabled>CHAT REST診断開始</button>
+    <div class="note" style="margin-top:10px">
+      診断用CHATを1件だけ同一IDで書き込み、読み戻した後に自動削除します。
+      本体のLIVE設定や大会データは変更しません。
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row"><b>ownerUid</b><span id="owner">—</span></div>
+    <div class="row"><b>member行</b><span id="member">—</span></div>
+    <div class="row"><b>manager行</b><span id="manager">—</span></div>
+    <div class="row"><b>creatorClaim PUT</b><span id="claim">—</span></div>
+    <div class="row"><b>CHAT PUT</b><span id="put">—</span></div>
+    <div class="row"><b>CHAT GET</b><span id="get">—</span></div>
+    <div class="row"><b>CHAT DELETE</b><span id="del">—</span></div>
+  </div>
+
+  <div class="card">
+    <b>診断ログ</b>
+    <div id="log" class="log" style="margin-top:10px">待機中</div>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+const API_KEY='AIzaSyBRL_MnyqqTa0YviGDIzuPp9kARbXLMwa0';
+const DB_URL='https://top-run-event-base-default-rtdb.asia-southeast1.firebasedatabase.app';
+const UID='qKf1l0vlc7XS2LlypaEC3oyz6eA2';
+const OWNER_KEY='TR-GSBWUAZ5KNSEQKPHZS';
+const AUTH_DB='top_run_portal_auth', AUTH_STORE='sessions', AUTH_KEY='developer';
+
+let session=null, events=[];
+
+const $=id=>document.getElementById(id);
+function log(s,cls=''){
+  const line=(cls?`[${cls.toUpperCase()}] `:'')+String(s);
+  $('log').textContent=($('log').textContent==='待機中'?'':$('log').textContent+'\n')+line;
+}
+function state(id,text,kind=''){
+  const e=$(id); e.textContent=text; e.className=kind;
+}
+function ms(n){return Math.round(n)+'ms'}
+function timeoutFetch(url,opt={},limit=7000){
+  const c=new AbortController();
+  const t=setTimeout(()=>c.abort(),limit);
+  const started=performance.now();
+  return fetch(url,{...opt,signal:c.signal,cache:'no-store',mode:'cors',credentials:'omit'})
+    .then(async r=>{
+      clearTimeout(t);
+      const raw=await r.text().catch(()=> '');
+      return {ok:r.ok,status:r.status,raw,duration:performance.now()-started};
+    })
+    .catch(e=>{
+      clearTimeout(t);
+      return {ok:false,status:0,raw:String(e&&e.name==='AbortError'?'TIMEOUT':(e?.message||e)),duration:performance.now()-started,error:e};
+    });
+}
+function openDb(){
+  return new Promise((resolve,reject)=>{
+    const req=indexedDB.open(AUTH_DB);
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error||new Error('IndexedDB open error'));
+  });
+}
+async function readSaved(){
+  const db=await openDb();
+  try{
+    if(!db.objectStoreNames.contains(AUTH_STORE))return null;
+    return await new Promise((resolve,reject)=>{
+      const tx=db.transaction(AUTH_STORE,'readonly');
+      const req=tx.objectStore(AUTH_STORE).get(AUTH_KEY);
+      req.onsuccess=()=>resolve(req.result||null);
+      req.onerror=()=>reject(req.error||new Error('session read error'));
+    });
+  }finally{db.close()}
+}
+async function refresh(refreshToken){
+  const body='grant_type=refresh_token&refresh_token='+encodeURIComponent(refreshToken);
+  const r=await timeoutFetch(
+    'https://securetoken.googleapis.com/v1/token?key='+encodeURIComponent(API_KEY),
+    {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body},
+    12000
+  );
+  if(!r.ok)throw new Error('TOKEN '+r.status+' '+r.raw);
+  const d=JSON.parse(r.raw||'{}');
+  if(String(d.user_id||'')!==UID)throw new Error('UID mismatch '+String(d.user_id||''));
+  return {uid:String(d.user_id),idToken:String(d.id_token),refreshToken:String(d.refresh_token)};
+}
+function dbUrl(path,extra=''){
+  const clean=String(path||'').replace(/^\/+|\/+$/g,'');
+  return DB_URL+'/'+clean+'.json?auth='+encodeURIComponent(session.idToken)+(extra?('&'+extra):'');
+}
+async function req(path,method='GET',body,limit=7000,extra=''){
+  const opt={method,headers:{}};
+  if(body!==undefined){
+    opt.headers['Content-Type']='application/json';
+    opt.body=JSON.stringify(body);
+  }
+  return await timeoutFetch(dbUrl(path,extra),opt,limit);
+}
+function parse(raw){try{return raw?JSON.parse(raw):null}catch(_){return raw}}
+function resultText(r){
+  if(r.status===0)return 'TIMEOUT / NETWORK '+ms(r.duration);
+  return 'HTTP '+r.status+' '+ms(r.duration);
+}
+async function init(){
+  $('net').textContent=(navigator.connection?.effectiveType||'unknown')+' / online='+navigator.onLine;
+  $('uid').textContent=UID;
+  try{
+    log('IndexedDB session restore');
+    const saved=await readSaved();
+    if(!saved?.refreshToken)throw new Error('PORTAL保存済みログインなし');
+    session=await refresh(saved.refreshToken);
+    state('auth','固定UID REST認証 OK','ok');
+    log('Token refresh OK','ok');
+
+    const [rootR,secretsR]=await Promise.all([
+      req('developerRoot','GET',undefined,8000),
+      req('eventSecrets','GET',undefined,10000)
+    ]);
+    if(!rootR.ok)throw new Error('developerRoot '+resultText(rootR)+' '+rootR.raw);
+    if(!secretsR.ok)throw new Error('eventSecrets '+resultText(secretsR)+' '+secretsR.raw);
+
+    const root=parse(rootR.raw)||{}, secrets=parse(secretsR.raw)||{};
+    events=Object.entries(secrets)
+      .filter(([id,s])=>s && String(s.ownerUid||'')===UID && String(s.status||'')!=='ended')
+      .map(([id,s])=>({id,title:String(s.title||id),secret:s}));
+
+    const prefer=String(root.currentEventId||root.bootstrapEventId||'');
+    events.sort((a,b)=>(a.id===prefer?-1:b.id===prefer?1:0));
+
+    const sel=$('eventSelect'); sel.innerHTML='';
+    for(const e of events){
+      const o=document.createElement('option'); o.value=e.id; o.textContent=e.id; sel.appendChild(o);
+    }
+    if(!events.length){
+      sel.innerHTML='<option>対象大会なし</option>';
+      state('eventState','固定UID所有のactive大会なし','bad');
+      return;
+    }
+    state('eventState',events[0].id,'ok');
+    $('runBtn').disabled=false;
+    log('Owned active events: '+events.length,'ok');
+  }catch(e){
+    state('auth','失敗','bad');
+    log(String(e?.message||e),'bad');
+  }
+}
+
+async function run(){
+  $('runBtn').disabled=true;
+  $('log').textContent='';
+  for(const id of ['owner','member','manager','claim','put','get','del']) state(id,'—','');
+  const eventId=$('eventSelect').value;
+  state('eventState',eventId,'ok');
+
+  try{
+    // Always start with a fresh token.
+    const saved=await readSaved();
+    session=await refresh(saved.refreshToken);
+    log('Fresh token OK','ok');
+
+    const secretR=await req('eventSecrets/'+eventId,'GET',undefined,7000);
+    log('eventSecrets GET: '+resultText(secretR), secretR.ok?'ok':'bad');
+    if(!secretR.ok)throw new Error('eventSecrets GET failed: '+secretR.raw);
+    const secret=parse(secretR.raw)||{};
+    state('owner',String(secret.ownerUid||'NONE')+(String(secret.ownerUid||'')===UID?' = 固定UID':''), String(secret.ownerUid||'')===UID?'ok':'bad');
+
+    const [memR,mgrR]=await Promise.all([
+      req(`members/${eventId}/${UID}`,'GET',undefined,6000),
+      req(`managers/${eventId}/${UID}`,'GET',undefined,6000)
+    ]);
+    const mem=parse(memR.raw), mgr=parse(mgrR.raw);
+    state('member',mem!=null?'FOUND':'NONE',mem!=null?'ok':'warn');
+    state('manager',mgr!=null?'FOUND':'NONE',mgr!=null?'ok':'warn');
+    log('member GET: '+resultText(memR)+' value='+(mem!=null?'FOUND':'NONE'),memR.ok?'ok':'bad');
+    log('manager GET: '+resultText(mgrR)+' value='+(mgr!=null?'FOUND':'NONE'),mgrR.ok?'ok':'bad');
+
+    // Safe idempotent claim write; v147 accepts exact value for own UID.
+    const claimR=await req(`creatorClaims/${UID}`,'PUT',OWNER_KEY,6500,'print=silent');
+    state('claim',resultText(claimR),claimR.ok?'ok':'bad');
+    log('creatorClaim PUT: '+resultText(claimR)+(claimR.raw?' / '+claimR.raw:''),claimR.ok?'ok':'bad');
+
+    const id='c_diag_'+Date.now();
+    const msg={
+      id,
+      senderUid:UID,
+      name:'開発者',
+      staff:true,
+      text:'[診断] REST CHAT TEST',
+      ts:Date.now()
+    };
+
+    // First: exact route used by R2.
+    let putR=await req(`events/${eventId}/chat/${id}`,'PUT',msg,7000,'print=silent');
+    log('CHAT PUT print=silent: '+resultText(putR)+(putR.raw?' / '+putR.raw:''),putR.ok?'ok':'bad');
+
+    // If exact route times out/fails, try same id without print=silent.
+    if(!putR.ok){
+      const put2=await req(`events/${eventId}/chat/${id}`,'PUT',msg,7000);
+      log('CHAT PUT standard same-id: '+resultText(put2)+(put2.raw?' / '+put2.raw:''),put2.ok?'ok':'bad');
+      if(put2.ok)putR=put2;
+    }
+    state('put',resultText(putR),putR.ok?'ok':'bad');
+
+    const getR=await req(`events/${eventId}/chat/${id}`,'GET',undefined,7000);
+    const got=parse(getR.raw);
+    const exact=!!got && String(got.id||'')===id && String(got.senderUid||'')===UID;
+    state('get',resultText(getR)+(exact?' / FOUND':' / NOT FOUND'),exact?'ok':'bad');
+    log('CHAT GET: '+resultText(getR)+' exact='+(exact?'YES':'NO')+(getR.raw?' / '+getR.raw.slice(0,300):''), exact?'ok':'bad');
+
+    if(exact){
+      const delR=await req(`events/${eventId}/chat/${id}`,'DELETE',undefined,7000,'print=silent');
+      state('del',resultText(delR),delR.ok?'ok':'bad');
+      log('CHAT DELETE: '+resultText(delR)+(delR.raw?' / '+delR.raw:''),delR.ok?'ok':'bad');
+    }else{
+      state('del','未実行','warn');
+    }
+
+    log('--- 診断終了 ---');
+    if(claimR.ok && putR.ok && exact){
+      log('判定: REST CHAT書込そのものは成功。本体側の送信完了判定が原因。','ok');
+    }else if(claimR.ok && putR.status===403){
+      log('判定: REST PUT自体は可能だがCHATだけRules/validationで拒否。','bad');
+    }else if(claimR.ok && putR.status===0){
+      log('判定: creatorClaims PUTは通るがCHAT PUT経路だけTIMEOUT。CHAT path/Rules/要求内容を重点確認。','bad');
+    }else if(!claimR.ok && claimR.status===0){
+      log('判定: GET認証は通るがREST PUT全般がTIMEOUT。Safari/回線/PUT transport側。','bad');
+    }else if(!claimR.ok && claimR.status===403){
+      log('判定: 固定UIDのREST書込権限がRules側で拒否。','bad');
+    }else{
+      log('判定: 上のHTTP状態をそのまま共有してください。','warn');
+    }
+
+  }catch(e){
+    log('FATAL: '+String(e?.message||e),'bad');
+  }finally{
+    $('runBtn').disabled=false;
+  }
+}
+$('eventSelect').addEventListener('change',()=>state('eventState',$('eventSelect').value,'ok'));
+$('runBtn').addEventListener('click',run);
+init();
+})();
+</script>
+</body>
+</html>
