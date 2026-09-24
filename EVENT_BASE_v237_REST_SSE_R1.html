@@ -15699,6 +15699,82 @@ function readEventDaysEditor73(){
 function renderEventDaysEditor73(){
   const box=$('eventDaysEditor73');if(!box)return;box.innerHTML='';const days=eventDayDates();(days.length?days:['']).forEach(d=>box.appendChild(makeDayRow73(d)));
 }
+
+// R7: restore the editor synchronizer that existed in the earlier stable management UI.
+// v237 still called syncEditors() in multiple places, but its definition had disappeared.
+function syncEditors(){
+  const safe=(label,fn)=>{
+    try{fn()}
+    catch(e){console.warn('syncEditors R7 '+label,e)}
+  };
+
+  safe('preview',()=>{if(typeof syncPreviewEditor==='function')syncPreviewEditor()});
+  safe('venue',()=>{if(typeof syncVenueEditor==='function')syncVenueEditor()});
+  safe('homeDesign',()=>{if(typeof syncHomeDesignEditor==='function')syncHomeDesignEditor()});
+  safe('basePoint',()=>{if(typeof syncBasePointEditor==='function')syncBasePointEditor()});
+  safe('parking',()=>{
+    if(typeof renderManageParking==='function')renderManageParking();
+    if(typeof renderParkingV125==='function')renderParkingV125();
+  });
+  safe('notices',()=>{
+    if(typeof renderManageNotices==='function')renderManageNotices();
+    if(typeof renderNoticesV125==='function')renderNoticesV125();
+  });
+
+  const put=(id,value)=>{
+    const el=$(id);
+    if(el)el.value=value==null?'':String(value);
+  };
+
+  put('eventTitleInput',data.title||'');
+  put('eventDateInput',typeof primaryEventDate==='function'?primaryEventDate():(data.date||''));
+  put('eventStartInput',data.startTime||'');
+  put('eventEndInput',data.endTime||'');
+  put('eventStateInput',data.state||'開催予定');
+  put('eventNoteInput',data.note||'');
+
+  safe('eventDays',()=>{if(typeof renderEventDaysEditor73==='function')renderEventDaysEditor73()});
+
+  const adj=typeof progressAdjustment==='function'
+    ? progressAdjustment()
+    : (!data.delay?{mode:'none',min:0,note:''}:{
+        mode:data.delay.mode||'delay',
+        min:Math.max(0,Number(data.delay.min)||0),
+        note:data.delay.note||''
+      });
+
+  put('progressModeInput',adj.mode||'none');
+  put('delayMinInput',adj.min||0);
+  put('delayNoteInput',adj.note||'');
+
+  const delayState=$('delayCurrentState');
+  if(delayState){
+    delayState.innerHTML=
+      adj.mode==='delay'&&adj.min>0
+        ? `<strong>遅延中 ＋${adj.min}分</strong><span>${esc(adj.note||'')}</span>`
+        : adj.mode==='ahead'&&adj.min>0
+          ? `<strong>進行が早い ＋${adj.min}分</strong><span>${esc(adj.note||'')}</span>`
+          : '<strong>定刻</strong><span>進行調整はありません。</span>';
+  }
+
+  if(!data.docs||typeof data.docs!=='object'){
+    data.docs={guidelines:'',startlist:'',eventSchedule:''};
+  }
+  safe('pdfStates',()=>{
+    if(typeof setPdfState==='function'){
+      setPdfState('guidelines',data.docs.guidelines?`登録済み｜${data.docs.guidelines}`:'未登録',data.docs.guidelines?'ready':'');
+      setPdfState('startlist',data.docs.startlist?`登録済み｜${data.docs.startlist}`:'未登録',data.docs.startlist?'ready':'');
+      setPdfState('eventSchedule',data.docs.eventSchedule?`登録済み｜${data.docs.eventSchedule}`:'未登録',data.docs.eventSchedule?'ready':'');
+    }
+  });
+
+  safe('results',()=>{if(typeof renderResultsEditor==='function')renderResultsEditor()});
+  safe('players',()=>{
+    if(typeof renderManagePlayers==='function')renderManagePlayers();
+    if(typeof syncPlayerEditorMode122==='function')syncPlayerEditorMode122();
+  });
+  safe('sharingDay',()=>{if(typeof renderSharingDayState73==='function')renderSharingDayState73()});
+}
 function syncPlayerDayButton74(){
   const sel=$('playerDaySelect73'),txt=$('playerDayButtonText74');
   if(!sel||!txt)return;
@@ -18804,6 +18880,28 @@ SAFETY:
 RULES: unchanged
 -->
 
+
+<!-- REST_SSE_R7_RESTORE_SYNC_EDITORS_20260924
+TARGET: management editor runtime integrity.
+ROOT CAUSE FOUND:
+- current v237 contained 8 calls to syncEditors().
+- current v237 contained zero syncEditors() definitions.
+- earlier stable prototype v40 contained the missing function.
+OBSERVED MATCH:
+- saveDelayBtn performs data.delay -> persist() -> syncEditors() -> renderSchedule() -> saved state -> toast.
+- missing syncEditors() throws immediately after persist(), explaining:
+  local data can change, but saved state/toast do not appear and the handler stops.
+R7:
+1) restores syncEditors() using the earlier stable behavior.
+2) adapts it to current multi-day editor, current parking/notices/player renderers, and progress modes.
+3) each editor sub-render is isolated so one optional panel cannot break the entire save flow.
+4) R6 child REST config path remains unchanged.
+FROZEN:
+- LIVE/location
+- CHAT
+- Firebase Rules
+- participant/manager auth paths
+-->
 
 <!-- REST_SSE_R6_PORTAL_CHILD_CONFIG_WRITE_20260924
 TARGET: PORTAL developer management-save -> Firebase config sync only.
