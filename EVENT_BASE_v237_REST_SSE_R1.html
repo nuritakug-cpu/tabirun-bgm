@@ -1,3 +1,25 @@
+<!-- REST_SSE_R9_CORE_STABILIZATION_20260925
+ROOT CAUSE AUDIT:
+- persist() is used by 40+ code paths, including every accepted GPS position.
+- R5/R6 PORTAL config branch removed the pre-existing no-change dedupe.
+- R6 then expanded each persist into a token refresh + many config/meta child PUTs.
+- config syncs were not serialized, so older snapshots could overwrite newer saves.
+- generic REST retried Rules 403 as authentication failure, adding needless refresh delays.
+R9:
+1) restores config dedupe for PORTAL mode;
+2) serializes config writes and skips obsolete queued snapshots;
+3) writes only changed config fields;
+4) writes config.updatedAt LAST as an SSE commit marker;
+5) blocks older/partial SSE config from overwriting a pending local save;
+6) adds single-flight token refresh and removes per-action forced refresh;
+7) retries authentication on 401 only, never on Rules 403.
+FROZEN:
+- Firebase Rules
+- LIVE safety policy and automatic-ON prohibition
+- participant/manager route
+- event data schema
+-->
+
 <!-- REST_SSE_R8_NOTICE_DIRECT_REST_20260924
 TARGET: PORTAL owner V125 notice save/delete only.
 - Uses direct child REST + print=silent with 5s timeout.
@@ -10350,8 +10372,27 @@ let lastAppliedRemoteConfigTs158=0;
 let eventConfigRetryTimer158=null;
 let eventConfigSnapshotAt169=0;
 
+// R9: one serialized PORTAL config lane. `persist()` is used by GPS, CHAT read
+// state, players and many local-only UI actions, so it must not fan out full
+// Firebase config writes unless sharedEventConfig107() actually changed.
+let portalConfigSyncSerialR9=Promise.resolve();
+let portalConfigSyncSeqR9=0;
+let portalConfigPendingStableR9='';
+let portalConfigPendingUpdatedAtR9=0;
+
 function applyRemoteEventConfig107(cfg){
   if(!cfg||typeof cfg!=='object')return;
+
+  // R9: while a newer local config is being committed, ignore older/partial SSE
+  // snapshots. updatedAt is written LAST and acts as the config commit marker.
+  const incomingTs=Number(cfg.updatedAt)||0;
+  if(
+    portalRestModeR1() &&
+    portalConfigPendingUpdatedAtR9>0 &&
+    incomingTs<portalConfigPendingUpdatedAtR9
+  ){
+    return;
+  }
 
   // v143: 大会情報の同期は位置共有のON/OFFとは別物。
   // Firebaseから大会名・日程・設定が届くたびにLIVEをOFFにしていたため、
@@ -10371,6 +10412,21 @@ function applyRemoteEventConfig107(cfg){
 
   data.liveShareEnabled=keepLiveSession143;
   lastAppliedRemoteConfigTs158=Math.max(lastAppliedRemoteConfigTs158,Number(cfg.updatedAt)||0);
+
+  // Mark the currently-applied server config as synchronized. This restores the
+  // pre-R5/R6 dedupe behavior so GPS/CHAT/local state persistence stays local.
+  try{
+    const stableNow=JSON.stringify({...sharedEventConfig107(),updatedAt:0,version:''});
+    lastRemoteConfigJSON107=stableNow;
+    if(
+      portalConfigPendingUpdatedAtR9>0 &&
+      (Number(cfg.updatedAt)||0)>=portalConfigPendingUpdatedAtR9
+    ){
+      portalConfigPendingUpdatedAtR9=0;
+      portalConfigPendingStableR9='';
+    }
+  }catch(_){}
+
   save(ACTIVE_DATA_KEY100,data);
   applyEventDataToUI100();
   try{
@@ -10454,7 +10510,9 @@ async function portalConfigChildPutR6(path,value,token,timeoutMs=8500){
     if(!res.ok){
       let detail='';
       try{detail=await res.text()}catch(_){}
-      throw new Error(`PORTAL CHILD PUT ${path} HTTP ${res.status}${detail?': '+detail:''}`);
+      const err=new Error(`PORTAL CHILD PUT ${path} HTTP ${res.status}${detail?': '+detail:''}`);
+      err.status=res.status;
+      throw err;
     }
     return true;
   }catch(e){
@@ -10469,92 +10527,109 @@ function scheduleRemoteConfigSync107(force=false){
   const b=readRemoteBinding84();
   if(!b?.eventId||!currentUserIsAdmin97())return;
 
-  // R6 / PORTAL developer route:
-  // Device proof: events/<eventId>/config/delay child PUT succeeded
-  // (HTTP 200, exact GET=YES), while parent config PATCH did not persist delay.
-  // Therefore write each config child independently using the proven fresh-token REST path.
+  // R9 / PORTAL developer route:
+  // - restore stable-config dedupe lost in R5/R6
+  // - serialize writes so an older snapshot cannot finish after a newer save
+  // - use the existing valid token; refresh only on HTTP 401
+  // - write updatedAt LAST as a commit marker for SSE
   if(portalRestModeR1() && b.role==='owner'){
     const cfg=sharedEventConfig107();
     const stable=JSON.stringify({...cfg,updatedAt:0,version:''});
 
+    if(!force && (stable===lastRemoteConfigJSON107 || stable===portalConfigPendingStableR9))return;
+
+    const seq=++portalConfigSyncSeqR9;
+    portalConfigPendingStableR9=stable;
+    portalConfigPendingUpdatedAtR9=Math.max(
+      portalConfigPendingUpdatedAtR9,
+      Number(cfg.updatedAt)||Date.now()
+    );
+
     clearTimeout(remoteConfigTimer107);
-    remoteConfigTimer107=setTimeout(async()=>{
-      try{
-        const refreshToken=String(portalRestSessionR1?.refreshToken||'');
-        if(!refreshToken)throw new Error('PORTAL refreshTokenがありません');
+    remoteConfigTimer107=setTimeout(()=>{
+      const run=async()=>{
+        // If a newer local save was scheduled before this run started, skip it.
+        if(seq!==portalConfigSyncSeqR9)return;
 
-        const fresh=await portalRestRefreshR1(refreshToken);
-        portalRestSessionR1=fresh;
+        let ses=await portalRestEnsureSessionR1(false);
 
-        const configEntries=Object.entries(cfg);
-        const results=await Promise.allSettled(
-          configEntries.map(([key,value])=>
-            portalConfigChildPutR6(
-              `events/${b.eventId}/config/${key}`,
-              value,
-              fresh.idToken,
-              8500
-            )
-          )
-        );
-
-        const failed=[];
-        results.forEach((r,i)=>{
-          if(r.status==='rejected'){
-            failed.push({
-              key:configEntries[i][0],
-              error:String(r.reason?.message||r.reason||'write failed')
-            });
+        const writeChild=async(path,value)=>{
+          try{
+            return await portalConfigChildPutR6(path,value,ses.idToken,7000);
+          }catch(e){
+            if(e?.status!==401)throw e;
+            ses=await portalRestEnsureSessionR1(true);
+            return await portalConfigChildPutR6(path,value,ses.idToken,7000);
           }
-        });
-
-        // Meta is also written child-by-child so no parent PATCH is required.
-        const meta={
-          title:cfg.title,
-          eventDays:(cfg.eventDays||[]).map(x=>typeof x==='string'?x:x?.date).filter(Boolean),
-          updatedAt:Date.now(),
-          version:APP_VERSION
         };
-        const metaEntries=Object.entries(meta);
-        const metaResults=await Promise.allSettled(
-          metaEntries.map(([key,value])=>
-            portalConfigChildPutR6(
-              `events/${b.eventId}/meta/${key}`,
-              value,
-              fresh.idToken,
-              8500
-            )
-          )
-        );
-        metaResults.forEach((r,i)=>{
-          if(r.status==='rejected'){
-            failed.push({
-              key:'meta/'+metaEntries[i][0],
-              error:String(r.reason?.message||r.reason||'write failed')
-            });
-          }
+
+        let previous=null;
+        try{previous=lastRemoteConfigJSON107?JSON.parse(lastRemoteConfigJSON107):null}catch(_){previous=null}
+
+        // Only write config fields that actually changed. Local-only persist()
+        // calls (GPS, CHAT read position, etc.) produce zero Firebase writes.
+        const entries=Object.entries(cfg).filter(([key,value])=>{
+          if(key==='updatedAt'||key==='version')return false;
+          if(force||!previous)return true;
+          try{return JSON.stringify(previous[key])!==JSON.stringify(value)}
+          catch(_){return true}
         });
 
-        // Persist refreshed session after network work; never block the save action.
-        Promise.resolve()
-          .then(()=>portalRestWriteSavedR1(fresh))
-          .catch(e=>console.warn('PORTAL config session persist R6',e));
-
-        if(failed.length){
-          console.warn('PORTAL config child sync R6 partial',failed);
-          return;
+        for(const [key,value] of entries){
+          if(seq!==portalConfigSyncSeqR9)return;
+          await writeChild(`events/${b.eventId}/config/${key}`,value);
         }
+
+        if(seq!==portalConfigSyncSeqR9)return;
+
+        // Version first, updatedAt LAST. SSE treats updatedAt as the commit marker.
+        if(force || !previous || previous.version!==APP_VERSION){
+          await writeChild(`events/${b.eventId}/config/version`,APP_VERSION);
+        }
+        await writeChild(`events/${b.eventId}/config/updatedAt`,cfg.updatedAt);
+
+        // Meta only needs a write when title/event days changed (or forced).
+        const nextDays=(cfg.eventDays||[]).map(x=>typeof x==='string'?x:x?.date).filter(Boolean);
+        const prevDays=previous
+          ? (previous.eventDays||[]).map(x=>typeof x==='string'?x:x?.date).filter(Boolean)
+          : null;
+        const metaChanged=
+          force ||
+          !previous ||
+          String(previous.title||'')!==String(cfg.title||'') ||
+          JSON.stringify(prevDays)!==JSON.stringify(nextDays);
+
+        if(metaChanged){
+          await writeChild(`events/${b.eventId}/meta/title`,cfg.title);
+          await writeChild(`events/${b.eventId}/meta/eventDays`,nextDays);
+          await writeChild(`events/${b.eventId}/meta/version`,APP_VERSION);
+          await writeChild(`events/${b.eventId}/meta/updatedAt`,Date.now());
+        }
+
+        if(seq!==portalConfigSyncSeqR9)return;
 
         lastRemoteConfigJSON107=stable;
         lastAppliedRemoteConfigTs158=Math.max(
           lastAppliedRemoteConfigTs158,
           Number(cfg.updatedAt)||0
         );
-        console.info('PORTAL config child sync R6 OK',b.eventId,cfg.updatedAt);
-      }catch(e){
-        console.warn('PORTAL config child sync R6',e);
-      }
-    },20);
+        if(portalConfigPendingUpdatedAtR9<=Number(cfg.updatedAt||0)){
+          portalConfigPendingUpdatedAtR9=0;
+          portalConfigPendingStableR9='';
+        }
+        console.info('PORTAL config sync R9 OK',b.eventId,entries.map(x=>x[0]));
+      };
+
+      portalConfigSyncSerialR9=portalConfigSyncSerialR9
+        .then(run,run)
+        .catch(e=>{
+          console.warn('PORTAL config sync R9',e);
+          if(seq===portalConfigSyncSeqR9){
+            portalConfigPendingUpdatedAtR9=0;
+            portalConfigPendingStableR9='';
+          }
+        });
+    },120);
     return;
   }
 
@@ -10563,6 +10638,7 @@ function scheduleRemoteConfigSync107(force=false){
   clearTimeout(remoteConfigTimer107);
   remoteConfigTimer107=setTimeout(()=>remotePushEventConfig107(force).catch(e=>console.warn('event config sync v107',e)),220);
 }
+
 function ensureRemoteEventDataSubscription107(force=false){
   if(firebase82.status!=='ready'||!firebase82.db||!firebase82.mods)return;
   const b=readRemoteBinding84();if(!b?.eventId)return;
@@ -11126,14 +11202,32 @@ async function portalRestRefreshR1(refreshToken){
     expiresAt:Date.now()+(Number(d.expires_in||3600)*1000)-60000
   };
 }
+let portalRestRefreshPromiseR9=null;
 async function portalRestEnsureSessionR1(force=false){
   if(!portalRestSessionR1)throw new Error('PORTALログインがありません');
   if(!force && portalRestSessionR1.idToken && Date.now()<Number(portalRestSessionR1.expiresAt||0)){
     return portalRestSessionR1;
   }
-  portalRestSessionR1=await portalRestRefreshR1(portalRestSessionR1.refreshToken);
-  await portalRestWriteSavedR1(portalRestSessionR1);
-  return portalRestSessionR1;
+  if(portalRestRefreshPromiseR9)return await portalRestRefreshPromiseR9;
+
+  const refreshToken=String(portalRestSessionR1.refreshToken||'');
+  if(!refreshToken)throw new Error('PORTAL refreshTokenがありません');
+
+  const task=(async()=>{
+    const fresh=await portalRestRefreshR1(refreshToken);
+    portalRestSessionR1=fresh;
+    // Session persistence must not block CHAT/player/config writes.
+    Promise.resolve()
+      .then(()=>portalRestWriteSavedR1(fresh))
+      .catch(e=>console.warn('PORTAL session persist R9',e));
+    return fresh;
+  })();
+
+  portalRestRefreshPromiseR9=task;
+  try{return await task}
+  finally{
+    if(portalRestRefreshPromiseR9===task)portalRestRefreshPromiseR9=null;
+  }
 }
 function portalRestUrlR1(path,token){
   const clean=String(path||'').replace(/^\/+|\/+$/g,'');
@@ -11154,7 +11248,9 @@ async function portalRestRequestR1(path,method='GET',body=undefined,timeoutMs=90
     timeoutMs,
     'REST '+method+' '+path
   );
-  if((r.status===401||r.status===403) && !forceToken){
+  // 401 means token renewal. 403 is an authorization/Rules result and must
+  // fail immediately; refreshing on 403 created long retry storms.
+  if(r.status===401 && !forceToken){
     ses=await portalRestEnsureSessionR1(true);
     r=await portalRestTimeoutR1(
       fetch(portalRestUrlR1(path,ses.idToken),buildOpts()),
@@ -11460,6 +11556,14 @@ async function ensurePortalRestRuntimeR1(){
     };
 
     setFirebaseStatus82('ready');
+
+    // R9: establish the server config baseline before any local-only persist()
+    // (CHAT read state, GPS, etc.) can schedule a sync.
+    if(cfg&&typeof cfg==='object'){
+      try{applyRemoteEventConfig107(cfg)}catch(e){console.warn('PORTAL initial config apply R9',e)}
+      data.liveShareEnabled=false;
+      save(ACTIVE_DATA_KEY100,data);
+    }
 
     // PORTAL mode has already completed the authoritative checks above:
     // canonical UID + developerRoot + developerDevices + selected event ownerUid.
@@ -16583,7 +16687,7 @@ async function portalNoticeRequestR8(path,method,body=undefined,timeoutMs=5000){
   try{
     return await run(ses);
   }catch(e){
-    if(e?.status!==401&&e?.status!==403)throw e;
+    if(e?.status!==401)throw e;
     ses=await portalRestEnsureSessionR1(true);
     return await run(ses);
   }
@@ -17378,7 +17482,11 @@ async function portalRestChatDirectR4(eventId,id,remoteMsg,token,method='PUT',ti
     }
     const res=await fetch(url,options);
     const raw=method==='GET' ? await res.text() : '';
-    if(!res.ok)throw new Error(`PORTAL CHAT ${method} HTTP ${res.status}${raw?': '+raw:''}`);
+    if(!res.ok){
+      const err=new Error(`PORTAL CHAT ${method} HTTP ${res.status}${raw?': '+raw:''}`);
+      err.status=res.status;
+      throw err;
+    }
     if(method==='GET'){
       let row=null;
       try{row=raw?JSON.parse(raw):null}catch(_){row=null}
@@ -17394,44 +17502,42 @@ async function portalRestChatDirectR4(eventId,id,remoteMsg,token,method='PUT',ti
 }
 
 async function portalRestSendChatConfirmR4(eventId,id,remoteMsg){
-  // Exact device-proven diagnostic path:
-  // in-memory refreshToken -> fresh token -> direct PUT(print=silent) -> HTTP 204 success.
-  // No IndexedDB read/write and no SSE ACK wait are allowed on the send critical path.
-  const refreshToken=String(portalRestSessionR1?.refreshToken||'');
-  if(!refreshToken)throw new Error('PORTAL refreshTokenがありません');
+  // R9: use the already-valid shared PORTAL session. Do not refresh a token for
+  // every CHAT send; config/CHAT/player writes must share one serialized session.
+  let ses=await portalRestEnsureSessionR1(false);
 
-  const fresh=await portalRestRefreshR1(refreshToken);
-  portalRestSessionR1=fresh;
+  const putOnce=async()=>{
+    try{
+      await portalRestChatDirectR4(eventId,id,remoteMsg,ses.idToken,'PUT',6000);
+      return true;
+    }catch(e){
+      if(e?.status!==401)throw e;
+      ses=await portalRestEnsureSessionR1(true);
+      await portalRestChatDirectR4(eventId,id,remoteMsg,ses.idToken,'PUT',6000);
+      return true;
+    }
+  };
 
   try{
-    await portalRestChatDirectR4(eventId,id,remoteMsg,fresh.idToken,'PUT',7000);
-
-    // Persistence is non-blocking. CHAT UI must never wait on IndexedDB.
-    Promise.resolve()
-      .then(()=>portalRestWriteSavedR1(fresh))
-      .catch(e=>console.warn('PORTAL session persist after CHAT R4',e));
-
+    await putOnce();
     return true;
   }catch(writeError){
-    console.warn('PORTAL CHAT REST PUT R4',writeError);
+    console.warn('PORTAL CHAT REST PUT R9',writeError);
 
     // If transport failed after Firebase committed, verify the exact same id once.
     try{
       const row=await portalRestChatDirectR4(
-        eventId,id,undefined,fresh.idToken,'GET',4500
+        eventId,id,undefined,ses.idToken,'GET',3500
       );
       if(
         row &&
         String(row.id||'')===String(id) &&
         String(row.senderUid||'')===String(firebase82.uid||PORTAL_REST_UID_R1)
       ){
-        Promise.resolve()
-          .then(()=>portalRestWriteSavedR1(fresh))
-          .catch(e=>console.warn('PORTAL session persist after CHAT verify R4',e));
         return true;
       }
     }catch(verifyError){
-      console.warn('PORTAL CHAT REST verify R4',verifyError);
+      console.warn('PORTAL CHAT REST verify R9',verifyError);
     }
     throw writeError;
   }
