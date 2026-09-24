@@ -17031,6 +17031,42 @@ async function verifyChatServerRecord201(eventId,id){
     return !!row && String(row.id||'')===String(id);
   }catch(_){return false}
 }
+async function portalRestSendChatConfirmR1(eventId,id,remoteMsg){
+  const path=`events/${eventId}/chat/${id}`;
+  let firstError=null;
+
+  // PORTAL developer route is REST-native. Do not route CHAT through the
+  // legacy SDK-style completion/ACK chain; Safari can outlive the wrapper timeout.
+  try{
+    await portalRestRequestR1(path,'PUT',remoteMsg,12000);
+  }catch(e){
+    firstError=e;
+    console.warn('PORTAL CHAT REST PUT R1',e);
+  }
+
+  // Authoritative confirmation is the exact same message id read back from RTDB.
+  try{
+    const row=await portalRestRequestR1(path,'GET',undefined,8000);
+    if(row && String(row.id||'')===String(id))return true;
+  }catch(e){
+    console.warn('PORTAL CHAT REST verify R1',e);
+  }
+
+  // Retry is idempotent because the Firebase path/message id is identical.
+  // It cannot create a duplicate CHAT row.
+  try{
+    await portalRestRequestR1(path,'PUT',remoteMsg,12000);
+    const row=await portalRestRequestR1(path,'GET',undefined,8000);
+    if(row && String(row.id||'')===String(id))return true;
+  }catch(e){
+    console.warn('PORTAL CHAT REST retry R1',e);
+    if(!firstError)firstError=e;
+  }
+
+  if(firstError)throw firstError;
+  throw new Error('PORTAL CHAT REST confirmation failed');
+}
+
 async function remoteSendChat108(text){
   let b=readRemoteBinding84();
   if(!b?.eventId){
@@ -17085,27 +17121,39 @@ async function remoteSendChat108(text){
   delete remoteMsg.pending169;
 
   let sdkError=null;
-  // Start a message-specific realtime acknowledgement BEFORE the write.
-  // Safari can receive the row even when the SDK set() completion callback stalls.
-  const ackPromise=waitChatServerAck201(b.eventId,id,5200);
-  try{
-    await firebaseSdkSet189(
-      `events/${b.eventId}/chat/${id}`,
-      remoteMsg,
-      7000
-    );
-  }catch(e){
-    sdkError=e;
-    console.warn('CHAT set completion v201',e);
+  let confirmed=false;
+
+  if(portalRestModeR1()){
+    // R1: PORTAL developer mode is REST + SSE only.
+    // Use the proven REST write path directly and confirm the exact same id by REST GET.
+    // Do not use the legacy SDK-style ACK chain in this mode.
+    try{
+      confirmed=await portalRestSendChatConfirmR1(b.eventId,id,remoteMsg);
+    }catch(e){
+      sdkError=e;
+      console.warn('PORTAL CHAT send R1',e);
+    }
+  }else{
+    // Original v237 participant/manager path remains unchanged.
+    // Start a message-specific realtime acknowledgement BEFORE the write.
+    const ackPromise=waitChatServerAck201(b.eventId,id,5200);
+    try{
+      await firebaseSdkSet189(
+        `events/${b.eventId}/chat/${id}`,
+        remoteMsg,
+        7000
+      );
+    }catch(e){
+      sdkError=e;
+      console.warn('CHAT set completion v201',e);
+    }
+
+    confirmed=!sdkError;
+    if(!confirmed)confirmed=await ackPromise;
+
+    // Before declaring failure, verify the exact same message id through HTTPS.
+    if(!confirmed)confirmed=await verifyChatServerRecord201(b.eventId,id);
   }
-
-  let confirmed=!sdkError;
-  if(!confirmed)confirmed=await ackPromise;
-
-  // Device evidence shows "timeout" can later reveal the message already stored.
-  // Before declaring failure, verify the exact same message id through HTTPS.
-  // This is a read-only confirmation; it does not create a second message/write.
-  if(!confirmed)confirmed=await verifyChatServerRecord201(b.eventId,id);
 
   const local=(data.chat||[]).find(m=>m.id===id);
   if(confirmed){
@@ -18538,6 +18586,23 @@ SAFETY:
 RULES: unchanged
 -->
 
+
+<!-- REST_SSE_R1_CHAT_FIX_20260924
+TARGET: PORTAL REST developer CHAT send only.
+CAUSE:
+- remoteSendChat108 still used the legacy SDK-style set + realtime ACK + legacy REST verify chain.
+- firebaseSdkSet189 had a 7s outer timeout while the REST adapter itself allowed 9s, so Safari/4G could report timeout before the REST write path had finished.
+CHANGE:
+- portal=1 uses direct portalRestRequestR1 PUT to the exact CHAT id.
+- success is confirmed by direct REST GET of the same id.
+- one same-id retry is allowed; it is idempotent and cannot create a duplicate CHAT row.
+FROZEN:
+- normal participant/manager v237 CHAT path
+- LIVE
+- Firebase Rules
+- binding/auth verification
+- SSE subscriptions
+-->
 
 <!-- REST_SSE_R1_FIX_20260924
 ROOT CAUSE FIX:
