@@ -17090,29 +17090,45 @@ function portalRestFirstTrueR2(promises,timeoutMs=10000){
     }
   });
 }
-async function portalRestSendChatConfirmR2(eventId,id,remoteMsg){
-  // Start same-message SSE acknowledgement BEFORE the REST write.
-  // Safari/4G may commit the RTDB write before fetch completion becomes visible.
-  const ackPromise=waitChatServerAck201(eventId,id,10000);
-  let writeError=null;
-  const writePromise=portalRestChatPutSilentR2(eventId,id,remoteMsg,8000)
-    .then(()=>true)
-    .catch(e=>{writeError=e;console.warn('PORTAL CHAT REST PUT R2',e);return false});
+async function portalRestSendChatConfirmR3(eventId,id,remoteMsg){
+  // Device proof 2026-09-24:
+  // fresh token -> CHAT PUT print=silent = HTTP 204 in 378ms,
+  // exact-id GET = HTTP 200 / exact=YES.
+  // Therefore PORTAL developer CHAT must use that proven path directly.
+  const saved=await portalRestReadSavedR1();
+  if(!saved?.refreshToken)throw new Error('PORTAL保存済みログインがありません');
 
-  const confirmed=await portalRestFirstTrueR2([ackPromise,writePromise],10000);
-  if(confirmed)return true;
+  // Always refresh immediately before a developer CHAT write.
+  // This removes ambiguity from any in-memory token/session state.
+  portalRestSessionR1=await portalRestRefreshR1(saved.refreshToken);
+  await portalRestWriteSavedR1(portalRestSessionR1);
 
-  // Final exact-id REST verification is read-only and bounded.
   try{
-    const row=await portalRestRequestR1(`events/${eventId}/chat/${id}`,'GET',undefined,4000);
-    if(row && String(row.id||'')===String(id))return true;
-  }catch(e){
-    console.warn('PORTAL CHAT REST final verify R2',e);
-    if(!writeError)writeError=e;
-  }
+    // HTTP 204 from Firebase REST PUT + print=silent is authoritative success.
+    await portalRestChatPutSilentR2(eventId,id,remoteMsg,7000);
+    return true;
+  }catch(writeError){
+    console.warn('PORTAL CHAT REST PUT R3',writeError);
 
-  if(writeError)throw writeError;
-  throw new Error('PORTAL CHAT REST confirmation failed');
+    // A fetch error can occur after the server has already committed the row.
+    // Read the exact same id once before declaring failure.
+    try{
+      const row=await portalRestRequestR1(
+        `events/${eventId}/chat/${id}`,
+        'GET',
+        undefined,
+        4500
+      );
+      if(
+        row &&
+        String(row.id||'')===String(id) &&
+        String(row.senderUid||'')===String(firebase82.uid||PORTAL_REST_UID_R1)
+      )return true;
+    }catch(verifyError){
+      console.warn('PORTAL CHAT REST verify R3',verifyError);
+    }
+    throw writeError;
+  }
 }
 
 async function remoteSendChat108(text){
@@ -17172,13 +17188,13 @@ async function remoteSendChat108(text){
   let confirmed=false;
 
   if(portalRestModeR1()){
-    // R2: PORTAL developer mode is REST + SSE only.
-    // REST write and same-id SSE acknowledgement run in parallel.
+    // R3: PORTAL developer CHAT uses the device-proven fresh-token REST path.
+    // HTTP 204 from PUT(print=silent) is immediate authoritative success.
     try{
-      confirmed=await portalRestSendChatConfirmR2(b.eventId,id,remoteMsg);
+      confirmed=await portalRestSendChatConfirmR3(b.eventId,id,remoteMsg);
     }catch(e){
       sdkError=e;
-      console.warn('PORTAL CHAT send R2',e);
+      console.warn('PORTAL CHAT send R3',e);
     }
   }else{
     // Original v237 participant/manager path remains unchanged.
@@ -18633,6 +18649,34 @@ SAFETY:
 RULES: unchanged
 -->
 
+
+<!-- REST_SSE_R3_CHAT_CONFIRMED_20260924
+TARGET: PORTAL REST developer CHAT success determination only.
+DEVICE PROOF:
+- Fresh token OK.
+- eventSecrets GET HTTP 200.
+- member GET HTTP 200 FOUND.
+- manager GET HTTP 200 FOUND.
+- creatorClaim PUT HTTP 204.
+- CHAT PUT print=silent HTTP 204 in 378ms.
+- CHAT GET HTTP 200 exact=YES.
+- CHAT DELETE HTTP 204.
+CONCLUSION:
+- Firebase Rules, REST write, network and CHAT path are valid.
+- Remaining defect was EVENT BASE sender-side completion determination.
+CHANGE:
+1) portal=1 CHAT refreshes the saved PORTAL refreshToken immediately before send.
+2) CHAT uses direct REST PUT with print=silent.
+3) HTTP 204 is treated as immediate authoritative success; no SSE ACK wait is used for self-send success.
+4) only if PUT throws, one exact-id REST GET checks whether the server already committed the message.
+5) portal CHAT failure still never invokes legacy verifyRemoteBinding86.
+FROZEN:
+- normal participant/manager v237 CHAT path
+- SSE realtime receive path
+- LIVE/location sharing
+- Firebase Rules
+- PORTAL binding verification
+-->
 
 <!-- REST_SSE_R2_CHAT_STABILITY_20260924
 TARGET: PORTAL REST developer CHAT only.
