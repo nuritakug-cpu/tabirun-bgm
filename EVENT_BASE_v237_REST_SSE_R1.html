@@ -9791,17 +9791,19 @@ async function initFirebase82(force=false,allowCreate=false){
   if(!ok)return false;
 
   if(firebase82.auth?.currentUser && readRemoteBinding84()?.eventId){
-    Promise.resolve().then(async()=>{
-      let verified=false;
-      try{verified=await verifyRemoteBinding86()}catch(e){console.warn('binding verify background v233',e)}
-      if(!verified){
-        try{stopRemoteSubscription82()}catch(_){}
-        try{syncEntryGate105()}catch(_){}
-        return;
-      }
-      try{await syncRemoteSharePolicy87()}catch(e){console.warn('share policy background v233',e)}
-      startRealtimeLayer162(!!force);
-    });
+    if(!portalRestModeR1()){
+      Promise.resolve().then(async()=>{
+        let verified=false;
+        try{verified=await verifyRemoteBinding86()}catch(e){console.warn('binding verify background v233',e)}
+        if(!verified){
+          try{stopRemoteSubscription82()}catch(_){}
+          try{syncEntryGate105()}catch(_){}
+          return;
+        }
+        try{await syncRemoteSharePolicy87()}catch(e){console.warn('share policy background v233',e)}
+        startRealtimeLayer162(!!force);
+      });
+    }
   }
   return true;
 }
@@ -11332,6 +11334,13 @@ async function ensurePortalRestRuntimeR1(){
     };
 
     setFirebaseStatus82('ready');
+
+    // PORTAL mode has already completed the authoritative checks above:
+    // canonical UID + developerRoot + developerDevices + selected event ownerUid.
+    // Do not run the legacy owner verifier again; it races with initFirebase82's
+    // background verifier and can temporarily clear/leave verifiedBinding233 false.
+    markBindingVerified233(binding);
+
     portalRestReadyR1=true;
     portalRestStateR1(
       'REST認証・固定UID・大会owner確認 OK\nリアルタイム通信を開始しています…',
@@ -18205,12 +18214,7 @@ setTimeout(async()=>{
     return;
   }
 
-  if(portalRestModeR1()){
-    const b0R1=readRemoteBinding84();
-    if(b0R1?.eventId && !isBindingVerified233(b0R1)){
-      try{await verifyRemoteBinding86()}catch(_){}
-    }
-  }else if(currentUserIsDeveloper114()){
+  if(!portalRestModeR1() && currentUserIsDeveloper114()){
     const recovered=await stabilizeDeveloperEvent154();
     if(recovered?.eventId && !isBindingVerified233(recovered)){
       try{await verifyRemoteBinding86()}catch(_){}
@@ -18246,8 +18250,15 @@ setTimeout(async()=>{
       showPage('home');
     }else{
       portalRestShowR1();
+      const reasonR1=[
+        'REST ready='+(portalRestReadyR1?'YES':'NO'),
+        'binding='+(bR1?.eventId?String(bR1.eventId):'NONE'),
+        'role='+String(bR1?.role||'NONE'),
+        'verified='+(isBindingVerified233(bR1)?'YES':'NO'),
+        'uid='+String(firebase82.uid||'NONE')
+      ].join('\n');
       portalRestStateR1(
-        '固定UIDは確認しましたが、大会owner接続の検証が完了しませんでした。PORTALへ戻って再度大会を選択してください。',
+        '開発者接続の最終確認に失敗しました。\n'+reasonR1,
         'bad'
       );
     }
@@ -18525,6 +18536,16 @@ SAFETY:
 - portal/reconnect forces liveShareEnabled=false
 - no automatic location sharing
 RULES: unchanged
+-->
+
+
+<!-- REST_SSE_R1_FIX_20260924
+ROOT CAUSE FIX:
+- initFirebase82 previously scheduled verifyRemoteBinding86 in the background
+- startup then checked verifiedBinding233 before that async verifier necessarily finished
+- portal REST mode had already verified UID / developerRoot / developerDevices / event ownerUid
+- portal mode now marks binding verified immediately from those completed REST checks
+- legacy background owner verifier is skipped only in portal REST mode
 -->
 
 </body>
