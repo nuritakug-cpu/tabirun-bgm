@@ -10431,15 +10431,41 @@ async function remotePushEventConfig107(force=false){
   lastAppliedRemoteConfigTs158=Math.max(lastAppliedRemoteConfigTs158,Number(cfg.updatedAt)||0);
   return true;
 }
+async function portalConfigChildPutR6(path,value,token,timeoutMs=8500){
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),timeoutMs);
+  try{
+    const url=portalRestUrlR1(path,token)+'&print=silent';
+    const res=await fetch(url,{
+      method:'PUT',
+      signal:controller.signal,
+      cache:'no-store',
+      credentials:'omit',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(value)
+    });
+    if(!res.ok){
+      let detail='';
+      try{detail=await res.text()}catch(_){}
+      throw new Error(`PORTAL CHILD PUT ${path} HTTP ${res.status}${detail?': '+detail:''}`);
+    }
+    return true;
+  }catch(e){
+    if(e?.name==='AbortError')throw new Error(`PORTAL CHILD PUT ${path} timeout`);
+    throw e;
+  }finally{
+    clearTimeout(timer);
+  }
+}
+
 function scheduleRemoteConfigSync107(force=false){
   const b=readRemoteBinding84();
   if(!b?.eventId||!currentUserIsAdmin97())return;
 
-  // R5 / PORTAL developer route:
-  // capture the exact locally-saved config NOW, then write it through the
-  // already device-proven REST path. Do not wait on legacy firebase82.status,
-  // and do not rebuild cfg 220ms later after an incoming SSE snapshot may have
-  // replaced local data with older server values.
+  // R6 / PORTAL developer route:
+  // Device proof: events/<eventId>/config/delay child PUT succeeded
+  // (HTTP 200, exact GET=YES), while parent config PATCH did not persist delay.
+  // Therefore write each config child independently using the proven fresh-token REST path.
   if(portalRestModeR1() && b.role==='owner'){
     const cfg=sharedEventConfig107();
     const stable=JSON.stringify({...cfg,updatedAt:0,version:''});
@@ -10447,31 +10473,79 @@ function scheduleRemoteConfigSync107(force=false){
     clearTimeout(remoteConfigTimer107);
     remoteConfigTimer107=setTimeout(async()=>{
       try{
-        await portalRestRequestR1(
-          `events/${b.eventId}/config`,
-          'PATCH',
-          cfg,
-          9000
+        const refreshToken=String(portalRestSessionR1?.refreshToken||'');
+        if(!refreshToken)throw new Error('PORTAL refreshTokenがありません');
+
+        const fresh=await portalRestRefreshR1(refreshToken);
+        portalRestSessionR1=fresh;
+
+        const configEntries=Object.entries(cfg);
+        const results=await Promise.allSettled(
+          configEntries.map(([key,value])=>
+            portalConfigChildPutR6(
+              `events/${b.eventId}/config/${key}`,
+              value,
+              fresh.idToken,
+              8500
+            )
+          )
         );
-        await portalRestRequestR1(
-          `events/${b.eventId}/meta`,
-          'PATCH',
-          {
-            title:cfg.title,
-            eventDays:(cfg.eventDays||[]).map(x=>typeof x==='string'?x:x?.date).filter(Boolean),
-            updatedAt:Date.now(),
-            version:APP_VERSION
-          },
-          8000
+
+        const failed=[];
+        results.forEach((r,i)=>{
+          if(r.status==='rejected'){
+            failed.push({
+              key:configEntries[i][0],
+              error:String(r.reason?.message||r.reason||'write failed')
+            });
+          }
+        });
+
+        // Meta is also written child-by-child so no parent PATCH is required.
+        const meta={
+          title:cfg.title,
+          eventDays:(cfg.eventDays||[]).map(x=>typeof x==='string'?x:x?.date).filter(Boolean),
+          updatedAt:Date.now(),
+          version:APP_VERSION
+        };
+        const metaEntries=Object.entries(meta);
+        const metaResults=await Promise.allSettled(
+          metaEntries.map(([key,value])=>
+            portalConfigChildPutR6(
+              `events/${b.eventId}/meta/${key}`,
+              value,
+              fresh.idToken,
+              8500
+            )
+          )
         );
+        metaResults.forEach((r,i)=>{
+          if(r.status==='rejected'){
+            failed.push({
+              key:'meta/'+metaEntries[i][0],
+              error:String(r.reason?.message||r.reason||'write failed')
+            });
+          }
+        });
+
+        // Persist refreshed session after network work; never block the save action.
+        Promise.resolve()
+          .then(()=>portalRestWriteSavedR1(fresh))
+          .catch(e=>console.warn('PORTAL config session persist R6',e));
+
+        if(failed.length){
+          console.warn('PORTAL config child sync R6 partial',failed);
+          return;
+        }
+
         lastRemoteConfigJSON107=stable;
         lastAppliedRemoteConfigTs158=Math.max(
           lastAppliedRemoteConfigTs158,
           Number(cfg.updatedAt)||0
         );
-        console.info('PORTAL config sync R5 OK',b.eventId,cfg.updatedAt);
+        console.info('PORTAL config child sync R6 OK',b.eventId,cfg.updatedAt);
       }catch(e){
-        console.warn('PORTAL config sync R5',e);
+        console.warn('PORTAL config child sync R6',e);
       }
     },20);
     return;
@@ -18730,6 +18804,27 @@ SAFETY:
 RULES: unchanged
 -->
 
+
+<!-- REST_SSE_R6_PORTAL_CHILD_CONFIG_WRITE_20260924
+TARGET: PORTAL developer management-save -> Firebase config sync only.
+DEVICE PROOF:
+- config root REST GET: HTTP 200.
+- updatedAt-only PATCH: HTTP 204; SSE patch received; exact GET YES.
+- direct child PUT events/<eventId>/config/delay: HTTP 200.
+- direct child GET delay: HTTP 200; exact=YES.
+- R5 parent config PATCH did not persist delay.
+CONCLUSION:
+- REST/SSE/auth/network are healthy.
+- child config write is accepted on device.
+- parent config PATCH is not a reliable PORTAL management-save route.
+R6:
+1) snapshots locally saved config immediately.
+2) refreshes the PORTAL token once.
+3) writes every config field independently with child PUT + print=silent.
+4) writes meta fields independently as child PUTs.
+5) one rejected field cannot prevent unrelated fields (including delay) from saving.
+6) participant/manager legacy route, LIVE, location, CHAT and Rules are unchanged.
+-->
 
 <!-- REST_SSE_R5_PORTAL_CONFIG_SYNC_20260924
 TARGET: PORTAL developer management-save -> Firebase config synchronization only.
