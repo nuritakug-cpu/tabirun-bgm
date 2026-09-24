@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>TOP RUN Auth Identity Audit</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;padding:16px;background:#0b0d0f;color:#f5f7f8;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif}
+main{max-width:760px;margin:auto}
+.card{background:#161a1e;border:1px solid #343b41;border-radius:18px;padding:18px;margin:12px 0}
+h1{font-size:26px;margin:6px 0 10px}.brand{color:#ffd400;font-size:12px;font-weight:900;letter-spacing:.15em}
+p{color:#aeb6bd;line-height:1.65}
+.state{padding:13px;border:1px solid #414950;border-radius:12px;background:#0a0d0f;white-space:pre-wrap;line-height:1.6}
+.ok{border-color:#2e7751;color:#b8f5d0}.bad{border-color:#91383e;color:#ffb8bd}.warn{border-color:#806b20;color:#ffe58f}
+.row{display:grid;grid-template-columns:150px 1fr;gap:8px;padding:9px 0;border-bottom:1px solid #2b3136}
+.k{color:#9099a0}.v{word-break:break-all;font-weight:700}
+button{width:100%;margin-top:12px;padding:14px;border:0;border-radius:12px;background:#ffd400;color:#080808;font-weight:900;font-size:16px}
+small{color:#8d969e;line-height:1.6}
+</style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <div class="brand">TOP RUN AGUI / READ ONLY AUDIT</div>
+    <h1>固定アカウント実体確認</h1>
+    <p>ログイン・登録・変更・削除は行いません。現在Safari/Chromeに保存されているFirebaseアカウントの実体だけを確認します。</p>
+    <div id="state" class="state">確認中…</div>
+  </div>
+  <div class="card">
+    <div id="rows"></div>
+    <button id="copy" type="button">結果をコピー</button>
+    <small>この結果で「PORTAL側の生成式が間違っているのか」「現在のFirebaseアカウント自体が別資格情報なのか」を確定します。</small>
+  </div>
+</main>
+
+<script type="module">
+const SDK='12.19.0';
+const OWNER_KEY='TR-GSBWUAZ5KNSEQKPHZS';
+const CFG={
+  apiKey:'AIzaSyBRL_MnyqqTa0YviGDIzuPp9kARbXLMwa0',
+  authDomain:'top-run-event-base.firebaseapp.com',
+  databaseURL:'https://top-run-event-base-default-rtdb.asia-southeast1.firebasedatabase.app/',
+  projectId:'top-run-event-base',
+  storageBucket:'top-run-event-base.firebasestorage.app',
+  messagingSenderId:'55962935111',
+  appId:'1:55962935111:web:fb77b096d493ba31217662'
+};
+const $=id=>document.getElementById(id);
+const results={};
+
+function add(k,v){
+  results[k]=String(v??'');
+  const r=document.createElement('div');
+  r.className='row';
+  r.innerHTML=`<div class="k">${esc(k)}</div><div class="v">${esc(String(v??''))}</div>`;
+  $('rows').appendChild(r);
+}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function timeout(p,ms,label){let t;return Promise.race([Promise.resolve(p).finally(()=>clearTimeout(t)),new Promise((_,rej)=>t=setTimeout(()=>rej(new Error(label+' timeout')),ms))])}
+async function sha256hex(s){
+  const d=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(s)));
+  return [...new Uint8Array(d)].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+async function expectedEmail(){
+  const h=(await sha256hex('eventbase-dev-email-v2|'+OWNER_KEY)).slice(0,32);
+  return `dev.${h}@eventbase.invalid`;
+}
+async function init(){
+  const [appMod,authMod]=await Promise.all([
+    import(`https://www.gstatic.com/firebasejs/${SDK}/firebase-app.js`),
+    import(`https://www.gstatic.com/firebasejs/${SDK}/firebase-auth.js`)
+  ]);
+  let app=appMod.getApps().find(a=>a.name==='toprun-eventbase');
+  if(!app)app=appMod.initializeApp(CFG,'toprun-eventbase');
+  let auth;
+  try{
+    auth=authMod.initializeAuth(app,{
+      persistence:[
+        authMod.indexedDBLocalPersistence,
+        authMod.browserLocalPersistence,
+        authMod.browserSessionPersistence
+      ]
+    });
+  }catch(_){auth=authMod.getAuth(app)}
+
+  await new Promise(resolve=>{
+    let done=false,unsub=()=>{};
+    const finish=()=>{if(done)return;done=true;clearTimeout(timer);try{unsub()}catch(_){}resolve()};
+    const timer=setTimeout(finish,5000);
+    unsub=authMod.onAuthStateChanged(auth,finish,finish);
+  });
+  return auth;
+}
+async function lookupAccount(idToken){
+  const u=`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(CFG.apiKey)}`;
+  const r=await timeout(fetch(u,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({idToken}),
+    cache:'no-store'
+  }),8000,'accounts:lookup');
+  const txt=await r.text();
+  let data=null;try{data=txt?JSON.parse(txt):null}catch(_){data={raw:txt}}
+  if(!r.ok)throw new Error((data?.error?.message)||('HTTP '+r.status));
+  return data;
+}
+
+(async()=>{
+  try{
+    const exp=await expectedEmail();
+    add('期待する固定email',exp);
+
+    const auth=await init();
+    const user=auth.currentUser;
+    add('保存済みユーザー',user?'YES':'NO');
+
+    if(!user){
+      $('state').className='state warn';
+      $('state').textContent='このブラウザにはFirebase JS Authの保存済みユーザーがありません。';
+      return;
+    }
+
+    add('UID',user.uid);
+    add('isAnonymous',user.isAnonymous?'YES':'NO');
+    add('user.email',user.email||'(empty)');
+    add('providerId',(user.providerData||[]).map(x=>x.providerId).join(', ')||'(none)');
+    add('provider email',(user.providerData||[]).map(x=>x.email||'').filter(Boolean).join(', ')||'(empty)');
+    add('期待emailと一致',String(user.email||'').toLowerCase()===exp.toLowerCase()?'YES':'NO');
+
+    const token=await timeout(user.getIdToken(false),7000,'ID token');
+    add('ID token','OK');
+
+    const info=await lookupAccount(token);
+    const u=info?.users?.[0]||{};
+    add('server localId',u.localId||'(empty)');
+    add('server email',u.email||'(empty)');
+    add('server providers',(u.providerUserInfo||[]).map(x=>x.providerId+':'+(x.email||x.federatedId||'')).join(' | ')||'(none)');
+    add('server email一致',String(u.email||'').toLowerCase()===exp.toLowerCase()?'YES':'NO');
+
+    const allMatch = user.uid===u.localId && String(u.email||'').toLowerCase()===exp.toLowerCase();
+    $('state').className='state '+(allMatch?'ok':'warn');
+    $('state').textContent=allMatch
+      ? '固定アカウントのUIDとemailは想定どおりです。次に検証すべきはパスワード生成・PIN側です。'
+      : '固定アカウントの実体がPORTAL側の想定と一致していません。次版を作る前に、この差異を修正対象として確定できます。';
+  }catch(e){
+    $('state').className='state bad';
+    $('state').textContent='監査エラー：'+String(e?.message||e);
+  }
+})();
+
+$('copy').onclick=async()=>{
+  const text='TOP RUN AUTH IDENTITY AUDIT\n'+Object.entries(results).map(([k,v])=>k+': '+v).join('\n')+'\n\n'+$('state').textContent;
+  try{await navigator.clipboard.writeText(text);$('copy').textContent='コピーしました'}
+  catch(_){prompt('この内容をコピーしてください',text)}
+};
+</script>
+</body>
+</html>
