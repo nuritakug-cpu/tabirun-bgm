@@ -1,3 +1,16 @@
+<!-- REST_SSE_R10_PORTAL_AUTH_FOUNDATION_20260925
+ROOT CAUSE:
+- PORTAL HOME entry verified fixed UID/device/root/ownerUid, but did not restore creatorClaims.
+- PORTAL accepted any eventSecret status except ended, while CHAT/notices and owner athlete writes require status=active unless the developer claim path is available.
+- Therefore config/delay could work through ownerUid while data collections and realtime paths failed or timed out.
+R10:
+1) restore the fixed UID creatorClaim once at PORTAL bootstrap using the ownerKey already handed off by PORTAL;
+2) reject ended events and repair only legacy blank/non-active non-ended status to active;
+3) load config/meta only after the authorization foundation is complete;
+4) no Firebase Rules change and no per-feature write patch.
+FROZEN: LIVE auto-ON prohibition, participant/manager routes, data schema, R9 config stabilization.
+-->
+
 <!-- REST_SSE_R9_CORE_STABILIZATION_20260925
 ROOT CAUSE AUDIT:
 - persist() is used by 40+ code paths, including every accepted GPS position.
@@ -11489,23 +11502,60 @@ async function ensurePortalRestRuntimeR1(){
     const eventId=portalRestEventIdR1();
     if(!eventId)throw new Error('eventIdがありません');
 
+    // R10: complete the PORTAL developer authorization foundation BEFORE
+    // loading EVENT data.  config writes can succeed by ownerUid alone, while
+    // CHAT/notices/athlete/realtime paths additionally depend on the developer
+    // claim and an active eventSecret.  Older/partially-migrated events could
+    // therefore enter HOME with only part of Firebase actually usable.
+    const portalOwnerKeyR10=String(organizerKey106()||'').trim();
+    if(!portalOwnerKeyR10)throw new Error('PORTAL ownerKeyがありません');
+
+    portalRestStateR1('開発者権限をRESTで復元しています…');
+    // creatorClaims is intentionally not readable by Rules.  The authoritative
+    // check is whether this idempotent self-write is accepted for the fixed UID.
+    await portalRestRequestR1(
+      `creatorClaims/${PORTAL_REST_UID_R1}`,
+      'PUT',
+      portalOwnerKeyR10,
+      7000
+    );
+
     portalRestStateR1('固定UID・大会ownerをRESTで確認しています…');
 
-    const [device,root,secret,cfg,meta]=await Promise.all([
+    const [device,root,secretRaw]=await Promise.all([
       portalRestRequestR1(`developerDevices/${PORTAL_REST_UID_R1}`,'GET',undefined,9000),
       portalRestRequestR1('developerRoot','GET',undefined,9000),
-      portalRestRequestR1(`eventSecrets/${eventId}`,'GET',undefined,9000),
-      portalRestRequestR1(`events/${eventId}/config`,'GET',undefined,9000).catch(()=>null),
-      portalRestRequestR1(`events/${eventId}/meta`,'GET',undefined,9000).catch(()=>null)
+      portalRestRequestR1(`eventSecrets/${eventId}`,'GET',undefined,9000)
     ]);
 
     if(!device)throw new Error('developerDevicesに固定UIDがありません');
     if(!root?.initialized||String(root.ownerUid||'')!==PORTAL_REST_UID_R1){
       throw new Error('developerRoot.ownerUidを確認できません');
     }
-    if(!secret||secret.status==='ended'||String(secret.ownerUid||'')!==PORTAL_REST_UID_R1){
+    if(!secretRaw||String(secretRaw.ownerUid||'')!==PORTAL_REST_UID_R1){
       throw new Error('大会ownerUidを確認できません');
     }
+    if(String(secretRaw.status||'')==='ended'){
+      throw new Error('この大会共有は終了しています');
+    }
+
+    // The application has only two server lifecycle states: active / ended.
+    // Never revive ended.  A legacy blank/missing status is repaired once here.
+    if(String(secretRaw.status||'')!=='active'){
+      await portalRestRequestR1(
+        `eventSecrets/${eventId}/status`,
+        'PUT',
+        'active',
+        7000
+      );
+    }
+    const secret={...secretRaw,status:'active'};
+
+    // Read shared EVENT data only after claim/status are authoritative.
+    const [cfg,meta]=await Promise.all([
+      portalRestRequestR1(`events/${eventId}/config`,'GET',undefined,9000).catch(()=>null),
+      portalRestRequestR1(`events/${eventId}/meta`,'GET',undefined,9000).catch(()=>null)
+    ]);
 
     const participantCode=String(secret.participantCode||secret.joinCode||'');
     const managementCode=String(secret.managementCode||'');
