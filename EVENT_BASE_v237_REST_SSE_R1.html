@@ -1,3 +1,10 @@
+<!-- REST_SSE_R8_NOTICE_DIRECT_REST_20260924
+TARGET: PORTAL owner V125 notice save/delete only.
+- Uses direct child REST + print=silent with 5s timeout.
+- Retries once with a refreshed PORTAL token on 401/403.
+- Normal manager/member path, LIVE/location, CHAT, Rules and progress sync unchanged.
+-->
+
 <!doctype html>
 <html lang="ja">
 <head>
@@ -16535,6 +16542,53 @@ async function ensureFirebaseForCollection125(){
 }
 
 // ---------- Notices ----------
+// REST_SSE_R8_NOTICE_DIRECT_REST_20260924
+// PORTAL owner notice save/delete uses the same direct child REST pattern that
+// was proven on-device for config/delay. Normal manager/member paths are untouched.
+async function portalNoticeRequestR8(path,method,body=undefined,timeoutMs=5000){
+  let ses=await portalRestEnsureSessionR1(false);
+  const run=async(session)=>{
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),timeoutMs);
+    try{
+      const url=portalRestUrlR1(path,session.idToken)+'&print=silent';
+      const opts={
+        method,
+        signal:controller.signal,
+        cache:'no-store',
+        credentials:'omit',
+        headers:{}
+      };
+      if(body!==undefined){
+        opts.headers['Content-Type']='application/json';
+        opts.body=JSON.stringify(body);
+      }
+      const res=await fetch(url,opts);
+      if(!res.ok){
+        let detail='';
+        try{detail=await res.text()}catch(_){}
+        const err=new Error(`NOTICE ${method} ${path} HTTP ${res.status}${detail?': '+detail:''}`);
+        err.status=res.status;
+        throw err;
+      }
+      return true;
+    }catch(e){
+      if(e?.name==='AbortError')throw new Error(`NOTICE ${method} ${path} timeout`);
+      throw e;
+    }finally{
+      clearTimeout(timer);
+    }
+  };
+
+  try{
+    return await run(ses);
+  }catch(e){
+    if(e?.status!==401&&e?.status!==403)throw e;
+    ses=await portalRestEnsureSessionR1(true);
+    return await run(ses);
+  }
+}
+
 function clearNoticeV125(){
   $('noticeV125Id').value='';
   $('noticeV125Title').value='';
@@ -16564,13 +16618,23 @@ function renderNoticesV125(){
     const n=(data.notices||[]).find(x=>x.id===btn.dataset.n125Del);if(!n)return;
     if(!confirm(`「${n.title||'お知らせ'}」を削除しますか？`))return;
     const b=readRemoteBinding84();
-    if(b?.eventId && await ensureFirebaseForCollection125()){
-      try{
-        const {ref,remove}=firebase82.mods.dbMod;
-        await remove(ref(firebase82.db,`events/${b.eventId}/noticesV125/${n.id}`));
-      }catch(e){toast('お知らせを削除できません');return}
+    if(b?.eventId){
+      if(portalRestModeR1() && b.role==='owner'){
+        try{
+          await portalNoticeRequestR8(`events/${b.eventId}/noticesV125/${n.id}`,'DELETE',undefined,5000);
+        }catch(e){
+          console.warn('PORTAL notice delete R8',e);
+          toast('お知らせを削除できません');
+          return;
+        }
+      }else if(await ensureFirebaseForCollection125()){
+        try{
+          const {ref,remove}=firebase82.mods.dbMod;
+          await remove(ref(firebase82.db,`events/${b.eventId}/noticesV125/${n.id}`));
+        }catch(e){toast('お知らせを削除できません');return}
+      }
     }
-    data.notices=(data.notices||[]).filter(x=>x.id!==n.id);persist();renderNoticesV125();renderHome();
+    data.notices=(data.notices||[]).filter(x=>x.id!==n.id);persist();renderNoticesV125();renderHome();toast('お知らせを削除しました');
   });
 }
 $('noticeV125Clear').onclick=clearNoticeV125;
@@ -16582,11 +16646,21 @@ $('noticeV125Save').onclick=async()=>{
   const old=(data.notices||[]).find(x=>x.id===id);
   const rec={id,title,body,createdAt:Number(old?.createdAt)||Date.now(),updatedAt:Date.now(),updatedBy:uid125()};
   const b=readRemoteBinding84();
-  if(b?.eventId && await ensureFirebaseForCollection125()){
-    try{
-      const {ref,set}=firebase82.mods.dbMod;
-      await set(ref(firebase82.db,`events/${b.eventId}/noticesV125/${id}`),rec);
-    }catch(e){toast('お知らせを保存できません');return}
+  if(b?.eventId){
+    if(portalRestModeR1() && b.role==='owner'){
+      try{
+        await portalNoticeRequestR8(`events/${b.eventId}/noticesV125/${id}`,'PUT',rec,5000);
+      }catch(e){
+        console.warn('PORTAL notice save R8',e);
+        toast('お知らせを保存できません');
+        return;
+      }
+    }else if(await ensureFirebaseForCollection125()){
+      try{
+        const {ref,set}=firebase82.mods.dbMod;
+        await set(ref(firebase82.db,`events/${b.eventId}/noticesV125/${id}`),rec);
+      }catch(e){toast('お知らせを保存できません');return}
+    }
   }
   const idx=(data.notices||[]).findIndex(x=>x.id===id);
   if(idx>=0)data.notices[idx]=rec;else data.notices.unshift(rec);
