@@ -1,3 +1,17 @@
+<!-- REST_SSE_R11_DURABLE_SAVE_20260925
+ROOT CAUSE:
+- config/進行 UI declared success immediately after local persist(), before Firebase completion.
+- failed background config writes were only console.warn, so re-entry reloaded the old Firebase value.
+- player/notice/chat used separate completion rules, producing inconsistent timeout/permission behavior.
+R11:
+1) one PORTAL durable-write lane: write exact child -> authoritative GET readback -> deep equality confirmation;
+2) delay save/delete waits for Firebase confirmation before local success UI;
+3) player, notice and CHAT PORTAL writes use the same durable lane;
+4) visible save/send buttons show Firebase保存中/送信中 immediately;
+5) failure never reports 保存済み and never leaves an unconfirmed local delay as authoritative.
+FROZEN: Firebase Rules, LIVE safety/auto-ON prohibition, participant/manager transport, schema.
+-->
+
 <!-- REST_SSE_R10_PORTAL_AUTH_FOUNDATION_20260925
 ROOT CAUSE:
 - PORTAL HOME entry verified fixed UID/device/root/ownerUid, but did not restore creatorClaims.
@@ -10536,6 +10550,86 @@ async function portalConfigChildPutR6(path,value,token,timeoutMs=8500){
   }
 }
 
+// R11: PORTAL developer durable persistence foundation.
+// A write is successful only after an authoritative REST GET returns the exact value.
+function portalCanonicalR11(value){
+  if(Array.isArray(value))return value.map(portalCanonicalR11);
+  if(value&&typeof value==='object'){
+    const out={};
+    Object.keys(value).sort().forEach(k=>{out[k]=portalCanonicalR11(value[k])});
+    return out;
+  }
+  return value;
+}
+function portalSameR11(a,b){
+  try{return JSON.stringify(portalCanonicalR11(a))===JSON.stringify(portalCanonicalR11(b))}
+  catch(_){return false}
+}
+async function portalDeleteChildR11(path,token,timeoutMs=6500){
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),timeoutMs);
+  try{
+    const res=await fetch(portalRestUrlR1(path,token)+'&print=silent',{
+      method:'DELETE',signal:controller.signal,cache:'no-store',credentials:'omit'
+    });
+    if(!res.ok){
+      let detail='';try{detail=await res.text()}catch(_){}
+      const err=new Error(`PORTAL DELETE ${path} HTTP ${res.status}${detail?': '+detail:''}`);
+      err.status=res.status;throw err;
+    }
+    return true;
+  }catch(e){
+    if(e?.name==='AbortError')throw new Error(`PORTAL DELETE ${path} timeout`);
+    throw e;
+  }finally{clearTimeout(timer)}
+}
+async function portalDurableWriteR11(path,value,{remove=false,writeTimeout=6500,readTimeout=4500}={}){
+  let ses=await portalRestEnsureSessionR1(false);
+  const writeOnce=async()=>{
+    try{
+      if(remove)await portalDeleteChildR11(path,ses.idToken,writeTimeout);
+      else await portalConfigChildPutR6(path,value,ses.idToken,writeTimeout);
+    }catch(e){
+      if(e?.status!==401)throw e;
+      ses=await portalRestEnsureSessionR1(true);
+      if(remove)await portalDeleteChildR11(path,ses.idToken,writeTimeout);
+      else await portalConfigChildPutR6(path,value,ses.idToken,writeTimeout);
+    }
+  };
+  await writeOnce();
+  const saved=await portalRestRequestR1(path,'GET',undefined,readTimeout);
+  if(remove){
+    if(saved!==null)throw new Error(`Firebase削除確認に失敗しました: ${path}`);
+    return true;
+  }
+  if(!portalSameR11(saved,value))throw new Error(`Firebase保存確認に失敗しました: ${path}`);
+  return saved;
+}
+async function portalDurableConfigFieldR11(key,value){
+  const b=readRemoteBinding84();
+  if(!b?.eventId||b.role!=='owner')throw new Error('大会owner接続がありません');
+  const commitTs=Date.now();
+  portalConfigPendingUpdatedAtR9=Math.max(portalConfigPendingUpdatedAtR9,commitTs);
+  try{
+    await portalDurableWriteR11(`events/${b.eventId}/config/${key}`,value,{writeTimeout:6500,readTimeout:4500});
+    // Commit marker is written after the field itself so SSE never treats a partial state as complete.
+    let ses=await portalRestEnsureSessionR1(false);
+    try{await portalConfigChildPutR6(`events/${b.eventId}/config/updatedAt`,commitTs,ses.idToken,6500)}
+    catch(e){
+      if(e?.status!==401)throw e;
+      ses=await portalRestEnsureSessionR1(true);
+      await portalConfigChildPutR6(`events/${b.eventId}/config/updatedAt`,commitTs,ses.idToken,6500);
+    }
+    lastAppliedRemoteConfigTs158=Math.max(lastAppliedRemoteConfigTs158,commitTs);
+    return commitTs;
+  }finally{
+    if(portalConfigPendingUpdatedAtR9<=commitTs){
+      portalConfigPendingUpdatedAtR9=0;
+      portalConfigPendingStableR9='';
+    }
+  }
+}
+
 function scheduleRemoteConfigSync107(force=false){
   const b=readRemoteBinding84();
   if(!b?.eventId||!currentUserIsAdmin97())return;
@@ -10760,28 +10854,15 @@ async function remoteUpsertPlayer107(p){
   if(!rec.ownerUid)rec.ownerUid=firebase82.uid;
   p.ownerUid=rec.ownerUid;
 
-  const token=await firebaseToken157(false);
-
-  await firebaseRestRequest157(
-    `events/${b.eventId}/athletesV125/${rec.id}`,
-    'PUT',
-    rec,
-    token,
-    9000
-  );
-
-  // Verify the record actually exists in Firebase.
-  const saved=await firebaseRestRequest157(
-    `events/${b.eventId}/athletesV125/${rec.id}`,
-    'GET',
-    undefined,
-    token,
-    7000
-  );
-
-  if(!saved || String(saved.id||'')!==String(rec.id)){
-    throw new Error('Firebaseへの選手登録確認に失敗しました');
+  if(portalRestModeR1() && b.role==='owner'){
+    await portalDurableWriteR11(`events/${b.eventId}/athletesV125/${rec.id}`,rec,{writeTimeout:6500,readTimeout:4500});
+    return true;
   }
+
+  const token=await firebaseToken157(false);
+  await firebaseRestRequest157(`events/${b.eventId}/athletesV125/${rec.id}`,'PUT',rec,token,9000);
+  const saved=await firebaseRestRequest157(`events/${b.eventId}/athletesV125/${rec.id}`,'GET',undefined,token,7000);
+  if(!saved || String(saved.id||'')!==String(rec.id))throw new Error('Firebaseへの選手登録確認に失敗しました');
   return true;
 }
 async function remoteDeletePlayer107(p){
@@ -15998,28 +16079,65 @@ $('saveMainInfoBtn').onclick=()=>{
   persist();renderHome();renderSchedule();syncPlayerDaySelect73();renderSharingDayState73();markEditorSaved('大会主要情報を保存しました');toast('大会主要情報を保存しました');
   syncRemoteSharePolicy87();
 };
-$('saveDelayBtn').onclick=()=>{
+$('saveDelayBtn').onclick=async()=>{
   const mode=$('progressModeInput').value;
   const min=Math.max(0,Number($('delayMinInput').value)||0);
   const note=$('delayNoteInput').value.trim();
-  data.delay=mode==='none'||min===0?null:{mode,min,note};
-  persist();
-  syncEditors();
-  renderSchedule();
-  markEditorSaved(
-    !data.delay?'定刻に設定しました':
-    data.delay.mode==='delay'?`遅延 +${data.delay.min}分を保存しました`:
-    `早い進行 +${data.delay.min}分を保存しました`
-  );
+  const nextDelay=mode==='none'||min===0?null:{mode,min,note};
+  const btn=$('saveDelayBtn');
+  const original=btn?.textContent||'保存する';
+
+  if(portalRestModeR1() && readRemoteBinding84()?.role==='owner'){
+    if(btn){btn.disabled=true;btn.textContent='Firebase保存中…'}
+    setEditorSaveState('dirty','Firebase保存中','サーバーへ保存し、読み返して確認しています');
+    try{
+      await portalDurableConfigFieldR11('delay',nextDelay);
+      data.delay=nextDelay;
+      save(ACTIVE_DATA_KEY100,data);
+      try{lastRemoteConfigJSON107=JSON.stringify({...sharedEventConfig107(),updatedAt:0,version:''})}catch(_){}
+      syncEditors();renderSchedule();
+      markEditorSaved(
+        !data.delay?'定刻をFirebaseへ保存しました':
+        data.delay.mode==='delay'?`遅延 +${data.delay.min}分をFirebaseへ保存しました`:
+        `早い進行 +${data.delay.min}分をFirebaseへ保存しました`
+      );
+      toast(!data.delay?'定刻をFirebaseへ保存しました':data.delay.mode==='delay'?'遅延情報をFirebaseへ保存しました':'早い進行をFirebaseへ保存しました');
+    }catch(e){
+      console.warn('delay durable save R11',e);
+      setEditorSaveState('dirty','保存できませんでした','Firebaseへの保存確認に失敗しました');
+      toast(/403|permission|denied/i.test(String(e?.message||e||''))?'進行情報の保存権限を確認できません':'進行情報をFirebaseへ保存できません');
+    }finally{
+      if(btn){btn.disabled=false;btn.textContent=original}
+    }
+    return;
+  }
+
+  data.delay=nextDelay;
+  persist();syncEditors();renderSchedule();
+  markEditorSaved(!data.delay?'定刻に設定しました':data.delay.mode==='delay'?`遅延 +${data.delay.min}分を保存しました`:`早い進行 +${data.delay.min}分を保存しました`);
   toast(!data.delay?'定刻に設定しました':data.delay.mode==='delay'?'遅延情報を保存しました':'早い進行を保存しました');
 };
-$('deleteDelayBtn').onclick=()=>{
-  data.delay=null;
-  persist();
-  syncEditors();
-  renderSchedule();
-  refreshEditorSaveState('delay');
-  toast('定刻に戻しました');
+$('deleteDelayBtn').onclick=async()=>{
+  const btn=$('deleteDelayBtn');
+  const original=btn?.textContent||'定刻に戻す';
+  if(portalRestModeR1() && readRemoteBinding84()?.role==='owner'){
+    if(btn){btn.disabled=true;btn.textContent='Firebase保存中…'}
+    try{
+      await portalDurableConfigFieldR11('delay',null);
+      data.delay=null;
+      save(ACTIVE_DATA_KEY100,data);
+      try{lastRemoteConfigJSON107=JSON.stringify({...sharedEventConfig107(),updatedAt:0,version:''})}catch(_){}
+      syncEditors();renderSchedule();refreshEditorSaveState('delay');
+      toast('定刻をFirebaseへ保存しました');
+    }catch(e){
+      console.warn('delay durable delete R11',e);
+      toast('定刻へ戻す情報をFirebaseへ保存できません');
+    }finally{
+      if(btn){btn.disabled=false;btn.textContent=original}
+    }
+    return;
+  }
+  data.delay=null;persist();syncEditors();renderSchedule();refreshEditorSaveState('delay');toast('定刻に戻しました');
 };
 
 function clearPlayerForm(){
@@ -16700,47 +16818,9 @@ async function ensureFirebaseForCollection125(){
 // PORTAL owner notice save/delete uses the same direct child REST pattern that
 // was proven on-device for config/delay. Normal manager/member paths are untouched.
 async function portalNoticeRequestR8(path,method,body=undefined,timeoutMs=5000){
-  let ses=await portalRestEnsureSessionR1(false);
-  const run=async(session)=>{
-    const controller=new AbortController();
-    const timer=setTimeout(()=>controller.abort(),timeoutMs);
-    try{
-      const url=portalRestUrlR1(path,session.idToken)+'&print=silent';
-      const opts={
-        method,
-        signal:controller.signal,
-        cache:'no-store',
-        credentials:'omit',
-        headers:{}
-      };
-      if(body!==undefined){
-        opts.headers['Content-Type']='application/json';
-        opts.body=JSON.stringify(body);
-      }
-      const res=await fetch(url,opts);
-      if(!res.ok){
-        let detail='';
-        try{detail=await res.text()}catch(_){}
-        const err=new Error(`NOTICE ${method} ${path} HTTP ${res.status}${detail?': '+detail:''}`);
-        err.status=res.status;
-        throw err;
-      }
-      return true;
-    }catch(e){
-      if(e?.name==='AbortError')throw new Error(`NOTICE ${method} ${path} timeout`);
-      throw e;
-    }finally{
-      clearTimeout(timer);
-    }
-  };
-
-  try{
-    return await run(ses);
-  }catch(e){
-    if(e?.status!==401)throw e;
-    ses=await portalRestEnsureSessionR1(true);
-    return await run(ses);
-  }
+  if(method==='DELETE')return await portalDurableWriteR11(path,null,{remove:true,writeTimeout:Math.max(timeoutMs,6000),readTimeout:4500});
+  if(method==='PUT')return await portalDurableWriteR11(path,body,{writeTimeout:Math.max(timeoutMs,6000),readTimeout:4500});
+  return await portalRestRequestR1(path,method,body,timeoutMs);
 }
 
 function clearNoticeV125(){
@@ -16794,6 +16874,8 @@ function renderNoticesV125(){
 $('noticeV125Clear').onclick=clearNoticeV125;
 $('noticeV125Save').onclick=async()=>{
   if(!operator125())return toast('運営・開発者だけが編集できます');
+  const saveBtn=$('noticeV125Save');
+  const saveBtnText=saveBtn?.textContent||'保存する';
   const title=$('noticeV125Title').value.trim(),body=$('noticeV125Body').value.trim();
   if(!title)return toast('タイトルを入力してください');
   let id=$('noticeV125Id').value||('notice_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,6));
@@ -16802,12 +16884,15 @@ $('noticeV125Save').onclick=async()=>{
   const b=readRemoteBinding84();
   if(b?.eventId){
     if(portalRestModeR1() && b.role==='owner'){
+      if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Firebase保存中…'}
       try{
-        await portalNoticeRequestR8(`events/${b.eventId}/noticesV125/${id}`,'PUT',rec,5000);
+        await portalNoticeRequestR8(`events/${b.eventId}/noticesV125/${id}`,'PUT',rec,6000);
       }catch(e){
-        console.warn('PORTAL notice save R8',e);
-        toast('お知らせを保存できません');
+        console.warn('PORTAL notice save R11',e);
+        toast(/403|permission|denied/i.test(String(e?.message||e||''))?'お知らせの保存権限を確認できません':'お知らせをFirebaseへ保存できません');
         return;
+      }finally{
+        if(saveBtn){saveBtn.disabled=false;saveBtn.textContent=saveBtnText}
       }
     }else if(await ensureFirebaseForCollection125()){
       try{
@@ -17113,6 +17198,8 @@ $('athleteV133Heat').onchange=syncAthleteOtherFieldsV133;
 $('athleteV133Save').onclick=async()=>{
   const participant=participant125();
   if(!participant&&!operator125())return toast('編集権限がありません');
+  const saveBtn=$('athleteV133Save');
+  const saveBtnText=saveBtn?.textContent||'保存する';
 
   const id=$('athleteV133Id').value||('athlete_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,6));
   const old=(data.players||[]).find(x=>x.id===id);
@@ -17180,20 +17267,22 @@ $('athleteV133Save').onclick=async()=>{
 
   const b=readRemoteBinding84();
   if(b?.eventId){
+    if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Firebase保存中…'}
     try{
       if(rec.ownerUid==='draft')rec.ownerUid=uid125();
       await remoteUpsertPlayer107(rec);
-      // Re-arm shared list listener after a successful registration.
       ensureRemotePlayersSubscription107(true);
     }catch(e){
-      console.warn('athlete save v159',e);
+      console.warn('athlete save R11',e);
       const msg=String(e?.message||e||'');
       toast(/403|permission|denied/i.test(msg)
         ? '選手登録の権限を確認できません'
-        : /タイムアウト|network|fetch/i.test(msg)
-          ? 'Firebase通信が不安定です。もう一度保存してください'
+        : /タイムアウト|timeout|network|fetch/i.test(msg)
+          ? 'Firebase保存を確認できません'
           : '出走登録を保存できません');
       return;
+    }finally{
+      if(saveBtn){saveBtn.disabled=false;saveBtn.textContent=saveBtnText}
     }
   }
 
@@ -17552,45 +17641,8 @@ async function portalRestChatDirectR4(eventId,id,remoteMsg,token,method='PUT',ti
 }
 
 async function portalRestSendChatConfirmR4(eventId,id,remoteMsg){
-  // R9: use the already-valid shared PORTAL session. Do not refresh a token for
-  // every CHAT send; config/CHAT/player writes must share one serialized session.
-  let ses=await portalRestEnsureSessionR1(false);
-
-  const putOnce=async()=>{
-    try{
-      await portalRestChatDirectR4(eventId,id,remoteMsg,ses.idToken,'PUT',6000);
-      return true;
-    }catch(e){
-      if(e?.status!==401)throw e;
-      ses=await portalRestEnsureSessionR1(true);
-      await portalRestChatDirectR4(eventId,id,remoteMsg,ses.idToken,'PUT',6000);
-      return true;
-    }
-  };
-
-  try{
-    await putOnce();
-    return true;
-  }catch(writeError){
-    console.warn('PORTAL CHAT REST PUT R9',writeError);
-
-    // If transport failed after Firebase committed, verify the exact same id once.
-    try{
-      const row=await portalRestChatDirectR4(
-        eventId,id,undefined,ses.idToken,'GET',3500
-      );
-      if(
-        row &&
-        String(row.id||'')===String(id) &&
-        String(row.senderUid||'')===String(firebase82.uid||PORTAL_REST_UID_R1)
-      ){
-        return true;
-      }
-    }catch(verifyError){
-      console.warn('PORTAL CHAT REST verify R9',verifyError);
-    }
-    throw writeError;
-  }
+  await portalDurableWriteR11(`events/${eventId}/chat/${id}`,remoteMsg,{writeTimeout:6500,readTimeout:4500});
+  return true;
 }
 
 async function remoteSendChat108(text){
@@ -17875,6 +17927,7 @@ $('chatSendBtn').onclick=async()=>{
   const t=$('chatInput').value.trim();if(!t)return;
   $('chatInput').value='';
   $('chatSendBtn').disabled=true;
+  $('chatSendBtn').textContent='送信中…';
   try{
     await remoteSendChat108(t);
     data.chatLastRead=Date.now();
