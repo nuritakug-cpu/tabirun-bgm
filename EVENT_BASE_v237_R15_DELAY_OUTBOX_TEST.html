@@ -24,6 +24,113 @@ html,body{margin:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,
   const SOURCE='https://raw.githubusercontent.com/nuritakug-cpu/tabirun-bgm/af39bb1a382d4927b2da089b93c559b9d0b6d5c7/EVENT_BASE_v237_REST_SSE_R1.html';
   const MARK='REST_R15_DELAY_OUTBOX_RUNTIME_20260925';
 
+  // R15 developer-entry repair:
+  // When the test URL is opened directly, recover the already-saved developer
+  // PORTAL session, resolve the current event, and reopen THIS SAME FILE with
+  // ownerKey/event/portal=1. This preserves the established developer route.
+  const PORTAL_API_KEY='AIzaSyBRL_MnyqqTa0YviGDIzuPp9kARbXLMwa0';
+  const PORTAL_DB_URL='https://top-run-event-base-default-rtdb.asia-southeast1.firebasedatabase.app';
+  const PORTAL_OWNER_KEY='TR-GSBWUAZ5KNSEQKPHZS';
+  const PORTAL_UID='qKf1l0vlc7XS2LlypaEC3oyz6eA2';
+  const PORTAL_AUTH_DB='top_run_portal_auth';
+  const PORTAL_AUTH_STORE='sessions';
+  const PORTAL_AUTH_KEY='developer';
+
+  function portalMode(){
+    try{return new URLSearchParams(location.search).get('portal')==='1'}catch(_){return false}
+  }
+  function stateText(s){
+    const el=document.getElementById('bootState');
+    if(el)el.textContent=String(s||'');
+  }
+  function openAuthDb(){
+    return new Promise((resolve,reject)=>{
+      const req=indexedDB.open(PORTAL_AUTH_DB);
+      req.onsuccess=()=>resolve(req.result);
+      req.onerror=()=>reject(req.error||new Error('開発者セッションDBを開けません'));
+    });
+  }
+  async function readSavedPortalSession(){
+    let db=null;
+    try{
+      db=await openAuthDb();
+      if(!db.objectStoreNames.contains(PORTAL_AUTH_STORE)){db.close();return null}
+      const row=await new Promise((resolve,reject)=>{
+        const tx=db.transaction(PORTAL_AUTH_STORE,'readonly');
+        const req=tx.objectStore(PORTAL_AUTH_STORE).get(PORTAL_AUTH_KEY);
+        req.onsuccess=()=>resolve(req.result||null);
+        req.onerror=()=>reject(req.error||new Error('開発者セッションを読めません'));
+      });
+      db.close();
+      return row;
+    }catch(e){try{db?.close()}catch(_){};throw e}
+  }
+  async function refreshPortalSession(refreshToken){
+    const r=await fetch('https://securetoken.googleapis.com/v1/token?key='+encodeURIComponent(PORTAL_API_KEY),{
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:'grant_type=refresh_token&refresh_token='+encodeURIComponent(String(refreshToken||'')),
+      cache:'no-store',credentials:'omit'
+    });
+    const txt=await r.text();
+    let d=null;try{d=txt?JSON.parse(txt):null}catch(_){d={raw:txt}}
+    if(!r.ok)throw new Error('開発者認証更新 HTTP '+r.status);
+    return {
+      idToken:String(d.id_token||''),
+      refreshToken:String(d.refresh_token||refreshToken||''),
+      uid:String(d.user_id||''),
+      expiresAt:Date.now()+(Number(d.expires_in||3600)*1000)-60000
+    };
+  }
+  async function dbGet(path,token){
+    const url=PORTAL_DB_URL.replace(/\\/+$/,'')+'/'+path+'.json?auth='+encodeURIComponent(token);
+    const r=await fetch(url,{cache:'no-store',credentials:'omit'});
+    const txt=await r.text();
+    let d=null;try{d=txt?JSON.parse(txt):null}catch(_){d=txt}
+    if(!r.ok)throw new Error('RTDB '+path+' HTTP '+r.status);
+    return d;
+  }
+  async function bootstrapDeveloperEntry(){
+    if(portalMode())return true;
+    stateText('開発者PORTALセッションを復元しています…');
+    const saved=await readSavedPortalSession();
+    if(!saved?.refreshToken){
+      throw new Error('保存済みの開発者ログインがありません。TOP RUN PORTAL R6で一度ログインしてください。');
+    }
+    const ses=await refreshPortalSession(saved.refreshToken);
+    if(String(ses.uid)!==PORTAL_UID)throw new Error('開発者UIDが一致しません');
+
+    stateText('現在の大会を確認しています…');
+    const root=await dbGet('developerRoot',ses.idToken);
+    if(!root?.initialized||String(root.ownerUid||'')!==PORTAL_UID){
+      throw new Error('developerRootを確認できません');
+    }
+
+    let eventId=String(root.currentEventId||root.bootstrapEventId||'').trim();
+    if(!eventId){
+      const secrets=await dbGet('eventSecrets',ses.idToken)||{};
+      const ids=Object.keys(secrets).filter(id=>String((secrets[id]||{}).ownerUid||'')===PORTAL_UID && String((secrets[id]||{}).status||'')!=='ended');
+      if(ids.length===1)eventId=ids[0];
+      else if(ids.length>1){
+        ids.sort((a,b)=>Number(secrets[b]?.updatedAt||secrets[b]?.createdAt||0)-Number(secrets[a]?.updatedAt||secrets[a]?.createdAt||0));
+        eventId=ids[0];
+      }
+    }
+    if(!eventId)throw new Error('開発者の現在大会を取得できません');
+
+    const sec=await dbGet('eventSecrets/'+eventId,ses.idToken);
+    if(!sec||String(sec.ownerUid||'')!==PORTAL_UID)throw new Error('大会ownerUidを確認できません');
+    if(String(sec.status||'')==='ended')throw new Error('現在大会は終了済みです');
+
+    stateText('開発者モードでEVENT BASEを開きます…');
+    const u=new URL(location.href);
+    u.searchParams.set('ownerKey',PORTAL_OWNER_KEY);
+    u.searchParams.set('event',eventId);
+    u.searchParams.set('portal','1');
+    location.replace(u.toString());
+    return false;
+  }
+
   const injection = String.raw`
 <script>
 /* REST_R15_DELAY_OUTBOX_RUNTIME_20260925
@@ -432,8 +539,11 @@ html,body{margin:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,
 <\/script>`;
 
   try{
+    const entryOk=await bootstrapDeveloperEntry();
+    if(!entryOk)return;
+
     const state=document.getElementById('bootState');
-    state.textContent='本番R12を取得中…';
+    state.textContent='開発者モード確認済み。本番R12を取得中…';
 
     const res=await fetch(SOURCE,{cache:'no-store',credentials:'omit'});
     if(!res.ok)throw new Error('本番R12取得 HTTP '+res.status);
@@ -470,7 +580,8 @@ html,body{margin:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,
         '<div class="bad">'+
         String(e?.message||e).replace(/[&<>"]/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]))+
         '</div>'+
-        '<p>本番R12は変更されていません。</p>';
+        '<p>本番R12は変更されていません。</p>'+
+        '<p><a style="color:#ffd400" href="TOP_RUN_PORTAL_R6_REST_EVENT.html">開発者PORTALを開く</a></p>';
     }
     console.error('R15 loader',e);
   }
