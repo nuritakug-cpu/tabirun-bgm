@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TOP RUN PORTAL R6 → R15 TEST</title>
+<style>
+html,body{margin:0;min-height:100%;background:#090b0d;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif}
+#boot{max-width:720px;margin:auto;padding:24px}
+h1{font-size:20px}p{line-height:1.6;color:#ccc}.bad{color:#ff9ca2;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<div id="boot">
+  <h1>開発者PORTALを起動しています</h1>
+  <p>既存のTOP RUN PORTAL R6を読み込み、EVENT BASEの遷移先だけR15テスト版へ切り替えます。</p>
+  <div id="state">読み込み中…</div>
+</div>
+<script>
+(async()=>{
+  const SOURCE='https://raw.githubusercontent.com/nuritakug-cpu/tabirun-bgm/main/TOP_RUN_PORTAL_R6_REST_EVENT.html';
+  try{
+    const r=await fetch(SOURCE,{cache:'no-store',credentials:'omit'});
+    if(!r.ok)throw new Error('PORTAL R6取得 HTTP '+r.status);
+    let src=await r.text();
+
+    const oldLine="var EVENT_BASE_REST_FILE='EVENT_BASE_v237_REST_SSE_R1.html';";
+    const newLine="var EVENT_BASE_REST_FILE='EVENT_BASE_v237_R15_DELAY_OUTBOX_TEST.html';";
+
+    if(!src.includes(oldLine))throw new Error('PORTAL R6の遷移先定義を確認できません');
+    src=src.replace(oldLine,newLine);
+
+    src=src.replace(
+      '</body>',
+      '<!-- TOP_RUN_PORTAL_R6_R15_TEST_20260925 : production portal unchanged; destination only -> R15 test -->\\n</body>'
+    );
+
+    document.open();
+    document.write(src);
+    document.close();
+  }catch(e){
+    const b=document.getElementById('boot');
+    b.innerHTML='<h1>テストPORTALを起動できませんでした</h1><div class="bad">'+
+      String(e?.message||e).replace(/[&<>"]/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]))+
+      '</div><p>本番PORTAL・本番EVENT BASEは変更されていません。</p>';
+  }
+})();
+</script>
+</body>
+</html>
