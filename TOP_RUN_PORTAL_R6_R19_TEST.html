@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#090b0d">
+<title>TOP RUN PORTAL R6 → R17 TEST</title>
+<style>
+:root{color-scheme:dark;--bg:#090b0d;--card:#15191d;--line:#343b41;--muted:#9ca5ac;--yellow:#ffd400;--green:#b8f5d0;--red:#ffb8bd}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:#f5f7f8;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif}
+body{min-height:100vh}.wrap{width:min(100%,760px);margin:auto;padding:18px 14px 42px}.brand{color:var(--yellow);font-size:12px;font-weight:900;letter-spacing:.15em}
+.hero{padding:22px 3px 14px}.hero h1{font-size:36px;margin:7px 0 6px}.hero p{margin:0;color:var(--muted);line-height:1.6}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin:12px 0}.state{padding:13px;border:1px solid #414950;border-radius:12px;background:#0b0e10;white-space:pre-wrap;line-height:1.6}
+.ok{border-color:#2f7751;color:var(--green)}.bad{border-color:#8f393f;color:var(--red)}.warn{border-color:#806b20;color:#ffe78f}.hidden{display:none!important}
+label{display:block;margin:16px 0 7px;font-weight:900}input{width:100%;padding:15px;border:1px solid #4a5259;border-radius:12px;background:#080a0c;color:#fff;font-size:22px;letter-spacing:.08em}
+button{font:inherit}.btn{width:100%;margin-top:13px;padding:15px;border:0;border-radius:12px;background:var(--yellow);color:#070707;font-weight:900;font-size:17px}.btn:disabled{opacity:.45}
+.top{display:flex;justify-content:space-between;gap:12px;align-items:center}.logout{border:1px solid #3c444b;background:#20252a;color:#fff;border-radius:10px;padding:9px 11px;font-weight:800}
+.section{margin:22px 2px 8px;font-size:20px;font-weight:900}.event{width:100%;text-align:left;color:#fff;background:#14181c;border:1px solid #343b41;border-radius:16px;padding:15px;margin:9px 0}
+.event.current{border-color:#8c7600}.badge{display:inline-block;font-size:11px;font-weight:900;padding:4px 8px;border-radius:999px;background:#2a3035;margin-bottom:8px}.title{font-size:19px;font-weight:900}.meta{margin-top:6px;color:#939ca3;font-size:12px;line-height:1.5}
+.modules{display:grid;grid-template-columns:1fr 1fr;gap:10px}.module{min-height:110px;border:1px solid #343b41;border-radius:16px;padding:14px;background:#14181c}.module .k{color:var(--yellow);font-size:11px;font-weight:900}.module strong{display:block;margin:6px 0}.module p{margin:0;color:#9099a0;font-size:12px;line-height:1.5}.small{font-size:12px;color:#9099a0;line-height:1.6}
+.log{margin-top:12px;padding:10px;border-radius:10px;background:#0b0e10;color:#7f8990;font-size:11px;line-height:1.5;white-space:pre-wrap}
+@media(max-width:520px){.modules{grid-template-columns:1fr}.hero h1{font-size:33px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <div class="brand">TOP RUN AGUI / PLATFORM FOUNDATION</div>
+    <h1>TOP RUN PORTAL</h1>
+    <p>ログインを入口に、大会・記録・PERSONAL ROOM・今後のサービスへつながる共通ポータル。固定開発者認証とEVENT BASE通信はREST基盤へ統一します。</p>
+  </div>
+
+  <section id="loginView" class="card">
+    <div id="loginState" class="state">保存済みログインを確認しています…</div>
+    <div id="loginForm" class="hidden">
+      <label for="pin">開発者PIN（8桁）</label>
+      <input id="pin" type="password" inputmode="numeric" maxlength="8" autocomplete="current-password" placeholder="••••••••">
+      <button id="loginBtn" class="btn" type="button">開発者としてログイン</button>
+      <div class="small" style="margin-top:10px">R6は実機で完全照合済みのv1固定資格情報とREST認証を使用します。認証保存先は今後バージョンで変えない共通PORTAL領域です。</div>
+    </div>
+    <div id="loginLog" class="log"></div>
+  </section>
+
+  <section id="portalView" class="hidden">
+    <div class="card">
+      <div class="top">
+        <div><div class="brand">DEVELOPER</div><strong id="devName">開発者</strong></div>
+        <button id="logout" class="logout" type="button">ログアウト</button>
+      </div>
+      <div id="portalState" class="state" style="margin-top:14px">大会情報を読み込んでいます…</div>
+    </div>
+
+    <div class="section">大会</div>
+    <div id="events"></div>
+
+    <div class="section">プラットフォーム</div>
+    <div class="modules">
+      <div class="module"><div class="k">ACTIVE</div><strong>EVENT BASE</strong><p>開催中・予定・過去大会、LIVE、CHAT、結果。</p></div>
+      <div class="module"><div class="k">FOUNDATION</div><strong>PERSONAL PROFILE</strong><p>将来は authUid → profileId → 共通PERSONAL PROFILE。</p></div>
+      <div class="module"><div class="k">FUTURE</div><strong>PERSONAL ROOM</strong><p>過去大会・正式記録・PBを個人単位で継続。</p></div>
+      <div class="module"><div class="k">EXTENSIBLE</div><strong>NEW SERVICES</strong><p>同じログインから新サービスを派生できる基盤。</p></div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+var API_KEY='AIzaSyBRL_MnyqqTa0YviGDIzuPp9kARbXLMwa0';
+var DB_URL='https://top-run-event-base-default-rtdb.asia-southeast1.firebasedatabase.app';
+var OWNER_KEY='TR-GSBWUAZ5KNSEQKPHZS';
+var CANONICAL_UID='qKf1l0vlc7XS2LlypaEC3oyz6eA2';
+var CANONICAL_EMAIL='dev.9493d07a07056c22fd2a967b1ddb209e@example.com';
+var AUTH_DB='top_run_portal_auth';
+var AUTH_STORE='sessions';
+var AUTH_KEY='developer';
+
+var session=null;
+var rootData=null;
+var logs=[];
+var EVENT_BASE_REST_FILE='EVENT_BASE_v237_R19_PORTAL_EVENT_CONTEXT_LOCK.html';
+
+function $(id){return document.getElementById(id)}
+function log(s){logs.push(String(s));$('loginLog').textContent=logs.join('\n')}
+function state(id,msg,kind){var e=$(id);e.className='state'+(kind?' '+kind:'');e.textContent=String(msg||'')}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function fmtErr(e){return String((e&&e.message)||e||'unknown')}
+function timeout(p,ms,label){
+  var t;
+  return Promise.race([
+    Promise.resolve(p).finally(function(){clearTimeout(t)}),
+    new Promise(function(_,rej){t=setTimeout(function(){rej(new Error(label+' timeout'))},ms)})
+  ]);
+}
+async function sha256hex(s){
+  var d=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(s)));
+  return Array.from(new Uint8Array(d)).map(function(x){return x.toString(16).padStart(2,'0')}).join('');
+}
+async function pbkdf2hex(secret,salt,it){
+  it=it||120000;
+  var key=await crypto.subtle.importKey('raw',new TextEncoder().encode(String(secret)),'PBKDF2',false,['deriveBits']);
+  var bits=await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt:new TextEncoder().encode(String(salt)),iterations:it},key,256);
+  return Array.from(new Uint8Array(bits)).map(function(x){return x.toString(16).padStart(2,'0')}).join('');
+}
+async function credentials(pin){
+  var ownerHash=(await sha256hex('eventbase-dev-email-v1|'+OWNER_KEY)).slice(0,32);
+  var email='dev.'+ownerHash+'@example.com';
+  if(email!==CANONICAL_EMAIL){
+    throw new Error('固定email生成式が実アカウントと一致しません');
+  }
+  return {
+    email:email,
+    password:await pbkdf2hex(pin,'eventbase-dev-password-v1|'+OWNER_KEY,120000)
+  };
+}
+
+/* IndexedDB session store: no localStorage/sessionStorage */
+function openAuthDb(){
+  return new Promise(function(resolve,reject){
+    var req=indexedDB.open(AUTH_DB,1);
+    req.onupgradeneeded=function(){
+      var db=req.result;
+      if(!db.objectStoreNames.contains(AUTH_STORE))db.createObjectStore(AUTH_STORE,{keyPath:'key'});
+    };
+    req.onsuccess=function(){resolve(req.result)};
+    req.onerror=function(){reject(req.error||new Error('IndexedDB open error'))};
+  });
+}
+function openNamedDb(dbName){
+  return new Promise(function(resolve,reject){
+    var req=indexedDB.open(dbName);
+    req.onsuccess=function(){resolve(req.result)};
+    req.onerror=function(){reject(req.error||new Error('IndexedDB open error'))};
+  });
+}
+async function legacySessionGet(dbName){
+  var db=null;
+  try{
+    db=await openNamedDb(dbName);
+    if(!db.objectStoreNames.contains(AUTH_STORE)){db.close();return null}
+    var row=await new Promise(function(resolve,reject){
+      var tx=db.transaction(AUTH_STORE,'readonly');
+      var req=tx.objectStore(AUTH_STORE).get(AUTH_KEY);
+      req.onsuccess=function(){resolve(req.result||null)};
+      req.onerror=function(){reject(req.error||new Error('legacy read error'))};
+    });
+    db.close();
+    return row;
+  }catch(e){
+    try{if(db)db.close()}catch(_){}
+    return null;
+  }
+}
+
+async function idbGet(){
+  var db=await openAuthDb();
+  try{
+    return await new Promise(function(resolve,reject){
+      var tx=db.transaction(AUTH_STORE,'readonly');
+      var req=tx.objectStore(AUTH_STORE).get(AUTH_KEY);
+      req.onsuccess=function(){resolve(req.result||null)};
+      req.onerror=function(){reject(req.error||new Error('IndexedDB read error'))};
+    });
+  }finally{db.close()}
+}
+async function idbPut(value){
+  var db=await openAuthDb();
+  try{
+    await new Promise(function(resolve,reject){
+      var tx=db.transaction(AUTH_STORE,'readwrite');
+      tx.objectStore(AUTH_STORE).put(Object.assign({key:AUTH_KEY},value));
+      tx.oncomplete=function(){resolve()};
+      tx.onerror=function(){reject(tx.error||new Error('IndexedDB write error'))};
+      tx.onabort=function(){reject(tx.error||new Error('IndexedDB abort'))};
+    });
+  }finally{db.close()}
+}
+async function idbDelete(){
+  var db=await openAuthDb();
+  try{
+    await new Promise(function(resolve,reject){
+      var tx=db.transaction(AUTH_STORE,'readwrite');
+      tx.objectStore(AUTH_STORE).delete(AUTH_KEY);
+      tx.oncomplete=function(){resolve()};
+      tx.onerror=function(){reject(tx.error||new Error('IndexedDB delete error'))};
+    });
+  }finally{db.close()}
+}
+
+/* Firebase official REST authentication */
+async function signInPassword(email,password){
+  log('REST signInWithPassword start');
+  var url='https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key='+encodeURIComponent(API_KEY);
+  var r=await timeout(fetch(url,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({email:email,password:password,returnSecureToken:true}),
+    cache:'no-store'
+  }),12000,'signInWithPassword');
+  var txt=await r.text();
+  var data=null;try{data=txt?JSON.parse(txt):null}catch(_){data={raw:txt}}
+  if(!r.ok){
+    var code=(data&&data.error&&data.error.message)||('HTTP '+r.status);
+    throw new Error('Firebase REST '+code);
+  }
+  if(!data.idToken||!data.refreshToken||!data.localId)throw new Error('Firebase REST response incomplete');
+  log('REST signInWithPassword OK uid='+data.localId);
+  return {
+    uid:String(data.localId),
+    idToken:String(data.idToken),
+    refreshToken:String(data.refreshToken),
+    expiresAt:Date.now()+(Number(data.expiresIn||3600)*1000)-60000
+  };
+}
+async function refreshSession(refreshToken){
+  log('REST refreshToken start');
+  var url='https://securetoken.googleapis.com/v1/token?key='+encodeURIComponent(API_KEY);
+  var body='grant_type=refresh_token&refresh_token='+encodeURIComponent(refreshToken);
+  var r=await timeout(fetch(url,{
+    method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:body,
+    cache:'no-store'
+  }),12000,'refreshToken');
+  var txt=await r.text();
+  var data=null;try{data=txt?JSON.parse(txt):null}catch(_){data={raw:txt}}
+  if(!r.ok){
+    var code=(data&&data.error&&data.error.message)||('HTTP '+r.status);
+    throw new Error('Firebase refresh '+code);
+  }
+  if(!data.id_token||!data.refresh_token||!data.user_id)throw new Error('Firebase refresh response incomplete');
+  log('REST refreshToken OK uid='+data.user_id);
+  return {
+    uid:String(data.user_id),
+    idToken:String(data.id_token),
+    refreshToken:String(data.refresh_token),
+    expiresAt:Date.now()+(Number(data.expires_in||3600)*1000)-60000
+  };
+}
+async function ensureFreshSession(){
+  if(!session)throw new Error('ログインなし');
+  if(Date.now()<Number(session.expiresAt||0) && session.idToken)return session;
+  session=await refreshSession(session.refreshToken);
+  await idbPut(session);
+  return session;
+}
+async function dbGet(path){
+  var s=await ensureFreshSession();
+  var url=DB_URL.replace(/\/+$/,'')+'/'+path+'.json?auth='+encodeURIComponent(s.idToken);
+  var r=await timeout(fetch(url,{cache:'no-store'}),10000,'RTDB '+path);
+  var txt=await r.text();
+  var data=null;try{data=txt?JSON.parse(txt):null}catch(_){data=txt}
+  if(!r.ok)throw new Error('RTDB '+path+' HTTP '+r.status);
+  return data;
+}
+
+async function verifyDeveloper(){
+  var s=await ensureFreshSession();
+  if(String(s.uid||'')!==CANONICAL_UID){
+    throw new Error('Firebase UIDが検証済み固定UIDと一致しません');
+  }
+  var pair=await Promise.all([
+    dbGet('developerDevices/'+s.uid),
+    dbGet('developerRoot')
+  ]);
+  var dev=pair[0],root=pair[1];
+  if(!dev)throw new Error('developerDevicesに固定UIDがありません');
+  if(!root||!root.initialized)throw new Error('developerRootを確認できません');
+  if(String(root.ownerUid||'')!==CANONICAL_UID)throw new Error('developerRoot.ownerUidが検証済み固定UIDと一致しません');
+  rootData=root;
+  return {uid:s.uid,root:root};
+}
+async function launchEventBaseRest(e){
+  if(!e||!e.id)throw new Error('eventIdがありません');
+  var sec=await dbGet('eventSecrets/'+e.id);
+  if(!sec)throw new Error('大会共有情報を取得できません');
+  if(String(sec.ownerUid||'')!==CANONICAL_UID)throw new Error('大会ownerUidが固定UIDと一致しません');
+  if(String(sec.status||'')==='ended')throw new Error('この大会共有は終了しています');
+
+  state('portalState','REST版EVENT BASEを開いています…','ok');
+  location.href=EVENT_BASE_REST_FILE+
+    '?ownerKey='+encodeURIComponent(OWNER_KEY)+
+    '&event='+encodeURIComponent(e.id)+
+    '&portal=1';
+}
+
+async function loadEvents(uid){
+  var secrets={};
+  try{secrets=await dbGet('eventSecrets')||{}}catch(_){}
+  var ids=Object.keys(secrets).filter(function(id){return String((secrets[id]||{}).ownerUid||'')===String(uid)});
+  var cur=String((rootData&& (rootData.currentEventId||rootData.bootstrapEventId))||'');
+  if(cur&&ids.indexOf(cur)<0)ids.unshift(cur);
+  ids=Array.from(new Set(ids)).slice(0,30);
+
+  var list=[];
+  for(var i=0;i<ids.length;i++){
+    var id=ids[i];
+    var sec=secrets[id]||await dbGet('eventSecrets/'+id).catch(function(){return null});
+    if(!sec)continue;
+    var pair=await Promise.all([
+      dbGet('events/'+id+'/config').catch(function(){return null}),
+      dbGet('events/'+id+'/meta').catch(function(){return null})
+    ]);
+    var cfg=pair[0],meta=pair[1];
+    list.push({
+      id:id,
+      title:String((cfg&&cfg.title)||(meta&&meta.title)||id),
+      current:id===cur,
+      status:String(sec.status||''),
+      date:String((cfg&&cfg.date)||(meta&&meta.date)||'')
+    });
+  }
+  return list;
+}
+function renderEvents(list){
+  var box=$('events');box.innerHTML='';
+  if(!list.length){box.innerHTML='<div class="card small">大会データがありません。</div>';return}
+  list.forEach(function(e){
+    var b=document.createElement('button');
+    b.type='button';b.className='event'+(e.current?' current':'');
+    b.innerHTML='<span class="badge">'+(e.current?'現在の大会':(e.status==='active'?'共有中':'大会'))+
+      '</span><div class="title">'+esc(e.title)+'</div><div class="meta">'+esc(e.date||'日付未設定')+'<br>'+esc(e.id)+'</div>'+
+      '<div style="margin-top:10px;color:#ffd400;font-size:13px;font-weight:900">REST版 EVENT BASEを開く ›</div>';
+    b.onclick=function(){
+      launchEventBaseRest(e).catch(function(err){
+        state('portalState','EVENT BASEを開けません：'+fmtErr(err),'bad');
+      });
+    };
+    box.appendChild(b);
+  });
+}
+async function enterPortal(){
+  var v=await verifyDeveloper();
+  $('loginView').classList.add('hidden');
+  $('portalView').classList.remove('hidden');
+  $('devName').textContent=String(v.root.developerId||'開発者');
+  state('portalState','固定アカウント確認済み。\n大会一覧を読み込んでいます…','ok');
+  var list=await loadEvents(v.uid);
+  renderEvents(list);
+  state('portalState','ログイン成功\nFirebase UID: '+v.uid+'\n大会: '+list.length+'件','ok');
+}
+async function restore(){
+  log('IndexedDB restore start');
+  var saved=await idbGet();
+  if(!saved||!saved.refreshToken){
+    var legacyNames=['top_run_portal_auth_v5','top_run_portal_auth_v3'];
+    for(var li=0;li<legacyNames.length;li++){
+      var old=await legacySessionGet(legacyNames[li]);
+      if(old&&old.refreshToken){
+        saved=old;
+        await idbPut(saved);
+        log('IndexedDB session migrated: '+legacyNames[li]+' -> '+AUTH_DB);
+        break;
+      }
+    }
+  }
+  if(!saved||!saved.refreshToken){
+    log('IndexedDB saved session: NONE');
+    return false;
+  }
+  log('IndexedDB saved session: FOUND');
+  try{
+    session=await refreshSession(saved.refreshToken);
+    if(String(session.uid||'')!==CANONICAL_UID){
+      throw new Error('復元UIDが検証済み固定UIDと一致しません');
+    }
+    await verifyDeveloper();
+    await idbPut(session);
+    log('restored canonical UID/root/device verified');
+    await enterPortal();
+    return true;
+  }catch(e){
+    log('restore failed: '+fmtErr(e));
+    await idbDelete().catch(function(){});
+    session=null;
+    return false;
+  }
+}
+async function login(){
+  var pin=String($('pin').value||'').trim();
+  if(!/^\d{8}$/.test(pin)){state('loginState','開発者PINは8桁です。','bad');return}
+  var btn=$('loginBtn');btn.disabled=true;
+  state('loginState','Firebase RESTで固定アカウントへログインしています…');
+  try{
+    var c=await credentials(pin);
+    log('credential email: '+c.email);
+    session=await signInPassword(c.email,c.password);
+    if(String(session.uid||'')!==CANONICAL_UID){
+      throw new Error('Firebaseから返ったUIDが検証済み固定UIDと一致しません');
+    }
+    await verifyDeveloper();
+    await idbPut(session);
+    log('canonical UID/root/device verified');
+    log('IndexedDB save OK');
+    await enterPortal();
+  }catch(e){
+    state('loginState','ログインできません：'+fmtErr(e),'bad');
+    log('login failed: '+fmtErr(e));
+    btn.disabled=false;
+  }
+}
+$('loginBtn').onclick=login;
+$('logout').onclick=async function(){
+  await idbDelete().catch(function(){});
+  session=null;
+  location.reload();
+};
+
+(async function(){
+  try{
+    if(!window.indexedDB)throw new Error('IndexedDBが使用できません');
+    var ok=await restore();
+    if(ok)return;
+    $('loginForm').classList.remove('hidden');
+    state('loginState','保存済みログインはありません。\n開発者PINを1回入力してください。');
+  }catch(e){
+    $('loginForm').classList.remove('hidden');
+    state('loginState','PORTALを開始できません：'+fmtErr(e),'bad');
+    log('boot failed: '+fmtErr(e));
+  }
+})();
+})();
+</script>
+
+<!--
+TOP_RUN_PORTAL_R6
+- Firebase JavaScript Auth SDK: NOT USED
+- Authentication: Identity Toolkit REST accounts:signInWithPassword
+- Fixed developer credential: VERIFIED v1 (email-v1 / password-v1)
+- Canonical UID: qKf1l0vlc7XS2LlypaEC3oyz6eA2
+- Session refresh: Secure Token REST endpoint
+- Persistence: stable IndexedDB namespace top_run_portal_auth
+- Legacy session migration: v5/v3 -> stable namespace
+- EVENT BASE launch: REST/SSE edition, no Firebase JS SDK handoff
+- Anonymous auth: NOT USED
+- localStorage/sessionStorage: NOT USED for login
+- RTDB SDK: NOT USED; authenticated REST reads only
+- LIVE auto-enable: NOT USED
+- Future identity path: authUid -> profileId -> PERSONAL PROFILE
+- Platform path: one login -> EVENT BASE + PERSONAL ROOM + future services
+-->
+<!-- TOP_RUN_PORTAL_R6_R17_TEST_20260925: exact R6 auth; destination only -> R17 test -->
+<!-- TOP_RUN_PORTAL_R6_R18_TEST_20260925: static R6 portal, target only = R18 -->
+<!-- TOP_RUN_PORTAL_R6_R19_TEST_20260925 -->
+</body>
+</html>
