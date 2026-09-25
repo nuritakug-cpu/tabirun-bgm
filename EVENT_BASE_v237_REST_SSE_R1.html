@@ -1,3 +1,16 @@
+<!-- REST_SSE_R12_WRITE_ACK_20260925
+ROOT CAUSE:
+- R11 added a blocking GET after every successful Firebase REST PUT/DELETE.
+- On iPhone Safari this second request could timeout even after the write had already been accepted, falsely reporting failure.
+R12:
+1) Firebase REST HTTP 2xx from PUT/DELETE is the authoritative save/delete acknowledgement;
+2) remove blocking post-write GET from delay/player/notice/CHAT PORTAL saves;
+3) keep one shared PORTAL write lane and 401-only token refresh;
+4) keep visible saving/sending state;
+5) no Rules/schema/LIVE changes.
+FROZEN: R9 core stabilization, R10 portal authorization foundation, LIVE manual-ON safety, participant/manager routes.
+-->
+
 <!-- REST_SSE_R11_DURABLE_SAVE_20260925
 ROOT CAUSE:
 - config/進行 UI declared success immediately after local persist(), before Firebase completion.
@@ -10550,8 +10563,8 @@ async function portalConfigChildPutR6(path,value,token,timeoutMs=8500){
   }
 }
 
-// R11: PORTAL developer durable persistence foundation.
-// A write is successful only after an authoritative REST GET returns the exact value.
+// R12: PORTAL developer write-ack persistence foundation.
+// A Firebase REST HTTP 2xx is the authoritative acknowledgement; no blocking readback.
 function portalCanonicalR11(value){
   if(Array.isArray(value))return value.map(portalCanonicalR11);
   if(value&&typeof value==='object'){
@@ -10583,7 +10596,7 @@ async function portalDeleteChildR11(path,token,timeoutMs=6500){
     throw e;
   }finally{clearTimeout(timer)}
 }
-async function portalDurableWriteR11(path,value,{remove=false,writeTimeout=6500,readTimeout=4500}={}){
+async function portalDurableWriteR11(path,value,{remove=false,writeTimeout=7500,readTimeout=0}={}){
   let ses=await portalRestEnsureSessionR1(false);
   const writeOnce=async()=>{
     try{
@@ -10596,14 +10609,10 @@ async function portalDurableWriteR11(path,value,{remove=false,writeTimeout=6500,
       else await portalConfigChildPutR6(path,value,ses.idToken,writeTimeout);
     }
   };
+  // R12: Firebase REST returns only after the write/delete is accepted.
+  // Do not add a second blocking GET; that extra round trip caused false failures on Safari.
   await writeOnce();
-  const saved=await portalRestRequestR1(path,'GET',undefined,readTimeout);
-  if(remove){
-    if(saved!==null)throw new Error(`Firebase削除確認に失敗しました: ${path}`);
-    return true;
-  }
-  if(!portalSameR11(saved,value))throw new Error(`Firebase保存確認に失敗しました: ${path}`);
-  return saved;
+  return true;
 }
 async function portalDurableConfigFieldR11(key,value){
   const b=readRemoteBinding84();
@@ -10611,7 +10620,7 @@ async function portalDurableConfigFieldR11(key,value){
   const commitTs=Date.now();
   portalConfigPendingUpdatedAtR9=Math.max(portalConfigPendingUpdatedAtR9,commitTs);
   try{
-    await portalDurableWriteR11(`events/${b.eventId}/config/${key}`,value,{writeTimeout:6500,readTimeout:4500});
+    await portalDurableWriteR11(`events/${b.eventId}/config/${key}`,value,{writeTimeout:7500,readTimeout:0});
     // Commit marker is written after the field itself so SSE never treats a partial state as complete.
     let ses=await portalRestEnsureSessionR1(false);
     try{await portalConfigChildPutR6(`events/${b.eventId}/config/updatedAt`,commitTs,ses.idToken,6500)}
@@ -10855,7 +10864,7 @@ async function remoteUpsertPlayer107(p){
   p.ownerUid=rec.ownerUid;
 
   if(portalRestModeR1() && b.role==='owner'){
-    await portalDurableWriteR11(`events/${b.eventId}/athletesV125/${rec.id}`,rec,{writeTimeout:6500,readTimeout:4500});
+    await portalDurableWriteR11(`events/${b.eventId}/athletesV125/${rec.id}`,rec,{writeTimeout:7500,readTimeout:0});
     return true;
   }
 
@@ -16818,8 +16827,8 @@ async function ensureFirebaseForCollection125(){
 // PORTAL owner notice save/delete uses the same direct child REST pattern that
 // was proven on-device for config/delay. Normal manager/member paths are untouched.
 async function portalNoticeRequestR8(path,method,body=undefined,timeoutMs=5000){
-  if(method==='DELETE')return await portalDurableWriteR11(path,null,{remove:true,writeTimeout:Math.max(timeoutMs,6000),readTimeout:4500});
-  if(method==='PUT')return await portalDurableWriteR11(path,body,{writeTimeout:Math.max(timeoutMs,6000),readTimeout:4500});
+  if(method==='DELETE')return await portalDurableWriteR11(path,null,{remove:true,writeTimeout:Math.max(timeoutMs,7500),readTimeout:0});
+  if(method==='PUT')return await portalDurableWriteR11(path,body,{writeTimeout:Math.max(timeoutMs,7500),readTimeout:0});
   return await portalRestRequestR1(path,method,body,timeoutMs);
 }
 
@@ -17641,7 +17650,7 @@ async function portalRestChatDirectR4(eventId,id,remoteMsg,token,method='PUT',ti
 }
 
 async function portalRestSendChatConfirmR4(eventId,id,remoteMsg){
-  await portalDurableWriteR11(`events/${eventId}/chat/${id}`,remoteMsg,{writeTimeout:6500,readTimeout:4500});
+  await portalDurableWriteR11(`events/${eventId}/chat/${id}`,remoteMsg,{writeTimeout:7500,readTimeout:0});
   return true;
 }
 
