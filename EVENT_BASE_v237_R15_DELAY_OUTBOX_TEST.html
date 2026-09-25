@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EVENT BASE R15 DELAY OUTBOX TEST</title>
+<style>
+html,body{margin:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;background:#0d0d0d;color:#fff}
+#boot{padding:24px;max-width:720px;margin:auto}
+#boot h1{font-size:20px;margin:0 0 12px}
+#boot p{line-height:1.65;color:#ddd}
+#boot .bad{color:#ff8a8a;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<div id="boot">
+  <h1>EVENT BASE R15 起動中</h1>
+  <p>本番R12を固定コミットから読み込み、進行保存のOUTBOXテスト処理を適用しています。</p>
+  <div id="bootState">読み込み中…</div>
+</div>
+
+<script>
+(async()=>{
+  const SOURCE='https://raw.githubusercontent.com/nuritakug-cpu/tabirun-bgm/af39bb1a382d4927b2da089b93c559b9d0b6d5c7/EVENT_BASE_v237_REST_SSE_R1.html';
+  const MARK='REST_R15_DELAY_OUTBOX_RUNTIME_20260925';
+
+  const injection = String.raw`
+<script>
+/* REST_R15_DELAY_OUTBOX_RUNTIME_20260925
+   BASE: production R12 blob 1a8bb2de54e44dfa8bde10c0d875615552d4932d
+   TARGET: PORTAL owner / management progress(delay) save only.
+   POLICY:
+   - local intent + persistent outbox BEFORE network
+   - exact child PUT remains authoritative Firebase write
+   - updatedAt marker becomes best-effort/background metadata
+   - pending local intent survives tab close/reopen
+   - pending local intent wins over older remote delay until PUT succeeds
+   - no Rules/schema/LIVE/manual-ON/participant-manager changes
+*/
+(()=>{
+  if(window.__EVENTBASE_R15_DELAY_OUTBOX__) return;
+  window.__EVENTBASE_R15_DELAY_OUTBOX__=true;
+
+  const OUTBOX_KEY='eventbase_portal_delay_outbox_r15';
+  let flushPromise=null;
+  let retryTimer=null;
+  let markerSerial=Promise.resolve();
+
+  const deepClone=v=>{
+    if(v==null)return v;
+    try{return JSON.parse(JSON.stringify(v))}catch(_){return v}
+  };
+
+  function readOutbox(eventId=''){
+    try{
+      const raw=localStorage.getItem(OUTBOX_KEY);
+      if(!raw)return null;
+      const rec=JSON.parse(raw);
+      if(!rec||typeof rec!=='object'||!rec.id||!rec.eventId)return null;
+      if(eventId&&String(rec.eventId)!==String(eventId))return null;
+      return rec;
+    }catch(_){return null}
+  }
+
+  function stageOutbox(eventId,value){
+    const rec={
+      id:String(Date.now())+'_'+Math.random().toString(36).slice(2,8),
+      eventId:String(eventId||''),
+      value:value==null?null:deepClone(value),
+      createdAt:Date.now()
+    };
+    localStorage.setItem(OUTBOX_KEY,JSON.stringify(rec));
+    return rec;
+  }
+
+  function clearOutbox(id){
+    try{
+      const cur=readOutbox();
+      if(cur&&String(cur.id)===String(id))localStorage.removeItem(OUTBOX_KEY);
+    }catch(_){}
+  }
+
+  function restorePending(eventId){
+    const rec=readOutbox(eventId);
+    if(!rec)return false;
+    try{
+      data.delay=rec.value==null?null:deepClone(rec.value);
+      save(ACTIVE_DATA_KEY100,data);
+      try{syncEditors()}catch(_){}
+      try{renderSchedule()}catch(_){}
+      try{renderHome()}catch(_){}
+      return true;
+    }catch(e){
+      console.warn('R15 restore pending',e);
+      return false;
+    }
+  }
+
+  function backgroundMarker(eventId,commitTs){
+    const run=async()=>{
+      let ses=await portalRestEnsureSessionR1(false);
+      try{
+        await portalConfigChildPutR6(
+          'events/'+eventId+'/config/updatedAt',
+          commitTs,
+          ses.idToken,
+          6500
+        );
+      }catch(e){
+        if(e?.status!==401)throw e;
+        ses=await portalRestEnsureSessionR1(true);
+        await portalConfigChildPutR6(
+          'events/'+eventId+'/config/updatedAt',
+          commitTs,
+          ses.idToken,
+          6500
+        );
+      }
+      try{lastAppliedRemoteConfigTs158=Math.max(lastAppliedRemoteConfigTs158,commitTs)}catch(_){}
+    };
+    const task=markerSerial.then(run,run);
+    markerSerial=task.catch(()=>{});
+    task.catch(e=>console.warn('R15 updatedAt marker',e));
+  }
+
+  async function durableDelayPut(value){
+    const b=readRemoteBinding84();
+    if(!b?.eventId||b.role!=='owner')throw new Error('大会owner接続がありません');
+
+    const commitTs=Date.now();
+    try{portalConfigPendingUpdatedAtR9=Math.max(portalConfigPendingUpdatedAtR9,commitTs)}catch(_){}
+
+    await portalDurableWriteR11(
+      'events/'+b.eventId+'/config/delay',
+      value,
+      {writeTimeout:7500,readTimeout:0}
+    );
+
+    try{lastAppliedRemoteConfigTs158=Math.max(lastAppliedRemoteConfigTs158,commitTs)}catch(_){}
+    backgroundMarker(b.eventId,commitTs);
+
+    try{
+      if(portalConfigPendingUpdatedAtR9<=commitTs){
+        portalConfigPendingUpdatedAtR9=0;
+        portalConfigPendingStableR9='';
+      }
+    }catch(_){}
+    return commitTs;
+  }
+
+  async function flushOutbox(silent=false){
+    if(flushPromise)return flushPromise;
+
+    const task=(async()=>{
+      while(true){
+        const b=readRemoteBinding84();
+        if(!portalRestModeR1()||!b?.eventId||b.role!=='owner'){
+          throw new Error('大会owner接続がありません');
+        }
+
+        const rec=readOutbox(b.eventId);
+        if(!rec)return true;
+
+        await durableDelayPut(rec.value);
+
+        const current=readOutbox(b.eventId);
+        if(current&&String(current.id)===String(rec.id))clearOutbox(rec.id);
+
+        if(!readOutbox(b.eventId))return true;
+        if(!silent)console.info('R15 newer delay remains queued');
+      }
+    })();
+
+    flushPromise=task;
+    try{return await task}
+    finally{if(flushPromise===task)flushPromise=null}
+  }
+
+  function scheduleRetry(delay=7000){
+    if(retryTimer)clearTimeout(retryTimer);
+    if(!readOutbox())return;
+    retryTimer=setTimeout(async()=>{
+      retryTimer=null;
+      if(document.hidden){scheduleRetry(9000);return}
+      try{
+        await flushOutbox(true);
+        if(!readOutbox()){
+          try{markEditorSaved('Firebase再送完了')}catch(_){}
+          try{toast('未送信の進行情報をFirebaseへ反映しました')}catch(_){}
+        }
+      }catch(e){
+        console.warn('R15 retry',e);
+        if(!/403|permission|denied/i.test(String(e?.message||e||'')))scheduleRetry(9000);
+      }
+    },Math.max(1500,Number(delay)||7000));
+  }
+
+  // Older Firebase delay must not overwrite an unsent local intent.
+  try{
+    const originalApply=applyRemoteEventConfig107;
+    applyRemoteEventConfig107=function(cfg){
+      let pending=null;
+      try{
+        pending=portalRestModeR1()
+          ? readOutbox(readRemoteBinding84()?.eventId||portalRestEventIdR1())
+          : null;
+      }catch(_){}
+      originalApply(cfg);
+      if(pending){
+        try{
+          data.delay=pending.value==null?null:deepClone(pending.value);
+          save(ACTIVE_DATA_KEY100,data);
+          try{syncEditors()}catch(_){}
+          try{renderSchedule()}catch(_){}
+          try{renderHome()}catch(_){}
+        }catch(e){console.warn('R15 remote protect',e)}
+      }
+    };
+  }catch(e){console.warn('R15 apply wrapper',e)}
+
+  function installHandlers(){
+    const saveBtn=document.getElementById('saveDelayBtn');
+    const deleteBtn=document.getElementById('deleteDelayBtn');
+    if(!saveBtn||!deleteBtn)return false;
+
+    saveBtn.onclick=async()=>{
+      const mode=document.getElementById('progressModeInput')?.value||'none';
+      const min=Math.max(0,Number(document.getElementById('delayMinInput')?.value)||0);
+      const note=(document.getElementById('delayNoteInput')?.value||'').trim();
+      const nextDelay=mode==='none'||min===0?null:{mode,min,note};
+      const original=saveBtn.textContent||'保存する';
+
+      if(portalRestModeR1()&&readRemoteBinding84()?.role==='owner'){
+        const b=readRemoteBinding84();
+
+        try{
+          stageOutbox(b.eventId,nextDelay);
+
+          // Product state is durable locally before any network wait.
+          data.delay=nextDelay;
+          save(ACTIVE_DATA_KEY100,data);
+          try{syncEditors()}catch(_){}
+          try{renderSchedule()}catch(_){}
+          try{renderHome()}catch(_){}
+
+          saveBtn.disabled=true;
+          saveBtn.textContent='Firebase保存中…';
+          try{
+            setEditorSaveState(
+              'dirty',
+              '端末保存済み / Firebase送信中',
+              '通信が途切れても再入場時に再送します'
+            );
+          }catch(_){}
+
+          await flushOutbox(false);
+
+          try{
+            lastRemoteConfigJSON107=JSON.stringify({
+              ...sharedEventConfig107(),
+              updatedAt:0,
+              version:''
+            });
+          }catch(_){}
+
+          try{
+            markEditorSaved(
+              !data.delay?'定刻をFirebaseへ保存しました':
+              data.delay.mode==='delay'?'遅延 +'+data.delay.min+'分をFirebaseへ保存しました':
+              '早い進行 +'+data.delay.min+'分をFirebaseへ保存しました'
+            );
+          }catch(_){}
+
+          try{
+            toast(
+              !data.delay?'定刻をFirebaseへ保存しました':
+              data.delay.mode==='delay'?'遅延情報をFirebaseへ保存しました':
+              '早い進行をFirebaseへ保存しました'
+            );
+          }catch(_){}
+        }catch(e){
+          console.warn('R15 delay save',e);
+          try{
+            setEditorSaveState(
+              'dirty',
+              '端末保存済み / Firebase再送待ち',
+              '保存内容は保持しています。通信復旧時に再送します'
+            );
+          }catch(_){}
+
+          if(/403|permission|denied/i.test(String(e?.message||e||''))){
+            try{toast('端末には保存しました。Firebase保存権限を確認してください')}catch(_){}
+          }else{
+            try{toast('端末には保存しました。Firebaseへ自動再送します')}catch(_){}
+            scheduleRetry(5000);
+          }
+        }finally{
+          saveBtn.disabled=false;
+          saveBtn.textContent=original;
+        }
+        return;
+      }
+
+      // Non-PORTAL route remains the original product behavior.
+      data.delay=nextDelay;
+      persist();
+      try{syncEditors()}catch(_){}
+      renderSchedule();
+      markEditorSaved(
+        !data.delay?'定刻に設定しました':
+        data.delay.mode==='delay'?'遅延 +'+data.delay.min+'分を保存しました':
+        '早い進行 +'+data.delay.min+'分を保存しました'
+      );
+      toast(
+        !data.delay?'定刻に設定しました':
+        data.delay.mode==='delay'?'遅延情報を保存しました':
+        '早い進行を保存しました'
+      );
+    };
+
+    deleteBtn.onclick=async()=>{
+      const original=deleteBtn.textContent||'定刻に戻す';
+
+      if(portalRestModeR1()&&readRemoteBinding84()?.role==='owner'){
+        const b=readRemoteBinding84();
+
+        try{
+          stageOutbox(b.eventId,null);
+          data.delay=null;
+          save(ACTIVE_DATA_KEY100,data);
+          try{syncEditors()}catch(_){}
+          try{renderSchedule()}catch(_){}
+          try{renderHome()}catch(_){}
+          try{refreshEditorSaveState('delay')}catch(_){}
+
+          deleteBtn.disabled=true;
+          deleteBtn.textContent='Firebase保存中…';
+
+          await flushOutbox(false);
+
+          try{
+            lastRemoteConfigJSON107=JSON.stringify({
+              ...sharedEventConfig107(),
+              updatedAt:0,
+              version:''
+            });
+          }catch(_){}
+
+          try{toast('定刻をFirebaseへ保存しました')}catch(_){}
+        }catch(e){
+          console.warn('R15 delay clear',e);
+          try{
+            setEditorSaveState(
+              'dirty',
+              '端末保存済み / Firebase再送待ち',
+              '定刻設定は保持しています。通信復旧時に再送します'
+            );
+          }catch(_){}
+
+          if(/403|permission|denied/i.test(String(e?.message||e||''))){
+            try{toast('端末には定刻を保存しました。Firebase保存権限を確認してください')}catch(_){}
+          }else{
+            try{toast('端末には定刻を保存しました。Firebaseへ自動再送します')}catch(_){}
+            scheduleRetry(5000);
+          }
+        }finally{
+          deleteBtn.disabled=false;
+          deleteBtn.textContent=original;
+        }
+        return;
+      }
+
+      data.delay=null;
+      persist();
+      try{syncEditors()}catch(_){}
+      renderSchedule();
+      try{refreshEditorSaveState('delay')}catch(_){}
+      toast('定刻に戻しました');
+    };
+
+    return true;
+  }
+
+  // Original R12 has already built the DOM by the time this injected block runs.
+  installHandlers();
+
+  // Reinstall once after UI initialization in case an original initializer rewires it.
+  setTimeout(installHandlers,500);
+  setTimeout(installHandlers,1800);
+
+  // Re-entry recovery: wait until the fixed PORTAL owner/binding is authoritative,
+  // restore the pending local value before allowing stale remote delay to win,
+  // then retry the exact child PUT.
+  let bootChecks=0;
+  const bootTimer=setInterval(async()=>{
+    bootChecks++;
+    try{
+      const b=readRemoteBinding84();
+      const pending=b?.eventId?readOutbox(b.eventId):null;
+
+      if(pending){
+        restorePending(b.eventId);
+        if(portalRestModeR1()&&b.role==='owner'){
+          try{
+            await flushOutbox(true);
+            if(!readOutbox(b.eventId)){
+              try{markEditorSaved('Firebase再送完了')}catch(_){}
+              try{toast('未送信の進行情報をFirebaseへ反映しました')}catch(_){}
+            }
+          }catch(e){
+            console.warn('R15 bootstrap retry',e);
+            if(!/403|permission|denied/i.test(String(e?.message||e||'')))scheduleRetry(7000);
+          }
+        }
+      }
+
+      if((b?.eventId&&portalRestModeR1())||bootChecks>30){
+        clearInterval(bootTimer);
+      }
+    }catch(e){
+      if(bootChecks>30)clearInterval(bootTimer);
+    }
+  },700);
+
+  document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden&&readOutbox())scheduleRetry(1200);
+  });
+  window.addEventListener('pageshow',()=>{
+    if(readOutbox())scheduleRetry(1200);
+  });
+})();
+<\/script>`;
+
+  try{
+    const state=document.getElementById('bootState');
+    state.textContent='本番R12を取得中…';
+
+    const res=await fetch(SOURCE,{cache:'no-store',credentials:'omit'});
+    if(!res.ok)throw new Error('本番R12取得 HTTP '+res.status);
+
+    let src=await res.text();
+
+    if(!src.includes('REST_SSE_R12_WRITE_ACK_20260925')){
+      throw new Error('取得したHTMLにR12識別子がありません');
+    }
+    if(!src.includes('async function portalDurableConfigFieldR11(key,value){')){
+      throw new Error('R12保存関数を確認できません');
+    }
+    if(!src.includes("$('saveDelayBtn').onclick=async()=>{")){
+      throw new Error('R12進行保存ボタンを確認できません');
+    }
+
+    const pos=src.lastIndexOf('</body>');
+    if(pos<0)throw new Error('</body> が見つかりません');
+
+    src=
+      '<!-- '+MARK+' | SOURCE_BLOB: 1a8bb2de54e44dfa8bde10c0d875615552d4932d -->\n'+
+      src.slice(0,pos)+
+      '\n'+injection+'\n'+
+      src.slice(pos);
+
+    document.open();
+    document.write(src);
+    document.close();
+  }catch(e){
+    const boot=document.getElementById('boot');
+    if(boot){
+      boot.innerHTML=
+        '<h1>R15を起動できませんでした</h1>'+
+        '<div class="bad">'+
+        String(e?.message||e).replace(/[&<>"]/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]))+
+        '</div>'+
+        '<p>本番R12は変更されていません。</p>';
+    }
+    console.error('R15 loader',e);
+  }
+})();
+</script>
+</body>
+</html>
