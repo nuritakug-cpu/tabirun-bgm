@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>EVENT BASE REBUILD / 2台同期テスト</title>
+<style>
+  :root{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;color:#111;background:#f5f5f7}
+  *{box-sizing:border-box}
+  body{margin:0;padding:24px 16px 48px}
+  main{max-width:680px;margin:0 auto}
+  h1{font-size:22px;margin:0 0 8px}
+  .lead{font-size:15px;line-height:1.6;color:#444;margin:0 0 18px}
+  .card{background:#fff;border:1px solid #ddd;border-radius:16px;padding:16px;margin:12px 0}
+  .label{font-size:12px;color:#666;margin-bottom:5px}
+  .big{font-size:20px;font-weight:700;word-break:break-all}
+  .status{font-size:15px;font-weight:700}
+  .ok{color:#087f23}.bad{color:#b00020}.wait{color:#7a5b00}
+  input{width:100%;font-size:18px;padding:13px;border:1px solid #aaa;border-radius:10px;margin:8px 0 10px}
+  button{width:100%;font-size:17px;font-weight:700;padding:14px;border:0;border-radius:10px;background:#111;color:#fff}
+  button:disabled{opacity:.45}
+  .remote{font-size:28px;font-weight:800;min-height:42px;word-break:break-word}
+  .small{font-size:12px;color:#666;line-height:1.5}
+</style>
+</head>
+<body>
+<main>
+  <h1>EVENT BASE REBUILD</h1>
+  <p class="lead">新Firebaseだけを使う、1値だけの2台リアルタイム同期テストです。</p>
+
+  <section class="card">
+    <div class="label">接続状態</div>
+    <div id="status" class="status wait">Firebase接続中…</div>
+    <div class="label" style="margin-top:12px">このブラウザの匿名UID</div>
+    <div id="uid" class="small">—</div>
+  </section>
+
+  <section class="card">
+    <div class="label">送信する値</div>
+    <input id="valueInput" type="text" maxlength="80" placeholder="例：iPhone A から送信">
+    <button id="sendBtn" type="button" disabled>Firebaseへ送信</button>
+  </section>
+
+  <section class="card">
+    <div class="label">Firebaseからリアルタイム受信した値</div>
+    <div id="remoteValue" class="remote">未送信</div>
+  </section>
+
+  <section class="card small">
+    PASS条件：端末Aで送った文字が端末Bへ自動表示され、端末Bで別の文字を送ると端末Aへ自動表示されること。
+  </section>
+</main>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDthNBZk7aMzCM0kpZ5QIV39gXztVqM4L0",
+  authDomain: "event-base-rebuild.firebaseapp.com",
+  databaseURL: "https://event-base-rebuild-default-rtdb.asia-southeast1.firebasedatabase.app/",
+  projectId: "event-base-rebuild",
+  storageBucket: "event-base-rebuild.firebasestorage.app",
+  messagingSenderId: "1071631357620",
+  appId: "1:1071631357620:web:2cb535d173a9d434f569e1"
+};
+
+const statusEl = document.getElementById('status');
+const uidEl = document.getElementById('uid');
+const inputEl = document.getElementById('valueInput');
+const sendBtn = document.getElementById('sendBtn');
+const remoteEl = document.getElementById('remoteValue');
+
+function status(text, cls='wait'){
+  statusEl.textContent = text;
+  statusEl.className = 'status ' + cls;
+}
+
+try {
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getDatabase(app);
+
+  status('匿名認証中…');
+  const cred = await signInAnonymously(auth);
+  uidEl.textContent = cred.user.uid;
+
+  const valueRef = ref(db, 'rebuildTest/value');
+  onValue(valueRef, snap => {
+    const value = snap.val();
+    remoteEl.textContent = value == null || value === '' ? '未送信' : String(value);
+  }, err => {
+    status('受信エラー：' + (err?.message || err), 'bad');
+    sendBtn.disabled = true;
+  });
+
+  sendBtn.disabled = false;
+  status('接続OK・リアルタイム待受中', 'ok');
+
+  sendBtn.addEventListener('click', async () => {
+    const value = inputEl.value.trim();
+    if (!value) {
+      status('送信する文字を入力してください', 'bad');
+      return;
+    }
+    sendBtn.disabled = true;
+    status('送信中…');
+    try {
+      await set(valueRef, value);
+      status('送信OK・相手端末への反映待ち', 'ok');
+    } catch (err) {
+      status('送信エラー：' + (err?.message || err), 'bad');
+    } finally {
+      sendBtn.disabled = false;
+    }
+  });
+} catch (err) {
+  status('起動エラー：' + (err?.message || err), 'bad');
+}
+</script>
+</body>
+</html>
