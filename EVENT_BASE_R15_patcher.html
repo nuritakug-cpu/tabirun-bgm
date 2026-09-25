@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EVENT BASE R15 テスト版作成</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;background:#111;color:#fff;margin:0;padding:20px}
+.card{max-width:760px;margin:auto;background:#1b1b1b;border:1px solid #333;border-radius:14px;padding:18px}
+h1{font-size:20px;margin:0 0 12px}
+p{line-height:1.6;color:#ddd}
+button,label.file{display:block;width:100%;box-sizing:border-box;padding:15px;margin:10px 0;border:0;border-radius:10px;font-size:16px;font-weight:700;text-align:center}
+button{background:#ffd400;color:#111}
+label.file{background:#333;color:#fff}
+input[type=file]{display:none}
+#log{white-space:pre-wrap;background:#090909;border:1px solid #333;border-radius:10px;padding:12px;min-height:110px;font-size:13px}
+.small{font-size:12px;color:#aaa}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>EVENT BASE R15｜進行保存 OUTBOX テスト版</h1>
+<p>本番R12は上書きしません。現在の本番HTMLを読み込み、進行保存だけを「端末先行保存＋Firebase再送」に変更した別HTMLを作成します。</p>
+<button id="fetchBtn">本番R12からR15テスト版を作成</button>
+<label class="file">R12 HTMLを選んで作成<input id="fileInput" type="file" accept=".html,text/html"></label>
+<div id="log">待機中</div>
+<p class="small">出力: EVENT_BASE_v237_R15_DELAY_OUTBOX_TEST.html</p>
+</div>
+<script>
+const RAW='https://raw.githubusercontent.com/nuritakug-cpu/tabirun-bgm/af39bb1a382d4927b2da089b93c559b9d0b6d5c7/EVENT_BASE_v237_REST_SSE_R1.html';
+const log=s=>document.getElementById('log').textContent=s;
+
+function one(src,oldText,newText,label){
+  if(!src.includes(oldText)) throw new Error(label+' が見つかりません');
+  return src.replace(oldText,newText);
+}
+
+function patch(src){
+  if(!src.includes('REST_SSE_R12_WRITE_ACK_20260925')) throw new Error('R12本番ではありません');
+  if(src.includes('REST_R15_DELAY_OUTBOX_20260925')) throw new Error('すでにR15です');
+
+  src=`<!-- REST_R15_DELAY_OUTBOX_20260925
+ALTERNATE SAVE PATH:
+- R6-proven exact child PUT remains the Firebase write.
+- Delay intent is persisted locally + outbox before network.
+- Reopen restores pending intent and retries it.
+- Old Firebase delay cannot overwrite a pending outbox value.
+- updatedAt marker no longer decides whether an accepted delay save succeeded.
+- No Rules/schema/LIVE/manual-ON/participant-manager changes.
+-->
+`+src;
+
+  src=one(src,
+`  const fields=['title','date','startTime','endTime','state','note','delay','docs','resultsUrl','homeTheme','eventDays','venuePoint','basePoint','managerColorsV167','homeHeroCustom','homeHeroName','homeHeroUpdatedAt'];
+  fields.forEach(k=>{if(Object.prototype.hasOwnProperty.call(cfg,k))data[k]=cfg[k]});`,
+`  const pendingDelayR15=portalRestModeR1()
+    ? portalDelayOutboxReadR15(readRemoteBinding84()?.eventId||portalRestEventIdR1())
+    : null;
+  if(pendingDelayR15)data.delay=pendingDelayR15.value;
+
+  const fields=['title','date','startTime','endTime','state','note','delay','docs','resultsUrl','homeTheme','eventDays','venuePoint','basePoint','managerColorsV167','homeHeroCustom','homeHeroName','homeHeroUpdatedAt'];
+  fields.forEach(k=>{
+    if(k==='delay'&&pendingDelayR15)return;
+    if(Object.prototype.hasOwnProperty.call(cfg,k))data[k]=cfg[k];
+  });`,'remote config保護');
+
+  const start=src.indexOf('async function portalDurableConfigFieldR11(key,value){');
+  const end=src.indexOf('\n\nfunction scheduleRemoteConfigSync107(force=false){',start);
+  if(start<0||end<0) throw new Error('保存関数範囲を取得できません');
+
+  const core=`let portalConfigMarkerSerialR15=Promise.resolve();
+function portalConfigMarkerBackgroundR15(eventId,commitTs){
+  const run=async()=>{
+    let ses=await portalRestEnsureSessionR1(false);
+    try{await portalConfigChildPutR6(\`events/\${eventId}/config/updatedAt\`,commitTs,ses.idToken,6500)}
+    catch(e){
+      if(e?.status!==401)throw e;
+      ses=await portalRestEnsureSessionR1(true);
+      await portalConfigChildPutR6(\`events/\${eventId}/config/updatedAt\`,commitTs,ses.idToken,6500);
+    }
+    lastAppliedRemoteConfigTs158=Math.max(lastAppliedRemoteConfigTs158,commitTs);
+  };
+  const task=portalConfigMarkerSerialR15.then(run,run);
+  portalConfigMarkerSerialR15=task.catch(()=>{});
+  task.catch(e=>console.warn('PORTAL config marker R15',e));
+}
+async function portalDurableConfigFieldR11(key,value){
+  const b=readRemoteBinding84();
+  if(!b?.eventId||b.role!=='owner')throw new Error('大会owner接続がありません');
+  const commitTs=Date.now();
+  portalConfigPendingUpdatedAtR9=Math.max(portalConfigPendingUpdatedAtR9,commitTs);
+  await portalDurableWriteR11(\`events/\${b.eventId}/config/\${key}\`,value,{writeTimeout:7500,readTimeout:0});
+  lastAppliedRemoteConfigTs158=Math.max(lastAppliedRemoteConfigTs158,commitTs);
+  portalConfigMarkerBackgroundR15(b.eventId,commitTs);
+  if(portalConfigPendingUpdatedAtR9<=commitTs){portalConfigPendingUpdatedAtR9=0;portalConfigPendingStableR9=''}
+  return commitTs;
+}
+
+const PORTAL_DELAY_OUTBOX_KEY_R15='eventbase_portal_delay_outbox_r15';
+let portalDelayFlushPromiseR15=null;
+let portalDelayRetryTimerR15=null;
+function portalDelayOutboxReadR15(eventId=''){
+  try{
+    const raw=localStorage.getItem(PORTAL_DELAY_OUTBOX_KEY_R15);
+    if(!raw)return null;
+    const rec=JSON.parse(raw);
+    if(!rec||typeof rec!=='object'||!rec.id||!rec.eventId)return null;
+    if(eventId&&String(rec.eventId)!==String(eventId))return null;
+    return rec;
+  }catch(_){return null}
+}
+function portalDelayOutboxStageR15(eventId,value){
+  const rec={id:String(Date.now())+'_'+Math.random().toString(36).slice(2,8),eventId:String(eventId||''),value:value==null?null:clone(value),createdAt:Date.now()};
+  try{localStorage.setItem(PORTAL_DELAY_OUTBOX_KEY_R15,JSON.stringify(rec))}catch(e){console.warn('delay outbox stage R15',e)}
+  return rec;
+}
+function portalDelayOutboxClearR15(id){
+  try{const cur=portalDelayOutboxReadR15();if(cur&&String(cur.id)===String(id))localStorage.removeItem(PORTAL_DELAY_OUTBOX_KEY_R15)}catch(_){}
+}
+function portalDelayOutboxRestoreR15(eventId){
+  const rec=portalDelayOutboxReadR15(eventId);
+  if(!rec)return false;
+  data.delay=rec.value==null?null:clone(rec.value);
+  save(ACTIVE_DATA_KEY100,data);
+  try{syncEditors();renderSchedule()}catch(_){}
+  return true;
+}
+function portalDelayRetryScheduleR15(delay=7000){
+  if(portalDelayRetryTimerR15)clearTimeout(portalDelayRetryTimerR15);
+  if(!portalDelayOutboxReadR15())return;
+  portalDelayRetryTimerR15=setTimeout(async()=>{
+    portalDelayRetryTimerR15=null;
+    if(document.hidden){portalDelayRetryScheduleR15(9000);return}
+    try{
+      await portalDelayOutboxFlushR15(true);
+      if(!portalDelayOutboxReadR15()){try{markEditorSaved('Firebase再送完了');toast('進行情報をFirebaseへ再送しました')}catch(_){}}
+    }catch(e){
+      console.warn('delay outbox retry R15',e);
+      if(!/403|permission|denied/i.test(String(e?.message||e||'')))portalDelayRetryScheduleR15(9000);
+    }
+  },Math.max(1500,Number(delay)||7000));
+}
+async function portalDelayOutboxFlushR15(silent=false){
+  if(portalDelayFlushPromiseR15)return portalDelayFlushPromiseR15;
+  const task=(async()=>{
+    while(true){
+      const b=readRemoteBinding84();
+      if(!portalRestModeR1()||!b?.eventId||b.role!=='owner')throw new Error('大会owner接続がありません');
+      const rec=portalDelayOutboxReadR15(b.eventId);
+      if(!rec)return true;
+      await portalDurableConfigFieldR11('delay',rec.value);
+      const current=portalDelayOutboxReadR15(b.eventId);
+      if(current&&String(current.id)===String(rec.id))portalDelayOutboxClearR15(rec.id);
+      if(!portalDelayOutboxReadR15(b.eventId))return true;
+      if(!silent)console.info('delay outbox R15: newer value queued');
+    }
+  })();
+  portalDelayFlushPromiseR15=task;
+  try{return await task}finally{if(portalDelayFlushPromiseR15===task)portalDelayFlushPromiseR15=null}
+}`;
+  src=src.slice(0,start)+core+src.slice(end);
+
+  src=one(src,
+`  if(portalRestModeR1() && readRemoteBinding84()?.role==='owner'){
+    if(btn){btn.disabled=true;btn.textContent='Firebase保存中…'}
+    setEditorSaveState('dirty','Firebase保存中','サーバーへ保存し、読み返して確認しています');
+    try{
+      await portalDurableConfigFieldR11('delay',nextDelay);
+      data.delay=nextDelay;
+      save(ACTIVE_DATA_KEY100,data);
+      try{lastRemoteConfigJSON107=JSON.stringify({...sharedEventConfig107(),updatedAt:0,version:''})}catch(_){}
+      syncEditors();renderSchedule();
+      markEditorSaved(
+        !data.delay?'定刻をFirebaseへ保存しました':
+        data.delay.mode==='delay'?\`遅延 +\${data.delay.min}分をFirebaseへ保存しました\`:
+        \`早い進行 +\${data.delay.min}分をFirebaseへ保存しました\`
+      );
+      toast(!data.delay?'定刻をFirebaseへ保存しました':data.delay.mode==='delay'?'遅延情報をFirebaseへ保存しました':'早い進行をFirebaseへ保存しました');
+    }catch(e){
+      console.warn('delay durable save R11',e);
+      setEditorSaveState('dirty','保存できませんでした','Firebaseへの保存確認に失敗しました');
+      toast(/403|permission|denied/i.test(String(e?.message||e||''))?'進行情報の保存権限を確認できません':'進行情報をFirebaseへ保存できません');
+    }finally{
+      if(btn){btn.disabled=false;btn.textContent=original}
+    }
+    return;
+  }`,
+`  if(portalRestModeR1() && readRemoteBinding84()?.role==='owner'){
+    const b=readRemoteBinding84();
+    portalDelayOutboxStageR15(b.eventId,nextDelay);
+    data.delay=nextDelay;
+    save(ACTIVE_DATA_KEY100,data);
+    syncEditors();renderSchedule();
+    if(btn){btn.disabled=true;btn.textContent='Firebase保存中…'}
+    setEditorSaveState('dirty','端末保存済み / Firebase送信中','通信が途切れても再入場時に再送します');
+    try{
+      await portalDelayOutboxFlushR15(false);
+      try{lastRemoteConfigJSON107=JSON.stringify({...sharedEventConfig107(),updatedAt:0,version:''})}catch(_){}
+      markEditorSaved(!data.delay?'定刻をFirebaseへ保存しました':data.delay.mode==='delay'?\`遅延 +\${data.delay.min}分をFirebaseへ保存しました\`:\`早い進行 +\${data.delay.min}分をFirebaseへ保存しました\`);
+      toast(!data.delay?'定刻をFirebaseへ保存しました':data.delay.mode==='delay'?'遅延情報をFirebaseへ保存しました':'早い進行をFirebaseへ保存しました');
+    }catch(e){
+      console.warn('delay outbox save R15',e);
+      setEditorSaveState('dirty','端末保存済み / Firebase再送待ち','保存内容は保持しています。通信復旧時に再送します');
+      if(/403|permission|denied/i.test(String(e?.message||e||'')))toast('端末には保存しました。Firebase保存権限を確認してください');
+      else{toast('端末には保存しました。Firebaseへ自動再送します');portalDelayRetryScheduleR15(5000)}
+    }finally{if(btn){btn.disabled=false;btn.textContent=original}}
+    return;
+  }`,'進行保存');
+
+  src=one(src,
+`  if(portalRestModeR1() && readRemoteBinding84()?.role==='owner'){
+    if(btn){btn.disabled=true;btn.textContent='Firebase保存中…'}
+    try{
+      await portalDurableConfigFieldR11('delay',null);
+      data.delay=null;
+      save(ACTIVE_DATA_KEY100,data);
+      try{lastRemoteConfigJSON107=JSON.stringify({...sharedEventConfig107(),updatedAt:0,version:''})}catch(_){}
+      syncEditors();renderSchedule();refreshEditorSaveState('delay');
+      toast('定刻をFirebaseへ保存しました');
+    }catch(e){
+      console.warn('delay durable delete R11',e);
+      toast('定刻へ戻す情報をFirebaseへ保存できません');
+    }finally{
+      if(btn){btn.disabled=false;btn.textContent=original}
+    }
+    return;
+  }`,
+`  if(portalRestModeR1() && readRemoteBinding84()?.role==='owner'){
+    const b=readRemoteBinding84();
+    portalDelayOutboxStageR15(b.eventId,null);
+    data.delay=null;
+    save(ACTIVE_DATA_KEY100,data);
+    syncEditors();renderSchedule();refreshEditorSaveState('delay');
+    if(btn){btn.disabled=true;btn.textContent='Firebase保存中…'}
+    try{
+      await portalDelayOutboxFlushR15(false);
+      try{lastRemoteConfigJSON107=JSON.stringify({...sharedEventConfig107(),updatedAt:0,version:''})}catch(_){}
+      toast('定刻をFirebaseへ保存しました');
+    }catch(e){
+      console.warn('delay outbox delete R15',e);
+      setEditorSaveState('dirty','端末保存済み / Firebase再送待ち','定刻設定は保持しています。通信復旧時に再送します');
+      if(/403|permission|denied/i.test(String(e?.message||e||'')))toast('端末には定刻を保存しました。Firebase保存権限を確認してください');
+      else{toast('端末には定刻を保存しました。Firebaseへ自動再送します');portalDelayRetryScheduleR15(5000)}
+    }finally{if(btn){btn.disabled=false;btn.textContent=original}}
+    return;
+  }`,'定刻保存');
+
+  src=one(src,
+`    if(cfg&&typeof cfg==='object'){
+      try{applyRemoteEventConfig107(cfg)}catch(e){console.warn('PORTAL initial config apply R9',e)}
+      data.liveShareEnabled=false;
+      save(ACTIVE_DATA_KEY100,data);
+    }`,
+`    if(cfg&&typeof cfg==='object'){
+      try{applyRemoteEventConfig107(cfg)}catch(e){console.warn('PORTAL initial config apply R9',e)}
+      data.liveShareEnabled=false;
+      save(ACTIVE_DATA_KEY100,data);
+    }
+    portalDelayOutboxRestoreR15(eventId);`,'再入場復元');
+
+  src=one(src,
+`    portalRestReadyR1=true;
+    portalRestStateR1(
+      'REST認証・固定UID・大会owner確認 OK\\nリアルタイム通信を開始しています…',
+      'ok'
+    );
+    return true;`,
+`    portalRestReadyR1=true;
+    portalRestStateR1(
+      'REST認証・固定UID・大会owner確認 OK\\nリアルタイム通信を開始しています…',
+      'ok'
+    );
+    if(portalDelayOutboxReadR15(eventId)){
+      setTimeout(()=>{
+        portalDelayOutboxFlushR15(true)
+          .then(()=>{try{markEditorSaved('Firebase再送完了');toast('未送信の進行情報をFirebaseへ反映しました')}catch(_){}})
+          .catch(e=>{console.warn('delay outbox bootstrap retry R15',e);if(!/403|permission|denied/i.test(String(e?.message||e||'')))portalDelayRetryScheduleR15(7000)});
+      },500);
+    }
+    return true;`,'再入場再送');
+
+  const checks=[
+    ['R15',src.includes('REST_R15_DELAY_OUTBOX_20260925')],
+    ['outbox',src.includes('portalDelayOutboxStageR15')],
+    ['save',src.includes('端末保存済み / Firebase再送待ち')],
+    ['R12 preserved',src.includes('REST_SSE_R12_WRITE_ACK_20260925')]
+  ];
+  const bad=checks.filter(x=>!x[1]);
+  if(bad.length)throw new Error('最終チェック失敗: '+bad.map(x=>x[0]).join(', '));
+  return src;
+}
+
+function download(name,text){
+  const blob=new Blob([text],{type:'text/html;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=name;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);
+}
+
+async function buildFromText(text){
+  log('R12を確認中…');
+  const out=patch(text);
+  log('R15作成完了\\n\\n・端末先行保存\\n・未送信OUTBOX\\n・再入場時復元\\n・自動再送\\n・updatedAt待ちを保存成功条件から分離\\n\\nダウンロードを開始します。');
+  download('EVENT_BASE_v237_R15_DELAY_OUTBOX_TEST.html',out);
+}
+
+document.getElementById('fetchBtn').onclick=async()=>{
+  try{
+    log('GitHub本番R12を取得中…');
+    const r=await fetch(RAW,{cache:'no-store'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    await buildFromText(await r.text());
+  }catch(e){
+    log('自動取得に失敗しました。\\n下の「R12 HTMLを選んで作成」から本番HTMLを選択してください。\\n\\n'+e);
+  }
+};
+document.getElementById('fileInput').onchange=async e=>{
+  try{
+    const f=e.target.files?.[0];
+    if(!f)return;
+    log('選択ファイルを読み込み中…');
+    await buildFromText(await f.text());
+  }catch(err){log('作成失敗\\n'+err)}
+};
+</script>
+</body>
+</html>
