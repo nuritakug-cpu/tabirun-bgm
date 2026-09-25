@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EVENT BASE R22 FINAL</title>
+<style>
+html,body{margin:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;background:#f5f8f9;color:#18343d}
+#boot{max-width:680px;margin:0 auto;padding:48px 20px}
+.card{background:#fff;border:1px solid #d6e2e5;border-radius:16px;padding:22px;box-shadow:0 10px 28px rgba(14,53,64,.08)}
+h1{font-size:20px;margin:0 0 12px}p{line-height:1.65}pre{white-space:pre-wrap;word-break:break-word;background:#f4f6f7;padding:12px;border-radius:10px;font-size:12px}.bad{color:#b53c45;font-weight:700}
+</style>
+</head>
+<body>
+<div id="boot"><div class="card"><h1>EVENT BASE R22 FINAL</h1><p id="state">R19固定ベースを確認しています…</p><pre id="detail"></pre></div></div>
+<script>
+(async()=>{
+  const BASE="EVENT_BASE_v237_R19_PORTAL_EVENT_CONTEXT_LOCK.html";
+  const EXPECTED_GIT_BLOB_SHA="fd0e16502dcecef542e9b90549edc0a9bc076822";
+  const AUDIT=`<!-- R20_PORTAL_MANAGEMENT_WRITE_THROUGH_CACHE_20260925
+BASE: R19 blob fd0e16502dcecef542e9b90549edc0a9bc076822
+TARGET: management save persistence only.
+CONFIRMED CODE CAUSE:
+- successful PORTAL management REST writes do not update the loaded events/<eventId> SSE group.data;
+- all children of the event share one event-root cache, and any child SSE event notifies every watcher;
+- a newly re-subscribed watcher receives loaded group.data immediately;
+- delay clears its pending guard immediately after accepted business PUT while updatedAt is sent asynchronously;
+- legacy renderManageParking() can mutate missing A/B defaults and schedule force=true full config writeback.
+FIX:
+- write accepted management values through to the loaded event-root cache;
+- keep bound V125 parking rendering side-effect free;
+- CHAT/LIVE/Firebase Rules unchanged.
+-->`;
+
+  const state=document.getElementById('state');
+  const detail=document.getElementById('detail');
+
+  function fail(msg){
+    state.textContent='R20を開始できません';
+    state.className='bad';
+    detail.textContent=String(msg||'不明なエラー');
+    throw new Error(String(msg||'R20 boot failed'));
+  }
+  function occurrences(h,n){
+    if(!n)return 0;
+    let c=0,p=0;
+    while((p=h.indexOf(n,p))!==-1){c++;p+=n.length}
+    return c;
+  }
+  function replaceOnce(h,oldText,newText,label){
+    const n=occurrences(h,oldText);
+    if(n!==1)fail(`差分適用停止: ${label} / expected 1, got ${n}`);
+    return h.replace(oldText,newText);
+  }
+  async function gitBlobSha1(text){
+    const body=new TextEncoder().encode(text);
+    const head=new TextEncoder().encode('blob '+body.byteLength+'\0');
+    const all=new Uint8Array(head.byteLength+body.byteLength);
+    all.set(head,0);all.set(body,head.byteLength);
+    const hash=new Uint8Array(await crypto.subtle.digest('SHA-1',all));
+    return [...hash].map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+
+  try{
+    const baseUrl=new URL(BASE,location.href);
+    baseUrl.search='';baseUrl.hash='';
+    const res=await fetch(baseUrl.toString(),{cache:'no-store',credentials:'same-origin'});
+    if(!res.ok)fail('R19取得 HTTP '+res.status);
+    let h=await res.text();
+
+    const sha=await gitBlobSha1(h);
+    if(sha!==EXPECTED_GIT_BLOB_SHA)fail(`R19 SHA不一致\nexpected: ${EXPECTED_GIT_BLOB_SHA}\nactual:   ${sha}`);
+
+    h=replaceOnce(h,
+`function portalRestRelativeR1(root,path){
+  const p=portalRestPathR1(path);
+  if(p===root)return '/';
+  return '/'+p.slice(root.length).replace(/^\\/+/,'');
+}
+function portalRestNotifyR1(group){`,
+`function portalRestRelativeR1(root,path){
+  const p=portalRestPathR1(path);
+  if(p===root)return '/';
+  return '/'+p.slice(root.length).replace(/^\\/+/,'');
+}
+// R20: accepted management REST writes must update the already-loaded event-root cache.
+// Do not notify here. Existing local handlers own the immediate UI update; subsequent
+// SSE callbacks/re-subscriptions must see the accepted value instead of stale group.data.
+function portalMgmtCacheCommitR20(path,method,value){
+  try{
+    const p=portalRestPathR1(path);
+    const root=portalRestGroupRootR1(p);
+    const group=portalRestStreamsR1.get(root);
+    if(!group||!group.loaded)return false;
+    const rel=portalRestRelativeR1(root,p);
+    if(method==='PATCH')group.data=portalRestPatchAtR1(group.data,rel,value);
+    else if(method==='DELETE')group.data=portalRestSetAtR1(group.data,rel,null);
+    else group.data=portalRestSetAtR1(group.data,rel,value);
+    group.loaded=true;
+    return true;
+  }catch(e){
+    console.warn('PORTAL management cache commit R20',e);
+    return false;
+  }
+}
+function portalRestNotifyR1(group){`,
+'cache helper');
+
+    h=replaceOnce(h,
+`async function portalDurableWriteR11(path,value,{remove=false,writeTimeout=7500,readTimeout=0}={}){
+  // R18: all PORTAL developer management writes use the same REST request
+  // foundation already used by PORTAL bootstrap and CHAT.  Keep one transport,
+  // one token-refresh policy and one timeout behavior for delay/notices/players.
+  // No blocking readback is added.
+  if(remove){
+    await portalRestRequestR1(path,'DELETE',undefined,writeTimeout);
+  }else{
+    await portalRestRequestR1(path,'PUT',value,writeTimeout);
+  }
+  return true;
+}
+`,
+`async function portalDurableWriteR11(path,value,{remove=false,writeTimeout=7500,readTimeout=0}={}){
+  // R18: all PORTAL developer management writes use the same REST request
+  // foundation already used by PORTAL bootstrap and CHAT.  Keep one transport,
+  // one token-refresh policy and one timeout behavior for delay/notices/players.
+  // No blocking readback is added.
+  if(remove){
+    await portalRestRequestR1(path,'DELETE',undefined,writeTimeout);
+  }else{
+    await portalRestRequestR1(path,'PUT',value,writeTimeout);
+  }
+  return true;
+}
+
+// R22 FINAL: management-only transport uses the device-proven silent child REST path.
+// R6 device proof on Safari/4G: exact child PUT succeeded and exact GET matched.
+// CHAT intentionally continues to use its own frozen path; LIVE and Rules are unchanged.
+async function portalManagementWriteR20(path,method='PUT',value=undefined,timeoutMs=7500){
+  let ses=await portalRestEnsureSessionR1(false);
+
+  const putOnce=async()=>{
+    await portalConfigChildPutR6(path,value,ses.idToken,timeoutMs);
+    return true;
+  };
+
+  const deleteOnce=async()=>{
+    await portalDeleteChildR11(path,ses.idToken,timeoutMs);
+    portalMgmtCacheCommitR20(path,'DELETE',null);
+    return true;
+  };
+
+  try{
+    if(method==='PUT')return await putOnce();
+    if(method==='DELETE')return await deleteOnce();
+    throw new Error('PORTAL management write method unsupported');
+  }catch(e){
+    if(e?.status!==401)throw e;
+    ses=await portalRestEnsureSessionR1(true);
+    if(method==='PUT')return await putOnce();
+    if(method==='DELETE')return await deleteOnce();
+    throw e;
+  }
+}
+`,
+'management write wrapper');
+
+    h=replaceOnce(h,
+`    }
+    return true;
+  }catch(e){
+    if(e?.name==='AbortError')throw new Error(\`PORTAL CHILD PUT \${path} timeout\`);`,
+`    }
+    portalMgmtCacheCommitR20(path,'PUT',value);
+    return true;
+  }catch(e){
+    if(e?.name==='AbortError')throw new Error(\`PORTAL CHILD PUT \${path} timeout\`);`,
+'config child write-through');
+
+    h=replaceOnce(h,
+`      await portalDurableWriteR11(path,value,{writeTimeout:7500,readTimeout:0});`,
+`      await portalManagementWriteR20(path,'PUT',value,7500);`,
+'delay management write-through');
+
+    h=replaceOnce(h,
+`    await portalDurableWriteR11(\`events/\${b.eventId}/config/\${key}\`,value,{writeTimeout:7500,readTimeout:0});`,
+`    await portalManagementWriteR20(\`events/\${b.eventId}/config/\${key}\`,'PUT',value,7500);`,
+'config field management write-through');
+
+    h=replaceOnce(h,
+`  if(portalRestModeR1() && b.role==='owner'){
+    await portalDurableWriteR11(\`events/\${b.eventId}/athletesV125/\${rec.id}\`,rec,{writeTimeout:7500,readTimeout:0});
+    return true;
+  }`,
+`  if(portalRestModeR1() && b.role==='owner'){
+    await portalManagementWriteR20(\`events/\${b.eventId}/athletesV125/\${rec.id}\`,'PUT',rec,7500);
+    return true;
+  }`,
+'player upsert write-through');
+
+    h=replaceOnce(h,
+`  if(b.role==='manager'){
+    await managerSharedWriteR17(
+      \`events/\${b.eventId}/athletesV125/\${p.id}\`,`,
+`  if(portalRestModeR1() && b.role==='owner'){
+    await portalManagementWriteR20(
+      \`events/\${b.eventId}/athletesV125/\${p.id}\`,
+      'DELETE',
+      undefined,
+      8000
+    );
+    return true;
+  }
+
+  if(b.role==='manager'){
+    await managerSharedWriteR17(
+      \`events/\${b.eventId}/athletesV125/\${p.id}\`,`,
+'player delete write-through');
+
+    h=replaceOnce(h,
+`async function portalNoticeRequestR8(path,method,body=undefined,timeoutMs=5000){
+  if(method==='DELETE')return await portalDurableWriteR11(path,null,{remove:true,writeTimeout:Math.max(timeoutMs,7500),readTimeout:0});
+  if(method==='PUT')return await portalDurableWriteR11(path,body,{writeTimeout:Math.max(timeoutMs,7500),readTimeout:0});
+  return await portalRestRequestR1(path,method,body,timeoutMs);
+}`,
+`async function portalNoticeRequestR8(path,method,body=undefined,timeoutMs=5000){
+  if(method==='DELETE')return await portalManagementWriteR20(path,'DELETE',undefined,Math.max(timeoutMs,7500));
+  if(method==='PUT')return await portalManagementWriteR20(path,'PUT',body,Math.max(timeoutMs,7500));
+  return await portalRestRequestR1(path,method,body,timeoutMs);
+}`,
+'notice write-through');
+
+    h=replaceOnce(h,
+`function renderManageParking(){
+  const restored=ensureDefaultParking120(data);
+  // Keep the two built-in entries identifiable as A / B.`,
+`function renderManageParking(){
+  // R20: the visible bound editor is parkingV125. Hidden legacy rendering must
+  // never mutate remote collection state or schedule config writes.
+  if(readRemoteBinding84()?.eventId)return;
+  const restored=ensureDefaultParking120(data);
+  // Keep the two built-in entries identifiable as A / B.`,
+'parking render pure bound');
+
+    h=replaceOnce(h,
+`  if(restored){
+    persist();
+    if(currentUserIsAdmin97())setTimeout(()=>scheduleRemoteConfigSync107(true),80);
+  }`,
+`  if(restored){
+    save(ACTIVE_DATA_KEY100,data);
+  }`,
+'remove parking force sync');
+
+    h=replaceOnce(h,
+`    const b=readRemoteBinding84();
+    if(b?.eventId && await ensureFirebaseForCollection125()){
+      try{
+        const {ref,remove}=firebase82.mods.dbMod;
+        await remove(ref(firebase82.db,\`events/\${b.eventId}/parkingV125/\${p.id}\`));
+      }catch(e){toast('駐車場を削除できません');return}
+    }`,
+`    const b=readRemoteBinding84();
+    if(b?.eventId){
+      try{
+        if(portalRestModeR1() && b.role==='owner'){
+          await portalManagementWriteR20(\`events/\${b.eventId}/parkingV125/\${p.id}\`,'DELETE',undefined,8000);
+        }else{
+          const ready=await ensureFirebaseForCollection125();
+          if(!ready)throw new Error('Firebase接続を確認できません');
+          const {ref,remove}=firebase82.mods.dbMod;
+          await remove(ref(firebase82.db,\`events/\${b.eventId}/parkingV125/\${p.id}\`));
+        }
+      }catch(e){toast('駐車場を削除できません');return}
+    }`,
+'parking delete write-through');
+
+    h=replaceOnce(h,
+`  const b=readRemoteBinding84();
+  if(b?.eventId && await ensureFirebaseForCollection125()){
+    try{
+      const {ref,set}=firebase82.mods.dbMod;
+      await set(ref(firebase82.db,\`events/\${b.eventId}/parkingV125/\${id}\`),rec);
+    }catch(e){toast('駐車場を保存できません');return}
+  }`,
+`  const b=readRemoteBinding84();
+  if(b?.eventId){
+    try{
+      if(portalRestModeR1() && b.role==='owner'){
+        await portalManagementWriteR20(\`events/\${b.eventId}/parkingV125/\${id}\`,'PUT',rec,8000);
+      }else{
+        const ready=await ensureFirebaseForCollection125();
+        if(!ready)throw new Error('Firebase接続を確認できません');
+        const {ref,set}=firebase82.mods.dbMod;
+        await set(ref(firebase82.db,\`events/\${b.eventId}/parkingV125/\${id}\`),rec);
+      }
+    }catch(e){toast('駐車場を保存できません');return}
+  }`,
+'parking save write-through');
+
+    h=replaceOnce(h,
+`    await firebaseRestRequest157(
+      \`events/\${b.eventId}/config\`,
+      'PATCH',
+      cfg,
+      token,
+      9000
+    );
+  }`,
+`    await firebaseRestRequest157(
+      \`events/\${b.eventId}/config\`,
+      'PATCH',
+      cfg,
+      token,
+      9000
+    );
+    if(portalRestModeR1())portalMgmtCacheCommitR20(\`events/\${b.eventId}/config\`,'PATCH',cfg);
+  }`,
+'forced owner config patch cache');
+
+    h=replaceOnce(h,
+`  await update(ref(firebase82.db,\`events/\${b.eventId}/config\`),payload);
+  return true;`,
+`  await update(ref(firebase82.db,\`events/\${b.eventId}/config\`),payload);
+  if(portalRestModeR1() && b.role==='owner'){
+    portalMgmtCacheCommitR20(\`events/\${b.eventId}/config\`,'PATCH',payload);
+  }
+  return true;`,
+'home hero config cache');
+
+    h=replaceOnce(h,
+`"currentVersion": "v237-R19",`,
+`"currentVersion": "v237-R22",`,
+'manifest version');
+
+    h=replaceOnce(h,
+`"currentFile": "EVENT_BASE_v237_R19_PORTAL_EVENT_CONTEXT_LOCK.html",`,
+`"currentFile": "EVENT_BASE_v237_R22_FINAL_MANAGEMENT_TRANSPORT_FIX.html",`,
+'manifest file');
+
+    if(h.includes("if(currentUserIsAdmin97())setTimeout(()=>scheduleRemoteConfigSync107(true),80)")) fail('旧parking force syncが残っています');
+    if(!h.includes("await portalDurableWriteR11(`events/${eventId}/chat/${id}`,remoteMsg,{writeTimeout:7500,readTimeout:0});")) fail('CHAT凍結確認に失敗しました');
+    if(!h.includes("function portalMgmtCacheCommitR20")) fail('cache helperがありません');
+    if(!h.includes("async function portalManagementWriteR20")) fail('management wrapperがありません');
+    if(occurrences(h,"scheduleRemoteConfigSync107(true)")!==1) fail('force=true の残存数が想定外です');
+
+    state.textContent='R20差分確認OK。EVENT BASEを起動します…';
+    detail.textContent='base SHA: '+sha+'\nmanagement cache fix: OK\nmanagement transport: silent child PUT\nCHAT/LIVE/Rules: unchanged';
+
+    h=AUDIT+'\n'+h;
+    document.open();
+    document.write(h);
+    document.close();
+  }catch(e){
+    if(document.getElementById('boot')){
+      state.textContent='R20を開始できません';
+      state.className='bad';
+      detail.textContent=String(e?.stack||e);
+    }else{
+      document.open();
+      document.write('<pre style="white-space:pre-wrap;padding:20px;color:#b53c45">R20 boot error\n'+String(e?.stack||e)+'</pre>');
+      document.close();
+    }
+  }
+})();
+</script>
+</body>
+</html>
