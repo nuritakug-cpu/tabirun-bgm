@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0d0f">
+<title>EVENT BASE｜登録者確認</title>
+<style>
+:root{
+  --bg:#0b0d0f;--card:#171a1e;--line:#353b42;--text:#f6f7f8;
+  --muted:#aeb7be;--yellow:#ffd400;--ok:#bff3d5;--bad:#ffd0d0;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif}
+body{padding:calc(18px + env(safe-area-inset-top)) 14px calc(28px + env(safe-area-inset-bottom));line-height:1.55}
+.wrap{max-width:720px;margin:0 auto}
+.head{padding:4px 2px 14px}
+.kicker{font-size:11px;font-weight:900;letter-spacing:.14em;color:var(--yellow)}
+h1{font-size:25px;line-height:1.25;margin:4px 0 5px}
+.sub{font-size:13px;color:var(--muted);margin:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin:0 0 12px}
+.status{font-size:13px;color:var(--muted);white-space:pre-wrap}
+.status.ok{color:var(--ok)}
+.status.bad{color:var(--bad)}
+.row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.count{font-size:21px;font-weight:1000}
+button{appearance:none;border:0;border-radius:13px;padding:13px 18px;background:var(--yellow);color:#090909;font-weight:1000;font-size:16px;min-height:50px}
+button:disabled{opacity:.55}
+.list{display:grid;gap:10px;margin-top:13px}
+.person{border:1px solid #3a4148;background:#101215;border-radius:14px;padding:13px}
+.person b{display:block;font-size:17px}
+.person .meta{font-size:12px;color:var(--muted);margin-top:3px}
+.person .race{font-size:13px;color:#e6eaed;margin-top:7px}
+.empty{border:1px dashed #4b555d;border-radius:14px;padding:15px;color:var(--muted);font-size:13px}
+.note{font-size:12px;color:var(--muted)}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;word-break:break-all}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header class="head">
+    <div class="kicker">EVENT BASE / DEVELOPER ONLY</div>
+    <h1>登録者確認</h1>
+    <p class="sub">大会本番HTMLを変更せず、参加番号で大会へ登録した参加者を閲覧する専用ページです。</p>
+  </header>
+
+  <section class="card">
+    <div class="row">
+      <div>
+        <div class="note">対象大会</div>
+        <code id="eventId"></code>
+      </div>
+      <button id="reload" type="button">一覧更新</button>
+    </div>
+    <div id="status" class="status" style="margin-top:12px">開発者認証を確認しています…</div>
+  </section>
+
+  <section class="card">
+    <div id="count" class="count">登録者 --人</div>
+    <div id="list" class="list">
+      <div class="empty">登録者を確認中です。</div>
+    </div>
+  </section>
+
+  <section class="card note">
+    このページは閲覧専用です。登録・出走カード・プロフィール・LIVE・CHAT・結果・位置共有は変更しません。<br>
+    同じSafari／ChromeでEVENT BASEの開発者認証が成立している必要があります。
+  </section>
+</main>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js";
+
+const firebaseConfig={
+  apiKey:"AIzaSyDthNBZk7aMzCM0kpZ5QIV39gXztVqM4L0",
+  authDomain:"event-base-rebuild.firebaseapp.com",
+  databaseURL:"https://event-base-rebuild-default-rtdb.asia-southeast1.firebasedatabase.app/",
+  projectId:"event-base-rebuild",
+  storageBucket:"event-base-rebuild.firebasestorage.app",
+  messagingSenderId:"1071631357620",
+  appId:"1:1071631357620:web:2cb535d173a9d434f569e1"
+};
+
+const $=id=>document.getElementById(id);
+const params=new URLSearchParams(location.search);
+const eventId=String(params.get("event")||"eventbase_mu4ujce3_xxx1").trim();
+$("eventId").textContent=eventId;
+
+const app=initializeApp(firebaseConfig,"eventbase-rebuild-v22");
+const auth=getAuth(app);
+const db=getDatabase(app);
+
+function esc(s){
+  return String(s??"").replace(/[&<>"']/g,m=>({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[m]));
+}
+function fmt(ts){
+  const n=Number(ts)||0;
+  if(!n)return "登録時刻不明";
+  const d=new Date(n);
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+}
+function setStatus(msg,kind=""){
+  $("status").textContent=msg;
+  $("status").className="status"+(kind?` ${kind}`:"");
+}
+async function waitAuth(){
+  if(typeof auth.authStateReady==="function"){
+    try{await auth.authStateReady()}catch(_){}
+  }
+  if(auth.currentUser)return auth.currentUser;
+  return await new Promise(resolve=>{
+    let off=()=>{};
+    const timer=setTimeout(()=>{try{off()}catch(_){};resolve(auth.currentUser||null)},4500);
+    off=onAuthStateChanged(auth,u=>{
+      clearTimeout(timer);try{off()}catch(_){}
+      resolve(u||null);
+    },()=>{
+      clearTimeout(timer);try{off()}catch(_){}
+      resolve(null);
+    });
+  });
+}
+async function load(){
+  const btn=$("reload");
+  btn.disabled=true;
+  $("count").textContent="登録者 --人";
+  $("list").innerHTML='<div class="empty">登録者を確認中です。</div>';
+  setStatus("開発者認証を確認しています…");
+  try{
+    const user=await waitAuth();
+    if(!user){
+      throw new Error("このブラウザで開発者認証を確認できません。同じSafari／ChromeでEVENT BASEの開発者画面へ入り、その後このページを開き直してください。");
+    }
+
+    setStatus("登録者一覧をFirebaseから取得しています…");
+
+    // v78 Rules: owner only can read bindings/<eventId> as a collection.
+    const bindingSnap=await get(ref(db,`bindings/${eventId}`));
+    const bindings=bindingSnap.exists()?bindingSnap.val():{};
+    const rows=Object.entries(bindings||{})
+      .map(([uid,p])=>({
+        uid:String(uid),
+        displayName:String(p?.displayName||""),
+        role:String(p?.role||""),
+        boundAt:Number(p?.boundAt)||0
+      }))
+      .filter(p=>p.role==="participant"||p.role==="member")
+      .sort((a,b)=>String(a.displayName||"").localeCompare(String(b.displayName||""),"ja"));
+
+    let players={};
+    try{
+      const playerSnap=await get(ref(db,`events/${eventId}/players`));
+      players=playerSnap.exists()?playerSnap.val():{};
+    }catch(_){
+      // Registrant list remains useful even if optional race details cannot be read.
+    }
+
+    const playerRows=Object.values(players||{}).filter(Boolean);
+
+    $("count").textContent=`登録者 ${rows.length}人`;
+    if(!rows.length){
+      $("list").innerHTML='<div class="empty">現在、この大会に参加番号で登録した参加者は0人です。</div>';
+    }else{
+      $("list").innerHTML=rows.map(p=>{
+        const races=playerRows.filter(a=>String(a?.subjectUid||"")===p.uid);
+        const raceText=races.length
+          ? races.map(a=>[
+              a?.event||"種目未定",
+              a?.heat?`${a.heat}組`:"",
+              a?.raceNo?`No.${a.raceNo}`:(a?.lane?`腰${a.lane}`:"")
+            ].filter(Boolean).join("｜")).join(" / ")
+          : "出走カード未紐付け";
+        return `<div class="person">
+          <b>${esc(p.displayName||"名前未設定")}</b>
+          <div class="meta">${esc(fmt(p.boundAt))}</div>
+          <div class="race">${esc(raceText)}</div>
+        </div>`;
+      }).join("");
+    }
+
+    setStatus(`取得完了：${rows.length}人`, "ok");
+  }catch(e){
+    console.error(e);
+    $("count").textContent="登録者 --人";
+    $("list").innerHTML='<div class="empty">登録者一覧を取得できませんでした。</div>';
+    setStatus(String(e?.message||e), "bad");
+  }finally{
+    btn.disabled=false;
+  }
+}
+
+$("reload").addEventListener("click",load);
+load();
+</script>
+</body>
+</html>
