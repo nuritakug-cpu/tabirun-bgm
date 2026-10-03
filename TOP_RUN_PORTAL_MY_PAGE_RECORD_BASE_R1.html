@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>TOP RUN PORTAL - MY PAGE RECORD BASE R1</title>
+<style>
+:root{
+  --ink:#2b3130;--ink2:#39403e;--paper:#f4f2ec;--paper2:#ebe8df;
+  --card:#fbfaf6;--line:#d7d2c7;--muted:#7e7a70;--gold:#d7b117;
+  --goldDeep:#8a7110;--goldSoft:#f2dc74;--goldPaper:#f7efd0;--sage:#61706b;
+  --danger:#943d3d;--ok:#46645b;--shadow:0 10px 28px rgba(32,35,34,.08);
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:linear-gradient(180deg,var(--paper),#f8f7f3 55%,var(--paper2));color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",Meiryo,sans-serif}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+.app{max-width:760px;margin:auto;min-height:100vh;padding-bottom:100px}
+.topbar{position:sticky;top:0;z-index:20;background:rgba(43,49,48,.97);color:white;padding:calc(11px + env(safe-area-inset-top)) 16px 11px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+.topgrid{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px}
+.brand small{display:block;color:var(--goldSoft);font-weight:900;letter-spacing:.14em;font-size:10px;text-align:center}
+.brand b{display:block;text-align:center;font-size:21px;margin-top:2px}
+.roleSwitch{justify-self:end;display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.roleSwitch button{border:1px solid rgba(255,255,255,.18);background:transparent;color:#dfe2df;border-radius:999px;padding:7px 9px;font-size:10px;font-weight:900}
+.roleSwitch button.active{border-color:var(--gold);background:rgba(215,177,23,.16);color:var(--goldSoft)}
+.backMini{justify-self:start;color:#e9e8e2;font-size:11px;font-weight:900}
+.notice{margin:14px 14px 0;border:1px solid #d8cc88;background:#fff8d8;border-radius:16px;padding:10px 12px;font-size:11px;line-height:1.55;color:#62541a}
+main{padding:14px}
+.screen{display:none}.screen.active{display:block}
+.hero{position:relative;overflow:hidden;background:linear-gradient(135deg,#27302f,#323b39);color:white;border-radius:28px;padding:22px;box-shadow:var(--shadow)}
+.hero:after{content:"";position:absolute;width:170px;height:170px;border-radius:50%;right:-38px;top:-65px;background:radial-gradient(circle,rgba(215,177,23,.27),rgba(215,177,23,.04) 62%,transparent 64%)}
+.kicker{color:var(--goldSoft);font-weight:1000;font-size:10px;letter-spacing:.14em}
+.hero h1{margin:10px 0 4px;font-size:30px}
+.hero p{margin:0;color:#d8dcda;font-size:12px;line-height:1.65}
+.heroStats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:18px}
+.heroStat{border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.04);border-radius:16px;padding:10px}
+.heroStat span{display:block;font-size:9px;color:#d7dad8;font-weight:900}
+.heroStat b{display:block;font-size:21px;margin-top:4px}.heroStat b em{font-style:normal;color:var(--goldSoft);font-size:10px;margin-left:3px}
+.sectionTitle{display:flex;align-items:end;justify-content:space-between;gap:8px;margin:22px 2px 10px}
+.sectionTitle small{display:block;color:var(--goldDeep);font-size:10px;font-weight:1000;letter-spacing:.12em}
+.sectionTitle h2{margin:3px 0 0;font-size:21px}
+.sectionTitle .sub{color:var(--muted);font-size:10px;font-weight:900}
+.pbGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pb{position:relative;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px 10px 12px 18px;min-width:0}
+.pb:before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:5px;background:var(--gold)}
+.pb span{font-size:10px;color:var(--muted);font-weight:900}.pb b{display:block;font-size:20px;margin-top:6px;font-variant-numeric:tabular-nums}.pb em{font-size:10px;color:var(--goldDeep);font-weight:1000;font-style:normal}
+.otherGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:8px}
+.other{padding:10px;border-right:1px solid #e5e1d7;min-width:0}.other:last-child{border-right:0}
+.other small{font-size:9px;color:var(--muted);font-weight:900}.other b{display:block;margin-top:4px;font-size:14px;line-height:1.35}.other span{display:block;margin-top:3px;font-size:10px;color:var(--goldDeep);font-weight:900}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:15px}
+.chartWrap{display:grid;grid-template-columns:1.5fr .85fr;gap:10px}
+.chartCard{background:#f8f6ef;border-radius:18px;padding:12px}
+.chartHead{display:flex;justify-content:space-between;align-items:center;gap:8px}.chartHead b{font-size:15px}.chip{border-radius:999px;background:var(--goldPaper);color:var(--goldDeep);padding:6px 9px;font-size:9px;font-weight:1000}
+svg{width:100%;height:auto;display:block}
+.goal b{display:block;font-size:32px;margin-top:8px}.goal small{color:var(--muted);font-weight:900}
+.goalBox{margin-top:10px;background:var(--goldPaper);border:1px solid #e2cf75;border-radius:15px;padding:10px}.goalBox b{font-size:17px}
+.listFilters{display:flex;gap:7px;overflow:auto;padding-bottom:4px}.listFilters button{white-space:nowrap;min-width:84px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:9px 12px;font-size:11px;font-weight:900;color:var(--ink)}.listFilters button.active{background:var(--gold);border-color:var(--gold);color:#231d07}
+.recordList{display:grid;gap:8px;margin-top:12px}
+.recordRow{display:grid;grid-template-columns:80px minmax(0,1fr) 118px;gap:10px;align-items:center;background:var(--card);border:1px solid var(--line);border-left:5px solid var(--gold);border-radius:18px;padding:11px 12px}
+.recordDate{border-right:1px solid #e2ded4}.recordDate small{display:block;color:var(--muted);font-size:9px}.recordDate b{display:block;font-size:20px;line-height:1.1}
+.recordMain{min-width:0}.recordMain b{display:block;font-size:13px;line-height:1.35}.recordMain span{display:block;color:var(--muted);font-size:10px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.recordTime small{display:block;color:var(--muted);font-size:10px}.recordTime b{display:block;font-size:21px;font-variant-numeric:tabular-nums}.tag{display:inline-flex;margin-top:4px;border-radius:999px;padding:4px 7px;background:#eceae3;color:#6b685f;font-size:8px;font-weight:1000}.tag.gold{background:#f4df80;color:#5c4b07}.tag.green{background:#e5ece9;color:#3f5e54}
+.navCards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:14px}.navCard{border:1px solid var(--line);background:var(--card);border-radius:18px;padding:14px;text-align:left;color:var(--ink)}.navCard small{display:block;color:var(--goldDeep);font-weight:1000;font-size:9px}.navCard b{display:block;margin-top:5px;font-size:15px}.navCard span{display:block;color:var(--muted);font-size:10px;margin-top:5px;line-height:1.5}
+.disabledCard{opacity:.58}
+.manageHeader{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}.manageHeader h2{margin:0;font-size:21px}.roleBadge{display:inline-flex;border-radius:999px;background:var(--ink);color:white;padding:7px 10px;font-size:9px;font-weight:1000}.roleBadge.admin{background:#5c5945}.roleBadge.dev{background:#403b29;color:var(--goldSoft)}
+.manageTabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:12px}.manageTabs button{min-height:48px;border:1px solid var(--line);border-radius:12px;background:var(--card);font-size:10px;font-weight:1000;color:var(--ink)}.manageTabs button.active{background:var(--goldPaper);border-color:#caae36;color:#4c3e08}
+.managePane{display:none}.managePane.active{display:block}
+.formGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.field{display:grid;gap:5px}.field.full{grid-column:1/-1}.field label{font-size:10px;color:var(--muted);font-weight:1000}.field input,.field select,.field textarea{width:100%;min-width:0;border:1px solid #cbc7bc;border-radius:12px;background:#fff;padding:11px;font-size:16px;color:var(--ink)}.field textarea{min-height:80px;resize:vertical}
+.inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.primary,.secondary,.danger{border-radius:12px;min-height:44px;padding:0 13px;font-size:11px;font-weight:1000}
+.primary{border:1px solid #b89717;background:var(--gold);color:#241d06}.secondary{border:1px solid #c8c3b8;background:#fff;color:var(--ink)}.danger{border:1px solid #d7b6b6;background:#fff5f5;color:var(--danger)}
+.note{font-size:10px;color:var(--muted);line-height:1.6}.warning{border-left:4px solid var(--gold);background:#fff8dc;border-radius:12px;padding:10px 12px;font-size:10px;line-height:1.55;color:#65571a;margin-bottom:12px}
+.athleteList,.adminRecordList{display:grid;gap:8px}.athleteRow,.adminRecord{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;border:1px solid var(--line);background:var(--card);border-radius:16px;padding:12px}.athleteRow b,.adminRecord b{display:block;font-size:13px}.athleteRow span,.adminRecord span{display:block;color:var(--muted);font-size:10px;margin-top:3px}
+.actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.actions button{min-height:36px;border:1px solid #cfcabf;background:#fff;border-radius:10px;padding:0 9px;font-size:9px;font-weight:1000;color:var(--ink)}
+.actions .dangerBtn{color:var(--danger);border-color:#ddbaba;background:#fff6f6}
+.lockBanner{border:1px solid #d9c676;background:#fff8da;border-radius:14px;padding:11px;margin-bottom:10px;font-size:10px;line-height:1.6;color:#5f521a}
+.devOnly{display:none}.isDev .devOnly{display:block}
+.adminOnly{display:none}.isAdmin .adminOnly,.isDev .adminOnly{display:block}
+.participantOnly{display:none}.isParticipant .participantOnly{display:block}
+.bottom{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:min(760px,100%);z-index:15;display:grid;grid-template-columns:repeat(3,1fr);gap:5px;background:rgba(43,49,48,.98);padding:8px 10px calc(8px + env(safe-area-inset-bottom));box-shadow:0 -8px 24px rgba(0,0,0,.13)}
+.bottom button{border:0;border-radius:14px;background:transparent;color:#cfd2cf;min-height:54px;font-size:10px;font-weight:1000}.bottom button.active{background:rgba(215,177,23,.13);color:var(--goldSoft)}
+.modal{position:fixed;inset:0;z-index:100;background:rgba(25,28,27,.62);display:none;align-items:flex-end;justify-content:center}.modal.open{display:flex}.modalCard{width:min(760px,100%);max-height:88vh;overflow:auto;background:var(--paper);border-radius:24px 24px 0 0;padding:16px 16px calc(24px + env(safe-area-inset-bottom));box-shadow:0 -16px 40px rgba(0,0,0,.23)}
+.modalHead{display:flex;justify-content:space-between;align-items:center;gap:8px}.modalHead h3{margin:0}.close{border:0;background:#e6e3da;width:38px;height:38px;border-radius:50%;font-size:18px}
+.hidden{display:none!important}
+@media(max-width:560px){
+  .topgrid{grid-template-columns:auto 1fr}.roleSwitch{grid-column:1/-1;justify-self:stretch;justify-content:center}
+  .heroStats{gap:6px}.heroStat{padding:8px}.heroStat b{font-size:18px}
+  .pbGrid,.otherGrid{grid-template-columns:1fr}.other{border-right:0;border-bottom:1px solid #e5e1d7}.other:last-child{border-bottom:0}
+  .chartWrap{grid-template-columns:1fr}
+  .recordRow{grid-template-columns:68px minmax(0,1fr) 96px}
+  .recordTime b{font-size:18px}
+  .manageTabs{grid-template-columns:repeat(4,1fr)}
+  .formGrid{grid-template-columns:1fr}.field.full{grid-column:auto}
+}
+</style>
+</head>
+<body class="isParticipant">
+<div class="app">
+  <header class="topbar">
+    <div class="topgrid">
+      <div class="backMini" id="contextLabel">PORTAL MY PAGE</div>
+      <div class="brand"><small>TOP RUN</small><b id="pageTitle">MY PAGE</b></div>
+      <div class="roleSwitch" aria-label="デモ表示切替">
+        <button class="active" data-role="participant">参加者</button>
+        <button data-role="admin">管理者</button>
+        <button data-role="developer">開発者</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="notice">
+    接続前HTMLベース / UI・導線確認用。Firebase・Auth・profileId・binding・既存EVENT BASEデータは変更しません。
+  </div>
+
+  <main>
+    <section id="screenMypage" class="screen active">
+      <section class="hero">
+        <div class="kicker">PERSONAL RECORD</div>
+        <h1 id="heroName">突府　欄</h1>
+        <p>大会に出るたび、自分の記録と成長がここに残っていきます。</p>
+        <div class="heroStats">
+          <div class="heroStat"><span>登録記録</span><b id="statCount">0<em>件</em></b></div>
+          <div class="heroStat"><span>自己ベスト</span><b id="statPb">0<em>種目</em></b></div>
+          <div class="heroStat"><span>駅伝</span><b id="statRelay">0<em>大会</em></b></div>
+        </div>
+      </section>
+
+      <div class="sectionTitle"><div><small>PERSONAL BEST</small><h2>自己ベスト</h2></div><div class="sub">主要3種目</div></div>
+      <div class="pbGrid" id="pbGrid"></div>
+
+      <div class="sectionTitle"><div><small>OTHER RECORDS</small><h2>その他</h2></div><div class="sub">1000m / 駅伝 / その他</div></div>
+      <div class="otherGrid" id="otherGrid"></div>
+
+      <div class="sectionTitle"><div><small>PROGRESS</small><h2>3000m 記録推移</h2></div><div class="sub">速い ↑</div></div>
+      <div class="chartWrap">
+        <div class="panel chartCard">
+          <div class="chartHead"><b>3000m</b><span class="chip">目標 10:00</span></div>
+          <svg viewBox="0 0 500 250" role="img" aria-label="3000m記録推移グラフ">
+            <rect x="0" y="0" width="500" height="250" rx="16" fill="#f8f6ef"/>
+            <g stroke="#ddd9cf" stroke-width="1">
+              <line x1="55" y1="50" x2="470" y2="50"/><line x1="55" y1="100" x2="470" y2="100"/><line x1="55" y1="150" x2="470" y2="150"/><line x1="55" y1="200" x2="470" y2="200"/>
+            </g>
+            <line x1="55" y1="35" x2="470" y2="35" stroke="#c9aa2e" stroke-width="2"/>
+            <polyline points="80,190 170,162 270,120 370,90 455,78" fill="none" stroke="#2b3130" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+            <line x1="370" y1="90" x2="455" y2="78" stroke="#d7b117" stroke-width="8" stroke-linecap="round"/>
+            <g fill="#fff" stroke="#61706b" stroke-width="4"><circle cx="80" cy="190" r="9"/><circle cx="170" cy="162" r="9"/><circle cx="270" cy="120" r="9"/><circle cx="370" cy="90" r="9"/></g>
+            <circle cx="455" cy="78" r="11" fill="#d7b117" stroke="#61706b" stroke-width="4"/>
+            <g fill="#7e7a70" font-size="13" font-family="sans-serif"><text x="67" y="225">4月</text><text x="157" y="225">5月</text><text x="257" y="225">7月</text><text x="355" y="225">9月</text><text x="440" y="225">10月</text></g>
+          </svg>
+        </div>
+        <div class="panel goal">
+          <div class="kicker">TARGET</div><h3 style="margin:5px 0 0">次の目標</h3><small>3000m</small><b>10:00.00</b>
+          <div class="goalBox"><small>最新PBとの差</small><b>あと 18.44秒</b></div>
+          <p class="note">将来は距離ごとの目標・達成率を同じ画面で確認。</p>
+        </div>
+      </div>
+
+      <div class="sectionTitle"><div><small>RECORD LIST</small><h2>大会記録一覧</h2></div><button class="secondary" id="openRecordList">一覧を開く</button></div>
+      <div class="recordList" id="recentList"></div>
+
+      <div class="navCards">
+        <button class="navCard" id="openAllRecords"><small>ALL RECORDS</small><b>記録一覧</b><span>大会日・大会名・距離・タイムをまとめて確認。</span></button>
+        <button class="navCard disabledCard" type="button"><small>CLUB RECORDS / RESERVED</small><b>みんなの結果</b><span>指導者との協議後に公開。現段階は導線のみ確保。</span></button>
+      </div>
+    </section>
+
+    <section id="screenRecords" class="screen">
+      <div class="sectionTitle" style="margin-top:0"><div><small>PERSONAL RECORD</small><h2>記録一覧</h2></div><button class="secondary" data-go="mypage">← MY PAGE</button></div>
+      <div class="listFilters" id="recordFilters">
+        <button class="active" data-filter="all">すべて</button><button data-filter="800">800m</button><button data-filter="1500">1500m</button><button data-filter="3000">3000m</button><button data-filter="other">その他</button>
+      </div>
+      <div class="recordList" id="fullRecordList"></div>
+    </section>
+
+    <section id="screenManage" class="screen">
+      <div class="manageHeader"><h2>PORTAL管理</h2><span class="roleBadge admin" id="manageRoleBadge">ADMIN</span></div>
+      <div class="warning">
+        「記録」項目をPORTAL管理画面へ追加する想定。管理者は選手・大会記録を登録／確認し、確定した記録を本人MY PAGEへ反映。確定後の過去記録の訂正・削除は開発者保守編集へ移す。
+      </div>
+      <div class="manageTabs">
+        <button class="active" data-pane="athletes">選手</button>
+        <button data-pane="register">記録登録</button>
+        <button data-pane="records">記録一覧</button>
+        <button class="devOnly" data-pane="maintenance">保守編集</button>
+      </div>
+
+      <div class="managePane active" data-pane-body="athletes">
+        <div class="panel">
+          <div class="sectionTitle" style="margin-top:0"><div><small>ATHLETES</small><h2>選手一覧</h2></div><div class="sub">MY PAGE確認</div></div>
+          <div class="athleteList" id="athleteList"></div>
+        </div>
+      </div>
+
+      <div class="managePane" data-pane-body="register">
+        <div class="panel">
+          <div class="sectionTitle" style="margin-top:0"><div><small>RECORD ENTRY</small><h2>記録登録</h2></div><div class="sub">EVENT BASE以外も登録可</div></div>
+          <form id="recordForm">
+            <div class="formGrid">
+              <div class="field full"><label>選手</label><select id="fAthlete" required></select></div>
+              <div class="field"><label>記録の出所</label><select id="fSource" required><option value="eventbase">EVENT BASE</option><option value="external">外部大会</option><option value="historical">過去データ</option><option value="relay">駅伝</option></select></div>
+              <div class="field"><label>大会日</label><input id="fDate" type="date" required></div>
+              <div class="field full"><label>大会名</label><input id="fEventName" required placeholder="大会名"></div>
+              <div class="field full"><label>会場 / 補足</label><input id="fVenue" placeholder="会場名など"></div>
+              <div class="field"><label>種目</label><select id="fDiscipline" required><option value="800">800m</option><option value="1500">1500m</option><option value="3000">3000m</option><option value="1000">1000m</option><option value="relay">駅伝</option><option value="other">その他</option></select></div>
+              <div class="field"><label>タイム</label><input id="fTime" required placeholder="例 10:18.44"></div>
+              <div class="field relayField hidden"><label>駅伝 距離</label><input id="fRelayDistance" placeholder="例 3.2km"></div>
+              <div class="field relayField hidden"><label>駅伝 区間</label><input id="fRelayLeg" placeholder="例 2区"></div>
+              <div class="field otherField hidden"><label>その他 距離・種目名</label><input id="fOtherLabel" placeholder="例 5000m"></div>
+              <div class="field"><label>大会目標タイム</label><input id="fTarget" placeholder="任意"></div>
+              <div class="field"><label>状態</label><select id="fStatus"><option value="draft">下書き</option><option value="confirmed">確認済み・MY PAGE反映</option><option value="official">正式結果・MY PAGE反映</option></select></div>
+              <div class="field full"><label>管理メモ</label><textarea id="fNote" placeholder="確認元・補足など。本人表示には出さない想定。"></textarea></div>
+            </div>
+            <div class="inline" style="margin-top:12px">
+              <button class="primary" type="submit">記録を登録</button>
+              <button class="secondary" type="button" id="resetForm">入力をクリア</button>
+            </div>
+            <p class="note">接続工程では、EVENT BASE正式結果は大会側正本を参照し、同じ結果をPORTAL専用DBへ複製しない。外部大会・導入前の過去記録だけ、共通本人へ紐づく管理記録として持つ想定。</p>
+          </form>
+        </div>
+      </div>
+
+      <div class="managePane" data-pane-body="records">
+        <div class="panel">
+          <div class="sectionTitle" style="margin-top:0"><div><small>MANAGEMENT RECORDS</small><h2>登録済み記録</h2></div><div class="sub">反映状態を確認</div></div>
+          <div class="adminRecordList" id="adminRecordList"></div>
+        </div>
+      </div>
+
+      <div class="managePane devOnly" data-pane-body="maintenance">
+        <div class="lockBanner">
+          開発者専用。終了大会・確定済み過去記録の誤りを訂正するときだけ、対象記録ごとに保守編集を明示解除する想定。通常管理へ戻ると再ロック。
+        </div>
+        <div class="panel">
+          <div class="sectionTitle" style="margin-top:0"><div><small>DEVELOPER MAINTENANCE</small><h2>記録保守</h2></div><button class="danger" id="devUnlock">保守編集を解除</button></div>
+          <div id="devState" class="note">現在：ロック中</div>
+          <div class="adminRecordList" id="devRecordList" style="margin-top:10px"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<nav class="bottom">
+  <button id="navHome">HOME</button>
+  <button class="active" id="navMypage">MY PAGE</button>
+  <button id="navManage" class="adminOnly">管理</button>
+</nav>
+
+<div class="modal" id="recordModal" aria-hidden="true">
+  <div class="modalCard">
+    <div class="modalHead"><h3 id="modalTitle">記録詳細</h3><button class="close" type="button" id="modalClose">×</button></div>
+    <div id="modalBody" style="margin-top:12px"></div>
+  </div>
+</div>
+
+<script>
+/*
+  TOP RUN PORTAL / MY PAGE RECORD BASE R1
+  -------------------------------------------------------------
+  接続原則:
+  - 新profileIdを作らない。既存 Firebase Auth UID -> profiles/<uid> -> profileId を使用。
+  - EVENT BASE正式結果をPORTAL専用結果DBへ二重保存しない。
+  - EVENT BASE由来は sourceType=eventbase + sourceEventId/sourceRecordRef で正本参照する想定。
+  - 外部大会 / EVENT BASE導入前の過去記録は、接続工程で監査後に適切な共通記録領域へ保存。
+  - 管理者: 登録・確認・反映。確定済み過去記録の削除/訂正は不可。
+  - 開発者: 明示的な保守編集解除後のみ、終了大会/確定済み記録の訂正・削除。
+  - 「みんなの結果」は指導者協議前のため導線のみ。
+  -------------------------------------------------------------
+  このR1はUI/操作確認用。Firebase/Auth/Rulesは未接続。
+*/
+
+const athletes = [
+  {profileId:"profile_demo_001", name:"突府　欄"},
+  {profileId:"profile_demo_002", name:"選手 B"},
+  {profileId:"profile_demo_003", name:"選手 C"}
+];
+
+let records = [
+  {id:"r1",profileId:"profile_demo_001",sourceType:"eventbase",eventDate:"2026-10-04",eventName:"知多スポーツチャレンジ",venue:"知多運動公園陸上競技場",discipline:"3000",disciplineLabel:"3000m",time:"10:18.44",target:"10:20.00",status:"official",pb:true,note:"",locked:true},
+  {id:"r2",profileId:"profile_demo_001",sourceType:"external",eventDate:"2026-08-22",eventName:"夏季記録会",venue:"名古屋市瑞穂陸上競技場",discipline:"1500",disciplineLabel:"1500m",time:"4:42.18",target:"",status:"confirmed",pb:true,note:"過去資料確認",locked:true},
+  {id:"r3",profileId:"profile_demo_001",sourceType:"historical",eventDate:"2026-06-14",eventName:"中部陸上競技会",venue:"パロマ瑞穂スタジアム",discipline:"800",disciplineLabel:"800m",time:"2:06.34",target:"",status:"confirmed",pb:true,note:"導入前データ",locked:true},
+  {id:"r4",profileId:"profile_demo_001",sourceType:"historical",eventDate:"2026-05-03",eventName:"春季記録会",venue:"知多運動公園陸上競技場",discipline:"1000",disciplineLabel:"1000m",time:"2:47.63",target:"",status:"confirmed",pb:true,note:"",locked:true},
+  {id:"r5",profileId:"profile_demo_001",sourceType:"relay",eventDate:"2026-02-11",eventName:"知多半島駅伝",venue:"知多半島周回コース",discipline:"relay",disciplineLabel:"駅伝",relayDistance:"3.2km",relayLeg:"2区",time:"9:48",target:"",status:"official",pb:false,note:"区間記録",locked:true},
+  {id:"r6",profileId:"profile_demo_001",sourceType:"external",eventDate:"2025-11-09",eventName:"クラブタイムトライアル",venue:"知多運動公園陸上競技場",discipline:"other",disciplineLabel:"5000m",time:"17:55.21",target:"",status:"confirmed",pb:false,note:"",locked:true}
+];
+
+let currentRole="participant";
+let currentProfileId="profile_demo_001";
+let devUnlocked=false;
+let currentFilter="all";
+let editingId=null;
+
+const $=s=>document.querySelector(s);
+const $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));
+const athleteName=pid=>(athletes.find(a=>a.profileId===pid)||{}).name||"—";
+const reflected=r=>r.status==="confirmed"||r.status==="official";
+const dateDisplay=v=>{const [y,m,d]=v.split("-");return {y,md:`${m}.${d}`}};
+const sourceLabel=v=>({eventbase:"EVENT BASE",external:"外部大会",historical:"過去データ",relay:"駅伝"}[v]||v);
+const statusLabel=v=>({draft:"下書き",confirmed:"確認済み",official:"正式結果"}[v]||v);
+
+function disciplineText(r){
+  if(r.discipline==="relay") return `${r.relayDistance||"距離未設定"} ${r.relayLeg||""}`.trim();
+  return r.disciplineLabel || ({800:"800m",1500:"1500m",3000:"3000m",1000:"1000m"}[r.discipline]||"その他");
+}
+function filteredPersonalRecords(){
+  return records.filter(r=>r.profileId===currentProfileId && reflected(r)).sort((a,b)=>b.eventDate.localeCompare(a.eventDate));
+}
+function bestFor(d){
+  return filteredPersonalRecords().find(r=>r.discipline===d && r.pb);
+}
+function renderMypage(){
+  const rs=filteredPersonalRecords();
+  $("#heroName").textContent=athleteName(currentProfileId);
+  $("#statCount").innerHTML=`${rs.length}<em>件</em>`;
+  $("#statPb").innerHTML=`${new Set(rs.filter(r=>r.pb && ["800","1500","3000"].includes(r.discipline)).map(r=>r.discipline)).size}<em>種目</em>`;
+  $("#statRelay").innerHTML=`${rs.filter(r=>r.discipline==="relay").length}<em>大会</em>`;
+  $("#pbGrid").innerHTML=["800","1500","3000"].map(d=>{
+    const r=bestFor(d); return `<div class="pb"><span>${d}m</span><b>${esc(r?.time||"—")}</b><em>${r?"PB":"NO DATA"}</em></div>`;
+  }).join("");
+  const r1000=rs.find(r=>r.discipline==="1000");
+  const relay=rs.find(r=>r.discipline==="relay");
+  const other=rs.find(r=>r.discipline==="other");
+  $("#otherGrid").innerHTML=`
+    <div class="other"><small>1000m</small><b>${esc(r1000?.time||"—")}</b><span>${r1000?.pb?"PB":"記録"}</span></div>
+    <div class="other"><small>駅伝</small><b>${esc(relay?`${relay.eventName} ${relay.relayDistance||""} ${relay.relayLeg||""}`:"—")}</b><span>${esc(relay?.time||"")}${relay?" / 区間記録":""}</span></div>
+    <div class="other"><small>その他</small><b>${esc(other?`${other.disciplineLabel} ${other.time}`:"—")}</b><span>${other?"記録":"NO DATA"}</span></div>`;
+  $("#recentList").innerHTML=rs.slice(0,3).map(recordRow).join("") || empty("反映済み記録はありません");
+}
+function recordRow(r){
+  const dt=dateDisplay(r.eventDate);
+  return `<article class="recordRow" data-record="${esc(r.id)}">
+    <div class="recordDate"><small>${esc(dt.y)}</small><b>${esc(dt.md)}</b></div>
+    <div class="recordMain"><b>${esc(r.eventName)}</b><span>${esc(r.venue||sourceLabel(r.sourceType))}</span></div>
+    <div class="recordTime"><small>${esc(disciplineText(r))}</small><b>${esc(r.time)}</b>${r.pb?'<span class="tag gold">PB</span>':r.discipline==="relay"?'<span class="tag">区間記録</span>':""}</div>
+  </article>`;
+}
+function empty(t){return `<div class="note" style="padding:18px;text-align:center;border:1px dashed var(--line);border-radius:14px">${esc(t)}</div>`}
+function renderFullList(){
+  let rs=filteredPersonalRecords();
+  if(currentFilter==="other") rs=rs.filter(r=>!["800","1500","3000"].includes(r.discipline));
+  else if(currentFilter!=="all") rs=rs.filter(r=>r.discipline===currentFilter);
+  $("#fullRecordList").innerHTML=rs.map(recordRow).join("")||empty("該当する記録はありません");
+}
+function renderAthletes(){
+  $("#athleteList").innerHTML=athletes.map(a=>{
+    const n=records.filter(r=>r.profileId===a.profileId&&reflected(r)).length;
+    return `<div class="athleteRow"><div><b>${esc(a.name)}</b><span>${n}件の反映済み記録 / profileIdは接続時に既存本人を使用</span></div><div class="actions"><button data-view-athlete="${esc(a.profileId)}">MY PAGE</button><button data-entry-athlete="${esc(a.profileId)}">記録登録</button></div></div>`;
+  }).join("");
+}
+function renderAdminRecords(){
+  const rs=[...records].sort((a,b)=>b.eventDate.localeCompare(a.eventDate));
+  $("#adminRecordList").innerHTML=rs.map(r=>`<div class="adminRecord"><div><b>${esc(athleteName(r.profileId))}｜${esc(r.eventDate)}｜${esc(r.eventName)}</b><span>${esc(disciplineText(r))} / ${esc(r.time)}｜${sourceLabel(r.sourceType)}｜${statusLabel(r.status)}${r.locked?"｜確定ロック":""}</span></div><div class="actions">${(!r.locked||r.status==="draft")?`<button data-admin-edit="${r.id}">編集</button>`:""}<button data-view-athlete="${r.profileId}">反映画面</button></div></div>`).join("");
+}
+function renderDevRecords(){
+  $("#devRecordList").innerHTML=[...records].sort((a,b)=>b.eventDate.localeCompare(a.eventDate)).map(r=>`<div class="adminRecord"><div><b>${esc(athleteName(r.profileId))}｜${esc(r.eventDate)}｜${esc(r.eventName)}</b><span>${esc(disciplineText(r))} / ${esc(r.time)}｜${sourceLabel(r.sourceType)}｜${statusLabel(r.status)}</span></div><div class="actions"><button ${devUnlocked?"":"disabled"} data-dev-edit="${r.id}">訂正</button><button ${devUnlocked?"":"disabled"} class="dangerBtn" data-dev-delete="${r.id}">削除</button></div></div>`).join("");
+  $("#devState").textContent=`現在：${devUnlocked?"保守編集解除中（デモ）":"ロック中"}`;
+  $("#devUnlock").textContent=devUnlocked?"保守編集を再ロック":"保守編集を解除";
+}
+function renderAll(){renderMypage();renderFullList();renderAthletes();renderAdminRecords();renderDevRecords();}
+
+function showScreen(name){
+  $$(".screen").forEach(x=>x.classList.remove("active"));
+  const el=$("#screen"+name); if(el) el.classList.add("active");
+  $("#pageTitle").textContent=name==="Manage"?"管理画面":name==="Records"?"記録一覧":"MY PAGE";
+  $("#contextLabel").textContent=name==="Manage"?"PORTAL MANAGEMENT":name==="Records"?"MY PAGE / RECORDS":"PORTAL MY PAGE";
+  $$(".bottom button").forEach(b=>b.classList.remove("active"));
+  if(name==="Manage") $("#navManage")?.classList.add("active"); else $("#navMypage").classList.add("active");
+  window.scrollTo({top:0,behavior:"instant"});
+}
+function setRole(role){
+  currentRole=role;
+  document.body.className=role==="participant"?"isParticipant":role==="admin"?"isAdmin":"isDev";
+  $$(".roleSwitch button").forEach(b=>b.classList.toggle("active",b.dataset.role===role));
+  $("#navManage").classList.toggle("hidden",role==="participant");
+  $("#manageRoleBadge").textContent=role==="developer"?"DEVELOPER":"ADMIN";
+  $("#manageRoleBadge").className="roleBadge "+(role==="developer"?"dev":"admin");
+  if(role==="participant") showScreen("Mypage"); else showScreen("Manage");
+}
+function setPane(name){
+  $$(".manageTabs button").forEach(b=>b.classList.toggle("active",b.dataset.pane===name));
+  $$(".managePane").forEach(p=>p.classList.toggle("active",p.dataset.paneBody===name));
+}
+function updateDisciplineFields(){
+  const v=$("#fDiscipline").value;
+  $$(".relayField").forEach(x=>x.classList.toggle("hidden",v!=="relay"));
+  $$(".otherField").forEach(x=>x.classList.toggle("hidden",v!=="other"));
+}
+function fillForm(r){
+  editingId=r.id;
+  $("#fAthlete").value=r.profileId;$("#fSource").value=r.sourceType;$("#fDate").value=r.eventDate;$("#fEventName").value=r.eventName;$("#fVenue").value=r.venue||"";$("#fDiscipline").value=r.discipline;$("#fTime").value=r.time;$("#fRelayDistance").value=r.relayDistance||"";$("#fRelayLeg").value=r.relayLeg||"";$("#fOtherLabel").value=r.discipline==="other"?r.disciplineLabel:"";$("#fTarget").value=r.target||"";$("#fStatus").value=r.status;$("#fNote").value=r.note||"";updateDisciplineFields();setPane("register");
+}
+function resetForm(){
+  editingId=null;$("#recordForm").reset();$("#fDate").value="2026-10-04";updateDisciplineFields();
+}
+function openRecord(r){
+  $("#modalTitle").textContent=`${athleteName(r.profileId)}｜${r.eventName}`;
+  $("#modalBody").innerHTML=`<div class="panel"><b style="font-size:22px">${esc(disciplineText(r))}　${esc(r.time)}</b><p class="note">${esc(r.eventDate)} / ${esc(r.venue||"")}</p><p class="note">出所：${esc(sourceLabel(r.sourceType))}<br>状態：${esc(statusLabel(r.status))}<br>大会目標：${esc(r.target||"—")}</p></div>`;
+  $("#recordModal").classList.add("open");$("#recordModal").setAttribute("aria-hidden","false");
+}
+
+$("#fAthlete").innerHTML=athletes.map(a=>`<option value="${a.profileId}">${esc(a.name)}</option>`).join("");
+$("#fDate").value="2026-10-04";
+
+$$(".roleSwitch button").forEach(b=>b.addEventListener("click",()=>setRole(b.dataset.role)));
+$$(".manageTabs button").forEach(b=>b.addEventListener("click",()=>setPane(b.dataset.pane)));
+$("#navMypage").addEventListener("click",()=>showScreen("Mypage"));
+$("#navManage").addEventListener("click",()=>showScreen("Manage"));
+$("#navHome").addEventListener("click",()=>alert("このR1はMY PAGE記録機能の接続前ベースです。PORTAL HOME本体は変更していません。"));
+$("#openRecordList").addEventListener("click",()=>showScreen("Records"));
+$("#openAllRecords").addEventListener("click",()=>showScreen("Records"));
+$$("[data-go='mypage']").forEach(b=>b.addEventListener("click",()=>showScreen("Mypage")));
+$("#recordFilters").addEventListener("click",e=>{const b=e.target.closest("button[data-filter]");if(!b)return;currentFilter=b.dataset.filter;$$("#recordFilters button").forEach(x=>x.classList.toggle("active",x===b));renderFullList();});
+$("#fDiscipline").addEventListener("change",updateDisciplineFields);
+$("#resetForm").addEventListener("click",resetForm);
+
+$("#recordForm").addEventListener("submit",e=>{
+  e.preventDefault();
+  const d=$("#fDiscipline").value;
+  const status=$("#fStatus").value;
+  const rec={
+    id:editingId||("r"+Date.now()),
+    profileId:$("#fAthlete").value,sourceType:$("#fSource").value,eventDate:$("#fDate").value,eventName:$("#fEventName").value.trim(),
+    venue:$("#fVenue").value.trim(),discipline:d,
+    disciplineLabel:d==="other"?($("#fOtherLabel").value.trim()||"その他"):d==="relay"?"駅伝":d+"m",
+    time:$("#fTime").value.trim(),relayDistance:d==="relay"?$("#fRelayDistance").value.trim():"",relayLeg:d==="relay"?$("#fRelayLeg").value.trim():"",
+    target:$("#fTarget").value.trim(),status,pb:false,note:$("#fNote").value.trim(),
+    locked:status!=="draft"
+  };
+  if(editingId){records=records.map(r=>r.id===editingId?{...r,...rec}:r);}else{records.push(rec);}
+  resetForm();renderAll();setPane("records");
+  alert(status==="draft"?"下書きをこのHTML内に登録しました。":"このHTML内でMY PAGE反映対象として登録しました。Firebaseには保存していません。");
+});
+
+document.addEventListener("click",e=>{
+  let b=e.target.closest("[data-view-athlete]"); if(b){currentProfileId=b.dataset.viewAthlete;renderAll();showScreen("Mypage");return;}
+  b=e.target.closest("[data-entry-athlete]"); if(b){$("#fAthlete").value=b.dataset.entryAthlete;showScreen("Manage");setPane("register");return;}
+  b=e.target.closest("[data-admin-edit]"); if(b){const r=records.find(x=>x.id===b.dataset.adminEdit);if(r)fillForm(r);return;}
+  b=e.target.closest("[data-dev-edit]"); if(b&&devUnlocked){const r=records.find(x=>x.id===b.dataset.devEdit);if(r){fillForm({...r,locked:false});showScreen("Manage");}return;}
+  b=e.target.closest("[data-dev-delete]"); if(b&&devUnlocked){const r=records.find(x=>x.id===b.dataset.devDelete);if(r&&confirm(`${r.eventName} / ${r.time} をデモ一覧から削除しますか？`)){records=records.filter(x=>x.id!==r.id);renderAll();}return;}
+  const row=e.target.closest("[data-record]"); if(row){const r=records.find(x=>x.id===row.dataset.record);if(r)openRecord(r);}
+});
+$("#devUnlock").addEventListener("click",()=>{if(!devUnlocked){if(!confirm("開発者保守編集をデモ解除しますか？"))return;}devUnlocked=!devUnlocked;renderDevRecords();});
+$("#modalClose").addEventListener("click",()=>{$("#recordModal").classList.remove("open");});
+$("#recordModal").addEventListener("click",e=>{if(e.target===$("#recordModal"))$("#recordModal").classList.remove("open");});
+
+renderAll();
+updateDisciplineFields();
+</script>
+</body>
+</html>
