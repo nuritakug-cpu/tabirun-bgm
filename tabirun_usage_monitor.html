@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b3f4b">
+<title>旅ランQUEST｜利用記録</title>
+<style>
+:root{--navy:#0b3f4b;--navy2:#0e5968;--paper:#f5f4ef;--ink:#173840;--muted:#72858a;--line:#d9e3e4;--gold:#e5b343}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--paper);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",Meiryo,sans-serif}body{padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+header{background:linear-gradient(145deg,#082f39,#0e5868);color:#fff;padding:calc(20px + env(safe-area-inset-top)) 18px 17px;box-shadow:0 4px 18px rgba(0,0,0,.16)}
+.head{max-width:720px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:12px}.kicker{font-size:9px;font-weight:900;letter-spacing:.18em;opacity:.72}h1{font-size:22px;line-height:1.15;margin:4px 0 0}.badge{flex:none;background:var(--gold);color:#3d2c00;border-radius:999px;padding:6px 9px;font-size:9px;font-weight:1000}
+main{max-width:720px;margin:auto;padding:14px}.status,.summary,.card{background:#fff;border:1px solid var(--line);border-radius:17px;box-shadow:0 3px 12px rgba(0,0,0,.045)}.status{padding:14px;margin-bottom:10px;font-size:12px;line-height:1.55}.status.ok{background:#edf8f3;border-color:#c2e0d3;color:#24684f}.status.ng{background:#fff1ee;border-color:#efc8c1;color:#8b362e}
+.summary{padding:14px 16px;margin-bottom:10px;display:flex;align-items:end;justify-content:space-between;gap:14px}.summaryLabel{font-size:10px;color:var(--muted);font-weight:900}.summaryCount{font-size:32px;font-weight:1000;line-height:1;color:var(--navy2)}.summarySub{font-size:10px;color:var(--muted);text-align:right;line-height:1.45}.card{overflow:hidden}.tableHead,.row{display:grid;grid-template-columns:132px minmax(0,1fr);gap:12px;align-items:center}.tableHead{padding:10px 14px;background:#edf2f1;color:#5e7379;font-size:10px;font-weight:1000}.row{padding:13px 14px;border-top:1px solid #edf1f1}.date{font-size:11px;color:#5c7076;line-height:1.4;font-variant-numeric:tabular-nums}.name{font-size:14px;font-weight:1000;overflow-wrap:anywhere}.empty{padding:34px 16px;text-align:center;color:#7a8b90;font-size:12px;line-height:1.6}.actions{display:flex;gap:8px;margin-top:10px}button{width:100%;border:0;border-radius:13px;padding:12px;font:inherit;font-size:11px;font-weight:1000;background:#e8eeee;color:#294c54}.note{margin-top:10px;font-size:9px;line-height:1.55;color:#839195;text-align:center}
+@media(max-width:390px){main{padding:10px}.tableHead,.row{grid-template-columns:116px minmax(0,1fr);gap:9px}.row{padding:12px}.date{font-size:10px}}
+</style>
+</head>
+<body>
+<header><div class="head"><div><div class="kicker">CHITA TABIRUN QUEST</div><h1>利用記録</h1></div><div class="badge">READ ONLY</div></div></header>
+<main>
+<div id="status" class="status">利用記録を確認しています…</div>
+<section class="summary"><div><div class="summaryLabel">利用記録</div><div id="count" class="summaryCount">0</div></div><div class="summarySub">いつ・誰が利用したか<br>新しい順に表示</div></section>
+<section class="card"><div class="tableHead"><div>利用日時</div><div>名前</div></div><div id="rows"><div class="empty">読み込み中…</div></div></section>
+<div class="actions"><button id="refresh" type="button">最新の記録を読み込む</button></div>
+<div class="note">閲覧専用です。このページから参加者データを変更・削除しません。</div>
+</main>
+<script type="module">
+const FIREBASE_CONFIG={apiKey:'AIzaSyB0DLoOQa5MQ67jGj6GmqO7XgwrbvQnLl4',authDomain:'sports-live-hub-aichi.firebaseapp.com',databaseURL:'https://sports-live-hub-aichi-default-rtdb.asia-southeast1.firebasedatabase.app',projectId:'sports-live-hub-aichi',storageBucket:'sports-live-hub-aichi.firebasestorage.app',messagingSenderId:'931508195062',appId:'1:931508195062:web:90881ea409003f909c66d7',measurementId:'G-0TGNM4W9XF'};
+const APP_NAME='tabirun-usage-monitor-v1';
+const QUEST_EVENT_ID='2026-09-22-chita-tabirun';
+const EVENTDAY_ID='2026-09-22-chita-tabirun-eventday';
+let mods=null,db=null,auth=null,user=null;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+function setStatus(message,kind=''){const el=$('#status');el.className='status'+(kind?' '+kind:'');el.textContent=message}
+function toMs(v){if(typeof v==='number'&&Number.isFinite(v))return v;if(typeof v==='string'){const n=Number(v);if(Number.isFinite(n)&&n>0)return n;const d=Date.parse(v);if(Number.isFinite(d))return d}return 0}
+function recordTime(p){return toMs(p?.firstUsedAt)||toMs(p?.createdAt)||toMs(p?.usedAt)||toMs(p?.lastUsedAt)||toMs(p?.updatedAt)||0}
+function formatDate(ms){if(!ms)return '日時記録なし';try{const parts=new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(new Date(ms));const get=t=>parts.find(x=>x.type===t)?.value||'';return `${get('year')}/${get('month')}/${get('day')} ${get('hour')}:${get('minute')}`}catch{return new Date(ms).toLocaleString('ja-JP')}}
+function normalize(raw,source){return Object.entries(raw||{}).map(([uid,p])=>({uid,name:String(p?.name||'').trim(),time:recordTime(p),source})).filter(x=>x.name)}
+function mergeRecords(persistent,eventday){const byUid=new Map();for(const x of eventday)byUid.set(x.uid,x);for(const x of persistent){const old=byUid.get(x.uid);byUid.set(x.uid,{...old,...x,time:x.time||old?.time||0,name:x.name||old?.name||''})}return [...byUid.values()].sort((a,b)=>{if(a.time&&b.time)return b.time-a.time;if(a.time)return -1;if(b.time)return 1;return a.name.localeCompare(b.name,'ja')})}
+function render(records){$('#count').textContent=String(records.length);const wrap=$('#rows');if(!records.length){wrap.innerHTML='<div class="empty">現在、表示できる利用記録はありません。</div>';return}wrap.innerHTML=records.map(r=>`<div class="row"><div class="date">${esc(formatDate(r.time))}</div><div class="name">${esc(r.name)}</div></div>`).join('')}
+async function withTimeout(p,ms,label){let timer;return Promise.race([Promise.resolve(p),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(label)),ms)})]).finally(()=>clearTimeout(timer))}
+async function ensureFirebase(){if(mods&&db&&auth&&user)return;setStatus('Firebaseへ接続しています…');const [appMod,authMod,dbMod]=await withTimeout(Promise.all([import('https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js'),import('https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js'),import('https://www.gstatic.com/firebasejs/12.18.0/firebase-database.js')]),15000,'Firebaseの読み込みがタイムアウトしました。');mods={appMod,authMod,dbMod};let app=appMod.getApps().find(a=>a.name===APP_NAME);if(!app)app=appMod.initializeApp(FIREBASE_CONFIG,APP_NAME);try{auth=authMod.initializeAuth(app,{persistence:[authMod.indexedDBLocalPersistence,authMod.browserLocalPersistence,authMod.browserSessionPersistence,authMod.inMemoryPersistence]})}catch{auth=authMod.getAuth(app)}try{if(typeof auth.authStateReady==='function')await withTimeout(auth.authStateReady(),6000,'認証復元待機')}catch{}user=auth.currentUser;if(!user){const cred=await withTimeout(authMod.signInAnonymously(auth),10000,'匿名認証がタイムアウトしました。');user=cred.user}db=dbMod.getDatabase(app)}
+async function safeGet(path){try{const snap=await withTimeout(mods.dbMod.get(mods.dbMod.ref(db,path)),10000,`${path} の読み込みがタイムアウトしました。`);return{ok:true,value:snap.val()||{}}}catch(error){return{ok:false,error}}}
+async function load(){const btn=$('#refresh');btn.disabled=true;try{await ensureFirebase();setStatus('利用記録を読み込んでいます…');const persistent=await safeGet(`questEvents/${QUEST_EVENT_ID}/participants`);const eventday=await safeGet(`events/${EVENTDAY_ID}/participants`);const pRows=persistent.ok?normalize(persistent.value,'quest'):[];const eRows=eventday.ok?normalize(eventday.value,'eventday'):[];const rows=mergeRecords(pRows,eRows);render(rows);if(persistent.ok){setStatus(rows.length?`利用記録を読み込みました。${rows.length}人を表示しています。`:'常設記録へ接続できました。現在、表示できる利用記録はありません。','ok')}else if(eventday.ok){setStatus(rows.length?`当日記録から${rows.length}人を表示しています。常設記録の読み取り権限は未確認です。`:'当日記録へ接続できましたが、表示できる利用記録はありません。',rows.length?'ok':'')}else{const msg=persistent.error?.message||eventday.error?.message||'読み込み権限を確認できません。';setStatus(`利用記録を読み込めませんでした。${msg}`,'ng')}}catch(error){console.error(error);render([]);setStatus(`利用記録を読み込めませんでした。${error?.message||String(error)}`,'ng')}finally{btn.disabled=false}}
+$('#refresh').addEventListener('click',load);load();
+window.__TABIRUN_USAGE_MONITOR__=Object.freeze({version:'1.0.0',mode:'read-only',questEventId:QUEST_EVENT_ID,eventdayId:EVENTDAY_ID});
+</script>
+</body>
+</html>
