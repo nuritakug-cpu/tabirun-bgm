@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<title>EVENT BASE Firebase LIVE終了状態監査 v4.1</title>
+<style>
+:root{--bg:#0c1114;--card:#151c20;--ink:#f2f5f6;--muted:#9aabb3;--line:#2b3940;--ok:#66d49b;--warn:#ffd35a;--bad:#ff7f87;--accent:#ffd400}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;padding:18px 14px 42px;line-height:1.55}
+main{max-width:720px;margin:auto}.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin:12px 0}.hidden{display:none!important}
+h1{font-size:21px;margin:0 0 6px}h2{font-size:15px;margin:0 0 10px}.sub{color:var(--muted);font-size:12px;margin:0}.status{padding:10px 12px;border:1px solid var(--line);border-radius:12px;margin-top:8px;font-size:12px}.ok{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--bad)}
+button,.pick{display:block;width:100%;min-height:50px;border-radius:13px;border:0;font-weight:900;font-size:14px;margin-top:10px;padding:12px;background:var(--accent);color:#111;text-align:center}.secondary{background:#273137;color:#fff;border:1px solid #3c4a51}button:disabled,.disabled{opacity:.4;pointer-events:none}
+input[type=file]{display:none}pre{white-space:pre-wrap;word-break:break-word;background:#090d0f;border:1px solid var(--line);padding:12px;border-radius:12px;font-size:10px;max-height:55vh;overflow:auto}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.metric{border:1px solid var(--line);border-radius:12px;padding:10px}.metric b{display:block;font-size:18px}.metric span{font-size:10px;color:var(--muted)}.note{font-size:11px;color:var(--muted);margin-top:8px}.dangerBox{border-color:#714349;background:#251517}.warnBox{border-color:#6c5d2f;background:#211d12}.okBox{border-color:#315f48;background:#102119}
+</style>
+</head>
+<body>
+<main>
+<section class="card"><h1>EVENT BASE Firebase<br>LIVE終了状態監査 v4.1</h1><p class="sub">第一回終了後に残っているLIVE 5件と safety 状態だけを、端末内で確認します。Firebase接続・外部通信・永続保存は行いません。</p></section>
+<section class="card"><h2>1. 監査ツール自己確認</h2><div id="self" class="status">SELF TEST 実行中…</div><div id="selfDetail"></div></section>
+<section class="card"><h2>2. 同じFirebase JSONを選択</h2><label id="pick" class="pick disabled" for="file">Firebase JSONを選択</label><input id="file" type="file" accept=".json,application/json"><div id="fileState" class="status">SELF TEST PASS後に選択できます。</div><button id="run" disabled>LIVE終了状態を匿名監査</button><button id="clear" class="secondary" disabled>読み込んだJSONを破棄</button></section>
+<section id="summaryCard" class="card hidden"><h2>3. 終了状態</h2><div id="metrics" class="grid"></div><div id="judgement" class="status"></div></section>
+<section id="reportCard" class="card hidden"><h2>4. ChatGPTへ渡してよい匿名結果</h2><p class="sub">氏名・UID・profileId・eventId原文・緯度経度・CHAT本文・自由記述・生タイムスタンプは出力しません。</p><button id="copy">匿名結果をコピー</button><pre id="report"></pre></section>
+</main>
+<script>
+(()=>{'use strict';
+// 防御的に主要外部通信APIを停止。ファイル選択と端末内処理だけを使う。
+const blocked=()=>{throw new Error('この監査HTMLでは外部通信を無効化しています')};
+try{window.fetch=blocked}catch(_){}try{window.XMLHttpRequest=function(){blocked()}}catch(_){}try{window.WebSocket=function(){blocked()}}catch(_){}try{window.EventSource=function(){blocked()}}catch(_){}try{navigator.sendBeacon=()=>false}catch(_){}
+const $=id=>document.getElementById(id);const isObj=v=>v&&typeof v==='object'&&!Array.isArray(v);const obj=v=>isObj(v)?v:{};const entries=v=>Object.entries(obj(v));
+let raw=null,report=null,selfPassed=false,sensitive=new Set();
+function aliasEvents(root){const m=new Map();let n=0;return id=>{id=String(id||'');if(!m.has(id))m.set(id,'E'+String(++n).padStart(3,'0'));return m.get(id)}}
+function finite(v){const n=Number(v);return Number.isFinite(n)?n:null}
+function boolOrNull(v){return v===true?true:v===false?false:null}
+function collectSensitive(root){
+  // Privacy leak checker: collect actual sensitive VALUES and ID-like Firebase KEYS only.
+  // Do not treat harmless schema keys such as "events", "safety" or "live" as personal data.
+  const out=new Set();
+  const valueKeyRx=/(name|display|email|mail|phone|tel|text|body|message|comment|note|address|lat|lng|longitude|latitude|accuracy|uid|profile|eventid|playerid|hash|token|proof|code|pin|url|session|updatedat|createdat|completedat|timestamp|savedat|boundat)/i;
+  const add=v=>{const s=String(v??'').trim();if(s.length>=4)out.add(s)};
+  const idKeyParents=new Set(['profiles','players','live','timingRecords']);
+  const rootEventKeyParents=new Set(['events','bindings','access','private','eventFiles']);
+  const walk=(v,path=[],d=0)=>{
+    if(d>30)return;
+    if(Array.isArray(v)){v.forEach((x,i)=>walk(x,path.concat(String(i)),d+1));return}
+    if(isObj(v)){
+      for(const [kk,x] of Object.entries(v)){
+        const parent=path[path.length-1]||'';
+        const grand=path[path.length-2]||'';
+        // Firebase object keys can themselves be identifiers. Collect only known identifier positions.
+        if(idKeyParents.has(parent))add(kk);
+        if(rootEventKeyParents.has(parent) && path.length===1)add(kk);
+        if(grand==='bindings' && path.length===2)add(kk);
+        walk(x,path.concat(kk),d+1);
+      }
+      return;
+    }
+    const k=path[path.length-1]||'';
+    if((typeof v==='string'||typeof v==='number')&&valueKeyRx.test(k))add(v);
+  };
+  walk(root);return out;
+}
+function audit(root){
+  const evAlias=aliasEvents(root),events=[];
+  for(const [eid,e0] of entries(root.events)){
+    const e=obj(e0),s=obj(e.safety),live=entries(e.live).filter(([,v])=>v!==null&&v!==undefined);
+    const completed=finite(s.eventCompletedAt);const state=typeof s.state==='string'?s.state:'missing';
+    let coord=0,actT=0,actF=0,actM=0,before=0,after=0,updMissing=0,withBinding=0,withoutBinding=0;
+    const days=new Set(),sessions=new Set(),binds=obj(obj(root.bindings)[eid]);
+    for(const [key,l0] of live){
+      const l=obj(l0);if(Number.isFinite(Number(l.lat))&&Number.isFinite(Number(l.lng)))coord++;
+      if(l.active===true)actT++;else if(l.active===false)actF++;else actM++;
+      const u=finite(l.updatedAt);if(u===null)updMissing++;else if(completed!==null){if(u<completed)before++;else after++}
+      const d=String(l.dayDate||'').trim();if(d)days.add(d);const sid=String(l.sessionId||'').trim();if(sid)sessions.add(sid);
+      const uid=String(l.uid||l.userUid||l.subjectUid||key||'').trim();if(uid&&Object.prototype.hasOwnProperty.call(binds,uid))withBinding++;else withoutBinding++;
+    }
+    const completedPresent=completed!==null;
+    const stateOpen=state==='open',stateClosed=state==='closed';
+    let classification='needs-review';
+    if(completedPresent&&stateClosed&&live.length>0&&after===0)classification='closed-but-live-residual';
+    else if(completedPresent&&stateClosed&&after>0)classification='closed-but-live-updated-at-or-after-completion';
+    else if(completedPresent&&stateOpen)classification='completion-present-but-state-open';
+    else if(!completedPresent&&stateClosed)classification='closed-without-completion-timestamp';
+    else if(!completedPresent&&stateOpen)classification='still-open-no-completion';
+    else if(live.length===0&&completedPresent&&stateClosed)classification='closed-and-live-cleared';
+    events.push({
+      event:evAlias(eid),safetyPresent:isObj(e.safety),safetyState:state,emergencyStop:boolOrNull(s.emergencyStop),eventCompletedAtPresent:completedPresent,
+      liveEntries:live.length,liveEntriesWithCoordinates:coord,liveActiveTrue:actT,liveActiveFalse:actF,liveActiveMissing:actM,
+      liveUpdatedBeforeCompletion:completedPresent?before:null,liveUpdatedAtOrAfterCompletion:completedPresent?after:null,liveUpdatedAtMissing:updMissing,
+      liveDistinctDayCount:days.size,liveDistinctSessionCount:sessions.size,liveEntriesWithCurrentBinding:withBinding,liveEntriesWithoutCurrentBinding:withoutBinding,
+      participantOrManagerSelfLiveWriteAllowedByCurrentState:stateOpen,classification
+    });
+  }
+  return {auditVersion:'EVENT_BASE_FIREBASE_LOCAL_AUDIT_v4_1_LIVE_SAFETY_ENDSTATE',privacy:{rawIdentifiersIncluded:false,rawNamesIncluded:false,chatBodiesIncluded:false,coordinatesIncluded:false,freeTextIncluded:false,rawTimestampsIncluded:false,firebaseConnectionUsed:false,externalNetworkUsed:false,persistentBrowserStorageUsed:false},auditScope:{realtimeDatabaseJson:true,liveAndSafetyOnly:true,firebaseAuthUserList:false,deployedRulesText:false,devicePermissionState:false,networkLogs:false},eventCount:events.length,events,limitations:['この監査はRealtime Database JSON内の events/<eventId>/safety と live の関係だけを確認します。','Firebase Authenticationの実ユーザー状態、端末の位置権限、実通信ログは確認しません。','LIVEが残っている理由そのものは、状態と時系列の組み合わせから分類しますが、操作履歴がない場合は原因断定しません。']};
+}
+function leakCheck(rep,sens){const out=JSON.stringify(rep);const hits=[];for(const s of sens){if(s.length>=6&&out.includes(s))hits.push(s)}return {pass:hits.length===0,count:hits.length}}
+function selfTest(){
+  const detail=[];const push=(n,p,d='')=>detail.push({n,p:!!p,d});
+  try{
+    const csp=document.querySelector('meta[http-equiv="Content-Security-Policy"]')?.content||'';push('CSPで外部接続禁止',/connect-src\s+'none'/.test(csp));
+    let fb=false,xh=false,ws=false,es=false;try{fetch('https://example.invalid')}catch(e){fb=true}try{new XMLHttpRequest()}catch(e){xh=true}try{new WebSocket('wss://example.invalid')}catch(e){ws=true}try{new EventSource('https://example.invalid')}catch(e){es=true}push('主要通信API遮断',fb&&xh&&ws&&es&&navigator.sendBeacon('https://example.invalid','x')===false);
+    const sample={profiles:{RAW_UID_A:{profileId:'RAW_PROFILE_A',displayName:'秘密氏名'}},bindings:{RAW_EVENT:{RAW_UID_A:{role:'participant',displayName:'秘密氏名'}}},events:{RAW_EVENT:{safety:{state:'closed',eventCompletedAt:2000,emergencyStop:true},live:{RAW_UID_A:{uid:'RAW_UID_A',name:'秘密氏名',lat:34.123456,lng:136.123456,active:true,updatedAt:1500,dayDate:'2026-10-04',sessionId:'RAW_SESSION'},RAW_UID_B:{uid:'RAW_UID_B',lat:34.1,lng:136.1,active:false,updatedAt:2500}}}}};
+    const sens=collectSensitive(sample),r=audit(sample),lc=leakCheck(r,sens),e=r.events[0];push('匿名化漏れ検出なし',lc.pass);push('終了状態分類',e.safetyState==='closed'&&e.eventCompletedAtPresent===true&&e.classification==='closed-but-live-updated-at-or-after-completion');push('LIVE時系列検出',e.liveUpdatedBeforeCompletion===1&&e.liveUpdatedAtOrAfterCompletion===1);push('座標値を出力しない',!JSON.stringify(r).includes('34.123456')&&!JSON.stringify(r).includes('136.123456'));
+  }catch(e){push('セルフテスト実行',false,String(e?.message||e))}
+  selfPassed=detail.every(x=>x.p);$('self').textContent=selfPassed?'SELF TEST PASS — 実JSONを選択できます':'SELF TEST NG — 実JSONを選択しないでください';$('self').className='status '+(selfPassed?'ok':'bad');$('selfDetail').innerHTML=detail.map(x=>`<div class="status ${x.p?'okBox':'dangerBox'}"><b>${x.p?'PASS':'NG'}：${x.n}</b>${x.d?'<br>'+x.d:''}</div>`).join('');$('file').disabled=!selfPassed;$('pick').classList.toggle('disabled',!selfPassed);$('fileState').textContent=selfPassed?'同じFirebase JSONを選択してください。':'セルフテストNGのため停止しています。';
+}
+function render(rep,lc){
+  const e=rep.events[0]||null;$('summaryCard').classList.remove('hidden');$('reportCard').classList.remove('hidden');
+  if(!e){$('metrics').innerHTML='';$('judgement').textContent='eventsが見つかりません。';$('judgement').className='status bad';return}
+  const vals=[['safety.state',e.safetyState],['eventCompletedAt',e.eventCompletedAtPresent?'あり':'なし'],['LIVE残存',e.liveEntries],['終了後更新',e.liveUpdatedAtOrAfterCompletion===null?'判定不可':e.liveUpdatedAtOrAfterCompletion]];
+  $('metrics').innerHTML=vals.map(([a,b])=>`<div class="metric"><span>${a}</span><b>${b}</b></div>`).join('');
+  const map={
+    'closed-but-live-residual':['終了状態はclosedですが、LIVEデータが残っています。終了後更新は検出されていません。','warn'],
+    'closed-but-live-updated-at-or-after-completion':['closed後または同時刻以降のLIVE更新が存在します。優先して原因確認が必要です。','bad'],
+    'completion-present-but-state-open':['eventCompletedAtがあるのにsafety.stateがopenです。現在Rulesでは参加者/管理者の自分のLIVE書込み条件を満たし得ます。','bad'],
+    'closed-without-completion-timestamp':['stateはclosedですがeventCompletedAtがありません。終了操作経路を確認します。','warn'],
+    'still-open-no-completion':['大会終了状態が記録されていません。','bad'],
+    'closed-and-live-cleared':['終了状態closedでLIVEも消去済みです。','ok']
+  };const [msg,cl]=map[e.classification]||['終了状態を追加確認します。','warn'];$('judgement').textContent=msg;$('judgement').className='status '+cl;
+  $('report').textContent=JSON.stringify(rep,null,2);$('copy').disabled=!lc.pass;if(!lc.pass){$('judgement').textContent+=' 匿名化チェックNGのため結果コピーを停止しました。';$('judgement').className='status bad'}
+}
+$('file').addEventListener('change',async ev=>{raw=null;report=null;$('run').disabled=true;$('clear').disabled=true;$('summaryCard').classList.add('hidden');$('reportCard').classList.add('hidden');const f=ev.target.files?.[0];if(!f)return;try{if(f.size>80*1024*1024)throw new Error('JSONが80MBを超えています');$('fileState').textContent='端末内でJSONを読み込んでいます…';const t=await f.text();const p=JSON.parse(t);if(!isObj(p))throw new Error('FirebaseルートJSONではありません');raw=p;sensitive=collectSensitive(raw);$('fileState').textContent='読み込み完了。まだFirebaseへの通信・変更はしていません。';$('run').disabled=false;$('clear').disabled=false}catch(e){$('fileState').textContent='読み込み失敗：'+String(e?.message||e);$('fileState').className='status bad'}});
+$('run').addEventListener('click',()=>{if(!raw)return;try{report=audit(raw);const lc=leakCheck(report,sensitive);render(report,lc);$('fileState').textContent=lc.pass?'匿名監査完了。元JSONは送信されていません。':'匿名化チェックNG。結果を送らないでください。';$('fileState').className='status '+(lc.pass?'ok':'bad')}catch(e){$('fileState').textContent='監査失敗：'+String(e?.message||e);$('fileState').className='status bad'}});
+$('copy').addEventListener('click',async()=>{if(!report)return;const t=JSON.stringify(report,null,2);try{await navigator.clipboard.writeText(t);$('fileState').textContent='匿名結果をコピーしました。'}catch(_){const ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();$('fileState').textContent='匿名結果をコピーしました。'}});
+$('clear').addEventListener('click',()=>{raw=null;report=null;sensitive=new Set();$('file').value='';$('run').disabled=true;$('clear').disabled=true;$('summaryCard').classList.add('hidden');$('reportCard').classList.add('hidden');$('report').textContent='';$('fileState').textContent='読み込んだJSONをブラウザメモリから破棄しました。';$('fileState').className='status'});
+selfTest();
+})();
+</script>
+</body>
+</html>
