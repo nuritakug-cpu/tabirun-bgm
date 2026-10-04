@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src 'none'; img-src data: blob:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; font-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; child-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>EVENT BASE Firebase ローカル監査</title>
+<style>
+:root{
+  --bg:#f1efe8;--card:#fbfaf6;--ink:#252b2b;--muted:#737b78;--line:#d7d2c5;
+  --dark:#2e3433;--gold:#d7b117;--gold2:#9d8117;--ok:#2d6b4c;--warn:#8b5a00;--bad:#8c3131;
+  --shadow:0 10px 28px rgba(30,35,34,.09)
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{background:var(--bg)}
+body{margin:0;background:linear-gradient(180deg,#f4f2ec 0%,#ece9df 100%);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;min-height:100dvh}
+.shell{width:min(760px,100%);margin:0 auto;padding-bottom:calc(38px + env(safe-area-inset-bottom))}
+header{padding:calc(18px + env(safe-area-inset-top)) 18px 18px;background:linear-gradient(135deg,#303736,#252b2a);color:#fff}
+.kicker{display:flex;align-items:center;gap:8px;color:#e6cc5f;font-size:10px;font-weight:900;letter-spacing:.15em}.kicker:before{content:"";width:26px;height:3px;border-radius:4px;background:var(--gold)}
+h1{margin:10px 0 6px;font-size:24px;line-height:1.15;letter-spacing:-.025em}header p{margin:0;color:#d6dad7;font-size:12px;line-height:1.55}
+main{padding:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:17px;margin-bottom:14px}
+.card h2{display:flex;align-items:center;gap:8px;margin:0 0 12px;font-size:16px}.card h2:before{content:"";width:4px;height:16px;border-radius:4px;background:var(--gold)}
+.security{background:#303736;color:#fff;border-color:#303736}.security h2{color:#fff}.security p,.security li{color:#e1e5e1}.security strong{color:#f0d66a}
+.statusGrid{display:grid;grid-template-columns:1fr;gap:8px;margin-top:12px}
+.status{display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.07);font-size:12px;line-height:1.45}.dot{width:9px;height:9px;border-radius:50%;margin-top:4px;flex:none;background:#7bd2a5}.status.warn .dot{background:#f0c464}
+.note{font-size:12px;line-height:1.65;color:var(--muted);margin:0}.note b{color:var(--ink)}
+.step{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start;margin:11px 0}.stepNo{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--dark);color:#fff;font-weight:900;font-size:12px}.step b{display:block;font-size:13px;margin:2px 0 4px}.step span{display:block;color:var(--muted);font-size:12px;line-height:1.55}
+.filePick{position:relative;display:block;border:2px dashed #b9b3a4;border-radius:16px;padding:18px;text-align:center;background:#f6f4ee;margin-top:12px}.filePick input{position:absolute;inset:0;opacity:0;width:100%;height:100%}.filePick b{display:block;font-size:15px}.filePick span{display:block;margin-top:5px;color:var(--muted);font-size:11px}
+#fileState{margin-top:10px;font-size:12px;line-height:1.55;color:var(--muted);word-break:break-word}
+.actions{display:grid;grid-template-columns:1fr;gap:9px;margin-top:12px}button{appearance:none;border:0;border-radius:14px;padding:13px 14px;font-size:13px;font-weight:900}.primary{background:var(--dark);color:#fff}.secondary{background:#e6e2d7;color:var(--ink)}.danger{background:#f3e4e1;color:var(--bad)}button:disabled{opacity:.42}
+.summary{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.metric{border:1px solid var(--line);border-radius:14px;padding:11px;background:#fff}.metric small{display:block;color:var(--muted);font-size:9px;font-weight:900;letter-spacing:.08em}.metric b{display:block;font-size:22px;line-height:1;margin-top:6px}
+.badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.badge{padding:5px 8px;border-radius:999px;background:#ece9df;font-size:10px;font-weight:900;color:#555d5a}.badge.ok{background:#e3f0e8;color:var(--ok)}.badge.warn{background:#f6ead2;color:var(--warn)}.badge.bad{background:#f4dddd;color:var(--bad)}
+.issueList{display:grid;gap:8px}.issue{border:1px solid var(--line);border-radius:14px;padding:11px;background:#fff}.issueTop{display:flex;align-items:center;justify-content:space-between;gap:8px}.issueTop b{font-size:12px}.issueTop span{font-size:10px;font-weight:900;color:var(--warn)}.issue p{margin:7px 0 0;color:var(--muted);font-size:11px;line-height:1.5;word-break:break-word}
+pre{margin:0;white-space:pre-wrap;word-break:break-word;background:#1f2524;color:#e9eee9;border-radius:14px;padding:13px;max-height:380px;overflow:auto;font:11px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.hidden{display:none!important}.err{color:var(--bad)!important}.okText{color:var(--ok)!important}.warnText{color:var(--warn)!important}
+.privacyLine{display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid var(--line);padding:9px 0;font-size:11px}.privacyLine:first-child{border-top:0}.privacyLine span{color:var(--muted)}.privacyLine b{font-size:11px}.privacyLine .pass{color:var(--ok)}
+footer{padding:0 18px 18px;color:#858b88;font-size:10px;line-height:1.55;text-align:center}
+@media(min-width:560px){.statusGrid{grid-template-columns:1fr 1fr}.actions{grid-template-columns:repeat(3,1fr)}.summary{grid-template-columns:repeat(4,1fr)}}
+</style>
+</head>
+<body>
+<div class="shell">
+<header>
+  <div class="kicker">EVENT BASE / LOCAL AUDIT</div>
+  <h1>Firebase ローカル監査</h1>
+  <p>Firebase JSONをこの端末のブラウザ内だけで解析し、個人情報を除去した監査結果だけを生成します。</p>
+</header>
+<main>
+  <section class="card security">
+    <h2>このHTMLの安全条件</h2>
+    <p class="note">実データは<strong>ChatGPT・Firebase・GitHub・その他のサーバーへ送信しません。</strong> JSONはブラウザのメモリ内でのみ解析します。</p>
+    <div class="statusGrid">
+      <div class="status"><i class="dot"></i><span><b>外部通信禁止</b><br>Content Security Policyで connect-src を none に固定</span></div>
+      <div class="status"><i class="dot"></i><span><b>Firebase未接続</b><br>Firebase SDK・APIキー・DB URLを一切使用しない</span></div>
+      <div class="status"><i class="dot"></i><span><b>端末保存なし</b><br>localStorage / IndexedDB / Cookieを使用しない</span></div>
+      <div class="status"><i class="dot"></i><span><b>個人情報を出力しない</b><br>氏名・CHAT本文・位置座標・自由記述は監査結果へ含めない</span></div>
+    </div>
+  </section>
+
+  <section class="card" id="selfTestCard">
+    <h2>監査ツール自身のセルフテスト</h2>
+    <p class="note">実JSONを選択する前に、通信遮断・匿名化・主要判定ロジックを合成データで自動確認します。PASSしない場合はJSON選択を有効化しません。</p>
+    <div id="selfTestState" style="margin-top:10px;font-size:12px;font-weight:900">セルフテスト実行前</div>
+    <div id="selfTestDetails" class="statusGrid" style="margin-top:10px"></div>
+  </section>
+
+  <section class="card">
+    <h2>使い方</h2>
+    <div class="step"><div class="stepNo">1</div><div><b>Firebaseから保存したJSONを選択</b><span>iPhoneの「ファイル」アプリに保存した .json を選びます。</span></div></div>
+    <div class="step"><div class="stepNo">2</div><div><b>この端末内で監査</b><span>UID / profileId / eventId / playerIdは U001 / P001 / E001 / A001 のように置換します。</span></div></div>
+    <div class="step"><div class="stepNo">3</div><div><b>匿名監査結果だけを共有</b><span>「匿名結果をコピー」または「匿名JSONを保存」で生成した結果だけをChatGPTへ渡します。</span></div></div>
+
+    <label class="filePick" id="filePick">
+      <input type="file" id="jsonFile" accept="application/json,.json" disabled>
+      <b>Firebase JSONを選択</b>
+      <span>原本JSONは外部へ送信されません</span>
+    </label>
+    <div id="fileState">まだJSONを読み込んでいません。</div>
+    <div class="actions">
+      <button type="button" class="primary" id="runAudit" disabled>匿名監査を実行</button>
+      <button type="button" class="secondary" id="copyReport" disabled>匿名結果をコピー</button>
+      <button type="button" class="secondary" id="saveReport" disabled>匿名JSONを保存</button>
+    </div>
+    <div class="actions" style="grid-template-columns:1fr">
+      <button type="button" class="danger" id="clearData" disabled>読み込んだデータを破棄</button>
+    </div>
+  </section>
+
+  <section class="card hidden" id="summaryCard">
+    <h2>匿名監査サマリー</h2>
+    <div class="summary" id="summaryMetrics"></div>
+    <div class="badges" id="summaryBadges"></div>
+  </section>
+
+  <section class="card hidden" id="privacyCard">
+    <h2>個人情報除去チェック</h2>
+    <div id="privacyChecks"></div>
+  </section>
+
+  <section class="card hidden" id="issuesCard">
+    <h2>確認候補</h2>
+    <p class="note" style="margin-bottom:10px">ここに出るものは「不具合確定」ではありません。二重登録・親端末・管理者作成データ等を区別するための監査候補です。</p>
+    <div class="issueList" id="issueList"></div>
+  </section>
+
+  <section class="card hidden" id="reportCard">
+    <h2>ChatGPTへ渡してよい匿名結果</h2>
+    <p class="note" style="margin-bottom:10px">下の内容には、生のUID・profileId・eventId・playerId・氏名・CHAT本文・緯度経度を含めない設計です。</p>
+    <pre id="reportText"></pre>
+  </section>
+</main>
+<footer>EVENT BASE Firebase Local Audit v2 / offline-only static HTML</footer>
+</div>
+<script>
+(()=>{
+'use strict';
+
+// Defense in depth: even if CSP support differs, disable common outbound APIs.
+const blocked=()=>{throw new Error('この監査HTMLでは外部通信を禁止しています。')};
+try{window.fetch=blocked}catch(_){ }
+try{window.XMLHttpRequest=function(){throw new Error('外部通信を禁止しています。')}}catch(_){ }
+try{window.WebSocket=function(){throw new Error('外部通信を禁止しています。')}}catch(_){ }
+try{window.EventSource=function(){throw new Error('外部通信を禁止しています。')}}catch(_){ }
+try{navigator.sendBeacon=()=>false}catch(_){ }
+
+const $=id=>document.getElementById(id);
+const isObj=v=>!!v&&typeof v==='object'&&!Array.isArray(v);
+const asObj=v=>isObj(v)?v:{};
+const arrEntries=v=>Array.isArray(v)?v.map((x,i)=>[String(i),x]):Object.entries(asObj(v));
+const nonEmpty=v=>String(v??'').trim();
+const normalizeName=v=>nonEmpty(v).normalize('NFKC').toLocaleLowerCase('ja-JP').replace(/[\s\u3000]+/g,'').replace(/[・･._\-ー—–]/g,'');
+const countChildren=v=>arrEntries(v).filter(([,x])=>x!==null&&x!==undefined).length;
+
+let raw=null;
+let report=null;
+let sensitiveSet=new Set();
+
+class AliasBook{
+  constructor(prefix){this.prefix=prefix;this.map=new Map();this.n=0}
+  get(value){const s=nonEmpty(value);if(!s)return '';if(!this.map.has(s)){this.n++;this.map.set(s,this.prefix+String(this.n).padStart(3,'0'))}return this.map.get(s)}
+  hasRaw(value){return this.map.has(nonEmpty(value))}
+}
+
+function safeRole(v){const r=nonEmpty(v);return ['owner','manager','participant','member'].includes(r)?r:(r?'other':'')}
+function safeBool(v){return v===true}
+function safeKeys(o,limit=40){return Object.keys(asObj(o)).filter(k=>/^[A-Za-z0-9_\-]+$/.test(k)).slice(0,limit)}
+function unique(a){return [...new Set(a.filter(Boolean))]}
+function addMapSet(map,key,val){if(!key||!val)return;if(!map.has(key))map.set(key,new Set());map.get(key).add(val)}
+function addMapArr(map,key,val){if(!key)return;if(!map.has(key))map.set(key,[]);map.get(key).push(val)}
+
+function collectSensitive(root){
+  const values=new Set();
+  const sensitiveKey=/(^|_)(name|displayname|email|mail|phone|tel|text|body|message|comment|note|address|affiliation|school|teamname|lat|latitude|lng|lon|longitude|accuracy|geohash|url|ownerkey|accesshash|credentialhash|code|pin|token|proof)(_|$)/i;
+  const idKey=/(^|_)(uid|profileid|eventid|playerid|senderuid|owneruid|subjectuid|createdbyuid|updatedbyuid|claimedbyuid)(_|$)/i;
+  const add=v=>{const s=String(v??'').trim();if(s.length>=4)values.add(s)};
+  const walk=(v,key='',depth=0)=>{
+    if(depth>24)return;
+    if(Array.isArray(v)){v.forEach(x=>walk(x,key,depth+1));return}
+    if(isObj(v)){for(const [k,x] of Object.entries(v))walk(x,k,depth+1);return}
+    if(typeof v==='string'||typeof v==='number'){
+      const s=String(v).trim();
+      if(s.length>=4&&(sensitiveKey.test(key)||idKey.test(key)))values.add(s);
+    }
+  };
+  walk(root);
+  // Firebase IDs are often object keys, so include those raw keys in the leak test too.
+  for(const [uid] of arrEntries(asObj(root.profiles)))add(uid);
+  for(const [eventId,binds] of arrEntries(asObj(root.bindings))){add(eventId);for(const [uid] of arrEntries(binds))add(uid)}
+  for(const [eventId,eventData0] of arrEntries(asObj(root.events))){
+    add(eventId);const eventData=asObj(eventData0);
+    for(const [playerId] of arrEntries(eventData.players))add(playerId);
+  }
+  return values;
+}
+
+function auditFirebase(root){
+  const uidBook=new AliasBook('U');
+  const profileBook=new AliasBook('P');
+  const eventBook=new AliasBook('E');
+  const playerBook=new AliasBook('A');
+  const nameBook=new AliasBook('N');
+
+  const profiles=asObj(root.profiles);
+  const bindingsRoot=asObj(root.bindings);
+  const eventsRoot=asObj(root.events);
+  const eventIds=unique([...Object.keys(bindingsRoot),...Object.keys(eventsRoot)]);
+
+  const uidProfile=new Map();
+  const profileUids=new Map();
+  const uidNames=new Map();
+  const uidPlayerNames=new Map();
+  const nameGroup=new Map();
+  const uidBindings=new Map();
+  const playerRows=[];
+  const eventSummaries=[];
+  const timingOrphans=[];
+  const chatUnknown=[];
+  const liveUnknown=[];
+
+  const knownUids=new Set();
+  const knownProfiles=new Set();
+  const knownPlayersByEvent=new Map();
+
+  function registerName(rawName,source,{uid='',profileId='',eventId='',playerId=''}={}){
+    const norm=normalizeName(rawName);if(!norm)return '';
+    const nt=nameBook.get(norm);
+    if(!nameGroup.has(nt))nameGroup.set(nt,{nameToken:nt,sources:{profile:0,binding:0,player:0},uids:new Set(),profiles:new Set(),events:new Set(),players:new Set()});
+    const g=nameGroup.get(nt);g.sources[source]=(g.sources[source]||0)+1;
+    if(uid){const ua=uidBook.get(uid);g.uids.add(ua);addMapSet(uidNames,ua,nt)}
+    if(profileId)g.profiles.add(profileBook.get(profileId));
+    if(eventId)g.events.add(eventBook.get(eventId));
+    if(playerId)g.players.add(playerBook.get(eventId+'|'+playerId));
+    return nt;
+  }
+
+  for(const [uid,p0] of arrEntries(profiles)){
+    const p=asObj(p0);const ua=uidBook.get(uid);knownUids.add(uid);
+    const pid=nonEmpty(p.profileId);const pa=profileBook.get(pid);
+    if(pid){knownProfiles.add(pid);uidProfile.set(ua,pa);addMapSet(profileUids,pa,ua)}
+    registerName(p.displayName||p.name,'profile',{uid,profileId:pid});
+  }
+
+  for(const eid of eventIds){
+    const ea=eventBook.get(eid);const ev=asObj(eventsRoot[eid]);const binds=asObj(bindingsRoot[eid]);
+    const roleCounts={owner:0,manager:0,participant:0,member:0,other:0};
+    for(const [uid,b0] of arrEntries(binds)){
+      const b=asObj(b0);const ua=uidBook.get(uid);knownUids.add(uid);
+      const role=safeRole(b.role);if(roleCounts[role]!==undefined)roleCounts[role]++;else roleCounts.other++;
+      addMapArr(uidBindings,ua,{event:ea,role:role||'unknown'});
+      registerName(b.displayName||b.name,'binding',{uid,eventId:eid});
+    }
+
+    const players=arrEntries(ev.players);
+    const knownPlayerIds=new Set();knownPlayersByEvent.set(eid,knownPlayerIds);
+    for(const [pidKey,p0] of players){
+      if(p0===null||p0===undefined)continue;
+      const p=asObj(p0);knownPlayerIds.add(pidKey);
+      const aa=playerBook.get(eid+'|'+pidKey);
+      const ownerRaw=nonEmpty(p.ownerUid);const subjectRaw=nonEmpty(p.subjectUid);const profileRaw=nonEmpty(p.profileId);
+      const owner=uidBook.get(ownerRaw),subject=uidBook.get(subjectRaw),profile=profileBook.get(profileRaw);
+      if(ownerRaw)knownUids.add(ownerRaw);if(subjectRaw)knownUids.add(subjectRaw);if(profileRaw)knownProfiles.add(profileRaw);
+      const nt=registerName(p.name||p.displayName,'player',{uid:subjectRaw||ownerRaw,profileId:profileRaw,eventId:eid,playerId:pidKey});
+      if(nt&&subject)addMapSet(uidPlayerNames,subject,nt);else if(nt&&owner)addMapSet(uidPlayerNames,owner,nt);
+      playerRows.push({
+        player:aa,event:ea,profile:profile||null,owner:owner||null,subject:subject||null,
+        subjectRole:safeRole(p.subjectRole)||null,
+        claimed:safeBool(!!nonEmpty(p.claimedByUid)||!!nonEmpty(p.claimMethod)||Number(p.claimedAt)>0),
+        nameToken:nt||null,
+        hasResult:!!(nonEmpty(p.result)||nonEmpty(p.officialResult)||nonEmpty(p.provisionalResult)),
+        hasRaceNo:!!nonEmpty(p.raceNo)
+      });
+    }
+
+    const timing=arrEntries(ev.timingRecords);
+    let timingLinked=0;
+    for(const [rid,r0] of timing){
+      const r=asObj(r0);const rawPlayer=nonEmpty(r.playerId||r.athleteId||r.subjectPlayerId);
+      if(rawPlayer&&knownPlayerIds.has(rawPlayer)){timingLinked++;continue}
+      if(rawPlayer)timingOrphans.push({event:ea,record:'T'+String(timingOrphans.length+1).padStart(3,'0'),playerRef:playerBook.get(eid+'|'+rawPlayer)});
+    }
+
+    const chat=arrEntries(ev.chat);
+    const chatSenders=new Set();
+    for(const [,m0] of chat){
+      const m=asObj(m0);const suid=nonEmpty(m.senderUid||m.uid);if(!suid)continue;
+      const sa=uidBook.get(suid);chatSenders.add(sa);
+      if(!Object.prototype.hasOwnProperty.call(binds,suid))chatUnknown.push({event:ea,sender:sa});
+    }
+
+    const live=arrEntries(ev.live);
+    const liveUsers=new Set();
+    for(const [liveKey,l0] of live){
+      const l=asObj(l0);const luid=nonEmpty(l.uid||l.userUid||l.subjectUid||liveKey);
+      if(!luid)continue;const la=uidBook.get(luid);liveUsers.add(la);
+      if(!Object.prototype.hasOwnProperty.call(binds,luid))liveUnknown.push({event:ea,uid:la});
+    }
+
+    eventSummaries.push({
+      event:ea,
+      bindings:countChildren(binds),
+      roles:roleCounts,
+      players:players.filter(([,v])=>v!==null&&v!==undefined).length,
+      timingRecords:timing.filter(([,v])=>v!==null&&v!==undefined).length,
+      timingLinked,
+      chatMessages:chat.filter(([,v])=>v!==null&&v!==undefined).length,
+      chatSenders:chatSenders.size,
+      liveEntries:live.filter(([,v])=>v!==null&&v!==undefined).length,
+      liveUsers:liveUsers.size,
+      hasVenue:!!ev.venue,
+      hasBase:!!ev.base,
+      hasParking:!!ev.parking,
+      hasProgress:!!ev.progress
+    });
+  }
+
+  // UID/Profile relations created by player rows may introduce IDs not present under profiles.
+  const allUidAliases=new Set([...uidBook.map.values()]);
+  const profilesByAlias=new Map();
+  for(const [uid,p0] of arrEntries(profiles)){
+    const ua=uidBook.get(uid),pa=profileBook.get(asObj(p0).profileId);if(pa)profilesByAlias.set(ua,pa);
+  }
+
+  const bindingUidAliases=new Set();
+  for(const [eid,binds0] of arrEntries(bindingsRoot))for(const [uid] of arrEntries(binds0))bindingUidAliases.add(uidBook.get(uid));
+  const profileUidAliases=new Set(arrEntries(profiles).map(([uid])=>uidBook.get(uid)));
+
+  const multiUidProfiles=[];
+  for(const [pa,uids] of profileUids.entries())if(uids.size>1)multiUidProfiles.push({profile:pa,uids:[...uids].sort()});
+
+  const sameNameMultiUid=[];
+  for(const g of nameGroup.values())if(g.uids.size>1)sameNameMultiUid.push({nameToken:g.nameToken,uids:[...g.uids].sort(),profiles:[...g.profiles].sort(),events:[...g.events].sort(),players:[...g.players].sort(),sources:g.sources});
+
+  const proxyRelations=playerRows.filter(p=>p.owner&&p.subject&&p.owner!==p.subject).map(p=>({event:p.event,player:p.player,owner:p.owner,subject:p.subject,profile:p.profile}));
+  const unclaimedPlayers=playerRows.filter(p=>p.owner&&!p.subject).map(p=>({event:p.event,player:p.player,owner:p.owner,profile:p.profile,nameToken:p.nameToken}));
+
+  const playerProfileMismatch=[];
+  for(const p of playerRows){
+    if(!p.subject||!p.profile)continue;
+    const expected=profilesByAlias.get(p.subject);
+    if(expected&&expected!==p.profile)playerProfileMismatch.push({event:p.event,player:p.player,subject:p.subject,playerProfile:p.profile,subjectProfile:expected});
+  }
+
+  const playerSubjectNoBinding=[];
+  for(const p of playerRows){
+    if(!p.subject)continue;
+    const eventRaw=[...eventBook.map.entries()].find(([,a])=>a===p.event)?.[0];
+    const subjectRaw=[...uidBook.map.entries()].find(([,a])=>a===p.subject)?.[0];
+    if(eventRaw&&subjectRaw&&!Object.prototype.hasOwnProperty.call(asObj(bindingsRoot[eventRaw]),subjectRaw))playerSubjectNoBinding.push({event:p.event,player:p.player,subject:p.subject});
+  }
+
+  const uidMultiplePlayerNames=[];
+  for(const [ua,names] of uidPlayerNames.entries())if(names.size>1)uidMultiplePlayerNames.push({uid:ua,nameTokens:[...names].sort()});
+
+  const identityNameMismatch=[];
+  for(const ua of allUidAliases){
+    const names=uidNames.get(ua);if(names&&names.size>1)identityNameMismatch.push({uid:ua,nameTokens:[...names].sort()});
+  }
+
+  const bindingWithoutProfile=[...bindingUidAliases].filter(u=>!profileUidAliases.has(u)).sort();
+  const profileWithoutBinding=[...profileUidAliases].filter(u=>!bindingUidAliases.has(u)).sort();
+
+  const identities=[...allUidAliases].sort().map(ua=>({
+    uid:ua,
+    profile:profilesByAlias.get(ua)||null,
+    bindings:(uidBindings.get(ua)||[]).slice().sort((a,b)=>a.event.localeCompare(b.event)),
+    nameTokens:[...(uidNames.get(ua)||[])].sort(),
+    playerNameTokens:[...(uidPlayerNames.get(ua)||[])].sort()
+  }));
+
+  const duplicateCandidateCount=sameNameMultiUid.length+multiUidProfiles.length+playerProfileMismatch.length;
+  const relationshipCandidateCount=proxyRelations.length+unclaimedPlayers.length+uidMultiplePlayerNames.length+identityNameMismatch.length;
+
+  return {
+    auditVersion:'EVENT_BASE_FIREBASE_LOCAL_AUDIT_v2',
+    privacy:{
+      rawIdentifiersIncluded:false,
+      rawNamesIncluded:false,
+      chatBodiesIncluded:false,
+      coordinatesIncluded:false,
+      freeTextIncluded:false,
+      firebaseConnectionUsed:false,
+      externalNetworkUsed:false,
+      persistentBrowserStorageUsed:false
+    },
+    structure:{
+      hasEvents:isObj(root.events),hasProfiles:isObj(root.profiles),hasBindings:isObj(root.bindings),
+      eventCount:eventSummaries.length,profileCount:countChildren(profiles),bindingEventCount:countChildren(bindingsRoot),
+      playerRowCount:playerRows.length
+    },
+    aliases:{uidCount:uidBook.n,profileCount:profileBook.n,eventCount:eventBook.n,playerAliasCount:playerBook.n,nameTokenCount:nameBook.n},
+    events:eventSummaries,
+    identities,
+    players:playerRows,
+    candidates:{
+      sameDisplayNameAcrossMultipleUids:sameNameMultiUid,
+      sameProfileIdAcrossMultipleUids:multiUidProfiles,
+      playerProfileMismatch,
+      ownerSubjectDifferent:proxyRelations,
+      ownerPresentSubjectMissing:unclaimedPlayers,
+      oneUidMultiplePlayerNameTokens:uidMultiplePlayerNames,
+      oneUidMultipleIdentityNameTokens:identityNameMismatch,
+      bindingWithoutProfile,
+      profileWithoutAnyBinding:profileWithoutBinding,
+      playerSubjectWithoutEventBinding:playerSubjectNoBinding,
+      timingRecordWithUnknownPlayer:timingOrphans,
+      chatSenderWithoutEventBinding:unique(chatUnknown.map(x=>x.event+'|'+x.sender)).map(k=>{const [event,sender]=k.split('|');return{event,sender}}),
+      liveUidWithoutEventBinding:unique(liveUnknown.map(x=>x.event+'|'+x.uid)).map(k=>{const [event,uid]=k.split('|');return{event,uid}})
+    },
+    summary:{duplicateCandidateGroups:duplicateCandidateCount,relationshipCandidates:relationshipCandidateCount,timingOrphans:timingOrphans.length,chatUnknownSenders:chatUnknown.length,liveUnknownUids:liveUnknown.length}
+  };
+}
+
+function redactLeakCheck(rep,sensitive){
+  const text=JSON.stringify(rep);
+  const hits=[];
+  for(const s of sensitive){
+    if(s.length<4)continue;
+    if(text.includes(s))hits.push(s.length>16?s.slice(0,3)+'…'+s.slice(-3):'[非表示]');
+    if(hits.length>=20)break;
+  }
+  return {pass:hits.length===0,count:hits.length};
+}
+
+function render(rep,leak){
+  const c=rep.candidates,s=rep.summary;
+  $('summaryCard').classList.remove('hidden');$('privacyCard').classList.remove('hidden');$('issuesCard').classList.remove('hidden');$('reportCard').classList.remove('hidden');
+  $('summaryMetrics').innerHTML=[
+    ['EVENT',rep.aliases.eventCount],['UID',rep.aliases.uidCount],['PROFILE',rep.aliases.profileCount],['PLAYER',rep.structure.playerRowCount]
+  ].map(([k,v])=>`<div class="metric"><small>${k}</small><b>${v}</b></div>`).join('');
+  const badges=[
+    [`同名×複数UID ${c.sameDisplayNameAcrossMultipleUids.length}`,c.sameDisplayNameAcrossMultipleUids.length?'warn':'ok'],
+    [`同一profileId×複数UID ${c.sameProfileIdAcrossMultipleUids.length}`,c.sameProfileIdAcrossMultipleUids.length?'bad':'ok'],
+    [`owner≠subject ${c.ownerSubjectDifferent.length}`,c.ownerSubjectDifferent.length?'warn':'ok'],
+    [`subjectなし ${c.ownerPresentSubjectMissing.length}`,c.ownerPresentSubjectMissing.length?'warn':'ok']
+  ];
+  $('summaryBadges').innerHTML=badges.map(([t,k])=>`<span class="badge ${k}">${t}</span>`).join('');
+
+  const checks=[
+    ['外部通信コード','禁止','pass'],['Firebase接続','なし','pass'],['永続ブラウザ保存','なし','pass'],['生UID / profileId / eventId / playerId','匿名化','pass'],['氏名・表示名','Nxxxへ置換','pass'],['CHAT本文','出力なし','pass'],['緯度経度','出力なし','pass'],['自由記述','出力なし','pass'],['原文値の混入セルフチェック',leak.pass?'PASS':'要確認',leak.pass?'pass':'']
+  ];
+  $('privacyChecks').innerHTML=checks.map(([a,b,k])=>`<div class="privacyLine"><span>${a}</span><b class="${k}">${b}</b></div>`).join('');
+
+  const items=[];
+  const add=(title,count,desc,level='確認')=>{if(count>0)items.push({title,count,desc,level})};
+  add('同じ表示名トークンが複数UIDに存在',c.sameDisplayNameAcrossMultipleUids.length,'二重登録候補。ただし同姓同名・親子運用等の可能性があるため自動統合は禁止。');
+  add('同じprofileIdが複数UIDに存在',c.sameProfileIdAcrossMultipleUids.length,'本人基盤上の重要確認候補。実データを消さず、発生経路の確認が必要。','重要');
+  add('PLAYERのprofileIdとsubjectUid側profileIdが不一致',c.playerProfileMismatch.length,'PLAYERとCOMMON PROFILEの紐付け不一致候補。','重要');
+  add('ownerUidとsubjectUidが異なるPLAYER',c.ownerSubjectDifferent.length,'代理操作・管理者作成・親子関係等の可能性。異常とは断定しない。');
+  add('ownerUidあり / subjectUidなし',c.ownerPresentSubjectMissing.length,'未引継ぎ・管理側作成PLAYER等の候補。');
+  add('1 UIDに複数のPLAYER名トークン',c.oneUidMultiplePlayerNameTokens.length,'親端末で複数人を扱ったケース、名前変更、誤登録等の確認候補。');
+  add('1 UIDに複数のプロフィール/Binding名トークン',c.oneUidMultipleIdentityNameTokens.length,'表示名変更または本人情報の食い違い候補。');
+  add('bindingはあるがprofileなし',c.bindingWithoutProfile.length,'大会接続済みだがCOMMON PROFILEが見つからないUID候補。');
+  add('PLAYER subjectUidに大会bindingなし',c.playerSubjectWithoutEventBinding.length,'PLAYER本人UIDと大会bindingの関係確認候補。');
+  add('timingRecordのPLAYER参照先が見つからない',c.timingRecordWithUnknownPlayer.length,'削除済みPLAYERや参照不整合の可能性。');
+  add('CHAT送信UIDに大会bindingなし',c.chatSenderWithoutEventBinding.length,'CHAT履歴と現在bindingの関係確認候補。');
+  add('LIVE UIDに大会bindingなし',c.liveUidWithoutEventBinding.length,'LIVE履歴と現在bindingの関係確認候補。');
+  if(!items.length)items.push({title:'構造上の主要候補は0件',count:0,desc:'この結果だけでFirebase全体が正常とは断定しません。保存・再読込・別端末同期は別監査です。',level:'情報'});
+  $('issueList').innerHTML=items.map(x=>`<div class="issue"><div class="issueTop"><b>${x.title}</b><span>${x.level} ${x.count||''}</span></div><p>${x.desc}</p></div>`).join('');
+
+  $('reportText').textContent=JSON.stringify(rep,null,2);
+  $('copyReport').disabled=!leak.pass;$('saveReport').disabled=!leak.pass;
+}
+
+function runBuiltInSelfTest(){
+  const results=[];
+  const push=(name,pass,detail='')=>results.push({name,pass:pass===true,detail});
+  try{
+    const csp=document.querySelector('meta[http-equiv="Content-Security-Policy"]')?.getAttribute('content')||'';
+    push('CSP connect-src none',/connect-src\s+'none'/.test(csp),csp?"設定あり":"設定なし");
+    const externalResources=[...document.querySelectorAll('script[src],link[href],iframe[src],object[data],embed[src],video[src],audio[src],source[src]')]
+      .filter(el=>/^(https?:)?\/\//i.test(el.getAttribute('src')||el.getAttribute('href')||el.getAttribute('data')||''));
+    push('外部リソース参照なし',externalResources.length===0,externalResources.length?`${externalResources.length}件検出`:'0件');
+
+    let fetchBlocked=false;try{window.fetch('https://example.invalid')}catch(e){fetchBlocked=/外部通信/.test(String(e?.message||e))}
+    let xhrBlocked=false;try{new window.XMLHttpRequest()}catch(e){xhrBlocked=/外部通信/.test(String(e?.message||e))}
+    let wsBlocked=false;try{new window.WebSocket('wss://example.invalid')}catch(e){wsBlocked=/外部通信/.test(String(e?.message||e))}
+    let esBlocked=false;try{new window.EventSource('https://example.invalid')}catch(e){esBlocked=/外部通信/.test(String(e?.message||e))}
+    const beaconBlocked=navigator.sendBeacon('https://example.invalid','x')===false;
+    push('主要外部通信APIを遮断',fetchBlocked&&xhrBlocked&&wsBlocked&&esBlocked&&beaconBlocked,
+      `fetch:${fetchBlocked?'OK':'NG'} / XHR:${xhrBlocked?'OK':'NG'} / WS:${wsBlocked?'OK':'NG'} / ES:${esBlocked?'OK':'NG'} / beacon:${beaconBlocked?'OK':'NG'}`);
+
+    const sample={
+      profiles:{
+        uid_RAW_AAAAAAAAAAAAAAAA:{profileId:'profile_RAW_111111',displayName:'監査太郎',email:'audit@example.com'},
+        uid_RAW_BBBBBBBBBBBBBBBB:{profileId:'profile_RAW_222222',displayName:'監査太郎'},
+        uid_PARENT_CCCCCCCCCCCCC:{profileId:'profile_RAW_PARENT',displayName:'保護者監査'},
+        uid_CHILD_DDDDDDDDDDDDDD:{profileId:'profile_RAW_CHILD',displayName:'子供監査'}
+      },
+      bindings:{event_RAW_XYZ123:{
+        uid_RAW_AAAAAAAAAAAAAAAA:{role:'participant',displayName:'監査太郎',accessHash:'SECRET_ACCESS_HASH_123456'},
+        uid_RAW_BBBBBBBBBBBBBBBB:{role:'participant',displayName:'監査太郎'},
+        uid_PARENT_CCCCCCCCCCCCC:{role:'participant',displayName:'子供監査'}
+      }},
+      events:{event_RAW_XYZ123:{
+        players:{
+          player_RAW_1:{profileId:'profile_RAW_111111',name:'監査太郎',ownerUid:'uid_RAW_AAAAAAAAAAAAAAAA',subjectUid:'uid_RAW_AAAAAAAAAAAAAAAA',raceNo:'123',result:'10:00'},
+          player_RAW_2:{profileId:'profile_RAW_222222',name:'監査太郎',ownerUid:'uid_RAW_BBBBBBBBBBBBBBBB',subjectUid:'uid_RAW_BBBBBBBBBBBBBBBB'},
+          player_RAW_3:{profileId:'profile_RAW_CHILD',name:'子供監査',ownerUid:'uid_PARENT_CCCCCCCCCCCCC',subjectUid:'uid_CHILD_DDDDDDDDDDDDDD'}
+        },
+        timingRecords:{tr1:{playerId:'player_RAW_1',note:'秘密タイムメモ'}},
+        chat:{c1:{senderUid:'uid_RAW_AAAAAAAAAAAAAAAA',message:'秘密のチャット本文'}},
+        live:{uid_RAW_AAAAAAAAAAAAAAAA:{uid:'uid_RAW_AAAAAAAAAAAAAAAA',lat:34.12345,lng:136.12345}}
+      }}
+    };
+    const sens=collectSensitive(sample);
+    const rep=auditFirebase(sample);
+    const leak=redactLeakCheck(rep,sens);
+    const out=JSON.stringify(rep);
+    const forbidden=['監査太郎','保護者監査','子供監査','audit@example.com','uid_RAW_','profile_RAW_','event_RAW_','player_RAW_','秘密のチャット本文','秘密タイムメモ','34.12345','136.12345','SECRET_ACCESS_HASH_123456'];
+    const rawHits=forbidden.filter(v=>out.includes(v));
+    push('生データ匿名化',leak.pass&&rawHits.length===0,rawHits.length?`${rawHits.length}件の原文候補`:'原文候補0件');
+    const expected=rep.candidates.sameDisplayNameAcrossMultipleUids.length>=1 && rep.candidates.ownerSubjectDifferent.length===1 && rep.candidates.playerSubjectWithoutEventBinding.length===1;
+    push('主要関係判定',expected,`同名複数UID:${rep.candidates.sameDisplayNameAcrossMultipleUids.length} / owner≠subject:${rep.candidates.ownerSubjectDifferent.length} / subject bindingなし:${rep.candidates.playerSubjectWithoutEventBinding.length}`);
+    push('CHAT本文・位置座標を出力しない',!out.includes('秘密のチャット本文')&&!out.includes('34.12345')&&!out.includes('136.12345'),'匿名出力を検査');
+  }catch(e){
+    push('セルフテスト実行',false,String(e?.message||e));
+  }
+  const pass=results.length>0&&results.every(x=>x.pass);
+  const state=$('selfTestState');
+  state.textContent=pass?'SELF TEST PASS — 実JSONを選択できます':'SELF TEST NG — 実JSONを選択しないでください';
+  state.className=pass?'okText':'err';
+  $('selfTestDetails').innerHTML=results.map(x=>`<div class="status ${x.pass?'':'warn'}"><i class="dot"></i><span><b>${x.pass?'PASS':'NG'}：${x.name}</b><br>${x.detail||''}</span></div>`).join('');
+  $('jsonFile').disabled=!pass;
+  if(!pass){$('fileState').textContent='セルフテストNGのため、JSON選択を無効にしています。';$('fileState').classList.add('err')}
+  return pass;
+}
+
+async function readJson(file){
+  const max=80*1024*1024;
+  if(file.size>max)throw new Error('JSONが80MBを超えています。このv2監査HTMLでは読み込みを停止します。');
+  const text=await file.text();
+  let parsed;
+  try{parsed=JSON.parse(text)}catch(e){throw new Error('JSONとして読み込めません。Firebaseからエクスポートした .json を選んでください。')}
+  if(!isObj(parsed))throw new Error('FirebaseルートJSONとして扱えません。最上位がオブジェクトのファイルを選んでください。');
+  return parsed;
+}
+
+$('jsonFile').addEventListener('change',async e=>{
+  report=null;raw=null;sensitiveSet=new Set();$('runAudit').disabled=true;$('copyReport').disabled=true;$('saveReport').disabled=true;
+  ['summaryCard','privacyCard','issuesCard','reportCard'].forEach(id=>$(id).classList.add('hidden'));
+  const file=e.target.files&&e.target.files[0];if(!file){$('fileState').textContent='まだJSONを読み込んでいません。';return}
+  $('fileState').textContent='端末内でJSONを読み込んでいます…';
+  try{
+    raw=await readJson(file);
+    sensitiveSet=collectSensitive(raw);
+    $('fileState').innerHTML=`<span class="okText">読み込み完了。</span> ${Math.max(1,Math.round(file.size/1024))} KB。まだ監査結果は生成していません。`;
+    $('runAudit').disabled=false;$('clearData').disabled=false;
+  }catch(err){raw=null;$('fileState').textContent=String(err?.message||err);$('fileState').classList.add('err')}
+});
+
+$('runAudit').addEventListener('click',()=>{
+  if(!raw)return;
+  $('runAudit').disabled=true;$('fileState').textContent='端末内で匿名化・構造監査しています…';
+  try{
+    report=auditFirebase(raw);
+    const leak=redactLeakCheck(report,sensitiveSet);
+    render(report,leak);
+    $('fileState').innerHTML=leak.pass?'<span class="okText">匿名監査完了。原本JSONは送信されていません。</span>':'<span class="err">匿名化セルフチェックで要確認になったため、コピー・保存を停止しました。</span>';
+  }catch(err){report=null;$('fileState').textContent='監査処理に失敗しました：'+String(err?.message||err);$('fileState').classList.add('err')}
+  finally{$('runAudit').disabled=!raw}
+});
+
+$('copyReport').addEventListener('click',async()=>{
+  if(!report)return;const text=JSON.stringify(report,null,2);
+  try{await navigator.clipboard.writeText(text);$('fileState').innerHTML='<span class="okText">匿名監査結果をコピーしました。</span>'}
+  catch(_){
+    const ta=document.createElement('textarea');ta.value=text;ta.setAttribute('readonly','');ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');$('fileState').innerHTML='<span class="okText">匿名監査結果をコピーしました。</span>'}catch(e){$('fileState').textContent='コピーできませんでした。下の匿名結果を長押ししてコピーしてください。'}
+    ta.remove();
+  }
+});
+
+$('saveReport').addEventListener('click',()=>{
+  if(!report)return;
+  const blob=new Blob([JSON.stringify(report,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='EVENT_BASE_FIREBASE_ANON_AUDIT.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1200);
+  $('fileState').innerHTML='<span class="okText">匿名監査JSONを端末へ保存しました。</span>';
+});
+
+$('clearData').addEventListener('click',()=>{
+  raw=null;report=null;sensitiveSet=new Set();$('jsonFile').value='';$('runAudit').disabled=true;$('copyReport').disabled=true;$('saveReport').disabled=true;$('clearData').disabled=true;
+  ['summaryCard','privacyCard','issuesCard','reportCard'].forEach(id=>$(id).classList.add('hidden'));
+  $('reportText').textContent='';$('fileState').textContent='読み込んだJSONをブラウザメモリから破棄しました。';$('fileState').classList.remove('err');
+});
+
+runBuiltInSelfTest();
+})();
+</script>
+</body>
+</html>
