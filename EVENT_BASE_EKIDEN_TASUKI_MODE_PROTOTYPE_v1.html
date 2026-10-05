@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>EVENT BASE EKIDEN｜襷渡しモード Prototype v1</title>
+<!--
+EVENT_BASE_EKIDEN_TASUKI_MODE_PROTOTYPE_v1
+PURPOSE: 管理者用「襷渡しモード」のUI/操作/計算ロジック確認専用プロトタイプ。
+NOT A PHYSICAL PARENT. NOT FIREBASE CONNECTED. NOT PRODUCTION.
+REFERENCE ASSETS:
+- EVENT_BASE_PRODUCTION.html 管理者/管理メニュー思想
+- EVENT_BASE_EKIDEN_RESTORE_B30_VISUAL_POINT_EDITOR 駅伝管理の①〜⑥構成
+- EVENT_BASE_EKIDEN_V64_PUZZLE_FLOW_TEST_v12 襷通過・補正・LIVE接続思想
+TARGET:
+- 管理者権限での配置案
+- 1画面での襷通過タップ
+- 自チーム/クラブ内チーム/ターゲットチーム/未登録他チーム
+- タップ順順位、TOP基準、TOP差
+- 誤タップ取消、時刻補正、順位入替
+- 区間タイム算出
+- 次区間の設定タイムによる疑似LIVE進行の入力値確認
+IMPORTANT:
+- 1回の実操作は大会中の速さを優先して単一TAP。
+- 内部イベントは CATCH と RELEASE を同時刻で別フィールド保持し、既存CATCH→RELEASE思想を捨てない。
+- 将来必要ならCATCH/RELEASEを別操作・別時刻へ分離できる。
+- Firebase path / Rules / Auth / binding は一切確定・変更しない。
+-->
+<style>
+:root{
+  --bg:#090b0d;--panel:#111416;--panel2:#171b1f;--line:#343a3f;--line2:#4a5157;
+  --text:#f5f7f8;--muted:#8c959c;--yellow:#ffd400;--yellow2:#f0c900;
+  --danger:#ff5f66;--blue:#65b7ff;--green:#57d19c;--shadow:0 16px 42px rgba(0,0,0,.34)
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue","Yu Gothic",Meiryo,sans-serif}
+body{min-height:100vh;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+button,input{font:inherit}
+button{touch-action:manipulation}
+.hidden{display:none!important}
+.app{max-width:520px;margin:0 auto;min-height:100vh;background:linear-gradient(180deg,#0d1012,#090b0d 42%)}
+.topbar{position:sticky;top:0;z-index:50;display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:10px 12px;background:rgba(9,11,13,.94);backdrop-filter:blur(13px);border-bottom:1px solid #272d31}
+.topbar button{min-height:38px;border:1px solid var(--line);border-radius:10px;background:#171b1e;color:#fff;padding:0 11px;font-weight:900}
+.topTitle small{display:block;color:var(--yellow);font-size:9px;font-weight:1000;letter-spacing:.12em}
+.topTitle b{display:block;font-size:17px;line-height:1.2}
+.role{font-size:9px;font-weight:1000;border:1px solid #665a19;background:#211d05;color:var(--yellow);padding:7px 8px;border-radius:999px;white-space:nowrap}
+main{padding:12px 12px 30px}
+.hero{border:1px solid #373e43;background:linear-gradient(145deg,#14181b,#0f1214);border-radius:18px;padding:15px;box-shadow:var(--shadow)}
+.hero small{display:block;color:var(--yellow);font-size:9px;font-weight:1000;letter-spacing:.14em}.hero h1{font-size:22px;margin:5px 0 5px}.hero p{margin:0;color:#9aa2a8;font-size:11px;line-height:1.6}
+.sectionHead{display:flex;justify-content:space-between;align-items:end;gap:10px;margin:18px 2px 8px}.sectionHead h2{font-size:15px;margin:0}.sectionHead span{font-size:9px;color:var(--muted)}
+.menu{display:grid;gap:8px}.menuBtn{width:100%;display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:10px;align-items:center;border:1px solid #3b4247;background:#171b1f;color:#f4f6f7;border-radius:15px;padding:11px;text-align:left}.menuBtn .n{width:42px;height:42px;border-radius:11px;background:#24292d;color:var(--yellow);display:grid;place-items:center;font-weight:1000}.menuBtn b{display:block;font-size:15px}.menuBtn span span{display:block;color:#879097;font-size:9px;margin-top:3px;line-height:1.45}.menuBtn i{font-style:normal;font-size:22px;color:var(--yellow)}
+.menuBtn.day{border-color:#786a12;background:linear-gradient(145deg,#211d04,#151719)}.menuBtn.day .n{background:var(--yellow);color:#111;font-size:18px}.menuBtn.liveLink{border-style:dashed}
+.note{margin-top:10px;border:1px solid #30363a;background:#111416;border-radius:13px;padding:10px 11px;color:#8e979d;font-size:10px;line-height:1.55}.note b{color:#dfe3e6}
+
+/* handoff */
+.handoff{padding-bottom:22px}
+.handoffSticky{position:sticky;top:59px;z-index:40;padding:7px 0 10px;background:linear-gradient(var(--bg) 78%,rgba(9,11,13,0))}
+.clockCard{border:1px solid #4a5156;background:#111315;border-radius:16px;padding:11px 12px;box-shadow:0 8px 24px rgba(0,0,0,.24)}
+.clockTop{display:flex;align-items:center;justify-content:space-between;gap:8px}.clockTop span{font-size:9px;color:var(--yellow);font-weight:1000;letter-spacing:.14em}.clockTop b{font-size:27px;font-variant-numeric:tabular-nums}
+.cpRow{display:grid;grid-template-columns:42px 1fr 42px;gap:7px;align-items:center;margin-top:8px}.cpRow button{height:40px;border:1px solid var(--line);border-radius:10px;background:#1a1e21;color:#fff;font-size:24px;font-weight:900}.cpRow b{text-align:center;font-size:13px}
+.raceMeta{display:flex;justify-content:center;gap:7px;flex-wrap:wrap;margin-top:8px}.pill{border:1px solid #30363b;border-radius:999px;padding:5px 8px;font-size:9px;color:#aab2b8}.pill strong{color:#fff}.pill.yellow{border-color:#665b17;color:var(--yellow)}
+.guide{margin:2px 0 10px;padding:10px;border:1px solid #353b40;border-radius:13px;background:#121619;font-size:10px;color:#9ca4aa;line-height:1.55}.guide b{color:#fff}.guide .em{color:var(--yellow);font-weight:1000}
+.rankStatus{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;margin:11px 0 8px;padding:10px 11px;border:1px solid #3b4247;border-radius:13px;background:#111416}.rankStatus span{font-size:9px;color:#8d969d}.rankStatus b{display:block;font-size:20px;color:var(--yellow)}
+.otherTap{width:100%;min-height:68px;border:0;border-radius:15px;background:var(--yellow);color:#101112;font-size:18px;font-weight:1000;padding:8px 12px;box-shadow:0 8px 24px rgba(255,212,0,.12)}.otherTap small{display:block;font-size:9px;margin-bottom:2px;opacity:.7;letter-spacing:.08em}
+.teamGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.teamBtn{position:relative;min-height:104px;border:1px solid #3d444a;border-radius:15px;background:#171b1f;color:#fff;padding:10px;text-align:left;overflow:hidden}.teamBtn:active{transform:scale(.992)}.teamBtn.done{border-color:#696014;background:linear-gradient(145deg,#201c03,#15181a)}.teamBtn .tag{display:inline-block;border:1px solid #3b4248;border-radius:999px;padding:3px 6px;color:#9ba3aa;font-size:7px;font-weight:1000;letter-spacing:.08em}.teamBtn.target .tag{border-color:#2d5f7d;color:#79c8ff}.teamBtn strong{display:block;margin-top:7px;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.teamBtn .line{display:flex;justify-content:space-between;gap:5px;margin-top:5px;font-size:9px;color:#8d969d}.teamBtn .big{margin-top:7px;color:var(--yellow);font-size:18px;font-weight:1000}.teamBtn.done .big{font-size:14px}.teamBtn .tapHint{position:absolute;right:8px;bottom:7px;font-size:7px;color:#6f777d}
+.orderStrip{display:flex;gap:6px;overflow-x:auto;padding:1px 0 5px;scrollbar-width:none}.orderStrip::-webkit-scrollbar{display:none}.orderChip{flex:0 0 auto;min-width:78px;border:1px solid #32383d;border-radius:11px;padding:7px 8px;background:#121619}.orderChip.top{border-color:#807218}.orderChip b{display:block;font-size:12px}.orderChip span{display:block;margin-top:2px;color:#8c959b;font-size:8px}.orderChip .r{color:var(--yellow);font-weight:1000}
+.history{display:grid;gap:7px}.hist{display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:8px;align-items:center;border:1px solid #333a3f;background:#111416;border-radius:13px;padding:9px}.hist .rank{width:40px;height:40px;border-radius:10px;background:#22282c;display:grid;place-items:center;color:var(--yellow);font-weight:1000}.hist .main b{display:block;font-size:12px}.hist .main span{display:block;color:#879097;font-size:8px;margin-top:3px;line-height:1.4}.hist .edit{min-height:36px;border:1px solid #454c51;border-radius:9px;background:#1a1e21;color:#fff;padding:0 8px;font-size:9px;font-weight:900}
+.livePreview{display:grid;gap:8px}.liveCard{border:1px solid #353c41;border-radius:13px;background:#111416;padding:10px}.liveHead{display:flex;justify-content:space-between;gap:8px}.liveHead b{font-size:12px}.liveHead span{font-size:9px;color:var(--yellow)}.progress{height:8px;border-radius:999px;background:#272d31;overflow:hidden;margin-top:7px}.progress i{display:block;height:100%;background:linear-gradient(90deg,var(--yellow),#fff17c);border-radius:999px}.liveMeta{display:flex;justify-content:space-between;gap:8px;margin-top:5px;color:#848d93;font-size:8px}.empty{border:1px dashed #343b40;border-radius:13px;padding:13px;text-align:center;color:#737c82;font-size:10px}
+.bottomActions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.bottomActions button{min-height:48px;border:1px solid #3b4247;border-radius:12px;background:#171b1f;color:#fff;font-weight:1000}.bottomActions .next{background:#f4f5f6;color:#111;border-color:#f4f5f6}.bottomActions button:disabled{opacity:.35}
+
+.sheet{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.68);display:flex;align-items:flex-end;justify-content:center;padding:12px}.sheetCard{width:min(520px,100%);background:#101315;border:1px solid #40474c;border-radius:20px 20px 14px 14px;padding:14px;box-shadow:0 -14px 48px rgba(0,0,0,.42)}.sheetHead{display:flex;justify-content:space-between;gap:10px;align-items:start}.sheetHead small{display:block;color:var(--yellow);font-size:8px;font-weight:1000;letter-spacing:.12em}.sheetHead h3{margin:4px 0 0;font-size:18px}.sheetClose{width:38px;height:38px;border:1px solid #3b4247;border-radius:10px;background:#191d20;color:#fff}.adjustGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-top:12px}.adjustGrid button,.rankMove button{min-height:44px;border:1px solid #3b4247;border-radius:11px;background:#1a1e21;color:#fff;font-weight:900}.rankMove{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:7px}.customRow{display:grid;grid-template-columns:1fr auto;gap:7px;margin-top:7px}.customRow input{min-width:0;height:44px;border:1px solid #41484d;border-radius:11px;background:#090b0d;color:#fff;padding:0 10px}.customRow button{border:0;border-radius:11px;background:var(--yellow);color:#111;padding:0 12px;font-weight:1000}.dangerBtn{width:100%;min-height:46px;margin-top:9px;border:1px solid #6b3034;border-radius:11px;background:#2a1114;color:#ff8b91;font-weight:1000}.sheetInfo{margin-top:9px;color:#8c959b;font-size:9px;line-height:1.55}
+@media(max-width:360px){.teamGrid{grid-template-columns:1fr}.clockTop b{font-size:24px}.topTitle b{font-size:15px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <button id="topBack" type="button">←</button>
+    <div class="topTitle"><small id="topKicker">EKIDEN MANAGEMENT</small><b id="topName">駅伝管理</b></div>
+    <div class="role">管理者</div>
+  </header>
+
+  <main id="adminPage">
+    <section class="hero">
+      <small>設定・管理 ＞ 駅伝</small>
+      <h1>駅伝管理</h1>
+      <p>大会前の設定と、大会当日の運営操作を分けます。襷渡しは設定STEPではなく「当日運営」に配置します。</p>
+    </section>
+
+    <div class="sectionHead"><h2>大会前設定</h2><span>既存①〜⑥を維持</span></div>
+    <div class="menu" id="prepMenu">
+      <button class="menuBtn" type="button"><span class="n">1</span><span><b>出走メンバー</b><span>EVENT BASE共通の個人カード</span></span><i>›</i></button>
+      <button class="menuBtn" type="button"><span class="n">2</span><span><b>チーム作成</b><span>クラブ内チーム・ターゲットチーム</span></span><i>›</i></button>
+      <button class="menuBtn" type="button"><span class="n">3</span><span><b>チーム編成</b><span>個人カードを各チームへ</span></span><i>›</i></button>
+      <button class="menuBtn" type="button"><span class="n">4</span><span><b>区間配置</b><span>走順・補欠</span></span><i>›</i></button>
+      <button class="menuBtn" type="button"><span class="n">5</span><span><b>区間設定</b><span>区間距離・設定タイム</span></span><i>›</i></button>
+      <button class="menuBtn" type="button"><span class="n">6</span><span><b>マップエディタ</b><span>基準ルート・区間ルート・襷ポイント</span></span><i>›</i></button>
+    </div>
+
+    <div class="sectionHead"><h2>大会当日</h2><span>開発者・管理者</span></div>
+    <div class="menu">
+      <button class="menuBtn day" id="openHandoff" type="button"><span class="n">襷</span><span><b>襷渡しモード</b><span>通過タップ・順位・区間タイム・誤差修正</span></span><i>›</i></button>
+      <button class="menuBtn liveLink" id="futureLive" type="button"><span class="n">LIVE</span><span><b>駅伝LIVE</b><span>襷通過データから疑似走行へ接続（次工程）</span></span><i>›</i></button>
+    </div>
+    <div class="note"><b>配置方針：</b> 参加者用の通常ナビには操作ボタンを出さず、正規入口は「設定・管理 ＞ 駅伝 ＞ 大会当日」。大会中は管理者だけが使う前提です。</div>
+  </main>
+
+  <main id="handoffPage" class="handoff hidden">
+    <div class="handoffSticky">
+      <div class="clockCard">
+        <div class="clockTop"><span>RELAY OPERATION</span><b id="clock">--:--:--.00</b></div>
+        <div class="cpRow"><button id="cpPrev" type="button">‹</button><b id="cpLabel">第1中継所　1区 → 2区</b><button id="cpNext" type="button">›</button></div>
+        <div class="raceMeta"><span class="pill">START <strong id="startTime"></strong></span><span class="pill yellow">次 <strong id="nextRank">1位</strong></span><span class="pill">4区間</span></div>
+      </div>
+    </div>
+
+    <div class="guide"><b>操作は1回のTAPを優先。</b> タップ時刻をCATCHとRELEASEへ同時記録し、順位と区間タイムを即時計算します。<span class="em">遅押し・早押し・誤タップは後から修正可能</span>です。</div>
+
+    <div class="rankStatus"><div><span>この中継所の現在TOP</span><b id="topLabel">未記録</b></div><div style="text-align:right"><span>通過数</span><b id="passCount">0</b></div></div>
+
+    <button class="otherTap" id="otherTap" type="button"><small>未登録の他チーム</small><span id="otherTapLabel">TOP（1位）を記録</span></button>
+
+    <div class="sectionHead"><h2>クラブ内＋ターゲット</h2><span>到着順にタップ</span></div>
+    <div class="teamGrid" id="teamGrid"></div>
+
+    <div class="sectionHead"><h2>現在の通過順</h2><span>タップ順／補正後</span></div>
+    <div class="orderStrip" id="orderStrip"></div>
+
+    <div class="sectionHead"><h2>直近の記録</h2><span>すぐ修正できる</span></div>
+    <div class="history" id="history"></div>
+
+    <div class="sectionHead"><h2>LIVE接続プレビュー</h2><span>設定タイムで疑似進行</span></div>
+    <div class="livePreview" id="livePreview"></div>
+
+    <div class="bottomActions">
+      <button id="prevRelay" type="button">← 前の中継所</button>
+      <button class="next" id="nextRelay" type="button">次の中継所 →</button>
+    </div>
+    <div class="note"><b>この試作ではFirebaseへ保存しません。</b> ここで確定するのは操作・順位・修正・区間タイム・LIVEへ渡す値の形です。Firebase接続は別工程です。</div>
+  </main>
+</div>
+
+<div class="sheet hidden" id="sheet" role="dialog" aria-modal="true">
+  <div class="sheetCard">
+    <div class="sheetHead"><div><small>PASS RECORD CORRECTION</small><h3 id="sheetTitle">記録修正</h3></div><button class="sheetClose" id="sheetClose" type="button">×</button></div>
+    <div class="adjustGrid">
+      <button data-adjust="-1">−1.0秒</button><button data-adjust="1">＋1.0秒</button>
+      <button data-adjust="-0.5">−0.5秒</button><button data-adjust="0.5">＋0.5秒</button>
+      <button data-adjust="-0.1">−0.1秒</button><button data-adjust="0.1">＋0.1秒</button>
+    </div>
+    <div class="rankMove"><button id="rankUp" type="button">↑ 1つ前の順位へ</button><button id="rankDown" type="button">↓ 1つ後の順位へ</button></div>
+    <div class="customRow"><input id="customAdjust" inputmode="decimal" type="number" step="0.1" placeholder="例：-0.8"><button id="customApply" type="button">秒補正</button></div>
+    <button class="dangerBtn" id="cancelPass" type="button">誤タップとして取消</button>
+    <div class="sheetInfo" id="sheetInfo"></div>
+  </div>
+</div>
+
+<script>
+(()=>{
+'use strict';
+const $=id=>document.getElementById(id);
+const pad=(n,w=2)=>String(n).padStart(w,'0');
+const fmtClock=ts=>{const d=new Date(ts);return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(Math.floor(d.getMilliseconds()/10))}`};
+const fmtDuration=sec=>{if(!Number.isFinite(sec))return '—';const sign=sec<0?'-':'';sec=Math.abs(sec);const m=Math.floor(sec/60),s=sec-m*60;return `${sign}${m}:${s.toFixed(1).padStart(4,'0')}`};
+const fmtGap=ms=>{if(!Number.isFinite(ms))return '—';if(Math.abs(ms)<50)return 'TOP';const sec=ms/1000;return `${sec>=0?'+':'−'}${Math.abs(sec).toFixed(1)}秒`};
+
+const teams=[
+  {id:'A',name:'Aチーム',kind:'club',targets:[760,745,735,720]},
+  {id:'B',name:'Bチーム',kind:'club',targets:[780,755,740,730]},
+  {id:'C',name:'Cチーム',kind:'club',targets:[800,770,750,742]},
+  {id:'T1',name:'ターゲット 1',kind:'target',targets:[750,748,742,738]}
+];
+const state={checkpoint:0,startAt:Date.now()-18*60*1000,events:[],selectedId:null,otherSerial:0};
+const checkpoints=3; // 4区間 = 3中継所
+
+function activeEvents(cp=state.checkpoint){
+  return state.events.filter(e=>e.checkpoint===cp&&e.status!=='cancelled').sort((a,b)=>a.effectiveAt-b.effectiveAt||a.createdAt-b.createdAt);
+}
+function recalc(cp=state.checkpoint){activeEvents(cp).forEach((e,i)=>e.rank=i+1)}
+function teamEvent(id,cp=state.checkpoint){return activeEvents(cp).find(e=>e.subjectId===id)}
+function topEvent(cp=state.checkpoint){return activeEvents(cp)[0]||null}
+function gapToTop(ev){const top=topEvent(ev.checkpoint);return top?ev.effectiveAt-top.effectiveAt:0}
+function prevTeamEvent(teamId,cp){if(cp<=0)return null;return state.events.filter(e=>e.subjectId===teamId&&e.checkpoint===cp-1&&e.status!=='cancelled').sort((a,b)=>b.effectiveAt-a.effectiveAt)[0]||null}
+function legTime(ev){if(ev.type==='other')return NaN;const prev=prevTeamEvent(ev.subjectId,ev.checkpoint);const from=prev?prev.effectiveAt:state.startAt;return (ev.effectiveAt-from)/1000}
+function rankCursor(){return activeEvents().length+1}
+
+function addPass(subject){
+  if(subject.type!=='other'&&teamEvent(subject.id)){openCorrection(teamEvent(subject.id).id);return}
+  const now=Date.now();
+  const ev={
+    id:`p_${now}_${Math.random().toString(36).slice(2,6)}`,
+    subjectId:subject.id,label:subject.name,type:subject.type,checkpoint:state.checkpoint,
+    rawAt:now,effectiveAt:now,catchAt:now,releaseAt:now,createdAt:now,status:'active',rank:0,
+    corrections:[]
+  };
+  state.events.push(ev);recalc();render();
+}
+function addOther(){
+  state.otherSerial++;
+  const r=rankCursor();
+  addPass({id:`OTHER_${state.checkpoint}_${state.otherSerial}`,name:r===1?'他チーム TOP':`他チーム ${r}位`,type:'other'});
+}
+function adjustEvent(id,deltaSec){
+  const ev=state.events.find(x=>x.id===id);if(!ev||ev.status==='cancelled')return;
+  ev.effectiveAt+=deltaSec*1000;ev.catchAt=ev.effectiveAt;ev.releaseAt=ev.effectiveAt;
+  ev.corrections.push({type:'seconds',deltaSec,at:Date.now()});
+  recalc();render();updateSheet();
+}
+function moveRank(id,dir){
+  const arr=activeEvents();const idx=arr.findIndex(e=>e.id===id);if(idx<0)return;
+  const j=idx+dir;if(j<0||j>=arr.length)return;
+  const target=arr[j];const ev=arr[idx];
+  ev.effectiveAt=dir<0?target.effectiveAt-1:target.effectiveAt+1;
+  ev.catchAt=ev.effectiveAt;ev.releaseAt=ev.effectiveAt;
+  ev.corrections.push({type:'rankMove',dir,at:Date.now()});
+  recalc();render();updateSheet();
+}
+function cancelEvent(id){
+  const ev=state.events.find(x=>x.id===id);if(!ev)return;
+  ev.status='cancelled';ev.cancelledAt=Date.now();
+  recalc();closeSheet();render();
+}
+function openCorrection(id){state.selectedId=id;$('sheet').classList.remove('hidden');updateSheet()}
+function closeSheet(){$('sheet').classList.add('hidden');state.selectedId=null}
+function updateSheet(){
+  const ev=state.events.find(x=>x.id===state.selectedId);if(!ev)return;
+  $('sheetTitle').textContent=`${ev.rank||'—'}位｜${ev.label}`;
+  $('sheetInfo').textContent=`記録 ${fmtClock(ev.effectiveAt)}｜TOP差 ${fmtGap(gapToTop(ev))}｜CATCH ${fmtClock(ev.catchAt)} / RELEASE ${fmtClock(ev.releaseAt)}（現在は同時記録）`;
+  const arr=activeEvents(),i=arr.findIndex(x=>x.id===ev.id);$('rankUp').disabled=i<=0;$('rankDown').disabled=i<0||i>=arr.length-1;
+}
+
+function renderTeams(){
+  $('teamGrid').innerHTML=teams.map(t=>{
+    const ev=teamEvent(t.id),target=t.targets[state.checkpoint+1]||t.targets[t.targets.length-1];
+    const type=t.kind==='target'?'TARGET / メンバーなし':'CLUB TEAM';
+    return `<button class="teamBtn ${t.kind==='target'?'target':''} ${ev?'done':''}" data-team="${t.id}" type="button">
+      <span class="tag">${type}</span><strong>${t.name}</strong>
+      <div class="line"><span>${state.checkpoint+1}区 → ${state.checkpoint+2}区</span><span>次区間 ${fmtDuration(target)}</span></div>
+      <div class="big">${ev?`${ev.rank}位　${fmtGap(gapToTop(ev))}`:`次 ${rankCursor()}位｜TAP`}</div>
+      <span class="tapHint">${ev?'タップで修正':'到着したらタップ'}</span>
+    </button>`
+  }).join('');
+  document.querySelectorAll('[data-team]').forEach(btn=>btn.onclick=()=>{const t=teams.find(x=>x.id===btn.dataset.team);addPass(t)});
+}
+function renderOrder(){
+  const arr=activeEvents();
+  $('orderStrip').innerHTML=arr.length?arr.map((e,i)=>`<div class="orderChip ${i===0?'top':''}"><b><span class="r">${e.rank}位</span> ${e.label}</b><span>${i===0?'TOP':fmtGap(gapToTop(e))}</span></div>`).join(''):'<div class="empty" style="min-width:100%">まだ通過記録がありません</div>';
+}
+function renderHistory(){
+  const arr=activeEvents().slice().reverse();
+  $('history').innerHTML=arr.length?arr.map(ev=>{
+    const lt=legTime(ev);
+    return `<div class="hist"><div class="rank">${ev.rank}</div><div class="main"><b>${ev.label}　${fmtClock(ev.effectiveAt)}</b><span>TOP ${fmtGap(gapToTop(ev))}${Number.isFinite(lt)?`｜${state.checkpoint+1}区 ${fmtDuration(lt)}`:''}</span></div><button class="edit" data-edit="${ev.id}" type="button">修正</button></div>`
+  }).join(''):'<div class="empty">通過後、ここから時刻補正・順位修正・取消ができます</div>';
+  document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openCorrection(b.dataset.edit));
+}
+function renderLivePreview(){
+  const now=Date.now();const cards=[];
+  for(const t of teams){
+    const ev=teamEvent(t.id);if(!ev)continue;
+    const targetSec=t.targets[state.checkpoint+1]||t.targets[t.targets.length-1];
+    const elapsed=Math.max(0,(now-ev.releaseAt)/1000);const pct=Math.max(0,Math.min(100,elapsed/targetSec*100));
+    cards.push(`<div class="liveCard"><div class="liveHead"><b>${t.name}｜${state.checkpoint+2}区</b><span>${pct.toFixed(0)}%</span></div><div class="progress"><i style="width:${pct}%"></i></div><div class="liveMeta"><span>RELEASE ${fmtClock(ev.releaseAt)} / 設定 ${fmtDuration(targetSec)}</span><span>TOP ${fmtGap(gapToTop(ev))}</span></div></div>`)
+  }
+  $('livePreview').innerHTML=cards.length?cards.join(''):'<div class="empty">チームをタップすると、次区間が設定タイムで疑似進行します</div>';
+}
+function render(){
+  recalc();
+  const from=state.checkpoint+1,to=state.checkpoint+2;const arr=activeEvents(),top=arr[0];
+  $('cpLabel').textContent=`第${state.checkpoint+1}中継所　${from}区 → ${to}区`;
+  $('startTime').textContent=fmtClock(state.startAt).slice(0,8);$('nextRank').textContent=`${rankCursor()}位`;
+  $('topLabel').textContent=top?`${top.label}｜${fmtClock(top.effectiveAt).slice(0,8)}`:'未記録';$('passCount').textContent=arr.length;
+  $('otherTapLabel').textContent=rankCursor()===1?'TOP（1位）を記録':`次 ${rankCursor()}位｜他チームを記録`;
+  $('cpPrev').disabled=state.checkpoint===0;$('cpNext').disabled=state.checkpoint===checkpoints-1;
+  $('prevRelay').disabled=state.checkpoint===0;$('nextRelay').disabled=state.checkpoint===checkpoints-1;
+  renderTeams();renderOrder();renderHistory();renderLivePreview();
+}
+function setCheckpoint(n){state.checkpoint=Math.max(0,Math.min(checkpoints-1,n));closeSheet();render();window.scrollTo({top:0,behavior:'instant'})}
+function openHandoff(){
+  $('adminPage').classList.add('hidden');$('handoffPage').classList.remove('hidden');$('topName').textContent='襷渡しモード';$('topKicker').textContent='EKIDEN / RELAY OPERATION';$('topBack').onclick=showAdmin;render();window.scrollTo({top:0,behavior:'instant'});
+}
+function showAdmin(){
+  $('handoffPage').classList.add('hidden');$('adminPage').classList.remove('hidden');$('topName').textContent='駅伝管理';$('topKicker').textContent='EKIDEN MANAGEMENT';$('topBack').onclick=()=>{};window.scrollTo({top:0,behavior:'instant'});
+}
+
+$('openHandoff').onclick=openHandoff;
+$('futureLive').onclick=()=>alert('次工程：この襷通過イベントを駅伝LIVEの疑似走行へ接続します。今回は接続しません。');
+$('otherTap').onclick=addOther;
+$('cpPrev').onclick=()=>setCheckpoint(state.checkpoint-1);$('cpNext').onclick=()=>setCheckpoint(state.checkpoint+1);
+$('prevRelay').onclick=()=>setCheckpoint(state.checkpoint-1);$('nextRelay').onclick=()=>setCheckpoint(state.checkpoint+1);
+$('sheetClose').onclick=closeSheet;$('sheet').addEventListener('click',e=>{if(e.target===$('sheet'))closeSheet()});
+document.querySelectorAll('[data-adjust]').forEach(b=>b.onclick=()=>adjustEvent(state.selectedId,Number(b.dataset.adjust)));
+$('rankUp').onclick=()=>moveRank(state.selectedId,-1);$('rankDown').onclick=()=>moveRank(state.selectedId,1);
+$('customApply').onclick=()=>{const v=Number($('customAdjust').value);if(Number.isFinite(v)&&v!==0){adjustEvent(state.selectedId,v);$('customAdjust').value=''}};
+$('cancelPass').onclick=()=>cancelEvent(state.selectedId);
+
+setInterval(()=>{$('clock').textContent=fmtClock(Date.now());if(!$('handoffPage').classList.contains('hidden'))renderLivePreview()},100);
+$('clock').textContent=fmtClock(Date.now());$('startTime').textContent=fmtClock(state.startAt).slice(0,8);
+showAdmin();
+})();
+</script>
+</body>
+</html>
