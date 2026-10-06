@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>EVENT BASE EKIDEN｜出走グループ当日運用 Prototype v4</title>
+<!--
+EVENT_BASE_EKIDEN_START_GROUP_OPERATION_PROTOTYPE_v5_MANUAL_START_ELAPSED
+STATUS: UI / operation prototype only. NOT PRODUCTION. NOT FIREBASE CONNECTED.
+VISUAL BASIS: v1 visual direction (user said good) + v3 full-flow prototype structure.
+2026-10-06 MANUAL START / ELAPSED TIMER CORRECTION:
+- DO NOT branch by fixed gender labels such as women / men.
+- Branch by START GROUP / WAVE assigned when each team is created.
+- Scheduled start time is guidance only. NEVER auto-start a race.
+- The administrator START tap records the actual startAt.
+- Main race clock is ELAPSED TIME from actual startAt, not wall-clock time.
+- START GROUP display name remains arbitrary.
+TARGET ONLY:
+- administrator/developer race-day operation flow
+- start-group waiting -> START -> relay handoff -> GOAL -> provisional result -> SAVE
+- team.startGroupId based branching (prototype demo data only)
+- unobtrusive switch only when staggered starts actually overlap / another group becomes ready
+- relay/finish correction, rank correction, cancel
+- pseudo LIVE fed by manual pass events + configured leg target times
+- saved provisional result remains visible in LIVE after race end
+NOT TARGET:
+- team-creation UI for choosing START GROUP (to be connected later)
+- Firebase path / Rules / Auth / binding
+- real MAP editor integration
+- production LIVE transport
+- official result import
+IMPORTANT:
+- Manual tap data is provisional/operational, not official result.
+- CATCH / RELEASE remain separate fields; prototype records same timestamp for one-tap speed.
+- Prototype START GROUP configuration is local demo data and must not be treated as Firebase schema.
+-->
+<style>
+:root{
+ --bg:#090b0d;--p:#111416;--p2:#171b1f;--line:#353c41;--line2:#4a5157;
+ --text:#f5f7f8;--muted:#8b949b;--yellow:#ffd400;--danger:#ff6269;--blue:#69baff;--green:#57d19c;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue","Yu Gothic",Meiryo,sans-serif}
+body{min-height:100vh;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+button,input{font:inherit}button{touch-action:manipulation}.hidden{display:none!important}
+.app{max-width:520px;margin:0 auto;min-height:100vh;background:linear-gradient(180deg,#0d1012,#090b0d 44%)}
+.topbar{position:sticky;top:0;z-index:70;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 12px;background:rgba(9,11,13,.95);backdrop-filter:blur(13px);border-bottom:1px solid #282e32}
+.topbar button{min-width:42px;min-height:40px;border:1px solid var(--line);border-radius:11px;background:#171b1f;color:#fff;font-weight:1000}.topbar button.ghost{font-size:21px}.title small{display:block;color:var(--yellow);font-size:9px;font-weight:1000;letter-spacing:.13em}.title b{display:block;font-size:18px;line-height:1.15}.role{font-size:9px;font-weight:1000;color:var(--yellow);border:1px solid #6c5f14;border-radius:999px;padding:7px 9px;background:#211d05}
+main{padding:12px 12px 34px}.hero{border:1px solid #394045;background:linear-gradient(145deg,#15191c,#0f1214);border-radius:18px;padding:15px}.hero small{color:var(--yellow);font-size:9px;font-weight:1000;letter-spacing:.13em}.hero h1{margin:5px 0 5px;font-size:22px}.hero p{margin:0;color:#97a0a6;font-size:11px;line-height:1.55}.sectionHead{display:flex;justify-content:space-between;gap:10px;align-items:end;margin:18px 2px 8px}.sectionHead h2{margin:0;font-size:16px}.sectionHead span{color:var(--muted);font-size:9px}
+.note{margin-top:10px;border:1px solid #30363a;border-radius:13px;background:#111416;padding:10px 11px;color:#8e979d;font-size:10px;line-height:1.55}.note b{color:#fff}.note em{font-style:normal;color:var(--yellow);font-weight:1000}
+
+/* start / race cards */
+.raceList{display:grid;gap:9px}.raceCard{border:1px solid #3a4146;border-radius:16px;background:#13171a;padding:12px}.raceCard.ready{border-color:#716516;background:linear-gradient(145deg,#1d1a07,#13171a)}.raceCard.running{border-color:#8a7715;background:linear-gradient(145deg,#201c04,#13171a)}.raceCard.saved{border-color:#315b4b}.raceHead{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:start}.raceHead small{display:block;color:#8b949a;font-size:8px;font-weight:900;letter-spacing:.1em}.raceHead b{display:block;font-size:20px;margin-top:2px}.raceHead em{display:block;font-style:normal;color:var(--yellow);font-size:10px;font-weight:1000;margin-top:4px}.raceStatus{border:1px solid #3f464b;border-radius:999px;padding:5px 8px;color:#aeb5ba;font-size:8px;font-weight:1000}.raceCard.running .raceStatus{border-color:#716516;color:var(--yellow)}.raceCard.saved .raceStatus{border-color:#315b4b;color:#73d6aa}.raceMeta{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}.metaBox{border:1px solid #2e3539;border-radius:11px;padding:8px;background:#0f1214}.metaBox span{display:block;color:#7f888f;font-size:8px}.metaBox b{display:block;margin-top:3px;font-size:14px}.raceAction{width:100%;min-height:52px;margin-top:9px;border:0;border-radius:12px;background:var(--yellow);color:#111;font-weight:1000;font-size:15px}.raceAction:disabled{background:#242a2e;color:#697178;border:1px solid #343b40}.raceAction.secondary{background:#eef0f2}.raceAction.saved{background:#17201c;color:#73d6aa;border:1px solid #315b4b}.raceSubActions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:7px}.raceSubActions button{min-height:43px;border:1px solid #394045;border-radius:11px;background:#171b1f;color:#fff;font-size:10px;font-weight:900}
+
+/* subtle overlap switch */
+.miniSwitch{display:flex;justify-content:center;gap:5px;margin:4px 0 9px}.miniSwitch button{min-height:30px;border:1px solid #343b40;border-radius:999px;background:#111416;color:#7f888f;padding:0 10px;font-size:8px;font-weight:1000}.miniSwitch button.on{border-color:#776a14;color:var(--yellow);background:#1c1905}.miniSwitch small{align-self:center;color:#687178;font-size:7px;margin-right:2px}
+
+/* operation */
+.opSticky{position:sticky;top:61px;z-index:45;padding:6px 0 10px;background:linear-gradient(var(--bg) 80%,rgba(9,11,13,0))}.opClock{border:1px solid #4a5156;background:#111315;border-radius:16px;padding:11px 12px}.clockLine{display:flex;justify-content:space-between;gap:8px;align-items:center}.clockLine span{font-size:9px;color:var(--yellow);font-weight:1000;letter-spacing:.13em}.clockLine b{font-size:27px;font-variant-numeric:tabular-nums}.stageRow{display:grid;grid-template-columns:40px minmax(0,1fr) 40px;gap:7px;align-items:center;margin-top:8px}.stageRow button{height:40px;border:1px solid #3d4449;border-radius:10px;background:#1a1e21;color:#fff;font-size:23px;font-weight:1000}.stageRow button:disabled,.stageRow button.blank{visibility:hidden}.stageRow b{text-align:center;font-size:13px}.opPills{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-top:8px}.pill{border:1px solid #30363b;border-radius:999px;padding:5px 8px;color:#aab2b8;font-size:8px}.pill strong{color:#fff}.pill.hot{border-color:#716516;color:var(--yellow)}
+.guide{margin:2px 0 10px;padding:10px;border:1px solid #353b40;border-radius:13px;background:#121619;color:#9ca4aa;font-size:10px;line-height:1.55}.guide b{color:#fff}.guide em{font-style:normal;color:var(--yellow);font-weight:1000}
+.rankStatus{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;margin:10px 0 8px;padding:10px 11px;border:1px solid #3b4247;border-radius:13px;background:#111416}.rankStatus span{font-size:9px;color:#8d969d}.rankStatus b{display:block;font-size:20px;color:var(--yellow)}
+.otherTap{width:100%;min-height:68px;border:0;border-radius:15px;background:var(--yellow);color:#101112;font-size:18px;font-weight:1000;padding:8px 12px}.otherTap small{display:block;font-size:9px;margin-bottom:2px;opacity:.72;letter-spacing:.08em}
+.teamGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.teamBtn{position:relative;min-height:105px;border:1px solid #3d444a;border-radius:15px;background:#171b1f;color:#fff;padding:10px;text-align:left;overflow:hidden}.teamBtn.done{border-color:#6d6316;background:linear-gradient(145deg,#201c03,#15181a)}.teamBtn .tag{display:inline-block;border:1px solid #3b4248;border-radius:999px;padding:3px 6px;color:#9ba3aa;font-size:7px;font-weight:1000;letter-spacing:.08em}.teamBtn.target .tag{border-color:#2d5f7d;color:#79c8ff}.teamBtn strong{display:block;margin-top:7px;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.teamBtn .line{display:flex;justify-content:space-between;gap:5px;margin-top:5px;font-size:8px;color:#8d969d}.teamBtn .big{margin-top:7px;color:var(--yellow);font-size:18px;font-weight:1000}.teamBtn.done .big{font-size:14px}.teamBtn .hint{position:absolute;right:8px;bottom:7px;font-size:7px;color:#70787e}
+.orderStrip{display:flex;gap:6px;overflow-x:auto;padding:1px 0 5px;scrollbar-width:none}.orderStrip::-webkit-scrollbar{display:none}.chip{flex:0 0 auto;min-width:82px;border:1px solid #32383d;border-radius:11px;padding:7px 8px;background:#121619}.chip.top{border-color:#807218}.chip b{display:block;font-size:11px}.chip span{display:block;color:#8c959b;font-size:8px;margin-top:2px}.chip .r{color:var(--yellow)}
+.history{display:grid;gap:7px}.hist{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:8px;align-items:center;border:1px solid #333a3f;background:#111416;border-radius:13px;padding:9px}.hist .rank{width:38px;height:38px;border-radius:10px;background:#22282c;display:grid;place-items:center;color:var(--yellow);font-weight:1000}.hist .main b{display:block;font-size:11px}.hist .main span{display:block;color:#879097;font-size:8px;margin-top:3px;line-height:1.4}.hist .edit{min-height:35px;border:1px solid #454c51;border-radius:9px;background:#1a1e21;color:#fff;padding:0 8px;font-size:9px;font-weight:900}.empty{border:1px dashed #343b40;border-radius:13px;padding:13px;text-align:center;color:#737c82;font-size:10px}
+.nextStage{width:100%;min-height:50px;margin-top:12px;border:1px solid #eef0f2;border-radius:12px;background:#eef0f2;color:#111;font-weight:1000}.nextStage:disabled{opacity:.35}
+
+/* LIVE pseudo map */
+.liveTop{display:flex;justify-content:space-between;align-items:center;gap:8px}.liveTop b{font-size:17px}.liveTop span{font-size:8px;color:#899298}.mapBox{position:relative;height:270px;border:1px solid #333b40;border-radius:18px;background:radial-gradient(circle at 75% 25%,rgba(255,212,0,.08),transparent 30%),linear-gradient(145deg,#151a1d,#0e1113);overflow:hidden;margin-top:10px}.mapGrid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:28px 28px}.route{position:absolute;left:9%;right:9%;top:50%;height:6px;background:#4b5358;border-radius:999px;transform:translateY(-50%)}.route::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#8d7b12,#ffd400);opacity:.8;border-radius:999px}.routeMark{position:absolute;top:calc(50% - 17px);width:1px;height:34px;background:#747c81}.routeMark span{position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:7px;color:#7f888e;white-space:nowrap}.routeMark.m1{left:29%}.routeMark.m2{left:50%}.routeMark.m3{left:71%}.dot{position:absolute;top:50%;width:35px;height:35px;border-radius:50%;display:grid;place-items:center;transform:translate(-50%,-50%);background:#e5e8ea;color:#111;border:3px solid #111;font-size:8px;font-weight:1000;box-shadow:0 5px 14px rgba(0,0,0,.45);transition:left .45s linear}.dot.target{background:#79c8ff}.dot.lead{background:var(--yellow)}.dot.done{box-shadow:0 0 0 3px rgba(87,209,156,.35),0 5px 14px rgba(0,0,0,.45)}.liveLegend{position:absolute;left:10px;right:10px;bottom:10px;display:grid;grid-template-columns:repeat(2,1fr);gap:5px}.legendRow{border:1px solid #353c41;border-radius:10px;background:rgba(12,15,17,.9);padding:6px 7px}.legendRow b{display:block;font-size:9px}.legendRow span{display:block;margin-top:2px;font-size:7px;color:#8b949a}.liveResultBanner{margin-top:10px;border:1px solid #315b4b;border-radius:13px;background:#111916;padding:10px;color:#76d9ae;font-size:10px;font-weight:900}
+
+/* results */
+.resultHero{border:1px solid #706414;background:linear-gradient(145deg,#201c04,#111416);border-radius:17px;padding:14px}.resultHero small{color:var(--yellow);font-size:8px;font-weight:1000;letter-spacing:.12em}.resultHero h2{margin:4px 0 4px;font-size:21px}.resultHero p{margin:0;color:#9ca4aa;font-size:10px}.resultList{display:grid;gap:7px;margin-top:10px}.resultRow{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:8px;align-items:center;border:1px solid #343b40;border-radius:13px;background:#111416;padding:9px}.resultRow .rank{width:42px;height:42px;border-radius:10px;background:#23292d;color:var(--yellow);display:grid;place-items:center;font-size:15px;font-weight:1000}.resultRow .main b{display:block;font-size:12px}.resultRow .main span{display:block;color:#879097;font-size:8px;margin-top:3px}.resultRow .time{text-align:right}.resultRow .time b{display:block;font-size:13px}.resultRow .time span{display:block;color:#8a9399;font-size:8px;margin-top:2px}.saveBtn{width:100%;min-height:54px;margin-top:12px;border:0;border-radius:13px;background:var(--yellow);color:#111;font-size:16px;font-weight:1000}.saveBtn.saved{background:#17201c;color:#73d6aa;border:1px solid #315b4b}.saveNote{text-align:center;color:#798289;font-size:8px;margin-top:7px;line-height:1.45}
+
+/* correction sheet */
+.sheet{position:fixed;inset:0;z-index:120;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;padding:12px}.sheetCard{width:min(520px,100%);background:#101315;border:1px solid #41484d;border-radius:20px 20px 14px 14px;padding:14px}.sheetHead{display:flex;justify-content:space-between;gap:10px}.sheetHead small{display:block;color:var(--yellow);font-size:8px;font-weight:1000;letter-spacing:.12em}.sheetHead h3{margin:4px 0 0;font-size:18px}.sheetClose{width:38px;height:38px;border:1px solid #3b4247;border-radius:10px;background:#191d20;color:#fff}.adjust{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-top:12px}.adjust button,.rankMove button{min-height:43px;border:1px solid #3b4247;border-radius:11px;background:#1a1e21;color:#fff;font-weight:900}.rankMove{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:7px}.custom{display:grid;grid-template-columns:1fr auto;gap:7px;margin-top:7px}.custom input{min-width:0;height:43px;border:1px solid #41484d;border-radius:11px;background:#090b0d;color:#fff;padding:0 10px}.custom button{border:0;border-radius:11px;background:var(--yellow);font-weight:1000}.resetBtn,.cancelBtn{width:100%;min-height:43px;margin-top:7px;border-radius:11px;font-weight:1000}.resetBtn{border:1px solid #454c51;background:#171b1f;color:#fff}.cancelBtn{border:1px solid #6b2b2f;background:#281113;color:#ff8e93}.sheetInfo{margin-top:10px;color:#90999f;font-size:8px;line-height:1.55}.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));z-index:160;transform:translate(-50%,20px);opacity:0;pointer-events:none;background:#f1f3f4;color:#111;border-radius:999px;padding:9px 13px;font-size:9px;font-weight:1000;transition:.18s}.toast.on{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+<div class="app">
+ <header class="topbar">
+  <button id="backBtn" class="ghost" type="button">←</button>
+  <div class="title"><small id="kicker">EKIDEN / RACE DAY</small><b id="pageTitle">駅伝当日運用</b></div>
+  <span class="role">管理者</span>
+ </header>
+
+ <main id="startPage">
+  <section class="hero"><small>START GROUP / RACE DAY OPERATION</small><h1>号砲から保存まで</h1><p>チーム作成時に指定された出走グループごとに、管理者が号砲に合わせてSTART → 襷渡し → GOAL → 速報 → 保存まで完結します。</p></section>
+  <div class="note"><b>予定START時刻は目安です。</b> 時刻になっても自動開始しません。<em>実際の号砲に合わせて管理者がSTARTをタップ</em>し、その瞬間を実STARTとして記録します。<br><b>通常：</b> 1グループずつ運用。<br><em>時差START：</em> 別グループが号砲待ち／進行中になった時だけ、小さな切替を表示します。</div>
+  <div class="sectionHead"><h2>本日の出走グループ</h2><span>START時刻順</span></div>
+  <div id="raceList" class="raceList"></div>
+ </main>
+
+ <main id="operationPage" class="hidden">
+  <div id="miniSwitch" class="miniSwitch hidden"></div>
+  <div class="opSticky">
+   <div class="opClock">
+    <div class="clockLine"><span id="opRaceLabel">経過タイム</span><b id="clock">00:00:00</b></div>
+    <div class="stageRow"><button id="stagePrev" type="button">‹</button><b id="stageLabel">第1中継所</b><button id="stageNext" type="button">›</button></div>
+    <div class="opPills"><span class="pill">START <strong id="actualStart">--:--:--</strong></span><span class="pill hot">次 <strong id="nextRank">1位</strong></span><span class="pill"><strong id="racePhase">進行中</strong></span></div>
+   </div>
+  </div>
+  <div class="guide"><b>到着順に1回TAP。</b> タップ時刻をCATCH／RELEASEへ同時記録します。<em>遅押し・早押し・誤タップは後から修正可能</em>です。</div>
+  <div class="rankStatus"><div><span id="topCaption">この地点の現在TOP</span><b id="topLabel">未記録</b></div><div style="text-align:right"><span>通過数</span><b id="passCount">0</b></div></div>
+  <button id="otherTap" class="otherTap" type="button"><small>未登録の他チーム</small><span id="otherTapLabel">TOP（1位）を記録</span></button>
+  <div class="sectionHead"><h2 id="teamHead">クラブ内＋ターゲット</h2><span>到着順にタップ</span></div>
+  <div id="teamGrid" class="teamGrid"></div>
+  <div class="sectionHead"><h2>現在順位</h2><span>タップ順＋補正反映</span></div>
+  <div id="orderStrip" class="orderStrip"></div>
+  <div class="sectionHead"><h2>直近記録</h2><span>修正・取消</span></div>
+  <div id="history" class="history"></div>
+  <button id="nextStageBtn" class="nextStage" type="button">次の中継所へ</button>
+ </main>
+
+ <main id="livePage" class="hidden">
+  <div id="liveSwitch" class="miniSwitch hidden"></div>
+  <div class="liveTop"><div><b id="liveRaceTitle">LIVE速報</b><span id="liveStatus">進行中</span></div><button id="liveToOperation" type="button" style="min-height:38px;border:1px solid #3b4247;border-radius:10px;background:#171b1f;color:#fff;font-weight:900">運用へ</button></div>
+  <div class="mapBox"><div class="mapGrid"></div><div class="route"></div><div class="routeMark m1"><span>中継1</span></div><div class="routeMark m2"><span>中継2</span></div><div class="routeMark m3"><span>中継3</span></div><div id="liveDots"></div><div id="liveLegend" class="liveLegend"></div></div>
+  <div id="liveResultBanner" class="liveResultBanner hidden"></div>
+  <div class="note"><b>LIVE速報：</b> 中継所の実測TAPを基準に、区間途中は設定タイムで疑似進行します。終了後は最終順位・タイムをそのまま表示します。</div>
+ </main>
+
+ <main id="resultPage" class="hidden">
+  <section class="resultHero"><small>PROVISIONAL RESULT</small><h2 id="resultTitle">速報結果</h2><p>管理者TAPを基準にした速報です。公式結果とは別です。</p></section>
+  <div id="resultList" class="resultList"></div>
+  <button id="saveResult" class="saveBtn" type="button">このレース結果を保存</button>
+  <div id="saveNote" class="saveNote">PrototypeではこのHTML内のlocalStorageだけに保存します。Firebaseには接続しません。</div>
+  <div class="raceSubActions"><button id="resultLive" type="button">LIVE速報を見る</button><button id="resultHome" type="button">レース一覧へ</button></div>
+ </main>
+</div>
+
+<div id="sheet" class="sheet hidden">
+ <div class="sheetCard">
+  <div class="sheetHead"><div><small>TIME / RANK CORRECTION</small><h3 id="sheetTitle">修正</h3></div><button id="sheetClose" class="sheetClose" type="button">×</button></div>
+  <div class="adjust">
+   <button data-adjust="-1">−1.0秒</button><button data-adjust="1">＋1.0秒</button>
+   <button data-adjust="-0.5">−0.5秒</button><button data-adjust="0.5">＋0.5秒</button>
+   <button data-adjust="-0.1">−0.1秒</button><button data-adjust="0.1">＋0.1秒</button>
+  </div>
+  <div class="rankMove"><button id="rankUp" type="button">↑ 1つ前へ</button><button id="rankDown" type="button">↓ 1つ後へ</button></div>
+  <div class="custom"><input id="customAdjust" inputmode="decimal" type="number" step="0.1" placeholder="例：-0.8"><button id="customApply" type="button">秒補正</button></div>
+  <button id="resetRaw" class="resetBtn" type="button">最初のタップ時刻へ戻す</button>
+  <button id="cancelPass" class="cancelBtn" type="button">誤タップとして取消</button>
+  <div id="sheetInfo" class="sheetInfo"></div>
+ </div>
+</div>
+<div id="toast" class="toast">反映しました</div>
+
+<script>
+(()=>{
+'use strict';
+const $=id=>document.getElementById(id);
+const pad=n=>String(n).padStart(2,'0');
+const clock=ts=>{const d=new Date(ts);return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`};
+const elapsedClock=(startAt,now=Date.now())=>{if(!startAt)return '00:00:00';let sec=Math.max(0,Math.floor((now-startAt)/1000));const h=Math.floor(sec/3600);sec%=3600;const m=Math.floor(sec/60),ss=sec%60;return `${pad(h)}:${pad(m)}:${pad(ss)}`};
+const dur=sec=>{if(!Number.isFinite(sec))return '—';sec=Math.max(0,sec);const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=Math.floor(sec%60);return h?`${h}:${pad(m)}:${pad(s)}`:`${m}:${pad(s)}`};
+const gap=ms=>{if(!Number.isFinite(ms)||Math.abs(ms)<500)return 'TOP';const s=Math.round(Math.abs(ms)/100)/10;return `${ms>=0?'+':'−'}${s.toFixed(1)}秒`};
+const todayAt=(hm)=>{const [h,m]=hm.split(':').map(Number),d=new Date();d.setHours(h,m,0,0);return d.getTime()};
+const STORAGE='eventbase_ekiden_start_group_operation_v5_manual_start_demo';
+const clone=x=>JSON.parse(JSON.stringify(x));
+
+// Prototype stand-in for future team-creation settings.
+// START GROUP name is arbitrary; scheduled start time is the primary race-day distinction.
+const startGroups=[
+ {id:'SG0830',name:'第1スタート',scheduled:'08:30'},
+ {id:'SG0900',name:'第2スタート',scheduled:'09:00'}
+];
+const teamDefs=[
+ {id:'A',name:'Aチーム',kind:'club',startGroupId:'SG0830',targets:[720,745,735,710]},
+ {id:'B',name:'Bチーム',kind:'club',startGroupId:'SG0830',targets:[735,755,748,725]},
+ {id:'T1',name:'ターゲット1',kind:'target',startGroupId:'SG0830',targets:[715,742,738,708]},
+ {id:'C',name:'Cチーム',kind:'club',startGroupId:'SG0900',targets:[690,712,704,682]},
+ {id:'D',name:'Dチーム',kind:'club',startGroupId:'SG0900',targets:[705,725,718,694]},
+ {id:'T2',name:'ターゲット2',kind:'target',startGroupId:'SG0900',targets:[685,708,700,678]}
+];
+const raceDefs=startGroups.map(g=>({...g,teams:teamDefs.filter(t=>t.startGroupId===g.id)}));
+const defaults=()=>({activeRaceId:raceDefs[0].id,view:'start',selectedEventId:null,races:Object.fromEntries(raceDefs.map(d=>[d.id,{id:d.id,status:'waiting',scheduled:d.scheduled,startAt:null,stage:0,events:[],otherSerial:0,savedAt:null}] ))});
+let state=defaults();
+try{const raw=localStorage.getItem(STORAGE);if(raw){const saved=JSON.parse(raw);if(saved&&saved.races)state={...state,...saved,selectedEventId:null,view:'start'}}}catch(_){ }
+const stages=[{type:'relay',label:'第1中継所',from:1,to:2},{type:'relay',label:'第2中継所',from:2,to:3},{type:'relay',label:'第3中継所',from:3,to:4},{type:'goal',label:'GOAL',from:4,to:null}];
+const def=id=>raceDefs.find(r=>r.id===id);
+const race=id=>state.races[id];
+const currentRace=()=>race(state.activeRaceId);
+const currentDef=()=>def(state.activeRaceId);
+const stage=()=>stages[currentRace().stage];
+const scheduledAt=d=>todayAt(d.scheduled);
+const hasScheduledArrived=(d,now=Date.now())=>now>=scheduledAt(d);
+const countdown=ms=>{ms=Math.max(0,ms);const sec=Math.ceil(ms/1000),h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;return h?`${h}:${pad(m)}:${pad(s)}`:`${pad(m)}:${pad(s)}`};
+const persist=()=>{try{localStorage.setItem(STORAGE,JSON.stringify({...state,selectedEventId:null,view:'start'}))}catch(_){}};
+let toastTimer=0;function toast(msg){$('toast').textContent=msg;$('toast').classList.add('on');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('on'),1300)}
+
+function show(page){['startPage','operationPage','livePage','resultPage'].forEach(id=>$(id).classList.toggle('hidden',id!==page));state.view=page.replace('Page','');renderTop();window.scrollTo({top:0,behavior:'instant'})}
+function renderTop(){const titles={start:['EKIDEN / START GROUP','駅伝当日運用'],operation:['EKIDEN / RELAY OPERATION',`${currentDef().scheduled} START｜襷・ゴール`],live:['EKIDEN / LIVE速報',`${currentDef().scheduled} START｜LIVE速報`],result:['EKIDEN / RESULT',`${currentDef().scheduled} START｜速報結果`]};const t=titles[state.view]||titles.start;$('kicker').textContent=t[0];$('pageTitle').textContent=t[1];$('backBtn').style.visibility=state.view==='start'?'hidden':'visible'}
+function raceStatusText(d,r){if(r.status==='waiting')return hasScheduledArrived(d)?'号砲待ち':'開始待機';return r.status==='running'?'進行中':r.status==='finished'?'保存待ち':'保存済'}
+function raceElapsed(r){return r.startAt?dur((Date.now()-r.startAt)/1000):'—'}
+function startRace(id){const d=def(id),r=race(id);if(!d||r.status!=='waiting')return;state.activeRaceId=id;r.status='running';r.startAt=Date.now();r.stage=0;r.events=[];r.savedAt=null;persist();renderStart();openOperation(id);toast(`実START ${clock(r.startAt)} を記録しました`)}
+function openOperation(id){state.activeRaceId=id;show('operationPage');renderOperation()}
+function openLive(id){state.activeRaceId=id;show('livePage');renderLive()}
+function openResult(id){state.activeRaceId=id;show('resultPage');renderResults()}
+function resetDemo(id){if(!confirm(`${def(id).scheduled} START組のPrototype記録を初期化しますか？`))return;state.races[id]={id,status:'waiting',scheduled:def(id).scheduled,startAt:null,stage:0,events:[],otherSerial:0,savedAt:null};persist();renderStart()}
+function navigateGroup(id){const r=race(id);state.activeRaceId=id;if(r.status==='waiting'){show('startPage');renderStart();setTimeout(()=>document.querySelector(`[data-group-card="${id}"]`)?.scrollIntoView({block:'center'}),0);return}if(r.status==='running'){openOperation(id);return}openResult(id)}
+
+function renderStart(){
+ const now=Date.now();
+ $('raceList').innerHTML=raceDefs.slice().sort((a,b)=>scheduledAt(a)-scheduledAt(b)).map(d=>{const r=race(d.id),scheduled=scheduledAt(d),scheduledArrived=hasScheduledArrived(d,now),waitMs=scheduled-now;const guide=r.status==='waiting'?(scheduledArrived?`予定 ${d.scheduled}｜号砲待ち`:`予定 ${d.scheduled}｜あと ${countdown(waitMs)}`):r.startAt?clock(r.startAt):'—';
+  const primary=r.status==='waiting'?`<button class="raceAction" data-start="${d.id}">号砲でSTART｜実時刻を記録</button>`:r.status==='running'?`<button class="raceAction secondary" data-op="${d.id}">${d.scheduled}予定｜運用画面へ</button>`:`<button class="raceAction ${r.status==='saved'?'saved':'secondary'}" data-result="${d.id}">${r.status==='saved'?'保存済み結果を見る':'結果確認・保存'}</button>`;
+  const cls=`${r.status} ${scheduledArrived&&r.status==='waiting'?'ready':''}`;
+  return `<section class="raceCard ${cls}" data-group-card="${d.id}"><div class="raceHead"><div><small>START GROUP</small><b>${d.scheduled} START</b><em>${d.name}</em></div><span class="raceStatus">${raceStatusText(d,r)}</span></div><div class="raceMeta"><div class="metaBox"><span>登録チーム</span><b>${d.teams.length}チーム</b></div><div class="metaBox"><span>${r.startAt?'実START':'状態'}</span><b>${guide}</b></div></div>${primary}<div class="raceSubActions"><button data-live="${d.id}">LIVE速報</button><button data-reset="${d.id}">Prototype初期化</button></div></section>`}).join('');
+ document.querySelectorAll('[data-start]').forEach(b=>b.onclick=()=>startRace(b.dataset.start));
+ document.querySelectorAll('[data-op]').forEach(b=>b.onclick=()=>openOperation(b.dataset.op));
+ document.querySelectorAll('[data-result]').forEach(b=>b.onclick=()=>openResult(b.dataset.result));
+ document.querySelectorAll('[data-live]').forEach(b=>b.onclick=()=>openLive(b.dataset.live));
+ document.querySelectorAll('[data-reset]').forEach(b=>b.onclick=()=>resetDemo(b.dataset.reset));
+}
+
+function activeEvents(r,st=r.stage){return r.events.filter(e=>e.stage===st&&e.status!=='cancelled').sort((a,b)=>a.effectiveAt-b.effectiveAt||a.createdAt-b.createdAt)}
+function recalc(r,st=r.stage){activeEvents(r,st).forEach((e,i)=>e.rank=i+1)}
+function topEvent(r,st=r.stage){return activeEvents(r,st)[0]||null}
+function teamEvent(r,teamId,st=r.stage){return activeEvents(r,st).find(e=>e.subjectId===teamId)||null}
+function gapTop(r,ev){const t=topEvent(r,ev.stage);return t?ev.effectiveAt-t.effectiveAt:0}
+function rankCursor(r){return activeEvents(r).length+1}
+function previousMeasurement(r,teamId,st){if(st<=0)return null;return r.events.filter(e=>e.subjectId===teamId&&e.stage===st-1&&e.status!=='cancelled').sort((a,b)=>b.effectiveAt-a.effectiveAt)[0]||null}
+function splitTime(r,ev){if(ev.type==='other')return NaN;const prev=previousMeasurement(r,ev.subjectId,ev.stage);const from=prev?prev.effectiveAt:r.startAt;return from?(ev.effectiveAt-from)/1000:NaN}
+function addPass(subject){const r=currentRace();if(r.status!=='running')return;const old=subject.type!=='other'?teamEvent(r,subject.id):null;if(old){openCorrection(old.id);return}const now=Date.now();r.events.push({id:`e_${now}_${Math.random().toString(36).slice(2,6)}`,subjectId:subject.id,label:subject.name,type:subject.type,stage:r.stage,rawAt:now,effectiveAt:now,catchAt:now,releaseAt:now,createdAt:now,status:'active',rank:0,corrections:[]});recalc(r);persist();renderOperation()}
+function addOther(){const r=currentRace();r.otherSerial++;const n=rankCursor(r);addPass({id:`OTHER_${r.stage}_${r.otherSerial}`,name:n===1?'他チーム TOP':`他チーム ${n}位`,type:'other'})}
+
+function overlapGroups(){const now=Date.now();return raceDefs.filter(d=>{const r=race(d.id);return r.status==='running'||(r.status==='waiting'&&hasScheduledArrived(d,now))});}
+function renderSwitch(elId,callback){const el=$(elId),items=overlapGroups();if(items.length<2){el.classList.add('hidden');el.innerHTML='';return}el.classList.remove('hidden');el.innerHTML=`<small>時差START</small>`+items.map(d=>{const r=race(d.id),txt=r.status==='running'?'進行中':'号砲待ち';return `<button type="button" data-race-switch="${d.id}" class="${d.id===state.activeRaceId?'on':''}">${d.scheduled} ${txt}</button>`}).join('');el.querySelectorAll('[data-race-switch]').forEach(b=>b.onclick=()=>callback(b.dataset.raceSwitch))}
+
+function renderOperation(){const r=currentRace(),d=currentDef(),st=stage();if(r.status==='waiting'){show('startPage');renderStart();return}if(r.status==='finished'||r.status==='saved'){openResult(r.id);return}renderSwitch('miniSwitch',navigateGroup);
+ $('opRaceLabel').textContent=`${d.scheduled}予定 / 経過タイム`;$('clock').textContent=elapsedClock(r.startAt);$('stageLabel').textContent=st.type==='goal'?'GOAL':`${st.label}　${st.from}区 → ${st.to}区`;$('actualStart').textContent=clock(r.startAt);$('racePhase').textContent=st.type==='goal'?'ゴール計測':'進行中';$('nextRank').textContent=`${rankCursor(r)}位`;
+ $('stagePrev').style.visibility=r.stage===0?'hidden':'visible';$('stagePrev').disabled=r.stage===0;$('stageNext').style.visibility=r.stage>=stages.length-1?'hidden':'visible';$('stageNext').disabled=r.stage>=stages.length-1;
+ const arr=activeEvents(r),top=arr[0];$('topCaption').textContent=st.type==='goal'?'現在のゴールTOP':'この地点の現在TOP';$('topLabel').textContent=top?`${top.label}｜${clock(top.effectiveAt)}`:'未記録';$('passCount').textContent=arr.length;$('otherTapLabel').textContent=st.type==='goal'?(rankCursor(r)===1?'TOP（1位）ゴールを記録':`次 ${rankCursor(r)}位｜他チームGOAL`):(rankCursor(r)===1?'TOP（1位）を記録':`次 ${rankCursor(r)}位｜他チームを記録`);
+ $('teamHead').textContent=st.type==='goal'?`${d.scheduled} START｜ゴール`:`${d.scheduled} START｜クラブ内＋ターゲット`;
+ $('teamGrid').innerHTML=d.teams.map(t=>{const ev=teamEvent(r,t.id),nextTarget=st.type==='goal'?null:t.targets[st.to-1];return `<button class="teamBtn ${t.kind==='target'?'target':''} ${ev?'done':''}" data-team="${t.id}" type="button"><span class="tag">${t.kind==='target'?'TARGET / メンバーなし':'CLUB TEAM'}</span><strong>${t.name}</strong><div class="line"><span>${st.type==='goal'?'4区 → GOAL':`${st.from}区 → ${st.to}区`}</span><span>${nextTarget?`次区間 ${dur(nextTarget)}`:'FINISH'}</span></div><div class="big">${ev?`${ev.rank}位　${gap(gapTop(r,ev))}`:`次 ${rankCursor(r)}位｜TAP`}</div><span class="hint">${ev?'タップで修正':st.type==='goal'?'ゴールしたらタップ':'到着したらタップ'}</span></button>`}).join('');document.querySelectorAll('[data-team]').forEach(b=>b.onclick=()=>addPass(d.teams.find(t=>t.id===b.dataset.team)));
+ $('orderStrip').innerHTML=arr.length?arr.map((e,i)=>`<div class="chip ${i===0?'top':''}"><b><span class="r">${e.rank}位</span> ${e.label}</b><span>${i===0?'TOP':gap(gapTop(r,e))}</span></div>`).join(''):'<div class="empty" style="min-width:100%">まだ記録がありません</div>';
+ $('history').innerHTML=arr.length?arr.slice().reverse().map(ev=>{const sp=splitTime(r,ev);return `<div class="hist"><div class="rank">${ev.rank}</div><div class="main"><b>${ev.label}　${clock(ev.effectiveAt)}</b><span>TOP ${gap(gapTop(r,ev))}${Number.isFinite(sp)?`｜${st.type==='goal'?'4区':st.from+'区'} ${dur(sp)}`:''}</span></div><button class="edit" data-edit="${ev.id}" type="button">修正</button></div>`}).join(''):'<div class="empty">記録後、ここから時刻・順位・誤タップを修正できます</div>';document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openCorrection(b.dataset.edit));
+ $('nextStageBtn').disabled=arr.length===0;$('nextStageBtn').textContent=st.type==='goal'?'ゴール計測を終了 → 結果確認':r.stage===stages.length-2?'GOAL計測へ →':'次の中継所へ →';
+}
+function moveStage(delta){const r=currentRace();const n=Math.max(0,Math.min(stages.length-1,r.stage+delta));r.stage=n;state.selectedEventId=null;persist();renderOperation();window.scrollTo({top:0,behavior:'instant'})}
+function completeStage(){const r=currentRace();if(activeEvents(r).length===0)return;if(r.stage<stages.length-1){r.stage++;persist();renderOperation();window.scrollTo({top:0,behavior:'instant'});return}r.status='finished';persist();openResult(r.id);toast(`${currentDef().scheduled} START組のゴール計測を終了しました`)}
+
+function eventById(id){for(const d of raceDefs){const e=race(d.id).events.find(x=>x.id===id);if(e)return {r:race(d.id),e}}return null}
+function openCorrection(id){const x=eventById(id);if(!x)return;state.selectedEventId=id;$('sheet').classList.remove('hidden');$('customAdjust').value='';updateSheet()}
+function selected(){return eventById(state.selectedEventId)}
+function closeSheet(){$('sheet').classList.add('hidden');state.selectedEventId=null}
+function updateSheet(){const x=selected();if(!x){closeSheet();return}recalc(x.r,x.e.stage);$('sheetTitle').textContent=`${x.e.rank}位｜${x.e.label}`;$('sheetInfo').textContent=`記録 ${clock(x.e.effectiveAt)}｜TOP差 ${gap(gapTop(x.r,x.e))}｜CATCH ${clock(x.e.catchAt)} / RELEASE ${clock(x.e.releaseAt)}｜補正 ${x.e.corrections.length}回`;const a=activeEvents(x.r,x.e.stage),i=a.findIndex(v=>v.id===x.e.id);$('rankUp').disabled=i<=0;$('rankDown').disabled=i<0||i>=a.length-1}
+function applyAdjust(sec){const x=selected(),v=Number(sec);if(!x||!Number.isFinite(v)||v===0)return;x.e.effectiveAt+=v*1000;x.e.catchAt=x.e.effectiveAt;x.e.releaseAt=x.e.effectiveAt;x.e.corrections.push({type:'seconds',value:v,at:Date.now()});recalc(x.r,x.e.stage);persist();rerenderCurrent();updateSheet();toast(`${v>0?'+':''}${v.toFixed(1)}秒 補正しました`)}
+function moveRank(dir){const x=selected();if(!x)return;const a=activeEvents(x.r,x.e.stage),i=a.findIndex(v=>v.id===x.e.id),j=i+dir;if(i<0||j<0||j>=a.length)return;const t=a[j];x.e.effectiveAt=dir<0?t.effectiveAt-1:t.effectiveAt+1;x.e.catchAt=x.e.effectiveAt;x.e.releaseAt=x.e.effectiveAt;x.e.corrections.push({type:'rank',dir,at:Date.now()});recalc(x.r,x.e.stage);persist();rerenderCurrent();updateSheet();toast(`${x.e.rank}位へ修正しました`)}
+function resetRaw(){const x=selected();if(!x)return;x.e.effectiveAt=x.e.rawAt;x.e.catchAt=x.e.rawAt;x.e.releaseAt=x.e.rawAt;x.e.corrections.push({type:'reset',at:Date.now()});recalc(x.r,x.e.stage);persist();rerenderCurrent();updateSheet();toast('最初のタップ時刻へ戻しました')}
+function cancelSelected(){const x=selected();if(!x)return;x.e.status='cancelled';x.e.cancelledAt=Date.now();recalc(x.r,x.e.stage);persist();closeSheet();rerenderCurrent();toast('誤タップを取消しました')}
+function rerenderCurrent(){if(state.view==='operation')renderOperation();else if(state.view==='live')renderLive();else if(state.view==='result')renderResults();else renderStart()}
+
+function teamOverallProgress(r,d,t,now=Date.now()){
+ const goal=teamEvent(r,t.id,3);if(goal)return 1;
+ let lastStage=-1,lastEv=null;for(let s=0;s<3;s++){const e=teamEvent(r,t.id,s);if(e){lastStage=s;lastEv=e}else break}
+ const leg=lastStage+1;const legStart=lastEv?lastEv.releaseAt:r.startAt;if(!legStart)return 0;const target=t.targets[leg]||t.targets[t.targets.length-1];const p=Math.max(0,Math.min(1,(now-legStart)/1000/target));return Math.max(0,Math.min(1,(leg+p)/4));
+}
+function latestMeasuredGap(r,t){for(let s=3;s>=0;s--){const e=teamEvent(r,t.id,s);if(e)return gap(gapTop(r,e))}return '—'}
+function renderLive(){const r=currentRace(),d=currentDef();renderSwitch('liveSwitch',navigateGroup);$('liveRaceTitle').textContent=`${d.scheduled} START｜LIVE速報`;$('liveStatus').textContent=r.status==='waiting'?'開始前':r.status==='running'?'進行中':r.status==='finished'?'ゴール済・保存待ち':'終了・保存済';
+ const sorted=d.teams.map(t=>({t,p:teamOverallProgress(r,d,t)})).sort((a,b)=>b.p-a.p);$('liveDots').innerHTML=sorted.map((x,i)=>`<div class="dot ${x.t.kind==='target'?'target':''} ${i===0?'lead':''} ${x.p>=1?'done':''}" style="left:${9+x.p*82}%;top:${44+(i%3)*7}%">${x.t.name.replace('チーム','')}</div>`).join('');$('liveLegend').innerHTML=sorted.map((x,i)=>`<div class="legendRow"><b>${i+1}. ${x.t.name}</b><span>${x.p>=1?'GOAL':`${Math.round(x.p*100)}%`} / TOP ${latestMeasuredGap(r,x.t)}</span></div>`).join('');
+ const finals=activeEvents(r,3);if(['finished','saved'].includes(r.status)&&finals.length){$('liveResultBanner').classList.remove('hidden');$('liveResultBanner').textContent=`${r.status==='saved'?'保存済み速報':'ゴール速報'}｜`+finals.slice(0,3).map(e=>`${e.rank}位 ${e.label} ${dur((e.effectiveAt-r.startAt)/1000)}`).join('　')}else $('liveResultBanner').classList.add('hidden');
+}
+function renderResults(){const r=currentRace(),d=currentDef(),finals=activeEvents(r,3);$('resultTitle').textContent=`${d.scheduled} START｜速報結果`;$('resultList').innerHTML=finals.length?finals.map(e=>`<div class="resultRow"><div class="rank">${e.rank}</div><div class="main"><b>${e.label}</b><span>GOAL ${clock(e.effectiveAt)} / TOP ${gap(gapTop(r,e))}</span></div><div class="time"><b>${dur((e.effectiveAt-r.startAt)/1000)}</b><span>速報タイム</span></div></div>`).join(''):'<div class="empty">GOAL記録がありません</div>';$('saveResult').disabled=!finals.length;$('saveResult').classList.toggle('saved',r.status==='saved');$('saveResult').textContent=r.status==='saved'?'保存済み｜結果を保持中':'このレース結果を保存';$('saveNote').textContent=r.status==='saved'?`保存時刻 ${clock(r.savedAt)}｜LIVE速報画面は終了後もこの結果を表示します。`:'PrototypeではこのHTML内のlocalStorageだけに保存します。Firebaseには接続しません。';}
+function saveResult(){const r=currentRace();if(!activeEvents(r,3).length)return;r.status='saved';r.savedAt=Date.now();persist();renderResults();toast(`${currentDef().scheduled} START組の結果を保存しました`)}
+
+$('backBtn').onclick=()=>{if(state.view==='operation'||state.view==='live'||state.view==='result'){show('startPage');renderStart()}};
+$('otherTap').onclick=addOther;$('stagePrev').onclick=()=>moveStage(-1);$('stageNext').onclick=()=>moveStage(1);$('nextStageBtn').onclick=completeStage;
+$('liveToOperation').onclick=()=>{const r=currentRace();if(r.status==='running')openOperation(r.id);else openResult(r.id)};$('saveResult').onclick=saveResult;$('resultLive').onclick=()=>openLive(state.activeRaceId);$('resultHome').onclick=()=>{show('startPage');renderStart()};
+$('sheet').addEventListener('click',e=>{if(e.target===$('sheet')){closeSheet();return}const b=e.target.closest('button');if(!b)return;e.preventDefault();e.stopPropagation();if(b.id==='sheetClose'){closeSheet();return}if(!selected())return;if(b.dataset.adjust!==undefined){applyAdjust(b.dataset.adjust);return}if(b.id==='rankUp'){moveRank(-1);return}if(b.id==='rankDown'){moveRank(1);return}if(b.id==='resetRaw'){resetRaw();return}if(b.id==='customApply'){const v=Number(String($('customAdjust').value||'').replace('，','.'));if(Number.isFinite(v)&&v!==0){applyAdjust(v);$('customAdjust').value=''}else toast('補正秒を入力してください');return}if(b.id==='cancelPass'){cancelSelected();return}});
+setInterval(()=>{if(state.view==='operation'&&currentRace()?.status==='running'&&$('clock'))$('clock').textContent=elapsedClock(currentRace().startAt);if(state.view==='start')renderStart();if(state.view==='live')renderLive()},1000);
+$('clock').textContent='00:00:00';show('startPage');renderStart();
+})();
+</script>
+</body>
+</html>
