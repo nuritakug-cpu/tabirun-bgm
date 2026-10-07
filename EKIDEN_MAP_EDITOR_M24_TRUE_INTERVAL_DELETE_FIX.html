@@ -1,0 +1,853 @@
+<!doctype html>
+<!-- M24 TARGET ONLY: true interval deletion. Physical rebuild: M22 + verified M23 point delta + M24 deletion delta.
+1) Deleting a red interval no longer reconnects the cut points with an automatic straight segment.
+2) Closed routes keep the complementary path as an open route so the removed interval visibly disappears.
+3) Open-route endpoint trimming is supported; an open-route middle cut requires the existing redraw flow.
+4) The delete action verifies that route length actually decreases before accepting the change.
+NON-TARGET unchanged: point multi-role delta from M23, route drawing, direction, storage keys, Firebase/LIVE/Auth/EVENT BASE.
+-->
+<!-- M22 TARGET ONLY: route geometry / START-GOAL / direction separation. Parent: M21.
+1) START / GOAL are no longer route endpoints. Route geometry is saved independently.
+2) START / GOAL are placed only as event points on top of a saved route and snap to the route line.
+3) Route travel direction is stored independently and can be reversed without changing geometry.
+4) Existing interval delete / redraw remains available, but it no longer owns START / GOAL semantics.
+NON-TARGET unchanged: panel position, local storage boundary, Firebase/LIVE/Auth/EVENT BASE.
+-->
+<!-- M21 TARGET ONLY: executable route deletion. Parent: M20.
+1) If the selected geometry is a short protruding spur attached to a closed loop, expand the deletion target from the loop junction through the whole protrusion and back to the junction, then keep the loop core and save it.
+2) Closed-loop routes may be cut temporarily for redraw. Editing no longer requires the draft to remain a closed/connected route at every intermediate step.
+3) Ordinary delete+join uses deterministic geometry instead of the previous connectivity-preserving graph restriction.
+NON-TARGET unchanged: panel tuck-down, endpoint move behavior, general route drawing, local storage model, Firebase/LIVE/Auth/EVENT BASE.
+-->
+<!-- M18 TARGET ONLY: range direction fix for closed routes. Parent: M17.
+Keeps M17 precise point selection and marker sizing. Firebase/LIVE/Auth/EVENT BASE core unchanged. -->
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>EKIDEN MAP EDITOR M24</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{--bg:#07090a;--panel:#111516;--panel2:#171b1d;--line:#374046;--muted:#8d989e;--ink:#f5f7f8;--yellow:#ffd400;--green:#5ad7a2;--danger:#ff747d;--blue:#79c8ff}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif}button,input,select{font:inherit}button{cursor:pointer}.hidden{display:none!important}body{min-height:100dvh}
+.app{min-height:100dvh;display:flex;flex-direction:column}.top{position:sticky;top:0;z-index:50;background:rgba(7,9,10,.97);border-bottom:1px solid #272d31;padding:calc(env(safe-area-inset-top) + 10px) 14px 10px}.top small{display:block;color:var(--yellow);font-size:10px;font-weight:1000;letter-spacing:.15em}.top h1{margin:2px 0 0;font-size:23px}.top .sub{margin-top:4px;color:var(--muted);font-size:10px;line-height:1.4}.main{padding:12px 12px calc(24px + env(safe-area-inset-bottom));display:grid;gap:11px}.card{border:1px solid #343c41;border-radius:17px;background:var(--panel);padding:12px}.cardHead{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:9px}.cardHead b{font-size:17px}.cardHead span{font-size:10px;color:var(--muted);text-align:right}.notice{border-left:5px solid var(--yellow);background:#171500;padding:10px 11px;border-radius:11px;color:#d8d4a4;font-size:11px;line-height:1.55}.notice strong{color:var(--yellow)}
+.routeList,.patternList,.groupList{display:grid;gap:8px}.route,.pattern,.group{border:1px solid #3b4449;border-radius:14px;background:#0d1011;padding:10px}.route.default{box-shadow:inset 0 0 0 1px #827100}.routeTitle,.patternTitle{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.routeTitle b,.patternTitle b{font-size:14px}.badge{display:inline-flex;align-items:center;min-height:21px;padding:2px 7px;border-radius:999px;background:#163a2d;color:#7ae0b2;font-size:8px;font-weight:1000}.badge.yellow{background:#4a4100;color:#ffe45c}.badge.blue{background:#12344a;color:#8bd3ff}.meta{margin-top:4px;color:#9aa4aa;font-size:9px;line-height:1.45}.actions{margin-top:8px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.actions.two{grid-template-columns:repeat(2,minmax(0,1fr))}.actions button,.btn,.toolbar button,.pointModes button,.pointActions button,.modeBtns button{min-height:43px;border:1px solid #434b50;border-radius:10px;background:#181d20;color:#fff;font-weight:900;font-size:10px}.actions button.primary,.btn.primary,.toolbar button.on,.pointModes button.on,.modeBtns button.on{background:var(--yellow);border-color:var(--yellow);color:#111}.actions button.danger,.btn.danger{border-color:#71373b;color:#ffadb2}.btn:disabled,.actions button:disabled{opacity:.38}.empty{border:1px dashed #3f484d;border-radius:13px;padding:15px;text-align:center;color:#8c969c;font-size:11px;line-height:1.55}
+.fieldGrid{display:grid;grid-template-columns:1fr 1fr;gap:7px}.field{display:grid;gap:4px}.field label,.field>span{color:#8f999f;font-size:8px;font-weight:900}.field input,.field select{width:100%;min-height:43px;border:1px solid #3d454a;border-radius:10px;background:#0b0e10;color:#fff;padding:0 9px;font-size:11px;font-weight:900}.field.wide{grid-column:1/-1}.modeBtns{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.modeBtns button{padding:6px}.help{margin-top:6px;color:#8f999f;font-size:9px;line-height:1.5}.split{height:1px;background:#2a3034;margin:10px 0}.status{display:flex;gap:6px;flex-wrap:wrap}.status span{border:1px solid #333c41;border-radius:999px;padding:4px 7px;color:#aeb7bc;font-size:8px}.status span.good{border-color:#2f6650;color:#79ddb2}.eventSummary{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}.eventSummary b{font-size:13px}.eventSummary span{display:block;margin-top:3px;color:#879197;font-size:9px;line-height:1.4}.eventSummary button{min-height:44px;border:1px solid #434b50;border-radius:10px;background:#181d20;color:#fff;font-size:10px;font-weight:900;padding:0 10px}
+.patternBuilder{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;margin-top:8px}.patternBuilder select,.patternBuilder input{min-height:42px;border:1px solid #3d454a;border-radius:9px;background:#0b0e10;color:#fff;padding:0 8px;font-size:10px;font-weight:900}.patternBuilder .actions{grid-column:1/-1;margin:0}.groupHead{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:center}.groupHead input{min-height:40px;border:1px solid #3d454a;border-radius:9px;background:#0b0e10;color:#fff;padding:0 8px;font-size:11px;font-weight:900}.groupHead button{min-height:40px;border:1px solid #71373b;border-radius:9px;background:#1a1113;color:#ffadb2;padding:0 9px;font-size:9px;font-weight:900}.legRows{display:grid;gap:6px;margin-top:8px}.legRow{display:grid;grid-template-columns:42px minmax(0,1fr) 90px auto;gap:5px;align-items:center}.legRow b{font-size:10px;color:var(--yellow)}.legRow select,.legRow input{min-height:38px;border:1px solid #3d454a;border-radius:8px;background:#0b0e10;color:#fff;padding:0 6px;font-size:9px;font-weight:900}.legRow button{width:34px;height:34px;border:1px solid #5e3337;border-radius:8px;background:#1c1214;color:#ffadb2;font-weight:1000}.groupAdd{margin-top:7px;display:grid;grid-template-columns:minmax(0,1fr) 74px auto;gap:6px}.groupAdd input{min-height:40px;border:1px solid #3d454a;border-radius:9px;background:#0b0e10;color:#fff;padding:0 8px;font-size:10px;font-weight:900}.groupAdd button{min-height:40px;border:0;border-radius:9px;background:var(--yellow);color:#111;font-size:10px;font-weight:1000}
+.screen{display:none}.screen.on{display:block}.full{position:fixed;inset:0;z-index:120;background:#050708;overflow:hidden}.editShell{position:absolute;inset:0;display:grid;grid-template-rows:auto minmax(0,1fr) auto}.editTop{z-index:60;background:rgba(7,9,10,.94);border-bottom:1px solid #2f373c;padding:calc(env(safe-area-inset-top) + 8px) 10px 8px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:7px;align-items:center}.back{width:55px;min-height:48px;border:1px solid #424a50;border-radius:12px;background:#171b1d;color:#fff;font-weight:900}.editName{min-width:0}.editName small{display:block;color:var(--yellow);font-size:8px;font-weight:1000}.editName input{width:100%;margin-top:3px;border:0;background:transparent;color:#fff;font-size:15px;font-weight:900;outline:none}.saveState{font-size:9px;font-weight:900;color:#98a3a9}.saveState.dirty{color:var(--yellow)}#routeMap,#pointMap,#viewMap,#patternMap{width:100%;height:100%;background:#d7e8ce}.leaflet-control-attribution{font-size:7px!important}.leaflet-control-zoom{display:none}.dock{z-index:55;background:rgba(8,11,12,.97);border-top:1px solid #31393e;padding:7px 8px calc(7px + env(safe-area-inset-bottom));max-height:44dvh;overflow:auto}.toolbar{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}.hint{margin-top:6px;border-radius:9px;background:#181600;color:#d4cf96;padding:7px 8px;font-size:9px;line-height:1.45}.row{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}.row button{flex:1;min-width:88px;min-height:39px;border:1px solid #424a50;border-radius:9px;background:#181d20;color:#fff;font-size:9px;font-weight:900}.row button.yellow{background:var(--yellow);border-color:var(--yellow);color:#111}.metrics{display:grid;grid-template-columns:1fr;gap:6px;margin-top:6px}.metric{border:1px solid #343c41;border-radius:9px;padding:6px 8px;background:#111516}.metric small{display:block;color:#879197;font-size:8px}.metric b{display:block;margin-top:2px;font-size:12px}.repairBox{margin-top:6px;border:1px solid #3c4449;border-radius:10px;padding:7px;background:#101416}.repairBox b{font-size:10px}.repairBox span{display:block;margin-top:3px;color:#8f999f;font-size:8px;line-height:1.4}.repairButtons{display:grid;grid-template-columns:repeat(2,1fr);gap:5px;margin-top:6px}.repairButtons button{min-height:37px;border:1px solid #434b50;border-radius:8px;background:#1a1f22;color:#fff;font-size:9px;font-weight:900}.repairButtons button.accent{border-color:#7c6d0d;color:#ffe14c}.selectedMarker{width:18px;height:18px;border-radius:50%;background:#fff;border:5px solid var(--yellow);box-shadow:0 2px 7px rgba(0,0,0,.45)}.targetMarker{min-width:60px;padding:4px 7px;border-radius:999px;background:var(--green);color:#06261a;font-size:9px;font-weight:1000;text-align:center;white-space:nowrap}.patchMarker{width:18px;height:18px;border-radius:50%;background:#111;border:4px solid var(--yellow)}.nearbyWrap{display:none;margin-top:6px;border:1px solid #3c4449;border-radius:10px;padding:7px;background:#0f1417}.nearbyWrap.on{display:block}.nearbyInfo{font-size:9px;color:#d9e3e8;line-height:1.45}.nearbyInfo b{color:var(--yellow)}.nearbyButtons{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px}.nearbyButtons button{min-height:36px;border:1px solid #434b50;border-radius:8px;background:#1a1f22;color:#fff;font-size:9px;font-weight:900}.nearbyDot{min-width:28px;height:28px;border-radius:999px;background:#f2f5f6;border:2px solid #1d2326;color:#111;display:grid;place-items:center;padding:0 6px;font-size:9px;font-weight:1000;box-shadow:0 2px 8px rgba(0,0,0,.35)}.nearbyDot.sel{background:var(--yellow);border-color:#6c5c00}.nearbyDot.edge{background:#79c8ff}
+.floatTop{position:absolute;z-index:80;top:calc(8px + env(safe-area-inset-top));left:8px;right:8px;display:flex;gap:8px;align-items:center;pointer-events:none}.floatTop .back{pointer-events:auto;background:rgba(11,14,15,.94);backdrop-filter:blur(10px)}.floatTitle{min-width:0;padding:7px 9px;border-radius:11px;background:rgba(7,9,10,.78);backdrop-filter:blur(8px);pointer-events:none}.floatTitle small{display:block;color:var(--yellow);font-size:8px;font-weight:1000}.floatTitle b{display:block;font-size:14px}.floatDock{position:absolute;z-index:80;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));max-height:49dvh;overflow:auto;pointer-events:none}.floatDock>*{pointer-events:auto}.pointModes{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;padding:6px;border:1px solid rgba(255,255,255,.18);border-radius:13px;background:rgba(8,11,12,.92);backdrop-filter:blur(10px)}.pointModes button{min-height:46px;font-size:9px;padding:0 3px}.pointStatus{display:none;margin-top:5px;border:1px solid rgba(255,255,255,.16);border-radius:10px;padding:7px;background:rgba(8,11,12,.92);font-size:9px;color:#c7d0d5}.pointActions{display:none;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:5px;padding:5px;border:1px solid rgba(255,255,255,.16);border-radius:10px;background:rgba(8,11,12,.92)}.pointActions button{min-height:42px;font-size:9px}.floatDock.hasSelection .pointStatus{display:block}.floatDock.hasSelection .pointActions{display:grid}.pMarker{min-width:34px;min-height:34px;border-radius:17px;background:#fff;border:4px solid #111;color:#111;display:grid;place-items:center;padding:2px 5px;font-size:9px;font-weight:1000;box-shadow:0 2px 8px rgba(0,0,0,.45)}.pMarker.sel{box-shadow:0 0 0 4px rgba(255,212,0,.6),0 2px 8px rgba(0,0,0,.45)}.viewSave{position:absolute;z-index:80;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));min-height:52px;border:0;border-radius:13px;background:var(--yellow);color:#111;font-size:13px;font-weight:1000}.patternDock{background:rgba(8,11,12,.97);border-top:1px solid #31393e;padding:7px 8px calc(7px + env(safe-area-inset-bottom));max-height:46dvh;overflow:auto}.patternInfo{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center}.patternInfo b{font-size:10px}.patternInfo span{display:block;color:#8f999f;font-size:8px;margin-top:2px}.patternInfo button{min-height:36px;border:1px solid #71373b;border-radius:8px;background:#1c1214;color:#ffadb2;font-size:8px;font-weight:900;padding:0 8px}.patternTools{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:6px}.patternTools button{min-height:39px;border:1px solid #434b50;border-radius:8px;background:#1a1f22;color:#fff;font-size:9px;font-weight:900}.patternTools button.on{background:var(--yellow);border-color:var(--yellow);color:#111}.patchList{margin-top:6px;display:grid;gap:4px}.patchRow{display:flex;justify-content:space-between;gap:6px;align-items:center;padding:6px 7px;border:1px solid #353d42;border-radius:8px;background:#111516}.patchRow span{font-size:8px;color:#aeb7bc}.patchRow button{min-height:30px;border:1px solid #67363a;border-radius:7px;background:#1a1113;color:#ffadb2;font-size:8px;font-weight:900}.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));z-index:300;transform:translateX(-50%);max-width:88vw;padding:9px 12px;border-radius:999px;background:#fff;color:#111;font-size:10px;font-weight:900;box-shadow:0 8px 28px rgba(0,0,0,.35)}
+
+/* M12 legacy styles retained; M13 UI overrides below */
+.routeEditSteps{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:5px;align-items:center;margin:7px 0}.routeEditStep{min-height:42px;border:1px solid #3d464b;border-radius:10px;background:#111719;display:grid;place-items:center;text-align:center;padding:5px;color:#d8e0e4;font-size:11px;font-weight:1000;line-height:1.25}.routeEditStep.active{border-color:var(--yellow);color:#111;background:var(--yellow)}.routeEditArrow{color:#69747a;font-size:16px;font-weight:1000}.rangeSelectBtn{width:100%;min-height:50px;border:1px solid var(--yellow);border-radius:10px;background:var(--yellow);color:#111;font-size:14px;font-weight:1000}.rangeSelectBtn.waiting{background:#fff4ad;border-color:#fff4ad}.rangeStatus{margin-top:7px;border:1px solid #3d464b;border-radius:10px;background:#0c1113;padding:8px 10px;font-size:12px;font-weight:900;line-height:1.45}.rangeStatus.ready{border-color:#a84249;background:#241214;color:#ffd0d3}.rangeActions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:7px}.rangeActions button{min-height:52px;border:1px solid #4b555b;border-radius:10px;background:#181d20;color:#fff;font-size:12px;font-weight:1000;padding:6px}.rangeActions .deleteJoin{background:#5b1f25;border-color:#a84249;color:#fff}.rangeActions .deleteRedraw{border-color:#4b8f72;color:#92efc2;background:#13251e}.rangeClear{width:100%;margin-top:7px;min-height:40px;border:1px solid #454f54;border-radius:9px;background:#171c1f;color:#c6d0d5;font-size:11px;font-weight:900}.routeEndpoint{min-width:82px;padding:5px 8px;border-radius:999px;border:3px solid #111;background:#fff;color:#111;text-align:center;font-size:11px;font-weight:1000;box-shadow:0 3px 10px rgba(0,0,0,.4);white-space:nowrap}.routeEndpoint.start{background:#77e4b2}.routeEndpoint.end{background:#8fd2ff}.rangePin{min-width:54px;padding:5px 8px;border-radius:999px;border:3px solid #111;text-align:center;font-size:11px;font-weight:1000;box-shadow:0 3px 10px rgba(0,0,0,.45);white-space:nowrap}.rangePin.start{background:#77e4b2;color:#081a12}.rangePin.end{background:#8fd2ff;color:#08131a}.routeSaveRow button.yellow{white-space:normal;line-height:1.2;padding:5px 6px}.repairBox .nearbyWrap{display:none!important}
+@media(max-width:390px){.actions{grid-template-columns:1fr 1fr}.actions button:last-child{grid-column:1/-1}.fieldGrid{grid-template-columns:1fr}.field.wide{grid-column:auto}.modeBtns{grid-template-columns:1fr}.legRow{grid-template-columns:36px minmax(0,1fr) 78px auto}.groupAdd{grid-template-columns:minmax(0,1fr) 66px}.groupAdd button{grid-column:1/-1}.toolbar{grid-template-columns:1fr 1fr}.toolbar button:last-child{grid-column:1/-1}}
+
+/* === M05 TARGET ONLY: full-screen back controls stay above Leaflet panes === */
+.full{isolation:isolate}
+#routeMap,#pointMap,#viewMap,#patternMap{position:relative;z-index:0}
+.editTop,.dock,.patternDock{position:relative;z-index:1200}
+.floatTop,.floatDock,.viewSave{z-index:1200}
+.back{position:relative;z-index:1201;pointer-events:auto;touch-action:manipulation;-webkit-tap-highlight-color:rgba(255,255,255,.12)}
+
+/* === M06 TARGET: readable UI + true full-map route editor + partial delete === */
+.top small{font-size:12px}.top h1{font-size:26px}.top .sub{font-size:14px;line-height:1.45}
+.main{gap:14px}.card{padding:14px}.cardHead b{font-size:20px}.cardHead span{font-size:13px}.notice{font-size:14px;line-height:1.55}
+.routeList,.patternList,.groupList{gap:10px}.route,.pattern,.group{padding:13px}.routeTitle b,.patternTitle b{font-size:18px}.badge{font-size:11px;min-height:25px}.meta{font-size:13px;line-height:1.5}
+.actions{gap:8px}.actions button,.btn,.toolbar button,.pointModes button,.pointActions button,.modeBtns button{min-height:50px;font-size:14px;border-radius:12px}.help{font-size:13px;line-height:1.55}
+.field label,.field>span{font-size:13px}.field input,.field select{min-height:50px;font-size:15px}.modeBtns{gap:8px}.status span{font-size:12px}.eventSummary b{font-size:16px}.eventSummary span{font-size:13px}.eventSummary button{min-height:50px;font-size:14px}
+.patternBuilder select,.patternBuilder input,.groupHead input,.groupAdd input{font-size:14px;min-height:48px}.groupHead button,.groupAdd button{font-size:13px;min-height:48px}.legRow b{font-size:14px}.legRow select,.legRow input{font-size:13px;min-height:44px}
+.taskCard{border-color:#655900;background:#13130c}.taskGrid{display:grid;gap:10px}.taskBtn{min-height:72px;border:1px solid #4b5459;border-radius:14px;background:#181d20;color:#fff;text-align:left;padding:12px 14px}.taskBtn.primary{background:var(--yellow);border-color:var(--yellow);color:#111}.taskBtn b{display:block;font-size:18px}.taskBtn span{display:block;margin-top:5px;font-size:13px;font-weight:800;opacity:.76}
+.focusPulse{animation:focusPulse .55s ease-in-out 2}@keyframes focusPulse{50%{box-shadow:0 0 0 4px rgba(255,212,0,.55)}}
+.routeFloatTop{position:absolute;z-index:1200;top:calc(8px + env(safe-area-inset-top));left:8px;right:8px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;pointer-events:none}.routeFloatTop>*{pointer-events:auto}.routeNameBox{min-width:0;border:1px solid rgba(255,255,255,.18);border-radius:13px;background:rgba(8,11,12,.92);padding:7px 10px;backdrop-filter:blur(10px)}.routeNameBox small{display:block;color:var(--yellow);font-size:12px;font-weight:1000}.routeNameBox input{width:100%;border:0;background:transparent;color:#fff;font-size:18px;font-weight:1000;outline:none}.routeFloatTop .saveState{font-size:12px;border-radius:11px;background:rgba(8,11,12,.92);padding:9px 8px;backdrop-filter:blur(10px)}
+.routeFloatDock{position:absolute;z-index:1200;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));max-height:56dvh;overflow:auto;pointer-events:none}.routeControlPanel{pointer-events:auto;border:1px solid rgba(255,255,255,.18);border-radius:15px;background:rgba(8,11,12,.94);padding:8px;backdrop-filter:blur(10px)}.routePanelHead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px}.routePanelHead b{font-size:13px}.routePanelToggle{min-height:38px;border:1px solid #4a5358;border-radius:9px;background:#181d20;color:#fff;padding:0 12px;font-size:12px;font-weight:1000}.routeControlPanel.minimized{padding:6px 8px}.routeControlPanel.minimized .routePanelHead{margin-bottom:0}.routeControlPanel.minimized .routePanelBody{display:none}
+/* === M08 TARGET ONLY: iPhone Safari operation panel vertical scroll === */
+.routeFloatDock{
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  pointer-events:auto!important;
+  -webkit-overflow-scrolling:touch;
+  touch-action:pan-y;
+  overscroll-behavior:contain;
+}
+
+/* === M10 TARGET ONLY: iPhone Safari point panel vertical scroll === */
+#pointDock{
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  pointer-events:auto!important;
+  -webkit-overflow-scrolling:touch;
+  touch-action:pan-y;
+  overscroll-behavior:contain;
+}
+
+.routeFloatDock .toolbar{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.routeFloatDock .toolbar button{font-size:14px;min-height:50px;padding:4px}.routeFloatDock .hint{font-size:13px;padding:8px 10px}.routeInfoLine{display:flex;justify-content:space-between;align-items:center;margin-top:7px;border:1px solid #343c41;border-radius:10px;background:#111516;padding:7px 10px}.routeInfoLine span{font-size:13px;color:#aeb7bc}.routeInfoLine b{font-size:17px}
+.repairBox{margin-top:7px;padding:9px}.repairBox b{font-size:15px}.repairBox span{font-size:13px;line-height:1.45}.repairButtons{gap:7px}.repairButtons button{min-height:48px;font-size:13px;padding:5px}.repairButtons button.danger{border-color:#874147;color:#ffc2c6;background:#251416}.routeSaveRow{display:grid;grid-template-columns:.8fr 1.3fr 1fr;gap:7px;margin-top:7px}.routeSaveRow button{min-height:50px;border:1px solid #424a50;border-radius:10px;background:#181d20;color:#fff;font-size:13px;font-weight:1000}.routeSaveRow button.yellow{background:var(--yellow);border-color:var(--yellow);color:#111;font-size:15px}
+.back{width:auto;min-width:68px;min-height:52px;font-size:15px;padding:0 12px;background:rgba(11,14,15,.95)}
+.floatTitle small{font-size:12px}.floatTitle b{font-size:16px}.pointModes{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;padding:8px}.pointModes button{min-height:50px;font-size:14px;padding:3px}.pointStatus{font-size:13px;padding:9px}.pointActions{gap:7px;padding:7px}.pointActions button{min-height:48px;font-size:14px}.pMarker{font-size:12px;min-width:38px;min-height:38px;border-radius:19px}
+.toast{font-size:13px;padding:10px 14px}
+@media(max-width:390px){.actions{grid-template-columns:1fr 1fr}.actions button:last-child{grid-column:auto}.route .actions{grid-template-columns:1fr 1fr}.route .actions .danger{grid-column:1/-1}.modeBtns{grid-template-columns:1fr}.toolbar{grid-template-columns:repeat(3,minmax(0,1fr))}.toolbar button:last-child{grid-column:auto}.routeSaveRow{grid-template-columns:.72fr 1.2fr .85fr}.routeSaveRow button{font-size:12px}.routeNameBox input{font-size:17px}.pointModes{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+
+/* M06 readability floor for secondary controls */
+.empty{font-size:14px;line-height:1.55}.editName small{font-size:12px}.saveState{font-size:12px}.hint{font-size:13px;line-height:1.5}.row button{font-size:13px;min-height:48px}.metric small{font-size:12px}.metric b{font-size:16px}.floatTitle small{font-size:12px}.patternInfo b{font-size:14px}.patternInfo span{font-size:12px}.patternInfo button{min-height:44px;font-size:13px}.patternTools button{min-height:48px;font-size:13px}.patchRow span{font-size:12px}.patchRow button{min-height:40px;font-size:12px}.patternDock{padding:9px 10px calc(9px + env(safe-area-inset-bottom))}.patternInfo,.patternTools,.patchList{gap:7px}
+
+
+/* === M11 route distinguish display only: colors / line styles / direction arrows === */
+.leaflet-top .routeLegend{margin-top:72px}.routeLegend{background:rgba(8,11,12,.92);border:1px solid rgba(255,255,255,.22);border-radius:12px;padding:8px 9px;box-shadow:0 3px 16px rgba(0,0,0,.28);backdrop-filter:blur(8px);max-width:180px}
+.routeLegendTitle{font-size:11px;font-weight:1000;color:#fff;margin-bottom:6px}
+.routeLegendRow{display:flex;align-items:center;gap:7px;min-height:24px;font-size:12px;font-weight:900;color:#fff;white-space:nowrap}
+.routeLegendSwatch{width:30px;height:8px;border-radius:999px;display:inline-block;flex:0 0 30px;box-shadow:0 0 0 1px rgba(0,0,0,.45)}
+.routeDirectionArrow{font-size:24px;font-weight:1000;line-height:1;text-align:center;filter:drop-shadow(0 1px 2px rgba(0,0,0,.9));transform-origin:center center;pointer-events:none}
+
+/* M13 TARGET ONLY: simple route editing UI */
+.routeFloatDock .routeTools{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.routeFloatDock .routeTools button{min-height:50px;font-size:13px;padding:6px 5px}.routeFloatDock .routeTools button:last-child{grid-column:1/-1}.routeFloatDock .hint{font-size:12px;line-height:1.4}.repairBox{padding:9px}.repairBox b{font-size:13px}.repairBox span{font-size:11px}.routeEndpoint.moving{box-shadow:0 0 0 5px rgba(255,212,0,.65),0 3px 10px rgba(0,0,0,.4)}
+
+/* M14 TARGET ONLY: compact movable route panel + confirmed fine adjustment */
+.routeFloatDock{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;max-height:none!important;overflow:visible!important;pointer-events:none!important;touch-action:auto!important}
+.routeControlPanel{position:absolute;width:min(336px,calc(100vw - 16px));max-height:min(48dvh,390px);padding:7px;border-radius:14px;pointer-events:auto!important;overflow:hidden}
+.routePanelHead{margin-bottom:5px;min-height:36px;padding:0 2px;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}.routePanelHead:active{cursor:grabbing}.routePanelHead b{font-size:12px}.routePanelHead b::after{content:'｜ドラッグで移動';color:#8f999f;font-size:10px;font-weight:800}
+.routePanelToggle{min-height:34px;padding:0 9px;font-size:11px}
+.routePanelHeadActions{display:flex;gap:4px;align-items:center}.routeQuickSave{min-height:34px;border:1px solid var(--yellow);border-radius:9px;background:var(--yellow);color:#111;padding:0 10px;font-size:11px;font-weight:1000}.routeSaveRow{grid-template-columns:1fr 1fr!important}
+.routePanelBody{max-height:calc(min(48dvh,390px) - 50px);overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.routeFloatDock .routeTools{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}.routeFloatDock .routeTools button{min-height:40px;font-size:11px;padding:4px 3px}.routeFloatDock .routeTools button:last-child{grid-column:auto}
+.routeFloatDock .hint{margin-top:5px;padding:6px 7px;font-size:10px;line-height:1.35}.routeInfoLine{margin-top:5px;padding:5px 8px}.routeInfoLine span{font-size:10px}.routeInfoLine b{font-size:14px}.routeSaveRow{gap:5px;margin-top:5px}.routeSaveRow button{min-height:40px;font-size:10px}.routeSaveRow button.yellow{font-size:11px;padding:4px}.repairBox{margin-top:5px;padding:6px}.repairBox b{font-size:11px}.repairBox span{font-size:10px}.rangeStatus{margin-top:5px;padding:6px 7px;font-size:10px}.rangeActions{gap:5px;margin-top:5px}.rangeActions button{min-height:42px;font-size:10px}.rangeClear{margin-top:5px;min-height:34px;font-size:10px}
+.endpointAdjustBox,.rangeCandidateBox{margin-top:5px;border:1px solid #3c464b;border-radius:10px;background:#0e1315;padding:6px}.endpointAdjustTitle,.rangeCandidateTitle{font-size:10px;font-weight:1000;color:#f5f7f8;line-height:1.35}.endpointAdjustSub,.rangeCandidateSub{margin-top:3px;color:#9ba6ac;font-size:9px;line-height:1.35}.nudgeGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:5px}.nudgeGrid button,.rangeFineRow button,.endpointConfirmRow button{min-height:34px;border:1px solid #465158;border-radius:8px;background:#171d20;color:#fff;font-size:10px;font-weight:1000}.nudgeGrid .blank{visibility:hidden}.nudgeGrid button.center{background:#273034;color:#cbd5da}.endpointConfirmRow{display:grid;grid-template-columns:.8fr 1.4fr;gap:5px;margin-top:5px}.endpointConfirmRow button.confirm{background:var(--yellow);border-color:var(--yellow);color:#111}.rangeFineRow{display:grid;grid-template-columns:.8fr 1.3fr .8fr;gap:5px;margin-top:5px}.rangeFineRow button.confirm{background:var(--yellow);border-color:var(--yellow);color:#111}
+.rangeChoiceBox{margin-top:6px;border:1px solid #536069;border-radius:10px;background:#0d1215;padding:7px}.rangeChoiceTitle{font-size:12px;font-weight:1000;color:#fff}.rangeChoiceSub{margin-top:3px;color:#9ca7ad;font-size:9px;line-height:1.4}.rangeChoiceButtons{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}.rangeChoiceButtons button{min-height:44px;border-radius:9px;font-size:10px;font-weight:1000}.rangeChoiceButtons .sideA{border:2px solid #ffae42;background:#2b1e0c;color:#ffd08a}.rangeChoiceButtons .sideB{border:2px solid #58b7ff;background:#0d2130;color:#9ad5ff}.rangeOptionTag{min-width:32px;height:32px;padding:6px 8px;border-radius:999px;border:3px solid #111;color:#111;text-align:center;font-size:10px;font-weight:1000;box-shadow:0 2px 8px rgba(0,0,0,.5)}.rangeOptionTag.a{background:#ffae42}.rangeOptionTag.b{background:#58b7ff}
+.routeEndpoint.both{background:linear-gradient(90deg,#77e4b2 0 50%,#8fd2ff 50% 100%);min-width:112px}.routeCandidate{min-width:92px;padding:5px 8px;border-radius:999px;border:3px solid #111;background:#ffd400;color:#111;text-align:center;font-size:10px;font-weight:1000;box-shadow:0 0 0 4px rgba(255,212,0,.28),0 3px 10px rgba(0,0,0,.45);white-space:nowrap}.rangePin.candidate{background:#ffd400;color:#111}
+/* M17 TARGET ONLY: the exact coordinate stays visible under a small center dot; labels sit outside the point. */
+.routeEndpoint,.rangePin{position:relative!important;width:0!important;height:0!important;min-width:0!important;min-height:0!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;overflow:visible!important;color:#111!important}
+.routeEndpoint .pinCore,.rangePin .pinCore{position:absolute;left:-5px;top:-5px;width:10px;height:10px;border-radius:50%;border:2px solid #111;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.55)}
+.routeEndpoint.start .pinCore,.rangePin.start .pinCore{background:#77e4b2}.routeEndpoint.end .pinCore,.rangePin.end .pinCore{background:#8fd2ff}.routeEndpoint.both .pinCore{background:linear-gradient(90deg,#77e4b2 0 50%,#8fd2ff 50% 100%)}.rangePin.candidate .pinCore{background:#ffd400;box-shadow:0 0 0 4px rgba(255,212,0,.38),0 1px 4px rgba(0,0,0,.55)}
+.routeEndpoint .pinLabel,.rangePin .pinLabel{position:absolute;top:-24px;left:8px;padding:3px 5px;border:2px solid #111;border-radius:7px;background:#fff;color:#111;font-size:8px;font-weight:1000;line-height:1;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.36)}
+.routeEndpoint.start .pinLabel,.rangePin.start .pinLabel{background:#77e4b2}.routeEndpoint.end .pinLabel,.rangePin.end .pinLabel{left:auto;right:8px;background:#8fd2ff}.routeEndpoint.both .pinLabel{left:0;transform:translateX(-50%);background:linear-gradient(90deg,#77e4b2 0 50%,#8fd2ff 50% 100%)}.rangePin.candidate .pinLabel{left:0;transform:translateX(-50%);background:#ffd400}
+.routeEndpoint.moving{box-shadow:none!important}.routeEndpoint.moving .pinCore{box-shadow:0 0 0 5px rgba(255,212,0,.62),0 1px 4px rgba(0,0,0,.55)}
+
+
+.routeControlPanel.endpointMode .routeHint,.routeControlPanel.endpointMode .routeInfoLine,.routeControlPanel.repairMode .routeHint,.routeControlPanel.repairMode .routeInfoLine{display:none}.routeControlPanel.rangePicking .routeSaveRow{display:none}.routeControlPanel.repairMode #repairTitle,.routeControlPanel.repairMode #repairInfo{display:none}
+.endpointAdjustBox .nudgeGrid{grid-template-columns:repeat(4,1fr)}.endpointAdjustBox .nudgeGrid .blank,.endpointAdjustBox .nudgeGrid .center{display:none!important}
+
+@media(max-width:390px){.routeControlPanel{width:min(326px,calc(100vw - 12px));max-height:min(46dvh,360px)}.routePanelBody{max-height:calc(min(46dvh,360px) - 48px)}.routeFloatDock .routeTools button{font-size:10px}.routeSaveRow{grid-template-columns:.72fr 1.1fr 1fr}}
+
+</style>
+</head>
+<body>
+<div id="homeScreen" class="screen on app">
+  <header class="top"><small>EKIDEN / MAP EDITOR</small><h1>MAP EDITOR</h1><div class="sub">ルートを作る・直す・ポイントを置く</div></header>
+  <main class="main">
+    <div id="migrationNotice" class="notice hidden"></div>
+
+    <section class="card taskCard">
+      <div class="cardHead"><b>何をしますか？</b><span>MAP EDITOR</span></div>
+      <div class="taskGrid">
+        <button id="quickNewRoute" class="taskBtn primary"><b>＋ ルート作成</b><span>新しいコースを描く</span></button>
+        <button id="quickEditRoute" class="taskBtn"><b>ルート修正</b><span>保存済みルートを直す</span></button>
+        <button id="quickPoints" class="taskBtn"><b>ポイント配置</b><span>START・中継所・襷渡し・GOAL</span></button>
+      </div>
+    </section>
+
+    <section class="card" id="routeLibraryCard">
+      <div class="cardHead"><b>保存ルート</b><span id="routeCount">0ルート</span></div>
+      <div id="routeList" class="routeList"></div>
+      <div class="actions two"><button class="primary" id="newRouteBtn">＋ ルート作成</button><button id="restoreLibraryBtn">ルートを1つ戻す</button></div>
+      <div class="help">保存したルートは別大会でも再利用できます。既存ルートは複製して別ルートにできます。</div>
+    </section>
+
+    <section class="card">
+      <div class="cardHead"><b>大会MAP設定</b><span id="eventIdLabel"></span></div>
+      <div class="fieldGrid">
+        <div class="field wide"><span>大会表示名</span><input id="eventName" maxlength="50" placeholder="例：2026 ○○駅伝"></div>
+      </div>
+      <div class="hidden"><div class="split"></div><div class="field"><span>コース構成方式</span></div><div class="modeBtns" id="courseModeBtns"><button data-mode="common_variant">共通周回＋一部変更</button><button data-mode="independent">区間別独立</button><button data-mode="mixed">混合</button></div><div id="courseModeHelp" class="help"></div></div>
+      <div class="split"></div>
+      <div class="eventSummary"><div><b>大会MAP表示範囲</b><span id="mapViewState">未設定</span></div><button id="editMapViewBtn">MAP範囲を設定</button></div>
+      <div class="split"></div>
+      <div class="eventSummary"><div><b>ポイント配置</b><span id="pointState">START / 中継所 / 襷渡し地点 / GOAL</span></div><button id="editPointsBtn">ポイント配置</button></div>
+    </section>
+
+    <section class="card hidden">
+      <div class="cardHead"><b>走行パターン</b><span>保存ルート参照＋必要時だけ差分</span></div>
+      <div id="patternList" class="patternList"></div>
+      <div class="patternBuilder">
+        <select id="patternBaseRoute"></select><input id="patternName" placeholder="例：基本周回 / 1区パターン">
+        <div class="actions two"><button class="primary" id="addDirectPattern">そのまま追加</button><button id="addVariantPattern">差分パターン追加</button></div>
+      </div>
+      <div class="help">「そのまま」は保存ルートを直接参照。「差分」は共通ルートを複製せず、変更区間だけ保持します。</div>
+    </section>
+
+    <section class="card hidden">
+      <div class="cardHead"><b>出走区分／区間への割当</b><span>同じパターンを複数区間で再利用可</span></div>
+      <div class="notice">この単体版では確認用に出走区分・区間を入力できます。EVENT BASE統合時は大会側／チーム作成側で確定した出走区分・区間を読み込み、ここでは走行パターン割当だけを扱います。</div>
+      <div id="groupList" class="groupList" style="margin-top:8px"></div>
+      <div class="groupAdd"><input id="newGroupName" placeholder="例：一般 / 混合 / 第1スタート"><input id="newGroupLegs" type="number" inputmode="numeric" min="1" max="12" value="4"><button id="addGroupBtn">出走区分を追加</button></div>
+    </section>
+
+    <div class="notice hidden"><strong>LIVE連携前提：</strong> LIVEのMAP表示範囲は大会単位で共通。各チームは「現在の出走区分＋現在区間」から走行パターンを個別取得し、同じMAP上へ同時表示します。M06では <code>resolveTeamCourse()</code> で解決済み走行ルートを受け渡せます。</div>
+  </main>
+</div>
+
+<div id="routeScreen" class="screen full">
+  <div id="routeMap"></div>
+  <div class="routeFloatTop">
+    <button id="routeBack" class="back">← 戻る</button>
+    <div class="routeNameBox"><small id="routeEditorTitle">ルート編集</small><input id="routeName" maxlength="50" aria-label="ルート名"></div>
+    <div id="routeSaveState" class="saveState">保存済み</div>
+  </div>
+  <div class="routeFloatDock">
+    <div class="routeControlPanel" id="routeControlPanel">
+      <div class="routePanelHead"><b>操作パネル</b><div class="routePanelHeadActions"><button id="saveRoute" class="routeQuickSave" type="button">保存</button><button id="routePanelToggle" class="routePanelToggle" type="button">− 最小化</button></div></div>
+      <div class="routePanelBody">
+      <div class="toolbar routeTools">
+        <button id="modeMap" class="on">地図</button>
+        <button id="modeRepair">区間削除</button>
+        <button id="modeDraw">ルート追加</button>
+        <button id="toggleRouteDirection">進行方向を反転</button>
+        <button id="openRoutePoints">START / GOAL配置</button>
+      </div>
+      <div id="routeHint" class="hint">ルート線だけを編集します。START / GOALはルートとは別に配置します。</div>
+      <div class="routeInfoLine"><span>現在のルート距離</span><b id="routeDistance">—</b></div>
+      <div id="repairBox" class="repairBox hidden">
+        <b id="repairTitle">削除開始位置を選ぶ</b><span id="repairInfo">削除したい区間の開始位置を地図で選びます。</span>
+        <div id="rangeStatus" class="rangeStatus">① 削除開始位置を選択</div>
+        <div id="rangeCandidateBox" class="rangeCandidateBox hidden">
+          <div id="rangeCandidateTitle" class="rangeCandidateTitle">削除位置の微調整</div>
+          <div class="rangeCandidateSub">小さい黄色点が実際の指定位置です。再タップ、または前後1点で微調整できます。</div>
+          <div class="rangeFineRow"><button id="rangePrevPoint" type="button">← 1点</button><button id="rangeConfirmPoint" class="confirm" type="button">ここで決定</button><button id="rangeNextPoint" type="button">1点 →</button></div>
+        </div>
+        <div id="rangeChoiceBox" class="rangeChoiceBox hidden">
+          <div class="rangeChoiceTitle">どちらを削除しますか？</div>
+          <div class="rangeChoiceSub">地図の色を見て、消したい側を選んでください。システム側では決めません。</div>
+          <div class="rangeChoiceButtons"><button id="chooseRangeA" class="sideA" type="button">① オレンジ側</button><button id="chooseRangeB" class="sideB" type="button">② 青側</button></div>
+        </div>
+        <div id="rangeActionBox" class="hidden">
+          <div class="rangeActions"><button id="deleteRange" class="deleteJoin" type="button">選んだ側を削除</button><button id="redrawRange" class="deleteRedraw" type="button">選んだ側を削除して描き直す</button></div>
+          <button id="clearRange" class="rangeClear" type="button">範囲を選び直す</button>
+        </div>
+      </div>
+      <div class="routeSaveRow"><button id="undoRoute">↶ 戻す</button><button id="resetRoute">保存前へ</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="pointScreen" class="screen full">
+  <div id="pointMap"></div>
+  <div class="floatTop"><button id="pointBack" class="back">← 戻る</button><div class="floatTitle"><small>ポイント配置</small><b>START・中継所・襷渡し・GOAL</b></div></div>
+  <div id="pointDock" class="floatDock">
+    <div class="pointModes"><button id="pmMap" class="on">地図を動かす</button><button id="pmStart">START</button><button id="pmRelay">中継所</button><button id="pmTasuki">襷渡し</button><button id="pmGoal">GOAL</button></div>
+    <div id="pointHint" class="hint">地図を動かせます。ルート・ポイントは変わりません。</div>
+    <div id="selectedPoint" class="pointStatus">ポイントをタップすると編集できます。</div>
+    <div class="pointActions"><button id="movePoint">位置変更</button><button id="cyclePoint">種類変更</button><button id="deletePoint" class="danger">削除</button></div>
+  </div>
+</div>
+
+<div id="viewScreen" class="screen full">
+  <div id="viewMap"></div>
+  <div class="floatTop"><button id="viewBack" class="back">← 一覧</button><div class="floatTitle"><small>LIVE MAP AREA</small><b>大会MAP表示範囲</b></div></div>
+  <button id="saveMapView" class="viewSave">この表示範囲を大会MAPとして保存</button>
+</div>
+
+<div id="patternScreen" class="screen full">
+  <div class="editShell">
+    <div class="editTop"><button id="patternBack" class="back">← 一覧</button><div class="editName"><small>RUN PATTERN</small><input id="patternEditName" maxlength="50"></div><div id="patternState" class="saveState">保存済み</div></div>
+    <div id="patternMap"></div>
+    <div class="patternDock">
+      <div class="patternInfo"><div><b id="patternBaseInfo">—</b><span id="patternDistanceInfo">—</span></div><button id="deletePattern" type="button">パターン削除</button></div>
+      <div class="patternTools"><button id="patternMapMode" class="on">地図を動かす</button><button id="patchSelectMode">差分区間を選ぶ</button><button id="patchDrawMode">差分を描く</button></div>
+      <div id="patternHint" class="hint">保存ルートをベースに表示しています。差分がない場合はルートそのものを参照します。</div>
+      <div id="patchList" class="patchList"></div>
+      <div class="row"><button id="clearPatchSelection">区間選択解除</button><button id="savePatternName" class="yellow">名前を保存</button></div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(()=>{'use strict';
+/* LOCAL UI PROTOTYPE ONLY. This is not a Firebase schema. */
+const LIB_KEY='EKIDEN_MAP_ROUTE_LIBRARY_V1';
+const PLAN_KEY='EKIDEN_MAP_EVENT_PLANS_V1';
+const LEGACY_M02='EKIDEN_MAP_EDITOR_STANDALONE_STATE_V1';
+const qp=new URLSearchParams(location.search);const EVENT_ID=String(qp.get('event')||'standalone_event');
+const $=id=>document.getElementById(id);const clone=o=>JSON.parse(JSON.stringify(o));
+const rid=()=>`route_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,6)}`;const pid=()=>`pt_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,6)}`;const patid=()=>`pattern_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,6)}`;const gid=()=>`group_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,6)}`;
+const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+const cleanRoute=r=>Array.isArray(r)?r.filter(p=>Array.isArray(p)&&p.length>=2&&Number.isFinite(+p[0])&&Number.isFinite(+p[1])).map(p=>[+p[0],+p[1]]):[];
+const hav=(a,b)=>{const R=6371000,rad=Math.PI/180,d1=(b[0]-a[0])*rad,d2=(b[1]-a[1])*rad,x=Math.sin(d1/2)**2+Math.cos(a[0]*rad)*Math.cos(b[0]*rad)*Math.sin(d2/2)**2;return 2*R*Math.asin(Math.sqrt(x))};
+const meters=r=>{const a=cleanRoute(r);let n=0;for(let i=0;i<a.length-1;i++)n+=hav(a[i],a[i+1]);return n};const distLabel=m=>m>=1000?`${(m/1000).toFixed(3)} km`:`${Math.round(m)} m`;
+function toast(msg){const t=$('toast');t.textContent=msg;t.classList.remove('hidden');clearTimeout(t._tm);t._tm=setTimeout(()=>t.classList.add('hidden'),2200)}
+function show(id){['homeScreen','routeScreen','pointScreen','viewScreen','patternScreen'].forEach(x=>$(x).classList.toggle('on',x===id))}
+function readJson(key,fallback){try{return JSON.parse(localStorage.getItem(key)||'null')||fallback}catch(_){return fallback}}
+function writeJson(key,val){localStorage.setItem(key,JSON.stringify(val))}
+function blankLibrary(){return{version:1,routes:[],defaultRouteId:'',backups:[],createdAt:Date.now(),updatedAt:Date.now()}}
+function cleanLibrary(x){x=x&&typeof x==='object'?x:blankLibrary();x.routes=Array.isArray(x.routes)?x.routes.map((r,i)=>({id:String(r.id||rid()),name:String(r.name||`ルート${i+1}`),points:cleanRoute(r.points),direction:r.direction===-1?-1:1,createdAt:+r.createdAt||Date.now(),updatedAt:+r.updatedAt||Date.now(),legacyPublicMeters:+r.legacyPublicMeters||0})).filter(r=>r.points.length||r.name):[];if(!x.routes.some(r=>r.id===x.defaultRouteId))x.defaultRouteId=x.routes[0]?.id||'';x.backups=Array.isArray(x.backups)?x.backups.slice(-12):[];return x}
+function blankPlans(){return{version:1,plans:{}}}
+function cleanPoint(p){return Number.isFinite(+p?.lat)&&Number.isFinite(+p?.lng)?{id:String(p.id||pid()),lat:+p.lat,lng:+p.lng,roles:Array.isArray(p.roles)?[...new Set(p.roles.filter(v=>['start','relay','tasuki','goal'].includes(v)))]:[]}:null}
+function blankPlan(id){return{eventId:id,eventName:id==='standalone_event'?'現在の大会':id,courseMode:'common_variant',mapView:null,points:[],patterns:[],groups:[],createdAt:Date.now(),updatedAt:Date.now()}}
+function cleanPattern(p){return{id:String(p.id||patid()),name:String(p.name||'走行パターン'),kind:p.kind==='variant'?'variant':'route',baseRouteId:String(p.baseRouteId||''),patches:Array.isArray(p.patches)?p.patches.map(x=>({id:String(x.id||`patch_${Date.now().toString(36)}`),startAnchor:cleanRoute([x.startAnchor])[0]||null,endAnchor:cleanRoute([x.endAnchor])[0]||null,points:cleanRoute(x.points)})).filter(x=>x.startAnchor&&x.endAnchor&&x.points.length>=2):[],createdAt:+p.createdAt||Date.now(),updatedAt:+p.updatedAt||Date.now()}}
+function cleanPlan(p,id){p=p&&typeof p==='object'?p:blankPlan(id);p.eventId=id;p.eventName=String(p.eventName||id);p.courseMode=['common_variant','independent','mixed'].includes(p.courseMode)?p.courseMode:'common_variant';p.mapView=p.mapView&&Array.isArray(p.mapView.center)&&Number.isFinite(+p.mapView.center[0])&&Number.isFinite(+p.mapView.center[1])?{center:[+p.mapView.center[0],+p.mapView.center[1]],zoom:Math.max(2,Math.min(20,+p.mapView.zoom||15))}:null;p.points=Array.isArray(p.points)?p.points.map(cleanPoint).filter(x=>x&&x.roles.length):[];p.patterns=Array.isArray(p.patterns)?p.patterns.map(cleanPattern):[];p.groups=Array.isArray(p.groups)?p.groups.map((g,gi)=>({id:String(g.id||gid()),name:String(g.name||`出走区分${gi+1}`),legs:Array.isArray(g.legs)?g.legs.map((l,i)=>({leg:i+1,patternId:String(l?.patternId||''),publicMeters:Math.max(0,+l?.publicMeters||0)})):[]})):[];return p}
+let library=cleanLibrary(readJson(LIB_KEY,blankLibrary()));let allPlans=readJson(PLAN_KEY,blankPlans());if(!allPlans||typeof allPlans!=='object'||!allPlans.plans)allPlans=blankPlans();let plan=cleanPlan(allPlans.plans[EVENT_ID],EVENT_ID);let migrated=[];
+function saveLibrary(){library.updatedAt=Date.now();writeJson(LIB_KEY,library)}function savePlan(){plan.updatedAt=Date.now();allPlans.plans[EVENT_ID]=plan;writeJson(PLAN_KEY,allPlans)}
+function routeBy(id){return library.routes.find(r=>r.id===id)||null}function patternBy(id){return plan.patterns.find(p=>p.id===id)||null}
+function nearestGeoIndex(route,anchor){route=cleanRoute(route);if(!route.length||!anchor)return-1;let bi=0,bd=Infinity;route.forEach((p,i)=>{const d=hav(p,anchor);if(d<bd){bd=d;bi=i}});return bi}
+function resolvePattern(p){if(!p)return[];const base=routeBy(p.baseRouteId);if(!base)return[];let pts=cleanRoute(base.points);const reps=(p.patches||[]).map(x=>{let a=nearestGeoIndex(pts,x.startAnchor),b=nearestGeoIndex(pts,x.endAnchor);if(a<0||b<0)return null;if(b<a){const t=a;a=b;b=t}return{a,b,points:cleanRoute(x.points)}}).filter(x=>x&&x.points.length>=2).sort((x,y)=>y.a-x.a);for(const x of reps){pts=pts.slice(0,x.a).concat(x.points,pts.slice(x.b+1))}return cleanRoute(pts)}
+function migrateFromM02(){if(library.routes.length)return;const m=readJson(LEGACY_M02,null);if(!m||!Array.isArray(m.routes)||!m.routes.length)return;library.routes=m.routes.map((r,i)=>({id:String(r.id||rid()),name:String(r.name||`ルート${i+1}`),points:cleanRoute(r.points),direction:1,createdAt:+r.createdAt||Date.now(),updatedAt:+r.updatedAt||Date.now(),legacyPublicMeters:+r.publicMeters||0})).filter(r=>r.points.length>1);library.defaultRouteId=library.routes.find(r=>r.id===m.defaultRouteId)?.id||library.routes[0]?.id||'';if(!plan.points.length&&Array.isArray(m.points))plan.points=m.points.map(cleanPoint).filter(x=>x&&x.roles.length);if(!plan.patterns.length){library.routes.forEach((r,i)=>plan.patterns.push(cleanPattern({id:patid(),name:i===0?'基本周回':r.name,kind:'route',baseRouteId:r.id,patches:[]})))}migrated.push('M01/M02');saveLibrary();savePlan()}
+migrateFromM02();saveLibrary();savePlan();
+function backupLibrary(label){library.backups.push({at:Date.now(),label,routes:clone(library.routes),defaultRouteId:library.defaultRouteId});library.backups=library.backups.slice(-12);saveLibrary()}
+function routeOptions(selected=''){return library.routes.length?library.routes.map(r=>`<option value="${esc(r.id)}" ${r.id===selected?'selected':''}>${esc(r.name)}｜約${distLabel(meters(r.points))}</option>`).join(''):'<option value="">保存ルートなし</option>'}
+function patternOptions(selected=''){return `<option value="">未割当</option>`+plan.patterns.map(p=>`<option value="${esc(p.id)}" ${p.id===selected?'selected':''}>${esc(p.name)}</option>`).join('')}
+function pointStats(){const has=r=>plan.points.some(p=>p.roles.includes(r));return{start:has('start'),goal:has('goal'),relay:plan.points.filter(p=>p.roles.includes('relay')).length,tasuki:plan.points.filter(p=>p.roles.includes('tasuki')).length}}
+function courseModeText(){return plan.courseMode==='common_variant'?'基本の保存ルートを共有し、違う区間だけ差分パターンとして保持します。':plan.courseMode==='independent'?'区間ごとに別の保存ルートを選べます。同じ保存ルートの再利用も可能です。':'共通ルート、差分パターン、独立ルートを区間ごとに混在できます。'}
+function renderHome(){show('homeScreen');$('eventIdLabel').textContent=`event: ${EVENT_ID}`;$('eventName').value=plan.eventName;$('routeCount').textContent=`${library.routes.length}ルート`;$('routeList').innerHTML=library.routes.length?library.routes.map(r=>`<div class="route ${r.id===library.defaultRouteId?'default':''}"><div class="routeTitle"><b>${esc(r.name)}</b>${r.id===library.defaultRouteId?'<span class="badge">既定編集ベース</span>':''}</div><div class="meta">約 ${distLabel(meters(r.points))}｜進行方向 ${r.direction===-1?'逆向き':'順向き'}</div><div class="actions"><button class="primary" data-edit-route="${r.id}">ルート編集</button><button data-copy-route="${r.id}">複製して別ルート</button><button class="danger" data-delete-route="${r.id}">削除</button></div></div>`).join(''):'<div class="empty">保存ルートがありません。以前のM01/M02と同じSafariなら初回に自動移行します。なければ「新しい保存ルート」から作成してください。</div>';
+ document.querySelectorAll('[data-edit-route]').forEach(b=>b.onclick=()=>openRouteEditor(b.dataset.editRoute));document.querySelectorAll('[data-copy-route]').forEach(b=>b.onclick=()=>duplicateRoute(b.dataset.copyRoute));document.querySelectorAll('[data-delete-route]').forEach(b=>b.onclick=()=>deleteRoute(b.dataset.deleteRoute));
+ document.querySelectorAll('#courseModeBtns button').forEach(b=>b.classList.toggle('on',b.dataset.mode===plan.courseMode));$('courseModeHelp').textContent=courseModeText();$('mapViewState').textContent=plan.mapView?`保存済み｜zoom ${plan.mapView.zoom}`:'未設定｜LIVEでは大会MAPを固定して使用';const ps=pointStats();$('pointState').textContent=`START ${ps.start?'済':'未'}｜中継 ${ps.relay}｜襷 ${ps.tasuki}｜GOAL ${ps.goal?'済':'未'}`;
+ $('patternList').innerHTML=plan.patterns.length?plan.patterns.map(p=>{const base=routeBy(p.baseRouteId),resolved=resolvePattern(p);return`<div class="pattern"><div class="patternTitle"><b>${esc(p.name)}</b><span class="badge ${p.kind==='variant'?'blue':'yellow'}">${p.kind==='variant'?'差分':'保存ルート参照'}</span></div><div class="meta">ベース：${esc(base?.name||'未設定')}｜差分 ${(p.patches||[]).length}区間｜計算 約${distLabel(meters(resolved))}</div><div class="actions two"><button class="primary" data-edit-pattern="${p.id}">${p.kind==='variant'?'差分編集':'確認・名称'}</button><button class="danger" data-delete-pattern="${p.id}">削除</button></div></div>`}).join(''):'<div class="empty">走行パターンがありません。保存ルートをそのまま使うか、共通ルートから差分パターンを作成してください。</div>';
+ document.querySelectorAll('[data-edit-pattern]').forEach(b=>b.onclick=()=>openPatternEditor(b.dataset.editPattern));document.querySelectorAll('[data-delete-pattern]').forEach(b=>b.onclick=()=>removePattern(b.dataset.deletePattern));$('patternBaseRoute').innerHTML=routeOptions();$('groupList').innerHTML=plan.groups.length?plan.groups.map(groupHtml).join(''):'<div class="empty">出走区分がありません。単体確認用として追加できます。統合時は大会側の出走区分・区間を読み込みます。</div>';bindGroupControls();
+ const n=$('migrationNotice');if(migrated.length){n.classList.remove('hidden');n.innerHTML=`<strong>移行済み：</strong> ${esc(migrated.join(' / '))} のルート・ポイントを、保存ルート資産と大会設定へ分離してコピーしました。元データは変更していません。`}else n.classList.add('hidden')}
+function groupHtml(g){return`<div class="group" data-group="${esc(g.id)}"><div class="groupHead"><input value="${esc(g.name)}" data-group-name="${esc(g.id)}"><button data-remove-group="${esc(g.id)}">削除</button></div><div class="legRows">${g.legs.map((l,i)=>`<div class="legRow"><b>${i+1}区</b><select data-leg-pattern="${g.id}:${i}">${patternOptions(l.patternId)}</select><input type="number" inputmode="numeric" min="0" step="1" placeholder="公表m" value="${l.publicMeters||''}" data-leg-meters="${g.id}:${i}"><button data-remove-leg="${g.id}:${i}">×</button></div>`).join('')}</div><div class="actions two"><button data-add-leg="${g.id}">＋ 区間を追加</button><button data-duplicate-group="${g.id}">区分を複製</button></div></div>`}
+function bindGroupControls(){document.querySelectorAll('[data-group-name]').forEach(x=>x.onchange=()=>{const g=plan.groups.find(v=>v.id===x.dataset.groupName);if(g){g.name=x.value.trim()||g.name;savePlan()}});document.querySelectorAll('[data-remove-group]').forEach(b=>b.onclick=()=>{if(!confirm('この出走区分の割当を削除しますか？'))return;plan.groups=plan.groups.filter(g=>g.id!==b.dataset.removeGroup);savePlan();renderHome()});document.querySelectorAll('[data-leg-pattern]').forEach(s=>s.onchange=()=>{const [id,idx]=s.dataset.legPattern.split(':');const g=plan.groups.find(v=>v.id===id);if(g?.legs[+idx]){g.legs[+idx].patternId=s.value;savePlan()}});document.querySelectorAll('[data-leg-meters]').forEach(x=>x.onchange=()=>{const [id,idx]=x.dataset.legMeters.split(':');const g=plan.groups.find(v=>v.id===id);if(g?.legs[+idx]){g.legs[+idx].publicMeters=Math.max(0,+x.value||0);savePlan()}});document.querySelectorAll('[data-remove-leg]').forEach(b=>b.onclick=()=>{const [id,idx]=b.dataset.removeLeg.split(':');const g=plan.groups.find(v=>v.id===id);if(!g)return;g.legs.splice(+idx,1);g.legs.forEach((l,i)=>l.leg=i+1);savePlan();renderHome()});document.querySelectorAll('[data-add-leg]').forEach(b=>b.onclick=()=>{const g=plan.groups.find(v=>v.id===b.dataset.addLeg);if(!g)return;g.legs.push({leg:g.legs.length+1,patternId:'',publicMeters:0});savePlan();renderHome()});document.querySelectorAll('[data-duplicate-group]').forEach(b=>b.onclick=()=>{const g=plan.groups.find(v=>v.id===b.dataset.duplicateGroup);if(!g)return;const c=clone(g);c.id=gid();c.name=`${g.name} コピー`;plan.groups.push(c);savePlan();renderHome()})}
+$('eventName').onchange=()=>{plan.eventName=$('eventName').value.trim()||plan.eventName;savePlan()};document.querySelectorAll('#courseModeBtns button').forEach(b=>b.onclick=()=>{plan.courseMode=b.dataset.mode;savePlan();renderHome()});
+$('newRouteBtn').onclick=()=>{backupLibrary('新規作成前');const r={id:rid(),name:`新しいルート${library.routes.length+1}`,points:[],direction:1,createdAt:Date.now(),updatedAt:Date.now(),legacyPublicMeters:0};library.routes.push(r);if(!library.defaultRouteId)library.defaultRouteId=r.id;saveLibrary();openRouteEditor(r.id)};
+$('quickNewRoute').onclick=()=>$('newRouteBtn').click();
+$('quickPoints').onclick=()=>openPoints();
+$('quickEditRoute').onclick=()=>{if(!library.routes.length)return toast('保存ルートがありません。先にルートを作成してください');if(library.routes.length===1)return openRouteEditor(library.routes[0].id);const card=$('routeLibraryCard');card.scrollIntoView({behavior:'smooth',block:'start'});card.classList.add('focusPulse');setTimeout(()=>card.classList.remove('focusPulse'),1400);toast('編集する保存ルートを選んでください')};
+$('restoreLibraryBtn').onclick=()=>{const b=library.backups.at(-1);if(!b)return toast('戻せるルート状態がありません');if(!confirm(`${b.label}へ戻しますか？`))return;library.routes=clone(b.routes);library.defaultRouteId=b.defaultRouteId;saveLibrary();renderHome();toast('ルートライブラリを戻しました')};
+function duplicateRoute(id){const s=routeBy(id);if(!s)return;backupLibrary('複製前');const r={...clone(s),id:rid(),name:`${s.name}（複製）`,createdAt:Date.now(),updatedAt:Date.now()};library.routes.push(r);saveLibrary();openRouteEditor(r.id);toast('複製しました。不要部分を削除して別ルートにできます')}
+function deleteRoute(id){const r=routeBy(id);if(!r)return;const used=plan.patterns.filter(p=>p.baseRouteId===id);if(used.length)return toast(`このルートは ${used.length}個の走行パターンから参照中です`);if(!confirm(`${r.name} を削除しますか？`))return;backupLibrary('削除前');library.routes=library.routes.filter(x=>x.id!==id);if(library.defaultRouteId===id)library.defaultRouteId=library.routes[0]?.id||'';saveLibrary();renderHome()}
+$('addDirectPattern').onclick=()=>addPattern('route');$('addVariantPattern').onclick=()=>addPattern('variant');function addPattern(kind){const routeId=$('patternBaseRoute').value;if(!routeId)return toast('保存ルートを選択してください');const base=routeBy(routeId),name=$('patternName').value.trim()||`${base.name}${kind==='variant'?' 差分':''}`;plan.patterns.push(cleanPattern({id:patid(),name,kind,baseRouteId:routeId,patches:[]}));savePlan();$('patternName').value='';renderHome();toast(kind==='variant'?'差分パターンを作成しました':'走行パターンを追加しました')}
+function removePattern(id){const p=patternBy(id);if(!p)return;const refs=plan.groups.reduce((n,g)=>n+g.legs.filter(l=>l.patternId===id).length,0);if(refs)return toast(`このパターンは ${refs}区間から参照中です`);if(!confirm(`${p.name} を削除しますか？`))return;plan.patterns=plan.patterns.filter(x=>x.id!==id);savePlan();renderHome()}
+$('addGroupBtn').onclick=()=>{const name=$('newGroupName').value.trim()||`出走区分${plan.groups.length+1}`,n=Math.max(1,Math.min(12,+$('newGroupLegs').value||4));plan.groups.push({id:gid(),name,legs:Array.from({length:n},(_,i)=>({leg:i+1,patternId:'',publicMeters:0}))});savePlan();$('newGroupName').value='';renderHome()};
+
+/* ROUTE LIBRARY EDITOR */
+let rmap=null,rline=null,rrangeLine=null,rjoinPreview=null,rtarget=null,rdirMarkers=[],rrangeMarkers=[],rrangeOptionLines=[],rrangeOptionMarkers=[];
+let editRouteId='',draft=[],savedDraft=[],rDirection=1,savedDirection=1,rmode='map',rdirty=false,rundo=[],ra=null,rb=null,rredraw=null,drawPointer=null,drawRaw=[],rRangeStage=0,rRangeCandidate=null,rRangeCandidateChoices=[],raChoices=[],rRangeDirect=false,rRangeOptions=[],rRangeChoice=-1,rRangeEffective=null;
+function initRouteMap(){
+  if(rmap)rmap.remove();
+  rmap=L.map('routeMap',{zoomControl:false,preferCanvas:true}).setView([34.8937,136.9274],15);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:20,attribution:'© OpenStreetMap'}).addTo(rmap);
+  rmap.on('click',e=>{if(rmode==='repair'&&!rredraw&&(rRangeStage===1||rRangeStage===2))handleRangeTap(e.latlng)});
+  setTimeout(()=>{rmap.invalidateSize();fitRoute()},80)
+}
+function openRouteEditor(id){
+  const r=routeBy(id);if(!r)return;
+  editRouteId=id;draft=cleanRoute(r.points);savedDraft=clone(draft);rDirection=r.direction===-1?-1:1;savedDirection=rDirection;rundo=[];rmode='map';rdirty=false;ra=rb=null;rredraw=null;rRangeStage=0;rRangeCandidate=null;rRangeCandidateChoices=[];raChoices=[];rRangeDirect=false;rRangeOptions=[];rRangeChoice=-1;rRangeEffective=null;routePanelMoved=false;
+  show('routeScreen');$('routeName').value=r.name;$('routeEditorTitle').textContent=draft.length>1?'ルート編集':'ルート作成';
+  initRouteMap();setRouteMode(draft.length>1?'map':'draw');paintRoute();updateRouteUi();setTimeout(placeRoutePanelDefault,90)
+}
+function fitRoute(){if(!rmap)return;if(draft.length>1)rmap.fitBounds(L.latLngBounds(draft),{padding:[30,30],maxZoom:17});else rmap.setView([34.8937,136.9274],15)}
+function pushRouteUndo(){rundo.push(clone(draft));if(rundo.length>25)rundo.shift()}
+function markRouteDirty(){rdirty=true;$('routeSaveState').textContent='未保存';$('routeSaveState').classList.add('dirty');updateRouteUi()}
+function routeVertexAnchor(i){if(!draft.length)return null;i=Math.max(0,Math.min(draft.length-1,Number(i)||0));return{point:clone(draft[i]),pos:i,seg:Math.max(0,Math.min(draft.length-2,i)),t:i>=draft.length-1?1:0,distPx:0}}
+function nearestRouteAnchor(ll,maxPx=36){
+  if(!draft.length)return null;
+  if(draft.length===1)return routeVertexAnchor(0);
+  const q=rmap.latLngToContainerPoint(ll);let best=null;
+  for(let i=0;i<draft.length-1;i++){
+    const a=rmap.latLngToContainerPoint(draft[i]),b=rmap.latLngToContainerPoint(draft[i+1]),vx=b.x-a.x,vy=b.y-a.y,len2=vx*vx+vy*vy;
+    let t=len2?((q.x-a.x)*vx+(q.y-a.y)*vy)/len2:0;t=Math.max(0,Math.min(1,t));
+    const x=a.x+t*vx,y=a.y+t*vy,d2=(q.x-x)**2+(q.y-y)**2;
+    if(!best||d2<best.d2){const snap=.018;let point,pos,seg=i,tt=t;if(t<=snap){point=clone(draft[i]);pos=i;tt=0}else if(t>=1-snap){point=clone(draft[i+1]);pos=i+1;tt=1}else{const z=rmap.containerPointToLatLng([x,y]);point=[z.lat,z.lng];pos=i+t}best={point,pos,seg,t:tt,d2,distPx:Math.sqrt(d2)}}
+  }
+  return best&&best.distPx<=maxPx?best:null;
+}
+function routeAnchorChoicesAtPoint(point,maxPx=5){
+  if(!draft.length||!rmap||!point)return[];
+  if(draft.length===1)return[routeVertexAnchor(0)];
+  const q=rmap.latLngToContainerPoint(point),out=[];
+  for(let i=0;i<draft.length-1;i++){
+    const a=rmap.latLngToContainerPoint(draft[i]),b=rmap.latLngToContainerPoint(draft[i+1]),vx=b.x-a.x,vy=b.y-a.y,len2=vx*vx+vy*vy;
+    let t=len2?((q.x-a.x)*vx+(q.y-a.y)*vy)/len2:0;t=Math.max(0,Math.min(1,t));
+    const x=a.x+t*vx,y=a.y+t*vy,distPx=Math.hypot(q.x-x,q.y-y);if(distPx>maxPx)continue;
+    const snap=.018;let p,pos,tt=t;if(t<=snap){p=clone(draft[i]);pos=i;tt=0}else if(t>=1-snap){p=clone(draft[i+1]);pos=i+1;tt=1}else{const z=rmap.containerPointToLatLng([x,y]);p=[z.lat,z.lng];pos=i+t}
+    if(!out.some(v=>Math.abs(Number(v.pos)-Number(pos))<1e-6))out.push({point:p,pos,seg:i,t:tt,distPx});
+  }
+  return out.sort((u,v)=>u.distPx-v.distPx)
+}
+function bestContiguousRangePair(aList,bList){
+  let best=null;
+  for(const a of (aList||[]))for(const b of (bList||[])){
+    if(sameRangeAnchor(a,b))continue;
+    const gap=Math.abs(Number(a.pos)-Number(b.pos));
+    if(!best||gap<best.gap)best={a,b,gap};
+  }
+  return best
+}
+function directRangeSection(a,b){
+  const [s,e]=orderedRangeAnchors(a,b);if(!s||!e)return[];const out=[clone(s.point)];for(let i=0;i<draft.length;i++){if(i>s.pos+1e-6&&i<e.pos-1e-6)out.push(clone(draft[i]))}out.push(clone(e.point));return cleanRoute(out)
+}
+function wrapRangeSection(a,b){
+  if(!routeIsClosed())return[];const [s,e]=orderedRangeAnchors(a,b);if(!s||!e)return[];const out=[clone(s.point)];for(let i=Math.ceil(s.pos+1e-6);i<draft.length;i++)out.push(clone(draft[i]));for(let i=1;i<=Math.floor(e.pos-1e-6);i++)out.push(clone(draft[i]));out.push(clone(e.point));return cleanRoute(out)
+}
+function pathSig(points){if(!points?.length)return'';const idx=[0,Math.floor((points.length-1)/3),Math.floor((points.length-1)*2/3),points.length-1];return idx.map(i=>{const p=points[Math.max(0,Math.min(points.length-1,i))];return `${Number(p[0]).toFixed(5)},${Number(p[1]).toFixed(5)}`}).join('|')+`|${Math.round(meters(points))}`}
+function buildRangeOptions(aList,bList){
+  const raw=[];
+  for(const aa of (aList?.length?aList:[ra]))for(const bb of (bList?.length?bList:[rb])){
+    if(!aa||!bb||sameRangeAnchor(aa,bb))continue;
+    const [s,e]=orderedRangeAnchors(aa,bb);
+    const d=directRangeSection(s,e);if(d.length>1)raw.push({a:clone(s),b:clone(e),points:d,kind:'direct',len:meters(d)});
+    const w=wrapRangeSection(s,e);if(w.length>1)raw.push({a:clone(s),b:clone(e),points:w,kind:'wrap',len:meters(w)});
+  }
+  const unique=[];const seen=new Set();
+  raw.sort((x,y)=>x.len-y.len).forEach(o=>{const sig=pathSig(o.points);if(!seen.has(sig)){seen.add(sig);unique.push(o)}});
+  if(unique.length<=2)return unique;
+  return [unique[0],unique[unique.length-1]]
+}
+function rangeOptionMid(points){if(!points?.length)return null;let total=meters(points),run=0,target=total/2;for(let i=1;i<points.length;i++){const seg=hav(points[i-1],points[i]);if(run+seg>=target){const t=seg?(target-run)/seg:0;return[points[i-1][0]+(points[i][0]-points[i-1][0])*t,points[i-1][1]+(points[i][1]-points[i-1][1])*t]}run+=seg}return clone(points[Math.floor(points.length/2)])}
+function pointSegDistanceMeters(p,a,b){
+  const lat0=(Number(p[0])+Number(a[0])+Number(b[0]))/3*Math.PI/180,ky=111320,kx=111320*Math.max(.15,Math.cos(lat0));
+  const px=(p[1]-a[1])*kx,py=(p[0]-a[0])*ky,bx=(b[1]-a[1])*kx,by=(b[0]-a[0])*ky,d=bx*bx+by*by;
+  const t=d?Math.max(0,Math.min(1,(px*bx+py*by)/d)):0,dx=px-t*bx,dy=py-t*by;return Math.hypot(dx,dy)
+}
+function pointRouteDistanceMeters(p,pts){pts=cleanRoute(pts);if(!p||!pts.length)return Infinity;if(pts.length===1)return hav(p,pts[0]);let best=Infinity;for(let i=0;i<pts.length-1;i++)best=Math.min(best,pointSegDistanceMeters(p,pts[i],pts[i+1]));return best}
+function normalizeClosedCore(points){const out=cleanRoute(points);if(out.length>2&&hav(out[0],out[out.length-1])<=10)out[out.length-1]=clone(out[0]);return out}
+function findSpurExpansion(opt){
+  if(!opt||draft.length<7)return null;
+  const mid=rangeOptionMid(opt.points),total=Math.max(1,meters(draft));if(!mid)return null;let best=null;
+  const consider=(kind,red,keep,jp,branchLen,dBranch,dCore,bonus=0)=>{
+    if(!red?.length||!keep?.length||branchLen<2||dBranch>12||dBranch+3>=dCore)return;
+    const score=dBranch+branchLen/total*8-bonus;if(!best||score<best.score)best={kind:'spur',spurKind:kind,a:{point:clone(jp),pos:0},b:{point:clone(jp),pos:0},points:cleanRoute(red),len:branchLen,keep:normalizeClosedCore(keep),junction:clone(jp),score}
+  };
+  for(let i=0;i<draft.length-3;i++)for(let j=i+3;j<draft.length;j++){
+    if(i===0&&j===draft.length-1)continue;if(hav(draft[i],draft[j])>10)continue;
+    const jp=[(draft[i][0]+draft[j][0])/2,(draft[i][1]+draft[j][1])/2];
+    const core=normalizeClosedCore(draft.slice(i,j+1)),coreLen=meters(core);if(core.length<4||coreLen<80)continue;
+    const prefix=cleanRoute(draft.slice(0,i+1)),suffix=cleanRoute(draft.slice(j));
+    const prefixLen=meters(prefix),suffixLen=meters(suffix),dCore=pointRouteDistanceMeters(mid,core),closedOuter=hav(draft[0],draft[draft.length-1])<=10;
+    if(closedOuter&&prefixLen>2&&suffixLen>2&&prefixLen+suffixLen<Math.min(coreLen*.65,total*.45)){
+      const outer=cleanRoute(draft.slice(j).concat(draft.slice(1,i+1))),dOuter=pointRouteDistanceMeters(mid,outer);
+      const keep=clone(core);keep[0]=clone(jp);keep[keep.length-1]=clone(jp);const red=clone(outer);red[0]=clone(jp);red[red.length-1]=clone(jp);
+      consider('both',red,keep,jp,meters(red),dOuter,dCore,4);continue
+    }
+    if(prefixLen>2&&prefixLen<Math.min(coreLen*.65,total*.45)){
+      const dPrefix=pointRouteDistanceMeters(mid,prefix),red=clone(prefix),keep=cleanRoute(draft.slice(i));red[red.length-1]=clone(jp);keep[0]=clone(jp);
+      consider('prefix',red,keep,jp,prefixLen,dPrefix,dCore)
+    }
+    if(suffixLen>2&&suffixLen<Math.min(coreLen*.65,total*.45)){
+      const dSuffix=pointRouteDistanceMeters(mid,suffix),red=clone(suffix),keep=cleanRoute(draft.slice(0,j+1));red[0]=clone(jp);keep[keep.length-1]=clone(jp);
+      consider('suffix',red,keep,jp,suffixLen,dSuffix,dCore)
+    }
+  }
+  return best
+}
+function closedComplementForOption(opt){if(!opt)return[];return opt.kind==='wrap'?directRangeSection(opt.a,opt.b):wrapRangeSection(opt.a,opt.b)}
+function rangeAnchorAtStart(a){return!!(a&&Number(a.pos)<=1e-6)}
+function rangeAnchorAtEnd(a){return!!(a&&Number(a.pos)>=draft.length-1-1e-6)}
+function canDeleteRangeWithoutRedraw(opt){
+  if(!opt)return false;
+  if(opt.kind==='spur'||routeIsClosed())return true;
+  const [a,b]=orderedRangeAnchors(opt.a,opt.b);if(!a||!b)return false;
+  return rangeAnchorAtStart(a)||rangeAnchorAtEnd(b)
+}
+function deleteRangeWithoutRejoin(opt){
+  if(!opt||draft.length<2)return null;
+  if(opt.kind==='spur')return clone(opt.keep);
+  if(routeIsClosed()){
+    // Important: keep the complementary path OPEN. Re-closing here would draw a new
+    // straight segment between the cut points and make the deleted geometry appear to remain.
+    const keep=cleanRoute(closedComplementForOption(opt));
+    return keep.length>=2?keep:null
+  }
+  const [a,b]=orderedRangeAnchors(opt.a,opt.b);if(!a||!b)return null;
+  if(rangeAnchorAtStart(a)&&rangeAnchorAtEnd(b))return null;
+  if(rangeAnchorAtStart(a)){
+    const keep=routeAfterAnchor(b);return keep.length>=2?keep:null
+  }
+  if(rangeAnchorAtEnd(b)){
+    const keep=routeBeforeAnchor(a);return keep.length>=2?keep:null
+  }
+  // A middle cut on an open route creates two disconnected pieces. Preserve the existing
+  // single-polyline data model and require the explicit redraw flow instead of faking a join.
+  return null
+}
+function beginRedrawForOption(opt){
+  if(!opt)return false;
+  if(opt.kind==='spur')return false;
+  if(routeIsClosed()){
+    const keep=cleanRoute(closedComplementForOption(opt));if(keep.length<2)return false;
+    draft=keep;rredraw={suffix:[clone(keep[0])],target:clone(keep[0])};return true
+  }
+  const [a,b]=orderedRangeAnchors(opt.a,opt.b);if(!a||!b)return false;
+  rredraw={suffix:routeAfterAnchor(b),target:clone(b.point)};draft=routeBeforeAnchor(a);return draft.length>0
+}
+function chooseRangeSide(idx){
+  const base=rRangeOptions[idx];if(!base)return toast('削除する側を選んでください');
+  rRangeChoice=idx;rRangeEffective=findSpurExpansion(base)||null;ra=clone(base.a);rb=clone(base.b);rRangeStage=4;paintRoute();
+  toast(rRangeEffective?'はみ出し部分を認識しました。周回との接点から先端までを赤い削除対象にしました。':'選んだ側だけを赤くしました。内容を確認して削除方法を選んでください')
+}
+function selectedRangeOption(){return rRangeEffective||(rRangeChoice>=0?rRangeOptions[rRangeChoice]||null:null)}
+function optionTouchesRouteEndpoints(opt){if(!opt||!draft.length)return false;const p0=opt.points[0],p1=opt.points[opt.points.length-1],s=draft[0],e=draft[draft.length-1];return(hav(p0,s)<=4&&hav(p1,e)<=4)||(hav(p1,s)<=4&&hav(p0,e)<=4)}
+function orientPathToRouteEndpoints(points){if(!points?.length||!draft.length)return cleanRoute(points||[]);const a=points[0],b=points[points.length-1];return hav(a,draft[0])<=hav(b,draft[0])?cleanRoute(points):cleanRoute(clone(points).reverse())}
+function sameRangeAnchor(a,b){return!!(a&&b&&Math.abs(Number(a.pos)-Number(b.pos))<1e-6)}
+function orderedRangeAnchors(a,b){if(!a||!b)return[null,null];return Number(a.pos)<=Number(b.pos)?[a,b]:[b,a]}
+function routeIsClosed(){return draft.length>2&&hav(draft[0],draft[draft.length-1])<=2}
+function rangeWrapsForward(a,b){return!!(a&&b&&routeIsClosed()&&Number(a.pos)>Number(b.pos))}
+function rangeSectionPoints(a,b){
+  if(!a||!b)return[];
+  if(!rRangeDirect&&rangeWrapsForward(a,b)){
+    const out=[clone(a.point)];
+    for(let i=0;i<draft.length;i++){if(i>a.pos+1e-6)out.push(clone(draft[i]))}
+    for(let i=0;i<draft.length;i++){if(i<b.pos-1e-6)out.push(clone(draft[i]))}
+    out.push(clone(b.point));
+    return cleanRoute(out)
+  }
+  const [s,e]=orderedRangeAnchors(a,b);if(!s||!e)return[];const out=[clone(s.point)];for(let i=0;i<draft.length;i++){if(i>s.pos+1e-6&&i<e.pos-1e-6)out.push(clone(draft[i]))}out.push(clone(e.point));return cleanRoute(out)
+}
+function wrappedRangeComplement(a,b){
+  if(!a||!b)return[];
+  const out=[clone(b.point)];
+  for(let i=0;i<draft.length;i++){if(i>b.pos+1e-6&&i<a.pos-1e-6)out.push(clone(draft[i]))}
+  out.push(clone(a.point));
+  return cleanRoute(out)
+}
+function routeBeforeAnchor(a){if(!a)return clone(draft);const out=[];for(let i=0;i<draft.length;i++){if(i<a.pos-1e-6)out.push(clone(draft[i]))}out.push(clone(a.point));return cleanRoute(out)}
+function routeAfterAnchor(a){if(!a)return clone(draft);const out=[clone(a.point)];for(let i=0;i<draft.length;i++){if(i>a.pos+1e-6)out.push(clone(draft[i]))}return cleanRoute(out)}
+function handleRangeTap(ll){
+  const picked=nearestRouteAnchor(ll,36);if(!picked)return toast('黄色いルート線の近くをタップしてください');
+  rRangeCandidate=picked;rRangeCandidateChoices=routeAnchorChoicesAtPoint(picked.point,5);if(!rRangeCandidateChoices.length)rRangeCandidateChoices=[clone(picked)];paintRoute();toast(rRangeStage===1?'黄色い小点が削除開始位置です。必要なら再タップまたは前後1点で微調整してください':'黄色い小点が削除終了位置です。必要なら再タップまたは前後1点で微調整してください')
+}
+function shiftRangeCandidate(step){if(!rRangeCandidate)return toast('先に地図をタップしてください');const pos=Number(rRangeCandidate.pos);let idx=step<0?Math.ceil(pos-1e-6)-1:Math.floor(pos+1e-6)+1;idx=Math.max(0,Math.min(draft.length-1,idx));rRangeCandidate=routeVertexAnchor(idx);rRangeCandidateChoices=[clone(rRangeCandidate)];paintRoute()}
+function confirmRangeCandidate(){
+  if(!rRangeCandidate)return toast('先に地図をタップしてください');
+  if(rRangeStage===1){ra=clone(rRangeCandidate);raChoices=clone(rRangeCandidateChoices.length?rRangeCandidateChoices:[rRangeCandidate]);rRangeCandidate=null;rRangeCandidateChoices=[];rb=null;rRangeDirect=false;rRangeOptions=[];rRangeChoice=-1;rRangeEffective=null;rRangeStage=2;paintRoute();toast('開始位置を決定しました。次に終了位置を選んでください');return}
+  if(rRangeStage===2){
+    const bChoices=clone(rRangeCandidateChoices.length?rRangeCandidateChoices:[rRangeCandidate]);
+    if(sameRangeAnchor(rRangeCandidate,ra))return toast('開始位置とは別の終了位置を選んでください');
+    rb=clone(rRangeCandidate);
+    rRangeEffective=null;rRangeOptions=buildRangeOptions(raChoices.length?raChoices:[ra],bChoices.length?bChoices:[rb]);
+    if(!rRangeOptions.length)return toast('削除候補を作れませんでした。位置を選び直してください');
+    rRangeCandidate=null;rRangeCandidateChoices=[];rRangeChoice=-1;rRangeEffective=null;
+    const spurMatches=rRangeOptions.map((o,i)=>({i,e:findSpurExpansion(o)})).filter(x=>x.e);
+    if(spurMatches.length===1){const m=spurMatches[0],base=rRangeOptions[m.i];rRangeChoice=m.i;rRangeEffective=m.e;ra=clone(base.a);rb=clone(base.b);rRangeStage=4;paintRoute();toast('はみ出し部分を自動認識しました。接点から先端までを赤い削除対象にしました。')}
+    else if(rRangeOptions.length===1){chooseRangeSide(0)}
+    else{rRangeStage=3;paintRoute();toast('どちらを削除しますか？ 地図のオレンジ側／青側から選んでください')}
+  }
+}
+function rangeMarker(point,label,kind,anchor){return L.marker(point,{interactive:false,keyboard:false,zIndexOffset:2400,icon:L.divIcon({className:'',html:`<div class="rangePin ${kind}"><span class="pinCore"></span><span class="pinLabel">${label}</span></div>`,iconSize:[1,1],iconAnchor:[0,0]})}).addTo(rmap)}
+function candidateMarker(point,label){return L.marker(point,{interactive:false,keyboard:false,zIndexOffset:2200,icon:L.divIcon({className:'',html:`<div class="routeCandidate">${label}</div>`,iconSize:[110,34],iconAnchor:[55,17]})}).addTo(rmap)}
+function paintRoute(){
+  if(!rmap)return;
+  [rline,rrangeLine,rjoinPreview,rtarget].forEach(x=>{try{x?.remove()}catch(_){}});rrangeOptionLines.forEach(x=>{try{x.remove()}catch(_){}});rrangeOptionMarkers.forEach(x=>{try{x.remove()}catch(_){}});rrangeOptionLines=[];rrangeOptionMarkers=[];rdirMarkers.forEach(x=>{try{x.remove()}catch(_){}});rrangeMarkers.forEach(x=>{try{x.remove()}catch(_){}});rdirMarkers=[];rrangeMarkers=[];
+  const viewDraft=clone(draft);
+  rline=viewDraft.length>1?L.polyline(viewDraft,{color:'#ffd400',weight:7,opacity:.98,lineCap:'round',lineJoin:'round'}).addTo(rmap):null;
+  if(viewDraft.length>1){const oriented=rDirection===-1?clone(viewDraft).reverse():viewDraft;addRouteArrows(rmap,{points:oriented,style:{color:'#ffd400'},index:0},rdirMarkers)}
+  if(ra?.point)rrangeMarkers.push(rangeMarker(ra.point,'開始','start'));
+  if(rb?.point)rrangeMarkers.push(rangeMarker(rb.point,'終了','end'));
+  if(rRangeCandidate?.point)rrangeMarkers.push(rangeMarker(rRangeCandidate.point,rRangeStage===1?'開始':'終了','candidate'));
+  if(rRangeStage===3&&rRangeOptions.length>1){
+    const colors=['#ffae42','#58b7ff'];
+    rRangeOptions.slice(0,2).forEach((o,i)=>{
+      const line=L.polyline(o.points,{color:colors[i],weight:12,opacity:.9,lineCap:'round',lineJoin:'round',interactive:true,bubblingMouseEvents:false}).addTo(rmap);
+      line.on('click',()=>chooseRangeSide(i));rrangeOptionLines.push(line);
+      const mid=rangeOptionMid(o.points);if(mid){const tag=L.marker(mid,{interactive:false,keyboard:false,zIndexOffset:2450,icon:L.divIcon({className:'',html:`<div class="rangeOptionTag ${i===0?'a':'b'}">${i+1}</div>`,iconSize:[32,32],iconAnchor:[16,16]})}).addTo(rmap);rrangeOptionMarkers.push(tag)}
+    })
+  }else if(rRangeStage===4){
+    const opt=selectedRangeOption();if(opt?.points?.length>1){rrangeLine=L.polyline(opt.points,{color:'#ff525f',weight:12,opacity:.92,lineCap:'round',lineJoin:'round',interactive:false}).addTo(rmap);if(opt.kind!=='spur')rjoinPreview=L.polyline([opt.points[0],opt.points[opt.points.length-1]],{color:'#5ad7a2',weight:5,opacity:.95,dashArray:'10 8',interactive:false}).addTo(rmap)}
+  }
+  if(rredraw){rtarget=L.marker(rredraw.target,{interactive:false,icon:L.divIcon({className:'',html:'<div class="targetMarker">ここへ接続</div>',iconSize:[78,30],iconAnchor:[39,15]})}).addTo(rmap)}
+  updateRouteUi()
+}
+function setRouteMode(m){
+  rmode=m;
+  ['modeMap','modeRepair','modeDraw'].forEach(id=>$(id).classList.remove('on'));
+  const active=m==='map'?'modeMap':m==='repair'?'modeRepair':'modeDraw';$(active).classList.add('on');
+  routePanel.classList.toggle('repairMode',m==='repair');
+  $('repairBox').classList.toggle('hidden',m!=='repair');
+  if(m==='repair'&&!rredraw&&rRangeStage===0){ra=rb=null;rRangeCandidate=null;rRangeCandidateChoices=[];raChoices=[];rRangeDirect=false;rRangeOptions=[];rRangeChoice=-1;rRangeEffective=null;rRangeStage=1}
+  if(rmap){if(m==='map'){rmap.dragging.enable();rmap.touchZoom.enable();rmap.doubleClickZoom.enable()}else{rmap.dragging.disable();rmap.touchZoom.disable();rmap.doubleClickZoom.disable()}}
+  const c=rmap?.getContainer();if(c)c.style.touchAction=m==='map'?'pan-x pan-y':'none';
+  $('routeHint').textContent=m==='map'?'地図だけ動かします。ルート線・START / GOALは変わりません。':m==='repair'?'削除する区間の開始→終了を選びます。START / GOALには影響しません。':rredraw?'現在の線の末尾から「ここへ接続」まで描きます。':draft.length?'現在のルート末尾から指でなぞって追加します。':'地図上を指でなぞってルートを作成します。';
+  paintRoute()
+}
+const routePanel=$('routeControlPanel'),routePanelToggle=$('routePanelToggle');
+let routePanelMoved=false,panelDrag=null;
+function clampRoutePanel(){const w=routePanel.offsetWidth||320,x=parseFloat(routePanel.style.left)||8,y=parseFloat(routePanel.style.top)||160;const visibleHead=52;routePanel.style.left=`${Math.max(6,Math.min(innerWidth-w-6,x))}px`;routePanel.style.top=`${Math.max(56,Math.min(innerHeight-visibleHead,y))}px`}
+function placeRoutePanelDefault(){requestAnimationFrame(()=>{if(routePanelMoved)return;const h=routePanel.offsetHeight||250;routePanel.style.left='8px';routePanel.style.top=`${Math.max(150,innerHeight-h-88)}px`;clampRoutePanel()})}
+routePanelToggle.onclick=e=>{e.stopPropagation();const minimized=routePanel.classList.toggle('minimized');routePanelToggle.textContent=minimized?'＋ 開く':'− 最小化';requestAnimationFrame(()=>{clampRoutePanel();rmap?.invalidateSize()})};
+$('routePanelToggle').addEventListener('pointerdown',e=>e.stopPropagation());
+const routePanelHead=routePanel.querySelector('.routePanelHead');
+routePanelHead.addEventListener('pointerdown',e=>{if(e.target.closest('button'))return;panelDrag={id:e.pointerId,x:e.clientX,y:e.clientY,left:parseFloat(routePanel.style.left)||8,top:parseFloat(routePanel.style.top)||160};routePanelMoved=true;try{routePanelHead.setPointerCapture(e.pointerId)}catch(_){}e.preventDefault()});
+routePanelHead.addEventListener('pointermove',e=>{if(!panelDrag||e.pointerId!==panelDrag.id)return;routePanel.style.left=`${panelDrag.left+e.clientX-panelDrag.x}px`;routePanel.style.top=`${panelDrag.top+e.clientY-panelDrag.y}px`;clampRoutePanel();e.preventDefault()});
+const endPanelDrag=e=>{if(!panelDrag||e.pointerId!==panelDrag.id)return;panelDrag=null;try{routePanelHead.releasePointerCapture(e.pointerId)}catch(_){}};routePanelHead.addEventListener('pointerup',endPanelDrag);routePanelHead.addEventListener('pointercancel',endPanelDrag);window.addEventListener('resize',()=>clampRoutePanel());
+$('modeMap').onclick=()=>setRouteMode('map');$('modeRepair').onclick=()=>{ra=rb=null;rRangeCandidate=null;rRangeCandidateChoices=[];raChoices=[];rRangeDirect=false;rRangeOptions=[];rRangeChoice=-1;rRangeEffective=null;rRangeStage=1;setRouteMode('repair')};$('modeDraw').onclick=()=>setRouteMode('draw');
+$('toggleRouteDirection').onclick=()=>{if(draft.length<2)return toast('先にルートを作成してください');rDirection=rDirection===-1?1:-1;markRouteDirty();paintRoute();toast('進行方向を反転しました。黄色い矢印で確認してください')};
+$('openRoutePoints').onclick=()=>{if(rdirty)return toast('先にルートを保存してください');try{rmap?.remove()}catch(_){}rmap=null;openPoints()};
+$('rangePrevPoint').onclick=()=>shiftRangeCandidate(-1);$('rangeNextPoint').onclick=()=>shiftRangeCandidate(1);$('rangeConfirmPoint').onclick=confirmRangeCandidate;
+$('chooseRangeA').onclick=()=>chooseRangeSide(0);$('chooseRangeB').onclick=()=>chooseRangeSide(1);
+function resetRangeSelection(){ra=rb=null;rRangeCandidate=null;rRangeCandidateChoices=[];raChoices=[];rRangeDirect=false;rRangeOptions=[];rRangeChoice=-1;rRangeEffective=null;rRangeStage=0;paintRoute()}
+$('clearRange').onclick=()=>{ra=rb=null;rRangeCandidate=null;rRangeCandidateChoices=[];raChoices=[];rRangeDirect=false;rRangeOptions=[];rRangeChoice=-1;rRangeEffective=null;rRangeStage=1;paintRoute();toast('削除開始位置から選び直してください')};
+function updateRouteUi(){
+  $('routeDistance').textContent=distLabel(meters(draft));
+  const name=$('routeName').value.trim()||routeBy(editRouteId)?.name||'このルート';$('saveRoute').textContent='保存';$('saveRoute').title=`${name} を保存`;
+  $('toggleRouteDirection').textContent=rDirection===-1?'進行方向：逆向き':'進行方向：順向き';
+  let title='削除開始位置を選ぶ',info='黄色いルート線をタップすると、その線上の正確な位置を小さい黄色点で示します。',status='① 削除開始位置を選択';
+  if(rRangeStage===2){title='削除終了位置を選ぶ';info='黄色いルート線をタップすると、その線上の正確な位置を小さい黄色点で示します。';status='② 削除終了位置を選択';}
+  else if(rRangeStage===3&&rRangeOptions.length>1){title='どちらを削除しますか？';info='オレンジと青の2通りを表示しています。消したい側を地図またはボタンで選んでください。';status='③ 削除する側を選択';}
+  else if(rRangeStage===4&&selectedRangeOption()){const o=selectedRangeOption();if(o.kind==='spur'){title='はみ出し全体を削除';info='周回との接点から飛び出した先までを自動認識しています。赤い部分を削除すると、残った周回へ自動補正して保存します。';status='赤＝接点から先端までの不要部分';}else{title='この区間を削除しますか？';info='選んだ側だけを赤く表示しています。周回途中でも削除・描き直しできます。';status='赤＝選んだ削除対象';}}
+  $('repairTitle').textContent=title;$('repairInfo').textContent=info;$('rangeStatus').textContent=status;$('rangeStatus').classList.toggle('ready',rRangeStage===4);
+  $('rangeCandidateBox').classList.toggle('hidden',!(rRangeCandidate&&(rRangeStage===1||rRangeStage===2)));$('rangeCandidateTitle').textContent=rRangeStage===1?'削除開始位置の微調整':'削除終了位置の微調整';
+  $('rangeChoiceBox').classList.toggle('hidden',rRangeStage!==3||rRangeOptions.length<2);
+  if(rRangeOptions.length>1){$('chooseRangeA').textContent=`① オレンジ側（約${distLabel(rRangeOptions[0].len)}）`;$('chooseRangeB').textContent=`② 青側（約${distLabel(rRangeOptions[1].len)}）`;}
+  $('rangeActionBox').classList.toggle('hidden',rRangeStage!==4);routePanel.classList.toggle('rangePicking',rmode==='repair'&&rRangeStage<4);
+  const selected=selectedRangeOption(),spur=selected?.kind==='spur',endpointAlt=selected&&rRangeOptions.length>1&&optionTouchesRouteEndpoints(selected),canDelete=canDeleteRangeWithoutRedraw(selected);
+  $('deleteRange').disabled=!!selected&&!canDelete;
+  $('deleteRange').textContent=spur?'はみ出し全体を削除して保存':canDelete?'赤い区間を削除':'中間区間は「削除して描き直す」';
+  $('redrawRange').textContent=endpointAlt?'選んだ側を削除して描き直す':'赤い区間を削除して描き直す';$('redrawRange').classList.toggle('hidden',!!spur);
+  if(!rdirty){$('routeSaveState').textContent='保存済み';$('routeSaveState').classList.remove('dirty')}
+}
+$('deleteRange').onclick=()=>{
+  const opt=selectedRangeOption();if(!opt)return toast('先に削除する側を選んでください');
+  if(!canDeleteRangeWithoutRedraw(opt))return toast('この中間区間は切断後に接続が必要です。「削除して描き直す」を使ってください');
+  const spur=opt.kind==='spur';if(!confirm(spur?'赤いはみ出し全体を削除し、残った周回へ自動補正して保存しますか？':'赤い区間を削除しますか？'))return;
+  const before=clone(draft),beforeLen=meters(before),redLen=meters(opt.points);pushRouteUndo();
+  const kept=deleteRangeWithoutRejoin(opt);if(!kept||kept.length<2){rundo.pop();return toast('削除形状を作れませんでした。範囲を選び直してください')}
+  const afterLen=meters(kept),minDrop=Math.max(.5,Math.min(5,redLen*.08));
+  if(!(afterLen<beforeLen-minDrop)){
+    rundo.pop();draft=before;paintRoute();return toast('削除結果を確認できませんでした。開始・終了位置を選び直してください')
+  }
+  draft=kept;ra=rb=null;rRangeCandidate=null;rRangeCandidateChoices=[];raChoices=[];rRangeDirect=false;rRangeOptions=[];rRangeChoice=-1;rRangeEffective=null;rRangeStage=spur?0:1;rredraw=null;markRouteDirty();
+  if(spur){
+    const r=routeBy(editRouteId);if(!r)return paintRoute();backupLibrary('はみ出し自動補正前');r.name=$('routeName').value.trim()||r.name;r.points=cleanRoute(draft);r.direction=rDirection===-1?-1:1;r.updatedAt=Date.now();if(!library.defaultRouteId)library.defaultRouteId=r.id;savedDraft=clone(draft);savedDirection=r.direction;rdirty=false;saveLibrary();setRouteMode('map');paintRoute();updateRouteUi();toast('はみ出し部分を削除し、残った周回を自動補正して保存しました')
+  }else{paintRoute();toast(`赤い区間を削除しました（約${distLabel(Math.max(0,beforeLen-afterLen))}短縮）。黄色線に切れ目が出ていることを確認し、保存してください`)}
+};
+$('redrawRange').onclick=()=>{
+  const opt=selectedRangeOption();if(!opt)return toast('先に削除する側を選んでください');if(opt.kind==='spur')return toast('はみ出し部分は「削除して保存」を使ってください');pushRouteUndo();
+  if(!beginRedrawForOption(opt)){rundo.pop();return toast('描き直し用の形状を作れませんでした。範囲を選び直してください')}
+  ra=rb=null;rRangeCandidate=null;rRangeCandidateChoices=[];raChoices=[];rRangeDirect=false;rRangeOptions=[];rRangeChoice=-1;rRangeEffective=null;rRangeStage=0;markRouteDirty();setRouteMode('draw');toast('赤い区間を外しました。周回途中でもこのまま「ここへ接続」まで描き直せます')
+};
+$('undoRoute').onclick=()=>{const p=rundo.pop();if(!p)return toast('戻せる変更がありません');draft=p;rredraw=null;ra=rb=null;rRangeCandidate=null;rRangeCandidateChoices=[];raChoices=[];rRangeDirect=false;rRangeOptions=[];rRangeChoice=-1;rRangeEffective=null;rRangeStage=0;markRouteDirty();paintRoute()};
+$('resetRoute').onclick=()=>{if(!confirm('保存済み状態へ戻しますか？'))return;draft=clone(savedDraft);rDirection=savedDirection;rundo=[];rredraw=null;ra=rb=null;rRangeCandidate=null;rRangeCandidateChoices=[];raChoices=[];rRangeDirect=false;rRangeOptions=[];rRangeChoice=-1;rRangeEffective=null;rRangeStage=0;rdirty=false;setRouteMode('map');paintRoute();updateRouteUi()};
+$('saveRoute').onclick=()=>{const r=routeBy(editRouteId);if(!r)return;if(rredraw)return toast('描き直した区間を「ここへ接続」までつないでください');backupLibrary('保存前');r.name=$('routeName').value.trim()||r.name;r.points=cleanRoute(draft);r.direction=rDirection===-1?-1:1;r.updatedAt=Date.now();if(!library.defaultRouteId)library.defaultRouteId=r.id;savedDraft=clone(draft);savedDirection=r.direction;rdirty=false;ra=rb=null;rRangeCandidate=null;rRangeCandidateChoices=[];raChoices=[];rRangeDirect=false;rRangeOptions=[];rRangeChoice=-1;rRangeEffective=null;rRangeStage=0;saveLibrary();updateRouteUi();paintRoute();toast(`${r.name} を保存しました`)};
+$('routeName').oninput=()=>{markRouteDirty();updateRouteUi()};
+$('routeBack').onclick=()=>{if(rdirty&&!confirm('未保存の変更があります。一覧へ戻りますか？'))return;try{rmap?.remove()}catch(_){}rmap=null;panelDrag=null;renderHome()};
+function smoothPixels(raw){if(raw.length<3)return raw;const out=[raw[0]];for(let i=1;i<raw.length-1;i++){const a=raw[i-1],b=raw[i],c=raw[i+1];out.push({x:(a.x+2*b.x+c.x)/4,y:(a.y+2*b.y+c.y)/4})}out.push(raw.at(-1));return out}function simplify(points,eps=2.4){if(points.length<3)return points;const sq=x=>x*x;function sd(p,a,b){const dx=b.x-a.x,dy=b.y-a.y;if(!dx&&!dy)return sq(p.x-a.x)+sq(p.y-a.y);let t=((p.x-a.x)*dx+(p.y-a.y)*dy)/(dx*dx+dy*dy);t=Math.max(0,Math.min(1,t));return sq(p.x-(a.x+t*dx))+sq(p.y-(a.y+t*dy))}function rec(a,b,out){let md=0,idx=-1;for(let i=a+1;i<b;i++){const d=sd(points[i],points[a],points[b]);if(d>md){md=d;idx=i}}if(md>eps*eps&&idx>0){rec(a,idx,out);out.push(points[idx]);rec(idx,b,out)}}const o=[points[0]];rec(0,points.length-1,o);o.push(points.at(-1));return o}
+function bindRouteDraw(){const el=$('routeMap');el.onpointerdown=e=>{if(rmode!=='draw'||drawPointer!==null)return;if(e.pointerType==='mouse'&&e.button!==0)return;const z=el.getBoundingClientRect(),p={x:e.clientX-z.left,y:e.clientY-z.top};if(draft.length){const q=rmap.latLngToContainerPoint(draft.at(-1));if(Math.hypot(p.x-q.x,p.y-q.y)>42)return toast('黄色線の末尾付近から描き始めてください')}drawPointer=e.pointerId;drawRaw=[p];try{el.setPointerCapture(e.pointerId)}catch(_){}e.preventDefault()};el.onpointermove=e=>{if(e.pointerId!==drawPointer||rmode!=='draw')return;const z=el.getBoundingClientRect(),p={x:e.clientX-z.left,y:e.clientY-z.top},last=drawRaw.at(-1);if(!last||Math.hypot(p.x-last.x,p.y-last.y)>=6)drawRaw.push(p);e.preventDefault()};const end=e=>{if(e.pointerId!==drawPointer)return;drawPointer=null;if(drawRaw.length<2){drawRaw=[];return}pushRouteUndo();let px=simplify(smoothPixels(drawRaw)),lat=px.map(p=>{const ll=rmap.containerPointToLatLng([p.x,p.y]);return[ll.lat,ll.lng]});if(draft.length&&lat.length)lat=lat.slice(1);draft=draft.concat(lat);drawRaw=[];if(rredraw&&draft.length){const a=rmap.latLngToContainerPoint(draft.at(-1)),b=rmap.latLngToContainerPoint(rredraw.target);if(Math.hypot(a.x-b.x)<=48){draft[draft.length-1]=clone(rredraw.target);draft=draft.concat(clone(rredraw.suffix.slice(1)));rredraw=null;setRouteMode('map');toast('描き直した区間を接続しました。保存前に確認してください')}}markRouteDirty();paintRoute()};el.onpointerup=end;el.onpointercancel=end}
+bindRouteDraw();
+
+/* EVENT MAP VIEW */
+const ROUTE_VISUAL_STYLES=[
+  {color:'#ffd400',weight:10,dashArray:null,dashOffset:'0'},
+  {color:'#43c8ff',weight:8,dashArray:'18 10',dashOffset:'0'},
+  {color:'#ff8a70',weight:7,dashArray:'4 9',dashOffset:'2'},
+  {color:'#78dfa5',weight:7,dashArray:'20 8 4 8',dashOffset:'0'},
+  {color:'#c6a2ff',weight:7,dashArray:'10 8',dashOffset:'4'}
+];
+function eventRouteVisuals(){return plan.patterns.map((p,i)=>{const base=routeBy(p.baseRouteId),pts=resolvePattern(p),oriented=base?.direction===-1?clone(pts).reverse():pts;return{id:p.id,name:String(p.name||`ルート${i+1}`),points:oriented,style:ROUTE_VISUAL_STYLES[i%ROUTE_VISUAL_STYLES.length],index:i}}).filter(x=>x.points.length>1)}
+function eventAllResolvedRoutes(){return eventRouteVisuals().map(x=>x.points)}
+function routeBearing(a,b){const r=Math.PI/180,p1=a[0]*r,p2=b[0]*r,dl=(b[1]-a[1])*r,y=Math.sin(dl)*Math.cos(p2),x=Math.cos(p1)*Math.sin(p2)-Math.sin(p1)*Math.cos(p2)*Math.cos(dl);return(Math.atan2(y,x)*180/Math.PI+360)%360}
+function routeAtFraction(points,f){if(!points?.length)return null;if(points.length===1)return{latlng:points[0],angle:0};const seg=[],total=points.slice(1).reduce((s,p,i)=>{const d=hav(points[i],p);seg.push(d);return s+d},0);if(!total)return{latlng:points[0],angle:0};let target=Math.max(0,Math.min(1,f))*total,run=0;for(let i=0;i<seg.length;i++){if(run+seg[i]>=target){const t=seg[i]?((target-run)/seg[i]):0,a=points[i],b=points[i+1];return{latlng:[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t],angle:routeBearing(a,b)}}run+=seg[i]}const a=points[points.length-2],b=points[points.length-1];return{latlng:b,angle:routeBearing(a,b)}}
+function addRouteArrows(map,visual,store){const base=[.18,.42,.66,.86],shift=(visual.index%4)*.025;base.forEach(f=>{const q=routeAtFraction(visual.points,Math.min(.94,f+shift));if(!q)return;const html=`<div class="routeDirectionArrow" style="color:${visual.style.color};transform:rotate(${q.angle-90}deg)">➤</div>`;const m=L.marker(q.latlng,{interactive:false,keyboard:false,icon:L.divIcon({className:'',html,iconSize:[28,28],iconAnchor:[14,14]})}).addTo(map);store.push(m)})}
+function addRouteLegend(map,visuals){const ctl=L.control({position:'topright'});ctl.onAdd=()=>{const d=L.DomUtil.create('div','routeLegend');L.DomEvent.disableClickPropagation(d);L.DomEvent.disableScrollPropagation(d);d.innerHTML=`<div class="routeLegendTitle">走行ルート</div>${visuals.map((v,i)=>`<div class="routeLegendRow"><span class="routeLegendSwatch" style="background:${v.style.color}"></span><span>${esc(v.name||`ルート${i+1}`)}</span><span style="color:${v.style.color}">➤</span></div>`).join('')}`;return d};ctl.addTo(map);return ctl}
+function drawEventRoutes(map,lineStore,arrowStore){const visuals=eventRouteVisuals();visuals.forEach(v=>{const opt={color:v.style.color,weight:v.style.weight,opacity:.94,lineCap:'round',lineJoin:'round',interactive:false};if(v.style.dashArray){opt.dashArray=v.style.dashArray;opt.dashOffset=v.style.dashOffset}lineStore.push(L.polyline(v.points,opt).addTo(map));addRouteArrows(map,v,arrowStore)});return visuals}
+let vmap=null,vlines=[],varrows=[],vlegend=null;
+function openView(){show('viewScreen');if(vmap)vmap.remove();vmap=L.map('viewMap',{zoomControl:false,preferCanvas:true}).setView(plan.mapView?.center||[34.8937,136.9274],plan.mapView?.zoom||15);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:20,attribution:'© OpenStreetMap'}).addTo(vmap);vlines=[];varrows=[];const visuals=drawEventRoutes(vmap,vlines,varrows);vlegend=visuals.length?addRouteLegend(vmap,visuals):null;plan.points.forEach(p=>L.circleMarker([p.lat,p.lng],{radius:6,color:'#111',weight:3,fillColor:'#fff',fillOpacity:1}).addTo(vmap));setTimeout(()=>{vmap.invalidateSize();if(!plan.mapView){const all=visuals.flatMap(x=>x.points);if(all.length>1)vmap.fitBounds(L.latLngBounds(all),{padding:[25,25],maxZoom:17})}},80)}
+$('editMapViewBtn').onclick=openView;$('viewBack').onclick=()=>{try{vmap?.remove()}catch(_){}vmap=null;vlines=[];varrows=[];vlegend=null;renderHome()};$('saveMapView').onclick=()=>{if(!vmap)return;const c=vmap.getCenter();plan.mapView={center:[c.lat,c.lng],zoom:vmap.getZoom()};savePlan();toast('大会MAP表示範囲を保存しました');setTimeout(()=>{$('viewBack').click()},300)};
+
+/* EVENT POINTS */
+let pmap=null,pLines=[],pArrows=[],pMarkers=[],pLegend=null,pMode='map',selectedPointId='',movePointId='';
+function openPoints(){show('pointScreen');initPointMap();setPointMode('map');renderPoints()}
+function pointRoleLabel(role){return role==='start'?'START':role==='relay'?'中継所':role==='tasuki'?'襷渡し地点':role==='goal'?'GOAL':role}
+function pointRoleShort(role){return role==='start'?'S':role==='relay'?'中':role==='tasuki'?'襷':role==='goal'?'G':role}
+function orderedPointRoles(roles){const order=['start','relay','tasuki','goal'];const set=new Set(Array.isArray(roles)?roles:[]);return order.filter(r=>set.has(r))}
+function activePointRole(){return pMode==='start'?'start':pMode==='relay'?'relay':pMode==='tasuki'?'tasuki':pMode==='goal'?'goal':''}
+function pointLabel(p){const rs=orderedPointRoles(p?.roles);return rs.length?rs.map(pointRoleShort).join('/'):'•'}
+function pointMarkerWidth(label){return Math.max(38,Math.min(118,24+Array.from(String(label||'')).length*11))}
+function nearestExistingPoint(latlng,maxMeters=4){
+  const target=[+latlng.lat,+latlng.lng];let best=null,bd=Infinity;
+  for(const p of plan.points){const d=hav([p.lat,p.lng],target);if(d<bd){bd=d;best=p}}
+  return best&&bd<=maxMeters?best:null
+}
+function persistPointPlan(){
+  plan.points=plan.points.map(cleanPoint).filter(x=>x&&x.roles.length);
+  savePlan();
+}
+function removeUniqueRoleElsewhere(role,keepId){
+  if(role!=='start'&&role!=='goal')return;
+  plan.points.forEach(p=>{if(p.id!==keepId)p.roles=p.roles.filter(r=>r!==role)});
+  plan.points=plan.points.filter(p=>p.roles.length);
+}
+function addRoleToExistingPoint(p,role,{snapPoint=null}={}){
+  if(!p||!role)return null;
+  removeUniqueRoleElsewhere(role,p.id);
+  p.roles=orderedPointRoles([...(p.roles||[]),role]);
+  if(snapPoint){p.lat=+snapPoint[0];p.lng=+snapPoint[1]}
+  selectedPointId=p.id;movePointId='';persistPointPlan();renderPoints();
+  toast(`${p.roles.map(pointRoleLabel).join('＋')}｜同一地点へ保存しました`);
+  return p
+}
+function createPointAt(role,lat,lng){
+  const p={id:pid(),lat:+lat,lng:+lng,roles:[role]};
+  removeUniqueRoleElsewhere(role,p.id);
+  plan.points.push(p);selectedPointId=p.id;movePointId='';persistPointPlan();renderPoints();
+  toast(`${pointRoleLabel(role)}を保存しました`);return p
+}
+function snapPointToSavedRoute(ll,maxPx=48){
+  if(!pmap||!library.routes.length)return null;
+  const q=pmap.latLngToContainerPoint(ll);let best=null;
+  library.routes.forEach(r=>{const pts=cleanRoute(r.points);for(let i=0;i<pts.length-1;i++){const a=pmap.latLngToContainerPoint(pts[i]),b=pmap.latLngToContainerPoint(pts[i+1]),vx=b.x-a.x,vy=b.y-a.y,len2=vx*vx+vy*vy;let t=len2?((q.x-a.x)*vx+(q.y-a.y)*vy)/len2:0;t=Math.max(0,Math.min(1,t));const x=a.x+t*vx,y=a.y+t*vy,d=Math.hypot(q.x-x,q.y-y);if(!best||d<best.distPx){const z=pmap.containerPointToLatLng([x,y]);best={point:[z.lat,z.lng],distPx:d,routeId:r.id}}}});
+  return best&&best.distPx<=maxPx?best:null
+}
+function placeEventPointOnRoute(role,ll){
+  const snap=snapPointToSavedRoute(ll,52);if(!snap)return toast('保存ルート線の上をタップしてください');
+  const existing=nearestExistingPoint({lat:snap.point[0],lng:snap.point[1]},4);
+  if(existing){addRoleToExistingPoint(existing,role,{snapPoint:snap.point});return}
+  removeUniqueRoleElsewhere(role,'');
+  const p={id:pid(),lat:snap.point[0],lng:snap.point[1],roles:[role]};plan.points.push(p);
+  selectedPointId=p.id;movePointId='';persistPointPlan();renderPoints();toast(`${pointRoleLabel(role)}をルート上へ保存しました`)
+}
+function pointRouteVisuals(){return library.routes.map((r,i)=>({id:r.id,name:r.name,points:r.direction===-1?clone(cleanRoute(r.points)).reverse():cleanRoute(r.points),style:ROUTE_VISUAL_STYLES[i%ROUTE_VISUAL_STYLES.length],index:i})).filter(x=>x.points.length>1)}
+function drawPointRoutes(map,lineStore,arrowStore){const visuals=pointRouteVisuals();visuals.forEach(v=>{const opt={color:v.style.color,weight:v.style.weight,opacity:.94,lineCap:'round',lineJoin:'round',interactive:false};if(v.style.dashArray){opt.dashArray=v.style.dashArray;opt.dashOffset=v.style.dashOffset}lineStore.push(L.polyline(v.points,opt).addTo(map));addRouteArrows(map,v,arrowStore)});return visuals}
+function initPointMap(){
+  if(pmap)pmap.remove();
+  pmap=L.map('pointMap',{zoomControl:false,preferCanvas:true}).setView(plan.mapView?.center||[34.8937,136.9274],plan.mapView?.zoom||15);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:20,attribution:'© OpenStreetMap'}).addTo(pmap);
+  pmap.on('click',e=>{
+    if(movePointId){
+      const p=plan.points.find(x=>x.id===movePointId);
+      if(p){
+        const isCoursePoint=p.roles.includes('start')||p.roles.includes('goal'),snap=isCoursePoint?snapPointToSavedRoute(e.latlng,52):null;
+        if(isCoursePoint&&!snap)return toast('START / GOALを含むポイントは保存ルート線の上をタップしてください');
+        const pos=snap?.point||[e.latlng.lat,e.latlng.lng];p.lat=pos[0];p.lng=pos[1];movePointId='';persistPointPlan();renderPoints();toast(isCoursePoint?'ルート上へ位置を保存しました':'位置を保存しました')
+      }
+      return;
+    }
+    if(pMode==='map')return;
+    const role=activePointRole();if(!role)return;
+    if(role==='start'||role==='goal')return placeEventPointOnRoute(role,e.latlng);
+    const existing=nearestExistingPoint(e.latlng,4);
+    if(existing){addRoleToExistingPoint(existing,role);return}
+    createPointAt(role,e.latlng.lat,e.latlng.lng)
+  });
+  setTimeout(()=>{pmap.invalidateSize();if(!plan.mapView){const all=eventAllResolvedRoutes().flat();if(all.length>1)pmap.fitBounds(L.latLngBounds(all),{padding:[30,30],maxZoom:17})}},80)
+}
+function setPointMode(m){
+  pMode=m;
+  ['pmMap','pmStart','pmRelay','pmTasuki','pmGoal'].forEach(id=>$(id).classList.remove('on'));
+  $(m==='map'?'pmMap':m==='start'?'pmStart':m==='relay'?'pmRelay':m==='tasuki'?'pmTasuki':'pmGoal').classList.add('on');
+  if(pmap){if(m==='map'){pmap.dragging.enable();pmap.touchZoom.enable()}else{pmap.dragging.disable();pmap.touchZoom.disable()}}
+  const label=m==='start'?'START':m==='relay'?'中継所':m==='tasuki'?'襷渡し地点':'GOAL';
+  $('pointHint').textContent=m==='map'?'地図を動かせます。保存済みポイントは変わりません。':(m==='start'||m==='goal')?`${label}を置く保存ルート線をタップ。既存ポイントをタップすると同じ地点へ追加します。`:`${label}を置く場所をタップ。既存ポイントをタップすると同じ地点へ追加します。`;
+}
+function renderPoints(){
+  pMarkers.forEach(m=>m.remove());pMarkers=[];pLines.forEach(x=>x.remove());pLines=[];pArrows.forEach(x=>x.remove());pArrows=[];if(pLegend){try{pLegend.remove()}catch(_){}pLegend=null}
+  const visuals=drawPointRoutes(pmap,pLines,pArrows);pLegend=visuals.length?addRouteLegend(pmap,visuals):null;
+  plan.points.forEach(p=>{
+    const label=pointLabel(p),w=pointMarkerWidth(label);
+    const m=L.marker([p.lat,p.lng],{icon:L.divIcon({className:'',html:`<div class="pMarker ${p.id===selectedPointId?'sel':''}">${esc(label)}</div>`,iconSize:[w,38],iconAnchor:[w/2,19]})}).addTo(pmap);
+    m.on('click',e=>{
+      L.DomEvent.stopPropagation(e);
+      const role=activePointRole();
+      if(role&&pMode!=='map'&&!movePointId){
+        if((role==='start'||role==='goal')){
+          const snap=snapPointToSavedRoute(e.latlng,52);if(!snap)return toast('START / GOALは保存ルート線上のポイントへ設定してください');
+          addRoleToExistingPoint(p,role,{snapPoint:snap.point});
+        }else addRoleToExistingPoint(p,role);
+        return;
+      }
+      selectedPointId=p.id;renderPoints()
+    });pMarkers.push(m)
+  });
+  const p=plan.points.find(x=>x.id===selectedPointId);
+  if(!p)selectedPointId='';
+  $('pointDock').classList.toggle('hasSelection',!!p);
+  $('selectedPoint').textContent=p?`選択中：${orderedPointRoles(p.roles).map(pointRoleLabel).join('＋')}｜大会設定へ保存済み`:'ポイントをタップすると編集できます。';
+}
+$('editPointsBtn').onclick=openPoints;
+$('pmMap').onclick=()=>setPointMode('map');
+$('pmStart').onclick=()=>setPointMode('start');
+$('pmRelay').onclick=()=>setPointMode('relay');
+$('pmTasuki').onclick=()=>setPointMode('tasuki');
+$('pmGoal').onclick=()=>setPointMode('goal');
+$('movePoint').onclick=()=>{const p=plan.points.find(x=>x.id===selectedPointId);if(!p)return toast('先にポイントを選択してください');movePointId=p.id;setPointMode('map');$('pointHint').textContent=(p.roles.includes('start')||p.roles.includes('goal'))?'移動先の保存ルート線を1回タップしてください。複合ポイント全体を同じ位置へ移動します。':'移動先を地図で1回タップしてください。保存ルート本体は変更しません。'};
+$('cyclePoint').onclick=()=>{
+  const p=plan.points.find(x=>x.id===selectedPointId);if(!p)return toast('先にポイントを選択してください');
+  const rs=orderedPointRoles(p.roles);
+  if(rs.length!==1)return toast('複合ポイントです。上の役割ボタンから同一地点へ追加できます。');
+  const current=rs[0],next=current==='start'?'relay':current==='relay'?'tasuki':current==='tasuki'?'goal':'start';
+  removeUniqueRoleElsewhere(next,p.id);p.roles=[next];persistPointPlan();renderPoints();toast(`${pointRoleLabel(next)}へ変更しました`)
+};
+$('deletePoint').onclick=()=>{
+  const p=plan.points.find(x=>x.id===selectedPointId);if(!p)return toast('先にポイントを選択してください');
+  if(!confirm(`${orderedPointRoles(p.roles).map(pointRoleLabel).join('＋')} をこの地点から削除しますか？`))return;
+  const deletedId=p.id;plan.points=plan.points.filter(x=>x.id!==deletedId);selectedPointId='';if(movePointId===deletedId)movePointId='';persistPointPlan();
+  const stored=readJson(PLAN_KEY,null),savedPoints=Array.isArray(stored?.plans?.[EVENT_ID]?.points)?stored.plans[EVENT_ID].points:[];
+  renderPoints();
+  if(savedPoints.some(x=>String(x?.id||'')===deletedId))toast('削除保存を確認できませんでした');else toast('ポイントを削除しました')
+};
+$('pointBack').onclick=()=>{movePointId='';try{pmap?.remove()}catch(_){}pmap=null;pLines=[];pArrows=[];pMarkers=[];pLegend=null;renderHome()};
+
+/* RUN PATTERN EDITOR: base route + partial replacement patches */
+let patMap=null,patBaseLine=null,patResolvedLine=null,patMarkers=[],editPatternId='',patMode='map',patchA=-1,patchB=-1,patchDrawing=false,patPointer=null,patRaw=[];
+function openPatternEditor(id){const p=patternBy(id);if(!p)return;editPatternId=id;show('patternScreen');$('patternEditName').value=p.name;$('patternState').textContent='保存済み';$('patternState').classList.remove('dirty');initPatternMap();setPatternMode('map');renderPattern()}
+function initPatternMap(){if(patMap)patMap.remove();patMap=L.map('patternMap',{zoomControl:false,preferCanvas:true}).setView(plan.mapView?.center||[34.8937,136.9274],plan.mapView?.zoom||15);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:20,attribution:'© OpenStreetMap'}).addTo(patMap);patMap.on('click',e=>{if(patMode!=='select'||patchDrawing)return;selectPatchAnchor(e.latlng)});setTimeout(()=>{patMap.invalidateSize();const p=patternBy(editPatternId),r=routeBy(p?.baseRouteId);if(r?.points.length>1)patMap.fitBounds(L.latLngBounds(r.points),{padding:[30,30],maxZoom:17})},80)}
+function setPatternMode(m){patMode=m;['patternMapMode','patchSelectMode','patchDrawMode'].forEach(id=>$(id).classList.remove('on'));$(m==='map'?'patternMapMode':m==='select'?'patchSelectMode':'patchDrawMode').classList.add('on');if(patMap){if(m==='map'){patMap.dragging.enable();patMap.touchZoom.enable()}else{patMap.dragging.disable();patMap.touchZoom.disable()}}const c=patMap?.getContainer();if(c)c.style.touchAction=m==='map'?'pan-x pan-y':'none';$('patternHint').textContent=m==='map'?'地図操作中。走行パターンは変わりません。':m==='select'?'ベースルート上で差し替える区間の開始点→終了点の順にタップします。':'選択した開始点から終了点まで手書きします。自動追従はしません。';renderPattern()}
+function selectPatchAnchor(ll){const p=patternBy(editPatternId),base=routeBy(p?.baseRouteId);if(!base?.points.length)return;let best=0,bd=Infinity;const q=patMap.latLngToContainerPoint(ll);base.points.forEach((x,i)=>{const z=patMap.latLngToContainerPoint(x),d=(q.x-z.x)**2+(q.y-z.y)**2;if(d<bd){bd=d;best=i}});if(patchA<0||patchB>=0){patchA=best;patchB=-1;toast('差分区間の開始点を選択しました')}else if(best===patchA)toast('別の終了点を選択してください');else{patchB=best;if(patchB<patchA){const t=patchA;patchA=patchB;patchB=t}toast('差分区間を選択しました。「差分を描く」を押してください')}renderPattern()}
+function renderPattern(){const p=patternBy(editPatternId);if(!p||!patMap)return;const base=routeBy(p.baseRouteId),resolved=resolvePattern(p);[patBaseLine,patResolvedLine].forEach(x=>{try{x?.remove()}catch(_){}});patMarkers.forEach(x=>{try{x.remove()}catch(_){}});patMarkers=[];if(base?.points.length>1)patBaseLine=L.polyline(base.points,{color:'#ffffff',weight:4,opacity:.32,interactive:false}).addTo(patMap);if(resolved.length>1)patResolvedLine=L.polyline(resolved,{color:'#ffd400',weight:7,opacity:.94,interactive:false}).addTo(patMap);if(base&&patchA>=0&&base.points[patchA])patMarkers.push(L.marker(base.points[patchA],{interactive:false,icon:L.divIcon({className:'',html:'<div class="patchMarker"></div>',iconSize:[18,18],iconAnchor:[9,9]})}).addTo(patMap));if(base&&patchB>=0&&base.points[patchB])patMarkers.push(L.marker(base.points[patchB],{interactive:false,icon:L.divIcon({className:'',html:'<div class="targetMarker">終了</div>',iconSize:[56,30],iconAnchor:[28,15]})}).addTo(patMap));$('patternBaseInfo').textContent=`ベース：${base?.name||'未設定'}｜${p.kind==='variant'?'差分パターン':'保存ルート直接参照'}`;$('patternDistanceInfo').textContent=`計算 約${distLabel(meters(resolved))}｜差分 ${(p.patches||[]).length}区間`;$('patchList').innerHTML=p.patches?.length?p.patches.map((x,i)=>`<div class="patchRow"><span>差分 ${i+1}｜${x.points.length}点</span><button data-del-patch="${i}">削除</button></div>`).join(''):'<div class="meta">差分なし。ベース保存ルートをそのまま参照しています。</div>';document.querySelectorAll('[data-del-patch]').forEach(b=>b.onclick=()=>{if(!confirm('この差分区間を削除しますか？'))return;p.patches.splice(+b.dataset.delPatch,1);p.updatedAt=Date.now();savePlan();renderPattern()})}
+$('patternMapMode').onclick=()=>setPatternMode('map');$('patchSelectMode').onclick=()=>{const p=patternBy(editPatternId);if(p?.kind!=='variant')return toast('保存ルート直接参照のパターンです。差分パターンを作成してください');patchDrawing=false;setPatternMode('select')};$('patchDrawMode').onclick=()=>{const p=patternBy(editPatternId),base=routeBy(p?.baseRouteId);if(p?.kind!=='variant')return toast('差分パターンではありません');if(patchA<0||patchB<0||patchA===patchB)return toast('先に差分区間の開始点と終了点を選んでください');patchDrawing=true;setPatternMode('draw');toast('開始点から終了点まで手書きしてください')};$('clearPatchSelection').onclick=()=>{patchA=patchB=-1;patchDrawing=false;setPatternMode('map')};$('savePatternName').onclick=()=>{const p=patternBy(editPatternId);if(!p)return;p.name=$('patternEditName').value.trim()||p.name;p.updatedAt=Date.now();savePlan();$('patternState').textContent='保存済み';$('patternState').classList.remove('dirty');toast('パターン名を保存しました')};$('patternEditName').oninput=()=>{$('patternState').textContent='未保存';$('patternState').classList.add('dirty')};$('patternBack').onclick=()=>{const p=patternBy(editPatternId);if(p){p.name=$('patternEditName').value.trim()||p.name;savePlan()}try{patMap?.remove()}catch(_){}patMap=null;patchA=patchB=-1;patchDrawing=false;renderHome()};$('deletePattern').onclick=()=>{const p=patternBy(editPatternId);if(!p)return;const refs=plan.groups.reduce((n,g)=>n+g.legs.filter(l=>l.patternId===p.id).length,0);if(refs)return toast(`このパターンは ${refs}区間から参照中です`);if(!confirm(`${p.name} を削除しますか？`))return;plan.patterns=plan.patterns.filter(x=>x.id!==p.id);savePlan();$('patternBack').click()};
+function bindPatternDraw(){const el=$('patternMap');el.onpointerdown=e=>{if(patMode!=='draw'||!patchDrawing||patPointer!==null)return;const p=patternBy(editPatternId),base=routeBy(p?.baseRouteId);if(!base||patchA<0||patchB<0)return;const z=el.getBoundingClientRect(),pt={x:e.clientX-z.left,y:e.clientY-z.top},start=patMap.latLngToContainerPoint(base.points[patchA]);if(Math.hypot(pt.x-start.x,pt.y-start.y)>48)return toast('黄色の開始点付近から描き始めてください');patPointer=e.pointerId;patRaw=[pt];try{el.setPointerCapture(e.pointerId)}catch(_){}e.preventDefault()};el.onpointermove=e=>{if(e.pointerId!==patPointer||patMode!=='draw')return;const z=el.getBoundingClientRect(),p={x:e.clientX-z.left,y:e.clientY-z.top},last=patRaw.at(-1);if(!last||Math.hypot(p.x-last.x,p.y-last.y)>=6)patRaw.push(p);e.preventDefault()};const end=e=>{if(e.pointerId!==patPointer)return;patPointer=null;if(patRaw.length<2){patRaw=[];return}const p=patternBy(editPatternId),base=routeBy(p?.baseRouteId),target=patMap.latLngToContainerPoint(base.points[patchB]),last=patRaw.at(-1);if(Math.hypot(last.x-target.x,last.y-target.y)>58){patRaw=[];return toast('終了点まで届いていません。もう一度描いてください')}let px=simplify(smoothPixels(patRaw)),geo=px.map(q=>{const ll=patMap.containerPointToLatLng([q.x,q.y]);return[ll.lat,ll.lng]});geo[0]=clone(base.points[patchA]);geo[geo.length-1]=clone(base.points[patchB]);p.patches.push({id:`patch_${Date.now().toString(36)}`,startAnchor:clone(base.points[patchA]),endAnchor:clone(base.points[patchB]),points:cleanRoute(geo)});p.updatedAt=Date.now();savePlan();patRaw=[];patchA=patchB=-1;patchDrawing=false;setPatternMode('map');toast('差分区間を保存しました')};el.onpointerup=end;el.onpointercancel=end}
+bindPatternDraw();
+
+/* Integration-facing local contract. No Firebase path is defined here. */
+function planForEvent(eventId=EVENT_ID){
+  if(eventId===EVENT_ID)return plan;
+  const raw=allPlans.plans[eventId];
+  return raw?cleanPlan(clone(raw),eventId):null;
+}
+function resolvePatternForPlan(target,patternId){
+  if(!target)return[];
+  const p=target.patterns.find(x=>x.id===patternId);if(!p)return[];
+  if(target===plan){const pts=clone(resolvePattern(p)),base=routeBy(p.baseRouteId);return base?.direction===-1?pts.reverse():pts;}
+  const base=library.routes.find(r=>r.id===p.baseRouteId);if(!base)return[];
+  let pts=cleanRoute(base.points);
+  const reps=(p.patches||[]).map(x=>{let a=nearestGeoIndex(pts,x.startAnchor),b=nearestGeoIndex(pts,x.endAnchor);if(a<0||b<0)return null;if(b<a){const t=a;a=b;b=t}return{a,b,points:cleanRoute(x.points)}}).filter(x=>x&&x.points.length>=2).sort((a,b)=>b.a-a.a);
+  reps.forEach(x=>pts=pts.slice(0,x.a).concat(x.points,pts.slice(x.b+1)));
+  pts=cleanRoute(pts);if(base.direction===-1)pts.reverse();return clone(pts);
+}
+function resolveLegCourse(groupId,legNo,eventId=EVENT_ID){
+  const target=planForEvent(eventId);if(!target)return null;
+  const g=target.groups.find(x=>x.id===String(groupId||''));
+  const n=Number(legNo);if(!g||!Number.isInteger(n)||n<1)return null;
+  const leg=g.legs[n-1];if(!leg||!leg.patternId)return null;
+  const p=target.patterns.find(x=>x.id===leg.patternId);if(!p)return null;
+  const routePoints=resolvePatternForPlan(target,p.id);
+  if(routePoints.length<2)return null;
+  return{
+    eventId:target.eventId,
+    eventName:target.eventName,
+    courseMode:target.courseMode,
+    groupId:g.id,
+    groupName:g.name,
+    legNo:n,
+    patternId:p.id,
+    patternName:p.name,
+    patternKind:p.kind,
+    baseRouteId:p.baseRouteId,
+    publicMeters:Math.max(0,Number(leg.publicMeters)||0),
+    routePoints,
+    mapView:clone(target.mapView||null),
+    eventPoints:clone(target.points||[])
+  };
+}
+const mapContractM04={
+  version:'M04',
+  dataBoundary:'LOCAL_PROTOTYPE_NOT_FIREBASE_SCHEMA',
+  getRouteLibrary:()=>clone(library.routes),
+  getEventPlan:(eventId=EVENT_ID)=>{const target=planForEvent(eventId);return target?clone(target):null},
+  resolvePattern:(patternId,eventId=EVENT_ID)=>resolvePatternForPlan(planForEvent(eventId),patternId),
+  getLegPattern:(groupId,legNo,eventId=EVENT_ID)=>{const target=planForEvent(eventId),g=target?.groups.find(x=>x.id===String(groupId||'')),leg=g?.legs?.[Number(legNo)-1];return leg?{patternId:leg.patternId,publicMeters:leg.publicMeters}:null},
+  resolveLegCourse:(groupId,legNo,eventId=EVENT_ID)=>resolveLegCourse(groupId,legNo,eventId),
+  resolveTeamCourse:(team,eventId=EVENT_ID)=>{
+    if(!team||typeof team!=='object')return null;
+    return resolveLegCourse(team.currentStartGroupId,Number(team.currentLeg),eventId);
+  },
+  getMapView:(eventId=EVENT_ID)=>clone(planForEvent(eventId)?.mapView||null),
+  getEventPoints:(eventId=EVENT_ID)=>clone(planForEvent(eventId)?.points||[]),
+  syncExternalGroups:(groups)=>{if(!Array.isArray(groups))return false;plan.groups=groups.map((g,i)=>({id:String(g.id||gid()),name:String(g.name||`出走区分${i+1}`),legs:Array.from({length:Math.max(1,Number(g.legCount)||g.legs?.length||1)},(_,j)=>({leg:j+1,patternId:String(g.legs?.[j]?.patternId||''),publicMeters:Math.max(0,Number(g.legs?.[j]?.publicMeters||g.legs?.[j]?.targetMeters)||0)}))}));savePlan();renderHome();return true}
+};
+window.EkidenMapEditorContractM04=mapContractM04;
+window.EkidenMapEditorContract=mapContractM04;
+renderHome();
+})();
+</script>
+<!-- M23: multi-role point merge + delete persistence fix; route editor/storage keys unchanged -->
+<!-- M24: true interval deletion; no automatic straight rejoin; storage keys unchanged -->
+</body>
+</html>
