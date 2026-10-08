@@ -1,0 +1,102 @@
+<!doctype html>
+<!-- EVENT BASE EKIDEN manager copy gateway.
+SOURCE VISUAL: EVENT_BASE_EKIDEN_BAND_ENTRY.html
+FUNCTION: copy P47 EVENT BASE URL only. Does not authenticate, store, or alter Firebase data.
+PARTICIPANT GATEWAY AND P47 UNMODIFIED.
+-->
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a0b0d">
+<title>駅伝 EVENT BASE 管理者入口</title>
+<style>
+:root{--bg:#0a0b0d;--card:#15171a;--line:#30343a;--text:#f5f7f8;--muted:#b6bec4;--yellow:#ffd400;--ok:#bff3d5}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif}
+body{padding:calc(20px + env(safe-area-inset-top)) 16px calc(30px + env(safe-area-inset-bottom));line-height:1.65}
+.wrap{width:min(560px,100%);margin:0 auto}
+.head{padding:12px 2px 18px}
+.kicker{color:var(--yellow);font-size:12px;font-weight:900;letter-spacing:.14em}
+h1{font-size:27px;line-height:1.25;margin:5px 0 8px}
+.lead{margin:0;color:var(--muted);font-size:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:0 18px 50px rgba(0,0,0,.28);margin-bottom:14px}
+.warn{border-left:4px solid var(--yellow);padding-left:13px}
+.warn strong{display:block;color:var(--yellow);font-size:17px;margin-bottom:4px}
+.steps{margin:0;padding-left:1.35em}
+.steps li{margin:9px 0}
+.copyBtn{width:100%;border:0;border-radius:13px;background:var(--yellow);color:#090909;font-size:18px;font-weight:1000;padding:15px 14px;margin-top:5px;min-height:54px}
+.copyState{min-height:28px;text-align:center;font-size:13px;font-weight:900;color:var(--ok);padding-top:8px}
+.urlBox{margin-top:10px;background:#0d0f11;border:1px solid #343940;border-radius:11px;padding:11px 12px;color:#dce2e5;font-size:12px;word-break:break-all;user-select:text;-webkit-user-select:text}
+.small{color:var(--muted);font-size:12px;margin:10px 0 0}
+.note{font-size:14px;margin:0 0 11px}
+.note:last-child{margin-bottom:0}
+.note b{color:var(--yellow)}
+.footer{text-align:center;color:#7f8990;font-size:11px;padding:5px 6px}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="head">
+    <div class="kicker">TOP RUN AGUI</div>
+    <h1>EVENT BASE 管理者入口</h1>
+    <p class="lead">駅伝大会用です。Safari／Chromeで開いてください。</p>
+  </div>
+  <section class="card warn">
+    <strong>LINE・BAND内では接続しないでください</strong>
+    メッセージアプリからそのまま開くと、別のブラウザとして扱われる場合があります。URLをコピーして、いつものSafari／Chromeから開いてください。
+  </section>
+  <section class="card">
+    <ol class="steps">
+      <li>下の<b>「EVENT BASEのURLをコピー」</b>を押す</li>
+      <li>LINE・BANDを閉じる</li>
+      <li>iPhoneは<b>Safari</b>、Androidは<b>Chrome</b>を開く</li>
+      <li>アドレス欄に貼り付けて開く</li>
+    </ol>
+    <button class="copyBtn" id="copyBtn" type="button">EVENT BASEのURLをコピー</button>
+    <div class="copyState" id="copyState" aria-live="polite"></div>
+    <div class="urlBox" id="urlBox" aria-label="EVENT BASE URL">https://nuritakug-cpu.github.io/tabirun-bgm/EVENT_BASE_v81_EKIDEN_P47_CANONICAL_RACE_REHYDRATION_GUARD.html?event=eventbase_ekiden_dev_20261006&amp;portal=1</div>
+    <p class="small">コピーできない場合は、上のURLを長押ししてコピーしてください。</p>
+  </section>
+  <section class="card">
+    <p class="note"><b>以前、管理者として接続した方</b><br>前回と同じブラウザで開き、「管理者として続ける」が出たらそこから進んでください。</p>
+    <p class="note"><b>初めて接続する方・引き継げない方</b><br>名前と駅伝用の6桁の<b>管理番号</b>を入力してください。参加番号とは別です。</p>
+    <p class="note"><b>読み込み中</b><br>起動には時間がかかることがあります。何度も開き直さず、少し待ってください。</p>
+    <p class="note"><b>駅伝の操作権限</b><br>駅伝専用のSTART・タスキ・記録操作は開発者が担当します。管理者は進行情報を閲覧できます。従来のEVENT BASE管理機能はそのままです。</p>
+  </section>
+  <div class="footer">EVENT BASE / TOP RUN AGUI</div>
+</main>
+<script>
+(function(){
+'use strict';
+const target='https://nuritakug-cpu.github.io/tabirun-bgm/EVENT_BASE_v81_EKIDEN_P47_CANONICAL_RACE_REHYDRATION_GUARD.html?event=eventbase_ekiden_dev_20261006&portal=1';
+const btn=document.getElementById('copyBtn');
+const state=document.getElementById('copyState');
+async function copyTarget(){
+  state.textContent='';
+  try{
+    if(navigator.clipboard && window.isSecureContext){
+      await navigator.clipboard.writeText(target);
+    }else{
+      const area=document.createElement('textarea');
+      area.value=target;
+      area.setAttribute('readonly','');
+      area.style.position='fixed';area.style.opacity='0';
+      document.body.appendChild(area);
+      area.select();
+      const ok=document.execCommand('copy');
+      document.body.removeChild(area);
+      if(!ok)throw new Error('copy failed');
+    }
+    state.textContent='コピーしました。Safari／Chromeに貼り付けてください。';
+    btn.textContent='コピーしました ✓';
+    setTimeout(()=>{btn.textContent='EVENT BASEのURLをコピー'},2200);
+  }catch(_){
+    state.textContent='コピーできませんでした。URLを長押ししてコピーしてください。';
+  }
+}
+btn.addEventListener('click',copyTarget);
+})();
+</script>
+</body>
+</html>
