@@ -1,0 +1,49 @@
+/* TOP RUN PORTAL - PUSH STAGE 1
+ * Service Worker: notifications only. No fetch interception, cache or Firebase Auth.
+ * Push events cannot be delivered until a trusted server and a user subscription are added.
+ */
+'use strict';
+
+self.addEventListener('push', event => {
+  let message = {};
+  if (event.data) {
+    try { message = event.data.json(); }
+    catch (_) { message = { body: event.data.text() }; }
+  }
+  const title = typeof message.title === 'string' && message.title.trim()
+    ? message.title.slice(0, 90) : 'TOP RUN';
+  const body = typeof message.body === 'string' && message.body.trim()
+    ? message.body.slice(0, 180) : '新しいお知らせがあります。';
+  let target = new URL('./TOP_RUN_PORTAL.html', self.registration.scope).href;
+  if (typeof message.url === 'string') {
+    try {
+      const proposed = new URL(message.url, self.registration.scope);
+      if (proposed.origin === self.location.origin && proposed.pathname.startsWith(new URL(self.registration.scope).pathname)) {
+        target = proposed.href;
+      }
+    } catch (_) { /* ignore invalid target */ }
+  }
+  event.waitUntil(self.registration.showNotification(title, {
+    body,
+    icon: new URL('./top-run-192.png', self.registration.scope).href,
+    tag: typeof message.tag === 'string' ? message.tag.slice(0, 80) : 'top-run-new',
+    data: { url: target }
+  }));
+});
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  let target = new URL('./TOP_RUN_PORTAL.html', self.registration.scope).href;
+  try {
+    if (event.notification.data && typeof event.notification.data.url === 'string') {
+      const url = new URL(event.notification.data.url, self.registration.scope);
+      if (url.origin === self.location.origin && url.pathname.startsWith(new URL(self.registration.scope).pathname)) target = url.href;
+    }
+  } catch (_) { /* fallback to the portal */ }
+  event.waitUntil((async () => {
+    const opened = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const existing = opened.find(client => client.url === target);
+    if (existing) return existing.focus();
+    if (self.clients.openWindow) return self.clients.openWindow(target);
+  })());
+});

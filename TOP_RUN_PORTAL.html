@@ -665,6 +665,16 @@ CHANGED REFERENCES ONLY: icons/top-run-*.png -> top-run-*.png.
 NO UI / NO SERVICE WORKER / NO CACHE / NO PUSH / NO FIREBASE / NO AUTH / NO profileId / NO binding CHANGE.
 -->
 
+
+<!-- PUSH STAGE 1: scoped, non-destructive notification readiness UI only -->
+<style id="portal-push-stage1-styles">
+#portalPushPanel .portalPushStatus{padding:10px 11px;margin-top:12px;border:1px solid #d6d3ca;border-radius:12px;background:#f3f1ea;color:var(--ink);font-size:11px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+#portalPushPanel .portalPushActions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+#portalPushPanel .portalPushActions button{min-height:48px;border:1px solid #c6b865;border-radius:12px;padding:8px 10px;background:var(--gold);color:#211b08;font-size:12px;font-weight:1000}
+#portalPushPanel .portalPushActions button.secondary{background:#faf9f5;color:var(--ink);border-color:#d1cdc2}
+#portalPushPanel .portalPushActions button:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:390px){#portalPushPanel .portalPushActions{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
 <header class="top">
@@ -857,6 +867,16 @@ NO UI / NO SERVICE WORKER / NO CACHE / NO PUSH / NO FIREBASE / NO AUTH / NO prof
         <button type="button" id="portalSaveName">名前を保存</button>
       </div>
       <div class="portalInlineState" id="portalNameState"></div>
+    </section>
+
+    <section class="portalPanel" id="portalPushPanel">
+      <div class="portalPanelHead"><small>NOTIFICATION / STAGE 1</small><b>通知の動作確認</b></div>
+      <p class="portalHelp">iPhoneはホーム画面のTOP RUNアイコンから開いてください。通知許可と端末内の表示を確認します。<strong>これは閉じた状態で届くWeb Push配信テストではありません。</strong></p>
+      <div class="portalPushStatus" id="portalPushStatus" role="status" aria-live="polite">端末の通知対応を確認中です。</div>
+      <div class="portalPushActions">
+        <button type="button" id="portalPushAllow">通知を許可・準備</button>
+        <button type="button" id="portalPushTest" class="secondary" disabled>端末内でテスト通知</button>
+      </div>
     </section>
 
     <section class="portalMyGrid">
@@ -2490,6 +2510,129 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
   applyHomeCollapseState();
   renderChat();
   renderManagementVisibility();
+})();
+</script>
+
+<!-- PUSH STAGE 1: no Firebase, subscriptions, data persistence, fetch interception or push sender -->
+<script id="portal-push-stage1-script">
+(() => {
+  'use strict';
+  const statusNode = document.getElementById('portalPushStatus');
+  const allowButton = document.getElementById('portalPushAllow');
+  const testButton = document.getElementById('portalPushTest');
+  if (!statusNode || !allowButton || !testButton) return;
+
+  const swPath = new URL('./top-run-push-sw.js', location.href);
+  const portalScope = new URL('./TOP_RUN_PORTAL.html', location.href).href;
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+    navigator.standalone === true;
+  let notificationRegistration = null;
+
+  function setStatus(message) { statusNode.textContent = message; }
+  function supportIssue() {
+    if (!window.isSecureContext) return 'HTTPS接続が必要です。';
+    if (!('serviceWorker' in navigator)) return 'この環境はService Workerに対応していません。';
+    if (!('Notification' in window)) return 'この環境はWeb通知に対応していません。';
+    if (isIOS && !isStandalone) return 'iPhone/iPadでは、Safariの共有から「ホーム画面に追加」し、TOP RUNアイコンから起動してください。';
+    return '';
+  }
+  function describePermission() {
+    if (Notification.permission === 'granted') return '通知許可：許可済み';
+    if (Notification.permission === 'denied') return '通知許可：拒否されています。端末の設定から変更してください。';
+    return '通知許可：未設定';
+  }
+  async function waitUntilActive(reg) {
+    if (reg.active) return reg;
+    const worker = reg.installing || reg.waiting;
+    if (!worker) throw new Error('Service Workerの有効化を確認できません。');
+    await new Promise((resolve, reject) => {
+      const onState = () => {
+        if (worker.state === 'activated') { worker.removeEventListener('statechange', onState); resolve(); }
+        if (worker.state === 'redundant') { worker.removeEventListener('statechange', onState); reject(new Error('Service Workerの有効化に失敗しました。')); }
+      };
+      worker.addEventListener('statechange', onState);
+      onState();
+    });
+    if (!reg.active) throw new Error('Service Workerがまだ有効ではありません。');
+    return reg;
+  }
+  async function prepareWorker() {
+    const all = await navigator.serviceWorker.getRegistrations();
+    const conflict = all.find(reg => portalScope.startsWith(reg.scope) &&
+      [reg.active, reg.waiting, reg.installing].some(worker =>
+        worker && new URL(worker.scriptURL).href !== swPath.href));
+    if (conflict) throw new Error('このポータルに影響する別のService Workerが見つかりました。既存機能への干渉を避けるため登録を停止しました。');
+    const reg = await navigator.serviceWorker.register(swPath.href, {
+      scope: portalScope,
+      updateViaCache: 'none'
+    });
+    return waitUntilActive(reg);
+  }
+  function refreshStatus(extra) {
+    const issue = supportIssue();
+    if (issue) {
+      setStatus(issue);
+      allowButton.disabled = true;
+      testButton.disabled = true;
+      return;
+    }
+    allowButton.disabled = Notification.permission === 'denied';
+    testButton.disabled = !(Notification.permission === 'granted' && notificationRegistration?.active);
+    const parts = [describePermission()];
+    if (notificationRegistration?.active) parts.push('通知受信プログラム：登録済み');
+    else parts.push('通知受信プログラム：未登録');
+    parts.push('閉じた状態へのプッシュ配信：未接続（送信サーバーと端末購読が必要）');
+    if (extra) parts.push(extra);
+    setStatus(parts.join('\n'));
+  }
+
+  allowButton.addEventListener('click', async () => {
+    const issue = supportIssue();
+    if (issue) { setStatus(issue); return; }
+    allowButton.disabled = true;
+    try {
+      // IMPORTANT: requestPermission must be invoked directly from the user's tap.
+      const permission = Notification.permission === 'default'
+        ? await Notification.requestPermission()
+        : Notification.permission;
+      if (permission !== 'granted') {
+        refreshStatus('通知許可が必要です。許可されていないため処理を停止しました。');
+        return;
+      }
+      setStatus('通知許可済み。Service Workerを確認しています。');
+      notificationRegistration = await prepareWorker();
+      refreshStatus('次に「端末内でテスト通知」を押してください。');
+    } catch (error) {
+      testButton.disabled = true;
+      setStatus('通知の準備は未完了です：' + (error?.message || String(error)) +
+        '\n2ファイル（HTMLとtop-run-push-sw.js）が同じ階層へアップロードされているか確認してください。');
+    } finally {
+      if (Notification.permission !== 'denied') allowButton.disabled = false;
+    }
+  });
+
+  testButton.addEventListener('click', async () => {
+    testButton.disabled = true;
+    try {
+      if (Notification.permission !== 'granted') throw new Error('通知許可がありません。');
+      if (!notificationRegistration?.active) throw new Error('Service Workerがまだ有効ではありません。');
+      await notificationRegistration.showNotification('TOP RUN 通知テスト', {
+        body: '通知の表示テストです。チャット・お知らせの実配信ではありません。',
+        icon: new URL('./top-run-192.png', location.href).href,
+        tag: 'top-run-local-stage1-test',
+        data: { url: new URL('./TOP_RUN_PORTAL.html', location.href).href, testOnly: true }
+      });
+      refreshStatus('端末内の表示処理を実行しました。OSによる実際の表示は実機でご確認ください。');
+    } catch (error) {
+      refreshStatus('表示テストは失敗しました：' + (error?.message || String(error)));
+    } finally {
+      testButton.disabled = !(Notification.permission === 'granted' && notificationRegistration?.active);
+    }
+  });
+
+  refreshStatus('通知の許可ボタンを押すまで登録・変更は行いません。');
 })();
 </script>
 </body>
