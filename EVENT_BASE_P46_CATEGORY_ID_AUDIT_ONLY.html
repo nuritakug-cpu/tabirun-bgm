@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>P46 CATEGORY ID AUDIT ONLY</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;color:#102c35;background:#eef3f5}
+*{box-sizing:border-box}
+body{margin:0;background:#eef3f5}
+header{position:sticky;top:0;z-index:20;background:#102f39;color:#fff;padding:12px 14px calc(12px + env(safe-area-inset-top));box-shadow:0 2px 12px #0003}
+header b{display:block;font-size:15px}
+header small{display:block;opacity:.78;margin-top:3px;font-size:11px}
+#audit{padding:10px}
+.box{background:#fff;border:1px solid #cad9de;border-radius:12px;padding:10px;margin-bottom:9px;box-shadow:0 1px 4px #0000000d}
+.status{font-weight:800;font-size:14px}
+.ok{color:#147a45}.bad{color:#b42318}.wait{color:#8a6500}
+pre{white-space:pre-wrap;word-break:break-word;margin:7px 0 0;font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;background:#f5f8f9;border-radius:8px;padding:9px}
+button{border:0;border-radius:9px;background:#173e49;color:#fff;padding:10px 12px;font-weight:700}
+#app{display:block;width:100%;height:72vh;border:0;background:#fff}
+.note{font-size:11px;line-height:1.5;color:#586d74}
+</style>
+</head>
+<body>
+<header>
+  <b>P46 CATEGORY ID AUDIT ONLY</b>
+  <small>診断専用／候補版ではありません／Firebase・Rules・Auth・binding・保存データを変更しません</small>
+</header>
+
+<div id="audit">
+  <div class="box">
+    <div id="overall" class="status wait">P46読込待ち</div>
+    <div class="note">目的：男子・女子・一般の category.id が重複していないかを確認します。</div>
+  </div>
+  <div class="box">
+    <b>カテゴリ監査</b>
+    <pre id="cats">待機中…</pre>
+  </div>
+  <div class="box">
+    <b>raceDayStateP5.races</b>
+    <pre id="races">待機中…</pre>
+  </div>
+  <div class="box">
+    <b>判定</b>
+    <pre id="verdict">待機中…</pre>
+  </div>
+  <button id="refresh" type="button">再確認</button>
+</div>
+
+<iframe id="app" title="P46本体"></iframe>
+
+<script>
+(()=>{
+'use strict';
+const KEY='EVENT_BASE_V81_EKIDEN_P1_DRAFT_V1';
+const $=id=>document.getElementById(id);
+function esc(v){return String(v??'')}
+function read(){
+  let s=null;
+  try{s=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){}
+  if(!s||typeof s!=='object'){
+    $('overall').className='status wait';
+    $('overall').textContent='P46状態をまだ取得できません';
+    $('cats').textContent='localStorage '+KEY+' が未取得です。P46の接続完了を待って「再確認」を押してください。';
+    $('races').textContent='—';
+    $('verdict').textContent='未判定';
+    return;
+  }
+  const cats=Array.isArray(s.relayCategories)?s.relayCategories:[];
+  const teams=Array.isArray(s.teams)?s.teams:[];
+  const races=s.raceDayStateP5&&typeof s.raceDayStateP5==='object'&&s.raceDayStateP5.races&&typeof s.raceDayStateP5.races==='object'
+    ? s.raceDayStateP5.races : {};
+  const byId=new Map();
+  for(const c of cats){
+    const id=String(c?.id||'');
+    if(!byId.has(id))byId.set(id,[]);
+    byId.get(id).push(String(c?.name||''));
+  }
+  const dup=[...byId.entries()].filter(([id,names])=>id && names.length>1);
+  $('cats').textContent=cats.length
+    ? cats.map((c,i)=>{
+        const id=String(c?.id||'');
+        const n=teams.filter(t=>String(t?.categoryId||'')===id).length;
+        return `${i+1}. ${esc(c?.name||'未設定')}\n   id=${id||'(空)'}\n   ${Number(c?.legCount)||0}区間 / ${n}チーム`;
+      }).join('\n\n')
+    : 'カテゴリ0件';
+  const raceKeys=Object.keys(races);
+  $('races').textContent=raceKeys.length
+    ? raceKeys.map(k=>`${k} : ${esc(races[k]?.status||'')} / stage=${esc(races[k]?.stage)}`).join('\n')
+    : 'raceキーなし';
+  if(dup.length){
+    $('overall').className='status bad';
+    $('overall').textContent='カテゴリID重複を検出';
+    $('verdict').textContent=
+      '【確認済み】同じ category.id を複数カテゴリが共有しています。\n\n'+
+      dup.map(([id,names])=>`id=${id}\n共有カテゴリ=${names.join(' / ')}`).join('\n\n')+
+      '\n\nこの状態ではタスキ運用の state.races[id] も同じキーを参照するため、カテゴリ同士が連動します。';
+  }else{
+    $('overall').className='status ok';
+    $('overall').textContent='カテゴリID重複なし';
+    const named={};
+    for(const c of cats) named[String(c?.name||'')]=String(c?.id||'');
+    $('verdict').textContent=
+      `男子=${named['男子']||'なし'}\n女子=${named['女子']||'なし'}\n一般=${named['一般']||'なし'}\n\n`+
+      'ID重複がなければ、「一般⇄男子の連動」は別経路を追査します。';
+  }
+}
+$('refresh').onclick=read;
+const app=$('app');
+const u=new URL('EVENT_BASE_v81_EKIDEN_P46_VIEW_RACE_PSEUDO_TARGET_UNIFIED.html',location.href);
+for(const [k,v] of new URLSearchParams(location.search)) u.searchParams.set(k,v);
+app.src=u.href;
+app.addEventListener('load',()=>{setTimeout(read,1200);setTimeout(read,3000)});
+setInterval(read,5000);
+read();
+})();
+</script>
+</body>
+</html>
