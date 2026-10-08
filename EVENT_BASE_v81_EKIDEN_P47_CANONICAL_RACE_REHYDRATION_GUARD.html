@@ -1,3 +1,9 @@
+<!-- P47 SCHEDULE PROGRESS TIMER TARGETED FIX / 2026-10-08
+PHYSICAL_PARENT: EVENT_BASE_v81_EKIDEN_P47_CANONICAL_RACE_REHYDRATION_GUARD.html
+TARGET: scheduled elapsed per category; existing progress delay/ahead determines effective start; 80min auto-end removed; existing raceDayStateP5 finished/saved manual GOAL ends schedule phase; general category excluded from this event's schedule timer only.
+FROZEN: manual START/GOAL timing, P47 canonical rehydration/write guards, eventId/Auth/binding/UID, Firebase Rules/paths/listeners/writes, participant/team data, UI layout, LIVE and CHAT.
+STATUS: assistant static tests only; real device/Firebase end-to-end unverified.
+-->
 <!-- EVENT_BASE_v81_EKIDEN_P47_CANONICAL_RACE_REHYDRATION_GUARD
 PHYSICAL_PARENT: EVENT_BASE_v81_EKIDEN_P42_TASUKI_MODE_LABEL_RESTORE.html
 REAPPLIED_FROM_EVIDENCE: P46 view-local category selection / isolated canonical race authority / shared pseudo-target resolver.
@@ -23305,7 +23311,13 @@ function ekP13HmToMin(v){
   const h=Number(m[1]),mm=Number(m[2]);
   return Number.isFinite(h)&&Number.isFinite(mm)&&h>=0&&h<=23&&mm>=0&&mm<=59?h*60+mm:null;
 }
-const EKP13_COMPLETE_AFTER_SEC=80*60;
+/* P47 schedule-only repair: no automatic 80-minute completion; manual GOAL state is authoritative. */
+function ekP13ExcludeFromScheduleClock(c){
+  /* Event-specific exclusion affects only the planned elapsed clock, not teams, LIVE or race operation. */
+  const eventId=String(ekCoreState()?.eventId||new URLSearchParams(location.search).get('event')||'');
+  return eventId==='eventbase_ekiden_dev_20261006'&&
+    (String(c?.preset||'').trim()==='一般'||String(c?.name||'').trim()==='一般');
+}
 function ekP17RelayEventDate(){
   try{
     const root=window.EventBaseConnectionAPI?.getState?.().eventRoot||{};
@@ -23330,37 +23342,44 @@ function ekP17StartOverride(c){
   if(!id||!raw||String(raw.eventDate||'')!==date||ekP13HmToMin(raw.time)===null)return null;
   return raw;
 }
-function ekP17GlobalShiftMinutes(){
+function ekP17ProgressState(){
   try{
-    const root=window.EventBaseConnectionAPI?.getState?.().eventRoot||{};
-    const p=root?.progress&&typeof root.progress==='object'?root.progress:null;
-    if(!p)return 0;
-    const mode=String(p.mode||'delay');
-    const min=Math.max(0,Number(p.minutes)||0);
-    if(mode==='delay'&&min>0)return min;
-    if(mode==='ahead'&&min>0)return -min;
+    const p=window.EventBaseConnectionAPI?.getState?.().eventRoot?.progress;
+    if(p&&typeof p==='object')return {
+      mode:String(p.mode||'delay'),min:Math.max(0,Number(p.minutes)||0),note:String(p.note||'')
+    };
   }catch(_){ }
-  return 0;
+  return {mode:'none',min:0,note:''};
+}
+function ekP17GlobalShiftMinutes(){
+  const p=ekP17ProgressState();
+  return p.mode==='delay'?p.min:p.mode==='ahead'?-p.min:0;
 }
 function ekP17CategoryStartInfo(c){
-  const eventDate=ekP17RelayEventDate(),baseTime=String(c?.scheduledStart||''),override=ekP17StartOverride(c),shownTime=override?.time||baseTime;
+  const eventDate=ekP17RelayEventDate(),baseTime=String(c?.scheduledStart||''),override=ekP17StartOverride(c);
   const baseMs=ekP17DateTimeMs(eventDate,baseTime),overrideMs=override?ekP17DateTimeMs(eventDate,override.time):null;
   const globalShiftMin=ekP17GlobalShiftMinutes();
+  /* A per-category absolute start time takes precedence over the global progress shift. */
   const effectiveMs=overrideMs!==null?overrideMs:(baseMs===null?null:baseMs+globalShiftMin*60000);
+  const d=effectiveMs===null?null:new Date(effectiveMs);
+  const shownTime=d?`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`:(override?.time||baseTime);
   return {eventDate,baseTime,shownTime,effectiveMs,override,globalShiftMin};
 }
 function ekP17ShownStart(c){return ekP17CategoryStartInfo(c).shownTime||'発走未定'}
 function ekP13NowMs(){try{return appNow().getTime()}catch(_){return Date.now()}}
 function ekP13CategoryPhase(c,nowMs=ekP13NowMs()){
   const info=ekP17CategoryStartInfo(c),start=info.effectiveMs;
+  if(ekP13ExcludeFromScheduleClock(c))return {phase:'excluded',start:null,elapsed:0,startInfo:info};
+  /* Read the already-synchronized manual GOAL finish; never write/modify race timing. */
+  const race=s.raceDayStateP5?.races?.[String(c?.id||'')];
+  if(race&&Number(race.startAt)>0&&(race.status==='finished'||race.status==='saved'))
+    return {phase:'completed',start,elapsed:start===null?0:Math.max(0,(nowMs-start)/1000),startInfo:info};
   if(start===null)return {phase:'upcoming',start:null,elapsed:0,startInfo:info};
   if(nowMs<start)return {phase:'upcoming',start,elapsed:0,startInfo:info};
-  const elapsed=Math.max(0,(nowMs-start)/1000);
-  if(elapsed<EKP13_COMPLETE_AFTER_SEC)return {phase:'active',start,elapsed,startInfo:info};
-  return {phase:'completed',start,elapsed:EKP13_COMPLETE_AFTER_SEC,startInfo:info};
+  return {phase:'active',start,elapsed:Math.max(0,(nowMs-start)/1000),startInfo:info};
 }
 function ekP13ElapsedLabel(sec){
-  sec=Math.max(0,Math.min(EKP13_COMPLETE_AFTER_SEC,Math.floor(Number(sec)||0)));
+  sec=Math.max(0,Math.floor(Number(sec)||0));
   const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s2=sec%60;
   return `${h}:${String(m).padStart(2,'0')}:${String(s2).padStart(2,'0')}`;
 }
@@ -23408,7 +23427,7 @@ function ekP13PhaseSignatureNow(cats,teams){
 }
 function ekP13RefreshScheduleStatus(){
   const cats=ekP13SortedCategories(),teams=[...(s.teams||[])],now=ekP13NowMs();
-  const groups=cats.filter(c=>ekP13TeamsForCategory(c,teams).length).map(c=>({c,info:ekP13CategoryPhase(c,now)}));
+  const groups=cats.filter(c=>ekP13TeamsForCategory(c,teams).length&&!ekP13ExcludeFromScheduleClock(c)).map(c=>({c,info:ekP13CategoryPhase(c,now)}));
   const active=groups.filter(x=>x.info.phase==='active').sort((a,b)=>(a.info.start??9999)-(b.info.start??9999));
   const completed=groups.filter(x=>x.info.phase==='completed').sort((a,b)=>(a.info.start??-1)-(b.info.start??-1));
   const upcoming=groups.filter(x=>x.info.phase==='upcoming').sort((a,b)=>(a.info.start??9999)-(b.info.start??9999));
@@ -23420,7 +23439,7 @@ function ekP13RefreshScheduleStatus(){
   if($('schedulePrevTime'))$('schedulePrevTime').textContent=prev?ekP17ShownStart(prev.c):'--:--';
   if($('schedulePrevName'))$('schedulePrevName').textContent=prev?.c?.name||'－';
   if($('scheduleNowTime'))$('scheduleNowTime').textContent=current?ekP13ElapsedLabel(current.info.elapsed):'--:--';
-  const adj=typeof progressAdjustment==='function'?progressAdjustment():{mode:'none',min:0,note:''};
+  const adj=ekP17ProgressState();
   if($('scheduleDelayMini'))$('scheduleDelayMini').textContent=current?(adj.mode==='delay'&&adj.min>0?`遅延 +${adj.min}分`:adj.mode==='ahead'&&adj.min>0?`早まり +${adj.min}分`:''):(next?'開始前':'予定終了');
   if($('scheduleNextTime'))$('scheduleNextTime').textContent=next?ekP17ShownStart(next.c):'--:--';
   if($('scheduleNextName'))$('scheduleNextName').textContent=next?.c?.name||(groups.length?'予定終了':'－');
