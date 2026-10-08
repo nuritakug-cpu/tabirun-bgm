@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>P46 CATEGORY STATE AUDIT V2</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;color:#102c35;background:#eef3f5}
+*{box-sizing:border-box}
+body{margin:0;background:#eef3f5;padding-bottom:env(safe-area-inset-bottom)}
+header{position:sticky;top:0;z-index:20;background:#102f39;color:#fff;padding:calc(12px + env(safe-area-inset-top)) 14px 12px;box-shadow:0 2px 12px #0003}
+header b{display:block;font-size:15px}
+header small{display:block;opacity:.78;margin-top:4px;font-size:11px;line-height:1.45}
+main{padding:10px}
+.box{background:#fff;border:1px solid #cad9de;border-radius:12px;padding:11px;margin-bottom:9px;box-shadow:0 1px 4px #0000000d}
+.status{font-weight:800;font-size:15px}
+.ok{color:#147a45}.bad{color:#b42318}.wait{color:#8a6500}
+pre{white-space:pre-wrap;word-break:break-word;margin:7px 0 0;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;background:#f5f8f9;border-radius:8px;padding:9px}
+button{width:100%;border:0;border-radius:10px;background:#173e49;color:#fff;padding:12px;font-weight:800;font-size:14px}
+.note{font-size:12px;line-height:1.55;color:#586d74}
+.step{font-size:12px;line-height:1.7}
+code{background:#f2f5f6;border-radius:5px;padding:1px 4px}
+</style>
+</head>
+<body>
+<header>
+  <b>P46 CATEGORY / RACE STATE AUDIT V2</b>
+  <small>診断専用。P46をiframeで起動しません。Firebase・Rules・Auth・binding・保存データを書き換えません。</small>
+</header>
+
+<main>
+  <div class="box">
+    <div id="overall" class="status wait">未確認</div>
+    <div class="note">P46を通常の開発者URLで先に開き、駅伝データが表示された後にこの診断ページを開いてください。</div>
+  </div>
+
+  <div class="box step">
+    <b>確認手順</b><br>
+    1. P46開発者URLを通常表示<br>
+    2. HOMEまで入り、駅伝のカテゴリ／チームが読み込まれたことを確認<br>
+    3. 可能なら「タスキ渡しモード」を一度開く<br>
+    4. その後、このV2へ戻って「再確認」
+  </div>
+
+  <div class="box">
+    <b>① メインEKIDEN状態</b>
+    <pre id="mainState">未確認</pre>
+  </div>
+
+  <div class="box">
+    <b>② カテゴリ → ID → チーム</b>
+    <pre id="cats">未確認</pre>
+  </div>
+
+  <div class="box">
+    <b>③ raceDayStateP5.races</b>
+    <pre id="parentRaces">未確認</pre>
+  </div>
+
+  <div class="box">
+    <b>④ タスキ画面ローカル race state</b>
+    <pre id="frameRaces">未確認</pre>
+  </div>
+
+  <div class="box">
+    <b>⑤ 判定</b>
+    <pre id="verdict">未確認</pre>
+  </div>
+
+  <button id="refresh" type="button">再確認</button>
+</main>
+
+<script>
+(()=>{
+'use strict';
+const MAIN_KEY='EVENT_BASE_V81_EKIDEN_P1_DRAFT_V1';
+const RACE_KEY='eventbase_ekiden_raceday_linked_v1';
+const $=id=>document.getElementById(id);
+
+function parseKey(k){
+  try{
+    const raw=localStorage.getItem(k);
+    return {raw,obj:raw?JSON.parse(raw):null};
+  }catch(e){
+    return {raw:null,obj:null,error:String(e?.message||e)};
+  }
+}
+function short(v,n=80){
+  const s=String(v??'');
+  return s.length>n?s.slice(0,n)+'…':s;
+}
+function audit(){
+  const main=parseKey(MAIN_KEY);
+  const raceLocal=parseKey(RACE_KEY);
+  const s=main.obj;
+  const local=raceLocal.obj;
+
+  const cats=Array.isArray(s?.relayCategories)?s.relayCategories:[];
+  const teams=Array.isArray(s?.teams)?s.teams:[];
+  const parentRaces=s?.raceDayStateP5?.races && typeof s.raceDayStateP5.races==='object' ? s.raceDayStateP5.races : {};
+  const localRaces=local?.races && typeof local.races==='object' ? local.races : {};
+
+  $('mainState').textContent =
+    `MAIN_KEY bytes=${main.raw?main.raw.length:0}\n`+
+    `schema=${s?.schema??'なし'}\n`+
+    `relayCategories=${cats.length}\n`+
+    `teams=${teams.length}\n`+
+    `raceDayStateP5.races=${Object.keys(parentRaces).length}\n`+
+    (main.error?`error=${main.error}\n`:'');
+
+  if(!s || cats.length===0){
+    $('overall').className='status wait';
+    $('overall').textContent='判定不能：P46実データ未取得';
+    $('cats').textContent='カテゴリ0件';
+    $('parentRaces').textContent=Object.keys(parentRaces).length?JSON.stringify(parentRaces,null,2):'raceキーなし';
+    $('frameRaces').textContent=
+      `RACE_KEY bytes=${raceLocal.raw?raceLocal.raw.length:0}\n`+
+      (Object.keys(localRaces).length?Object.keys(localRaces).map(k=>`${k} : ${localRaces[k]?.status||''} / stage=${localRaces[k]?.stage??''}`).join('\n'):'raceキーなし');
+    $('verdict').textContent=
+      'この状態では「ID重複なし」とは判定しません。\n\n'+
+      'P46を通常の開発者URLで開いて駅伝データが表示された後、このV2へ戻って再確認してください。';
+    return;
+  }
+
+  const idMap=new Map();
+  for(const c of cats){
+    const id=String(c?.id||'');
+    if(!idMap.has(id))idMap.set(id,[]);
+    idMap.get(id).push(String(c?.name||''));
+  }
+  const dup=[...idMap.entries()].filter(([id,names])=>id && names.length>1);
+  const emptyIds=cats.filter(c=>!String(c?.id||''));
+
+  $('cats').textContent=cats.map((c,i)=>{
+    const id=String(c?.id||'');
+    const ownTeams=teams.filter(t=>String(t?.categoryId||'')===id);
+    return `${i+1}. ${String(c?.name||'未設定')}\n`+
+      `   id=${id||'(空)'}\n`+
+      `   preset=${String(c?.preset||'')}\n`+
+      `   legCount=${Number(c?.legCount)||0}\n`+
+      `   teams=${ownTeams.length}${ownTeams.length?` [${ownTeams.map(t=>short(t?.name||t?.id,30)).join(' / ')}]`:''}`;
+  }).join('\n\n');
+
+  $('parentRaces').textContent=Object.keys(parentRaces).length
+    ? Object.keys(parentRaces).map(k=>`${k} : ${parentRaces[k]?.status||''} / stage=${parentRaces[k]?.stage??''} / startAt=${parentRaces[k]?.startAt??''}`).join('\n')
+    : 'raceキーなし';
+
+  $('frameRaces').textContent=
+    `RACE_KEY bytes=${raceLocal.raw?raceLocal.raw.length:0}\n`+
+    `activeRaceId=${local?.activeRaceId??'なし'}\n`+
+    (Object.keys(localRaces).length
+      ? Object.keys(localRaces).map(k=>`${k} : ${localRaces[k]?.status||''} / stage=${localRaces[k]?.stage??''} / startAt=${localRaces[k]?.startAt??''}`).join('\n')
+      : 'raceキーなし');
+
+  const named={};
+  for(const c of cats){
+    const n=String(c?.name||'');
+    if(!named[n])named[n]=[];
+    named[n].push(String(c?.id||''));
+  }
+
+  const maleIds=named['男子']||[];
+  const generalIds=named['一般']||[];
+  const cross=maleIds.some(id=>id && generalIds.includes(id));
+
+  if(dup.length || cross || emptyIds.length){
+    $('overall').className='status bad';
+    $('overall').textContent='カテゴリ識別異常を検出';
+    let msg='';
+    if(cross)msg+='【確認済み】男子と一般が同じ category.id を共有しています。\n';
+    if(dup.length)msg+=dup.map(([id,names])=>`重複 id=${id} → ${names.join(' / ')}`).join('\n')+'\n';
+    if(emptyIds.length)msg+=`空IDカテゴリ=${emptyIds.map(c=>c?.name||'未設定').join(' / ')}\n`;
+    msg+='\nこの状態ではタスキ運用の races[categoryId] が衝突します。';
+    $('verdict').textContent=msg;
+  }else{
+    $('overall').className='status ok';
+    $('overall').textContent='カテゴリID重複なし';
+    $('verdict').textContent=
+      `男子=${maleIds.join(', ')||'なし'}\n`+
+      `女子=${(named['女子']||[]).join(', ')||'なし'}\n`+
+      `一般=${generalIds.join(', ')||'なし'}\n\n`+
+      'カテゴリID重複はありません。\n'+
+      'この場合は「一般⇄男子の連動」を race-state同期／activeRaceId／タスキ画面再同期の経路で追査します。';
+  }
+}
+$('refresh').onclick=audit;
+audit();
+})();
+</script>
+</body>
+</html>
