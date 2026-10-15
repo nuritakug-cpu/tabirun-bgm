@@ -1,0 +1,30 @@
+name: TOP RUN Notify manual
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Deploy to Cloudflare? OFF = check only'
+        type: boolean
+        default: false
+permissions: {contents: read}
+concurrency: {group: top-run-notify-manual, cancel-in-progress: false}
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: 1c4eed1163766f6c711f975d34a379c9f13a097e
+          persist-credentials: false
+      - name: Verify existing Worker and D1
+        run: |
+          node -e "const c=JSON.parse(require('fs').readFileSync('cloudflare/top-run-notify/wrangler.jsonc'));if(c.name!=='top-run-notify'||c.main!=='./worker.js'||c.keep_vars!==true||c.workers_dev!==true||c.d1_databases?.length!==1||c.d1_databases[0].binding!=='DB'||c.d1_databases[0].database_name!=='top-run-notify-db'||c.d1_databases[0].database_id!=='4c6b92f5-460e-4309-8fdf-539651d8b461')process.exit(1)"
+      - name: Check without deployment
+        run: cd cloudflare/top-run-notify && npx --yes wrangler@4 deploy --dry-run
+      - if: ${{ inputs.publish == true }}
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: cloudflare/top-run-notify
+          command: deploy
