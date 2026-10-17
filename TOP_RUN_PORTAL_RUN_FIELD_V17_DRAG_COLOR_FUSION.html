@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#050912">
+<title>TOP RUN PORTAL / RUN FIELD V17 DRAG & COLOR FUSION</title><style>:root{
+  --bg:#070b12;--ink:#eaf1f7;--muted:#9aa7b6;--line:#243342;--panel:#0d1420;--panel2:#101a28;
+  --accent:#a8c8ff;--accent2:#9fe6ff;--track:#9aa3ad;--glow:rgba(255,255,255,.18);
+  --fieldBright:.22;--fieldSaturation:0;--fieldHue:210deg;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;height:100%;background:#000;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;overflow:hidden;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit}
+button{-webkit-tap-highlight-color:transparent}
+#app{max-width:480px;height:100dvh;margin:0 auto;background:linear-gradient(180deg,#0a111c,#060910);border-inline:1px solid #1e2936;display:flex;flex-direction:column;position:relative;overflow:hidden}
+@supports not (height:100dvh){#app{height:100vh}}
+.hidden{display:none!important}
+.topbar{height:72px;padding:14px 16px 10px;display:flex;justify-content:space-between;align-items:flex-start;background:linear-gradient(180deg,#0e1623,#09111a);border-bottom:1px solid #1f2b38;z-index:6;flex:none}
+.brand .eyebrow{font-size:10px;letter-spacing:.26em;color:#b5c3cf}
+.brand .title{margin-top:8px;font-size:19px;letter-spacing:.22em;font-weight:820}
+.hud{display:flex;gap:18px;align-items:flex-start}
+.hudBox{text-align:right}
+.hudBox span{display:block;font-size:8px;color:#94a2b0;letter-spacing:.22em}
+.hudBox strong{display:block;font-size:24px;font-weight:360;letter-spacing:-.04em;line-height:1.02;font-variant-numeric:tabular-nums}
+.hudBox small{font-size:10px;color:#c6d2de}
+.stageWrap{position:relative;flex:1;min-height:0;background:radial-gradient(circle at 50% 20%,rgba(150,190,255,.12),transparent 45%),linear-gradient(180deg,#1b2531 0%,#131a23 35%,#0a1119 100%);overflow:hidden}
+.stageSky{position:absolute;inset:0;filter:grayscale(calc(1 - var(--fieldSaturation))) brightness(calc(.78 + var(--fieldBright)));transition:filter .7s ease}
+.stageSky:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 15%,rgba(250,250,255,.20),transparent 30%),linear-gradient(180deg,rgba(255,255,255,.04),transparent 55%)}
+.stageSky:after{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent 0 58%,rgba(255,255,255,.03) 58% 60%,transparent 60% 100%);opacity:.5}
+.fieldHeader{position:absolute;top:12px;left:16px;right:16px;display:flex;justify-content:space-between;z-index:3;text-shadow:0 2px 14px #000c;pointer-events:none}
+.fieldHeader .left b,.fieldHeader .right b{font-size:11px;letter-spacing:.24em}
+.fieldHeader small{display:block;margin-top:4px;font-size:9px;color:#b6c3cf;letter-spacing:.12em}
+.trackScene{position:absolute;inset:62px 8px 96px;z-index:1}
+.trackScene svg{width:100%;height:100%}
+.trackOuter{fill:url(#trackFill);stroke:#e0e6ed;stroke-opacity:.45;stroke-width:2}
+.trackLane{fill:none;stroke:#edf1f6;stroke-opacity:.50;stroke-width:1.4}
+.infield{fill:#101720;stroke:#8090a0;stroke-opacity:.35;stroke-width:1.1}
+.trackGlow{opacity:0;transition:opacity .7s ease}
+.colorized .trackGlow{opacity:.72}
+.trackMarkers{stroke:#dbe7f3;stroke-opacity:.28;stroke-width:1.2}
+.stands{opacity:0;transition:opacity .7s ease, transform .7s ease;transform:translateY(18px)}
+.stands.show{opacity:.9;transform:none}
+.crowd{opacity:0;transition:opacity .7s ease}
+.crowd.show{opacity:.8}
+.lights{opacity:0;transition:opacity .7s ease}
+.lights.show{opacity:1}
+.fieldFooter{position:absolute;left:12px;right:12px;bottom:10px;display:flex;justify-content:space-between;align-items:flex-end;z-index:4;pointer-events:none}
+.lapPanel,.checkpointPanel{background:rgba(7,11,18,.55);backdrop-filter:blur(6px);border:1px solid rgba(147,164,182,.18);border-radius:12px;padding:10px 12px;min-width:136px}
+.lapPanel b{display:block;font-size:26px;font-weight:340;letter-spacing:-.03em}.lapPanel small{font-size:10px;letter-spacing:.16em;color:#b9c6d0}
+.lapBar{width:122px;height:4px;background:#263341;border-radius:999px;margin-top:8px;overflow:hidden}.lapBar i{display:block;height:100%;background:#eaf4fd;width:0;transition:width .35s}
+.checkpointPanel{text-align:right}.checkpointPanel .label{font-size:10px;letter-spacing:.18em;color:#b5c2cc}.checkpointPanel .value{display:block;margin-top:5px;font-size:12px;color:#fff}
+.dock{flex:none;padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));background:linear-gradient(180deg,#07101b,#04080f);border-top:1px solid #1f2d3a;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;z-index:5}
+.dock button{height:56px;border-radius:14px;border:1px solid #425264;background:linear-gradient(180deg,#111b28,#0a121c);color:#f4f9ff;font-weight:760;letter-spacing:.12em}
+.dock button.primary{background:#e9f0f7;color:#0d1520;border-color:#e9f0f7}
+.sheet{position:absolute;inset:0;z-index:20;background:linear-gradient(180deg,#111925 0%,#0b1119 56%,#060a10 100%);padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(14px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;overflow:hidden}
+.sheet[hidden]{display:none!important}
+.sheetTop{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.sheetClose{border:none;background:none;color:#abb8c5;font-size:12px;letter-spacing:.12em;padding:10px 0 10px 16px}
+.sheet h2{margin:18px 0 4px;font-size:34px;letter-spacing:.08em;line-height:1.08}.sheet .sub{font-size:11px;letter-spacing:.18em;color:#a0b0bd;margin-bottom:18px}
+.quizMeta{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.16em;color:#b3c0cc}.progressLine{height:3px;background:#314152;border-radius:999px;overflow:hidden;margin:14px 0 24px}.progressLine i{display:block;height:100%;background:#eef4fa;width:0;transition:width .5s}
+.question{font-size:29px;line-height:1.42;font-weight:640;margin:0 0 22px}
+.options{display:grid;gap:11px}.option{height:62px;border-radius:14px;border:1px solid #39495a;background:linear-gradient(180deg,#162130,#0b121b);color:#eff6fc;text-align:left;padding:0 18px;display:flex;align-items:center;gap:16px;font-size:15px}.option b{color:#95a8ba;font-weight:700;letter-spacing:.15em}.option.good{background:#e8f0f8;color:#0f1820;border-color:#eef6fd}.option.bad{border-color:#8b5b5b;color:#d8b1b1}
+.explain{margin-top:auto;padding-top:14px;font-size:11px;color:#8fa1b3;line-height:1.7}
+.awardWrap{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:8px;flex:1;position:relative;overflow:hidden}
+.burst{position:absolute;inset:0;pointer-events:none}.burst i{position:absolute;width:8px;height:14px;border-radius:100% 100% 100% 0;opacity:0;background:linear-gradient(180deg,rgba(255,255,255,.85),rgba(255,255,255,.15));transform:rotate(var(--r)) translateY(0);animation:petal 1050ms ease-out forwards}
+@keyframes petal{0%{opacity:0;transform:translate(0,0) rotate(var(--r)) scale(.5)}15%{opacity:.96}100%{opacity:0;transform:translate(var(--x),var(--y)) rotate(calc(var(--r) + 35deg)) scale(.8)}}
+.pulseRing{position:absolute;width:340px;height:340px;border-radius:50%;border:1px solid rgba(255,255,255,.16);animation:beat 1.8s ease-in-out infinite}
+@keyframes beat{50%{transform:scale(1.06);opacity:.55}}
+.awardWrap .judge{font-size:12px;letter-spacing:.36em;color:#cfd9e1}.plusM{font-size:clamp(76px,25vw,134px);line-height:1;font-weight:260;letter-spacing:-.08em;font-variant-numeric:tabular-nums}.plusM small{display:block;font-size:20px;letter-spacing:.2em;font-weight:700;margin-top:8px}
+.ticker{display:flex;gap:6px;justify-content:center}.digit{width:46px;height:62px;border-radius:12px;border:1px solid #334252;background:#090f18;display:grid;place-items:center;font-size:40px;font-weight:260;font-variant-numeric:tabular-nums;overflow:hidden;position:relative}.digitTrack{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;transition:transform 1s cubic-bezier(.2,.8,.2,1)}.digitTrack span{height:62px;display:grid;place-items:center;width:100%}
+.fieldToast{position:absolute;z-index:7;left:50%;bottom:94px;transform:translateX(-50%);width:max-content;max-width:calc(100% - 24px);border:1px solid rgba(240,248,255,.36);border-radius:12px;background:rgba(7,17,29,.89);color:#f4f8ff;padding:11px 17px;text-align:center;font-size:13px;font-weight:750;letter-spacing:.1em;pointer-events:none;opacity:0;transition:opacity .3s;}
+.fieldToast.show{opacity:1}
+.digit{width:min(10vw,44px);height:62px;--digit-h:62px}.digitTrack span{height:var(--digit-h)}
+.digitTrack{transition:transform 1s cubic-bezier(.2,.8,.2,1)}
+.ticker{gap:4px}
+.sheet {overflow-y:auto;overscroll-behavior:contain}
+.option{min-height:58px;height:auto;padding:11px 14px}
+@media(prefers-reduced-motion:reduce){.pulseRing,.burst i,.flashLine.play{animation:none!important}.digitTrack,.stands,.crowd,.lights{transition:none!important}}
+/* V9 - Quiz timer and useful result feedback on phones. */
+.quizTimerBox{margin:13px 0 4px;flex:none}
+.quizTimerHeader{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:10px;letter-spacing:.09em;color:#a7c0d5}
+.quizTimerHeader strong{font-size:25px;letter-spacing:0;color:#eaf5fd;font-variant-numeric:tabular-nums}
+.quizTimeRail{height:7px;background:#213247;border-radius:9px;overflow:hidden;margin-top:8px}
+.quizTimeRail i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#7fcbe6,#c2eeff);border-radius:9px;transition:width .1s linear}
+.quizTimerBox.hurry .quizTimerHeader strong{color:#ffb48f}
+.quizTimerBox.hurry .quizTimeRail i{background:linear-gradient(90deg,#e87568,#ffca91)}
+.quizNext{margin:12px 0 0;width:100%;height:56px;flex:none}
+#quizSheet .explain{font-size:13px;line-height:1.75;color:#cad7e1;min-height:50px;max-height:26vh;overflow:auto}
+#quizSheet .question{font-size:clamp(20px,6vw,29px);margin-bottom:14px}
+#quizSheet .options{gap:8px}
+#quizSheet .option{min-height:48px}
+@media(max-height:730px){#quizSheet .question{font-size:22px;margin-bottom:12px}#quizSheet .progressLine{margin:10px 0 15px}#quizSheet .option{min-height:45px;padding-block:8px}}
+/* Fixed, non-scrolling m GET menu: all sources visible at once, even on SE-size viewports. */
+.compactTaskSheet,.activitySheet{overflow:hidden!important}
+.compactTaskSheet h2,.activitySheet h2{font-size:clamp(26px,7vw,36px);margin:14px 0 6px}
+.compactTaskSheet .sub,.activitySheet .sub{margin-bottom:clamp(10px,2vh,20px)}
+.earnGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:10px;flex:1;min-height:0;max-height:580px}
+.earnTile{display:flex;flex-direction:column;justify-content:space-between;text-align:left;gap:5px;border-radius:17px;border:1px solid #3c4f63;color:#f2f7fd;background:linear-gradient(157deg,#1a2837,#0d1622 75%);padding:clamp(11px,3.5vw,17px);min-height:0}
+.earnTile:first-child{border-color:#a2c7ed;background:linear-gradient(160deg,#28435c,#0c1b2a)}
+.earnTile strong{font-size:clamp(15px,4.4vw,21px);line-height:1.18;letter-spacing:.02em}
+.earnTile small{font-size:clamp(10px,2.8vw,12px);color:#bdcbd8;line-height:1.35}
+.earnTile .earnNo{font-size:clamp(8px,2.5vw,10px);color:#a7b9ca;letter-spacing:.14em}
+.earnTile em{font-size:11px;font-style:normal;color:#d3edff;font-weight:700}
+.earnDemo{opacity:.82}
+.earnFoot{flex:none;font-size:10px;line-height:1.45;color:#96a8b9;padding-top:9px}
+.activityPane{min-height:0;flex:1;display:flex;flex-direction:column;justify-content:center;gap:16px;align-items:center;text-align:center}
+.activityPane[hidden]{display:none!important}
+.activityHero{font-size:clamp(60px,17vw,88px);font-weight:250;line-height:1;color:#eef6ff;letter-spacing:-.055em}
+.activityHero span{display:block;font-size:11px;letter-spacing:.2em;margin-top:12px;color:#99b4c8;font-weight:500}
+.activityPane p{margin:0;color:#bfcedb;font-size:13px;line-height:1.55;max-width:320px}
+.activityPane .fullBtn{width:100%;max-width:320px;margin-top:3px;flex:none}
+.activityPane .moods{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.activityPane .moods button{min-height:54px;background:#142131;border:1px solid #364a60;color:#eff5fc;border-radius:12px;font-size:12px;padding:8px 4px}
+.activityPane .moods button.active{background:#eaf1f7;color:#111923}
+.activityPane button:disabled{opacity:.4}
+@media(max-width:360px), (max-height:680px){.earnGrid{gap:7px}.earnTile{padding:10px;gap:4px}.compactTaskSheet h2{margin:9px 0 4px}.compactTaskSheet .sub{margin-bottom:8px}.earnFoot{font-size:9px;padding-top:6px}.activityPane{gap:10px}.activityHero{font-size:54px}.activityPane .moods button{min-height:45px}}
+
+/* V13 / DOT EVOLUTION - real V12 descendant; zero clothing or human raster assets */
+:root{--aura:#eff8ff;--world:0}
+#app{background:linear-gradient(180deg,#050912,#03070d)}
+.stageWrap{background:radial-gradient(ellipse at 50% 55%,rgba(24,39,60,.30),transparent 78%),linear-gradient(180deg,#060b13,#080f18)}
+.stageSky{filter:none;opacity:.12;pointer-events:none}
+.stageWrap::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 80%,rgba(46,150,180,.16),transparent 60%);opacity:var(--world);transition:opacity 1.5s}
+.trackScene{inset:clamp(50px,8vh,70px) 7px clamp(85px,13vh,111px)}
+.trackScene svg{display:block;width:100%;height:100%;overflow:visible}
+.trackOuter{fill:#0a121c;stroke:#b6c7d6;stroke-opacity:.46;stroke-width:1.7}
+.trackLane{stroke:#b5c7d5;stroke-opacity:.30;stroke-width:1.6}
+.infield{fill:#080e17;stroke:#778a9e;stroke-opacity:.28}
+.trackGlow{opacity:0;transition:opacity 1.4s}
+.stageWrap.colorized .trackGlow{opacity:.27;stroke:var(--aura)}
+.stageWrap.colorized .infield{fill:#11292b}
+.stageWrap.colorized .trackOuter{fill:#263443}
+.runnerOrbit{display:none!important}
+.fieldHeader .right{max-width:125px;text-align:right}
+.fieldHeader .right b{font-size:10px;letter-spacing:.14em;color:var(--aura)}
+.fieldFooter{justify-content:space-between;gap:8px}
+.lapPanel{min-width:130px}
+.lapPanel b{font-size:22px}
+.fieldGearCount{font-size:9px;letter-spacing:.08em;color:#b9cce0;margin-top:5px}
+.introHelpBtn{pointer-events:auto;flex:none;align-self:flex-end;background:rgba(7,14,23,.90);border:1px solid #435b70;color:#e1eaf3;border-radius:999px;font-size:11px;padding:9px 11px}
+#fieldToast{position:absolute;z-index:9;left:50%;bottom:102px;transform:translateX(-50%);max-width:calc(100% - 30px);width:max-content;background:#102335ec;border:1px solid #69d6e2a8;border-radius:13px;color:#effdff;text-align:center;font-size:12px;font-weight:700;letter-spacing:.04em;padding:12px 16px;opacity:0;pointer-events:none;transition:opacity .25s ease;box-shadow:0 0 22px #39ddff29}
+#fieldToast.show{opacity:1}
+#trackGlowLine{stroke:var(--aura);opacity:.18;stroke-width:9;fill:none}
+#heroMotion{filter:drop-shadow(0 0 8px var(--aura))}
+#heroAura{fill:none;stroke:var(--aura);stroke-width:1.25;opacity:0;transform-box:fill-box;transform-origin:center;animation:heroPulse 1.45s ease-in-out infinite}
+#heroCore{fill:var(--aura);stroke:#fff;stroke-width:.5;animation:heroBreathe .95s ease-in-out infinite alternate}
+#heroRing{fill:none;stroke:var(--aura);stroke-width:.9;opacity:0}
+#heroShape{color:var(--aura)}
+#motionTrail circle{fill:var(--aura)}
+#heroBurst circle{fill:var(--aura)}
+#lapFlash{stroke:var(--aura);stroke-width:3;fill:none;opacity:0;pointer-events:none}
+.stageWrap.lap-flare #lapFlash{animation:trackFlash 1.25s ease-out}
+.stageWrap.evolution-flare #heroRing{animation:evolveRing 1.3s ease-out}
+.stageWrap[data-phase]:not([data-phase="0"]) #heroAura{opacity:.84}
+.stageWrap[data-phase="0"] #heroAura{opacity:.20}
+.stageWrap[data-phase="0"] #heroCore{animation:heroBreathe 1.1s ease-in-out infinite alternate}
+.stageWrap[data-phase="1"] #heroCore{animation:heroBreathe .58s ease-in-out infinite alternate}
+@keyframes heroBreathe{from{opacity:.6}to{opacity:1}}
+@keyframes heroPulse{0%,100%{transform:scale(.77);opacity:.20}50%{transform:scale(1.37);opacity:.68}}
+@keyframes trackFlash{0%{opacity:0;stroke-width:1}25%{opacity:.95;stroke-width:12}100%{opacity:0;stroke-width:1}}
+@keyframes evolveRing{0%{opacity:1;stroke-width:5;transform:scale(.5)}100%{opacity:0;stroke-width:.6;transform:scale(2)}}
+@keyframes burstPulse{0%{opacity:1;r:1}100%{opacity:0;r:3}}
+@media (prefers-reduced-motion:reduce){#heroAura,#heroCore{animation:none!important} .stageWrap.lap-flare #lapFlash,.stageWrap.evolution-flare #heroRing{animation:none!important}}
+/* Quiz, activity, and reward sheets retain V12 patterns but drop dressing workflow. */
+.sheet h2{margin:14px 0 5px;font-size:clamp(25px,8.5vw,36px)}
+.sheet .sub{margin-bottom:12px}
+#quizSheet .question{font-size:clamp(20px,5.9vw,27px)}
+#quizSheet .quizNext{margin-top:10px}
+#quizSheet .explain{font-size:13px;line-height:1.65;max-height:26vh;overflow-y:auto;color:#d4e2ed}
+#quizSheet .option{height:auto;min-height:48px}
+#activitySheet .fullBtn{margin-top:12px}
+#activitySheet .activityPane{gap:13px}
+.compactTaskSheet h2,.activitySheet h2{font-size:clamp(26px,7vw,36px)}
+#taskSheet .earnGrid{min-height:0}
+.rewardScene{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:space-around;gap:10px;text-align:center}
+.rewardGlyph{width:min(47vw,190px);height:min(47vw,190px);border-radius:50%;border:1px solid #59728a;display:grid;place-items:center;background:radial-gradient(circle,#14283b 0%,#07121c 68%);box-shadow:0 0 48px #70d9e222;color:#d9faff;font-size:88px;line-height:1}
+.rewardGlyph.pop{animation:rewardReveal .6s cubic-bezier(.15,1.3,.25,1) both}
+@keyframes rewardReveal{from{transform:scale(.50) rotate(-35deg);opacity:.3}to{transform:scale(1);opacity:1}}
+.rewardTitle{font-size:clamp(26px,8vw,36px);font-weight:800;letter-spacing:.06em}
+.rewardDescription{color:#aebed0;font-size:13px;line-height:1.65;max-width:310px}
+.rewardMeta{font-size:11px;letter-spacing:.16em;color:#a7cced}
+#rewardSheet .fullBtn{width:100%;min-height:58px;margin:8px 0 0;flex:none}
+.collectionBox{min-height:0;flex:1;overflow:auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;align-content:start;padding:3px 0 12px}
+.collectTile{border:1px solid #2e4457;background:linear-gradient(145deg,#111e2d,#09121d);border-radius:14px;padding:13px 7px;min-height:105px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:7px}
+.collectTile .symbol{color:var(--aura);font-size:30px;text-shadow:0 0 12px var(--aura)}
+.collectTile strong{font-size:11px;line-height:1.4}
+.collectTile small{font-size:9px;color:#9eb1c3}
+.collectionFilters{display:flex;gap:8px;margin:2px 0 10px}
+.collectionFilters button{flex:1;border:1px solid #445468;background:#121e2e;color:#c7d9e8;border-radius:999px;padding:9px 4px;font-size:11px}
+.collectionFilters button.active{background:#e1f1fd;color:#111c27;border-color:#e1f1fd}
+.transformChoices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;padding:8px 0 15px}
+.transformChoices button{background:#0d1d2b;color:#e4f4fa;border:1px solid #415a74;border-radius:13px;padding:12px 5px;font-size:12px;min-height:94px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:7px}
+.transformChoices button.active{background:#1b3e53;border-color:#a4edff}
+.transformChoices b{font-size:25px;color:#9ce7ff}
+.infoCopy{color:#b8c6d4;font-size:13px;line-height:1.85;overflow:auto}
+.infoCopy p{margin-bottom:14px}
+.miniNote{color:#8ea2b5;font-size:10px;line-height:1.6}
+#transformLaunch{width:100%;padding:13px;border-radius:14px;background:#183245;border:1px solid #75cfec;color:#d2f5ff;margin-top:10px;font-weight:750}
+#fieldEvolutionHint{font-size:10px;color:#abbece;margin-top:6px}
+#fieldEvolutionHint b{color:var(--aura)}
+@media(max-width:360px){.hud{gap:8px}.hudBox strong{font-size:20px}.brand .title{font-size:18px}.trackScene{inset:48px 5px 100px}.dock{gap:5px;padding-left:7px;padding-right:7px}.dock button{letter-spacing:.02em;font-size:12px}.fieldHeader{left:10px;right:10px}.lapPanel{min-width:122px;padding:8px}}
+@media(max-height:660px){.topbar{height:60px;padding-top:8px}.trackScene{inset:44px 8px 80px}.dock button{height:50px}.sheet h2{margin:9px 0 3px}.sheet .sub{margin-bottom:7px}.earnGrid{gap:7px}.activityHero{font-size:50px}.question{font-size:21px}}
+/* V10: lightweight first-launch cinematic. CSS/SVG only: no media requests. */
+.introSheet{background:#020408;isolation:isolate;overflow:hidden;position:absolute;}
+.introSheet::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 39%,rgba(67,89,119,.14),transparent 68%);opacity:0;z-index:-1}
+.introSheet.is-playing::before{animation:introAmbient 2.7s 0.25s both}
+.introTop{display:flex;align-items:center;justify-content:space-between;flex:none;min-height:36px}
+.introTop span{font-size:10px;letter-spacing:.19em;color:#a6b5c6}
+.introSkip{border:1px solid #354350;background:#0b1018;color:#cbd6e3;border-radius:999px;padding:8px 12px;font-size:11px}
+.introScene{flex:1;min-height:104px;max-height:36vh;display:grid;place-items:center;position:relative;overflow:hidden;margin:4px -12px 0}
+.introScene::before{content:"";position:absolute;inset:7% 0;background:radial-gradient(ellipse at 50% 65%,rgba(181,203,228,.12),transparent 61%);opacity:0}
+.introSheet.is-playing .introScene::before{animation:introAmbient 2.9s .55s both}
+.introTrack{display:block;width:min(100%,420px);height:100%;filter:drop-shadow(0 0 14px rgba(175,193,215,.12));opacity:0}
+.introSheet.is-playing .introTrack{animation:introTrackAppear 2.15s .27s both}
+.introTrack .introLane{fill:none;stroke:#c3cedc;stroke-width:1.55;stroke-opacity:.6;stroke-dasharray:110;stroke-dashoffset:110}
+.introSheet.is-playing .introTrack .introLane{animation:introDraw 2.05s .47s cubic-bezier(.32,.6,.2,1) both}
+.introSheet.is-playing .introTrack .introLane:nth-child(2){animation-delay:.65s}
+.introSheet.is-playing .introTrack .introLane:nth-child(3){animation-delay:.79s}
+.introSheet.is-playing .introTrack .introLane:nth-child(4){animation-delay:.91s}
+.introTrack .introFloor{fill:#11151b;stroke:#8b9caa;stroke-width:1.2;stroke-opacity:.56}
+.introTrack .introHalo{fill:none;stroke:#f7fbff;stroke-opacity:.06;stroke-width:13}
+.introTrack .introStart{stroke:#edf4ff;stroke-width:2;stroke-opacity:.54;stroke-dasharray:5 4}
+.introIntroText{flex:none;text-align:center;opacity:0;transform:translateY(12px)}
+.introSheet.is-playing .introIntroText{animation:introRise .78s 1.48s both}
+.introKicker{font-size:10px;letter-spacing:.34em;color:#a6b5c4}
+.introIntroText h2{margin:7px 0 4px;font-size:clamp(38px,11vw,61px);line-height:1.02;letter-spacing:.17em;color:#f2f6fa;text-indent:.17em;font-weight:780}
+.introTagline{margin:9px 0 0;color:#e1eaf2;font-size:13px;letter-spacing:.13em}
+.introOverview{flex:none;text-align:center;opacity:0;transform:translateY(12px);margin:20px 0 0}
+.introSheet.is-playing .introOverview{animation:introRise .74s 2.12s both}
+.introOverviewLabel{font-size:10px;letter-spacing:.29em;color:#9bb0c4;margin-bottom:12px}
+.introOverview p{margin:0 0 8px;font-size:13px;line-height:1.48;color:#d0dce7;letter-spacing:.045em}
+.introOverview b{color:#f5f9fe;font-weight:750}
+.introAside{font-size:11px!important;color:#97a9b9!important;margin:11px 0 0!important}
+.introActions{opacity:0;transform:translateY(12px);flex:none;padding-top:12px;margin-top:auto}
+.introSheet.is-playing .introActions{animation:introRise .7s 2.56s both}
+.introActions .fullBtn{display:block;width:100%;margin:0;height:58px}
+.introFoot{text-align:center;color:#718395;font-size:10px;letter-spacing:.12em;margin-top:9px}
+.introHelpBtn{pointer-events:auto;flex:none;align-self:flex-end;background:rgba(7,14,23,.86);border:1px solid #526678;color:#e1eaf3;border-radius:999px;font-size:11px;padding:9px 12px;white-space:nowrap;cursor:pointer}
+.fieldFooter{justify-content:space-between;gap:8px}
+@keyframes introAmbient{0%{opacity:0}100%{opacity:1}}
+@keyframes introTrackAppear{0%{opacity:0;transform:scale(.93)}55%{opacity:.60}100%{opacity:1;transform:scale(1)}}
+@keyframes introDraw{0%{stroke-dashoffset:110}100%{stroke-dashoffset:0}}
+@keyframes introRise{0%{opacity:0;transform:translateY(12px)}100%{opacity:1;transform:translateY(0)}}
+@media(max-height:710px){
+ .introScene{max-height:28vh;min-height:98px;margin-top:0}
+ .introOverview{margin-top:13px}.introOverviewLabel{margin-bottom:7px}
+ .introOverview p{margin-bottom:5px;font-size:12px}
+ .introAside{margin-top:6px!important}
+ .introIntroText h2{font-size:clamp(35px,10vw,47px)}
+ .introActions .fullBtn{height:52px}.introFoot{margin-top:6px}
+}
+@media(max-height:560px){.introScene{max-height:22vh;min-height:76px}.introOverview{margin-top:8px}.introTagline{margin-top:5px}.introOverview p{font-size:11px}}
+@media(prefers-reduced-motion:reduce){
+ .introSheet.is-playing::before,.introSheet.is-playing .introScene::before,
+ .introSheet.is-playing .introTrack,.introSheet.is-playing .introTrack .introLane,
+ .introSheet.is-playing .introIntroText,.introSheet.is-playing .introOverview,.introSheet.is-playing .introActions{animation:none!important;opacity:1!important;transform:none!important;stroke-dashoffset:0!important}
+}
+
+
+.fieldGearCount{display:flex;align-items:center;justify-content:space-between;font-size:9px;color:#bbccda;margin-top:7px;letter-spacing:.06em;gap:8px}
+.fieldGearDots{display:flex;gap:3px;align-items:center}.fieldGearDots i{width:8px;height:8px;border-radius:50%;border:1px solid #fff7}
+
+
+
+/* V14 inherited star looks; V15 runs only as far as credited meters. */
+.stageWrap{--aura:#f0f7ff;--world:0;}
+.stageWrap.colorized{background:radial-gradient(ellipse at 50% 48%,color-mix(in srgb,var(--aura) 18%, transparent),transparent 57%),linear-gradient(180deg,#101b2b,#09111b 68%,#060b11)}
+.stageWrap.colorized .trackOuter{fill:color-mix(in srgb,var(--aura) 20%, #101924);stroke:color-mix(in srgb,var(--aura) 65%,white);stroke-opacity:.67}
+.stageWrap.colorized .infield{fill:color-mix(in srgb,var(--aura) 13%,#08141a)}
+.stageWrap.colorized .trackGlow{opacity:.58;stroke:var(--aura);stroke-width:11;filter:drop-shadow(0 0 8px var(--aura))}
+#heroMotion{filter:drop-shadow(0 0 16px var(--aura)) drop-shadow(0 0 40px var(--aura));}
+#heroShape{color:var(--aura);transform-box:fill-box;transform-origin:center;}
+#heroCore{stroke-width:.7;filter:drop-shadow(0 0 11px var(--aura));}
+#heroAura{stroke-width:3;filter:drop-shadow(0 0 10px var(--aura));}
+#heroRing{stroke-width:2}
+.stageWrap.evolution-flare #heroShape{animation:starPop 1.25s cubic-bezier(.19,.93,.3,1) both;}
+.stageWrap.lap-flare #heroShape{animation:starFlash 1.15s ease-out both;}
+@keyframes starPop{0%{transform:scale(.2) rotate(-55deg);opacity:0}56%{transform:scale(1.29) rotate(6deg);opacity:1}100%{transform:scale(1) rotate(0);opacity:1}}
+@keyframes starFlash{0%{transform:scale(1);opacity:1}35%{transform:scale(1.24);opacity:1}100%{transform:scale(1);opacity:1}}
+.colorDisplay{display:block!important;max-width:135px;color:var(--aura)!important;font-size:10px!important;font-weight:760;letter-spacing:.08em!important;white-space:normal;line-height:1.45;margin-top:7px;text-align:right;text-shadow:0 0 8px var(--aura)}
+.fieldGearCount{color:var(--aura)!important}
+@media(prefers-reduced-motion:reduce){.stageWrap.evolution-flare #heroShape,.stageWrap.lap-flare #heroShape{animation:none!important}}
+/* Preserve the V12 first-launch explanation layout on smaller handsets. */
+.introSheet{z-index:25;}
+.introSheet .introScene{max-height:34vh}
+@media(max-height:700px){.introSheet .introScene{max-height:27vh}.introOverview{margin-top:9px}.introActions{padding-top:7px}}
+
+/* V15: earned-distance movement; the star/point runs on the actual 400m lane.
+   No idle orbit; render distance is independent from the committed game-meter ledger. */
+#heroMotion{will-change:transform;filter:drop-shadow(0 0 11px var(--aura)) drop-shadow(0 0 22px var(--aura))}
+#motionTrail .trailDot{fill:var(--aura);filter:drop-shadow(0 0 5px var(--aura));pointer-events:none}
+#finishLine{filter:drop-shadow(0 0 4px #d9f3ff88)}
+.stageWrap.running #heroAura{animation-duration:.55s}
+.stageWrap.running #heroCore{animation-duration:.45s}
+.stageWrap.running #heroShape{filter:drop-shadow(0 0 6px var(--aura))}
+@media(prefers-reduced-motion:reduce){.stageWrap.running #heroAura,.stageWrap.running #heroCore{animation:none!important}}
+
+/* V16 fusion: preserves V15 track, dark ambience, quiz and m GET layout. */
+.dock button:last-child{letter-spacing:.035em}
+#heroShape{filter:drop-shadow(0 0 5px var(--aura));transition:color .5s}
+#heroMotion{filter:drop-shadow(0 0 6px var(--aura)) drop-shadow(0 0 13px var(--aura))}
+/* The first point stays visibly tiny, even after its first reward. The field shows only placed items. */
+.stageWrap[data-phase="0"] #heroAura{opacity:0!important}
+.stageWrap[data-phase="0"] #heroShape{filter:drop-shadow(0 0 6px white)}
+#collectionSheet{overflow:hidden}
+#collectionSheet h2{margin:9px 0 4px;font-size:clamp(26px,7vw,34px)}
+#collectionSheet .sub{margin:0 0 8px}
+#collectionFilters.collectionFilters{margin:1px 0 8px;gap:5px}
+#collectionFilters button{font-size:clamp(10px,2.8vw,12px);padding:10px 0;white-space:nowrap}
+.cPanel{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px}
+.cPanel[hidden]{display:none!important}
+.partGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;overflow-y:auto;align-content:start;flex:1;min-height:0;padding:1px 1px 8px}
+.partCard{min-width:0;min-height:92px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 2px;background:linear-gradient(180deg,#112034,#0a121c);border:1px solid #314a61;border-radius:11px;color:#d9edff;cursor:pointer;overflow:hidden}
+.partCard.selected{border:2px solid #a3e9fa;background:#193149}
+.partCard .fusionGlyph{width:50px;height:46px;flex:none;filter:drop-shadow(0 0 5px var(--glyph-color))}
+.partCardName{font-size:10px;font-weight:750;letter-spacing:.035em}
+.partCard small{font-size:8px;color:#91aac0;line-height:1.2;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.partControl{flex:none;display:grid;grid-template-columns:79px 1fr;gap:9px;border:1px solid #37506a;background:linear-gradient(150deg,#17273a,#0b1520);border-radius:15px;padding:9px;min-height:146px;max-height:37vh}
+.partShow{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:0}
+.partShow .fusionGlyph{width:67px;height:72px;filter:drop-shadow(0 0 7px var(--glyph-color))}
+.partShow b{font-size:11px;letter-spacing:.08em}
+.partShow small{font-size:9px;color:#9aafc2}
+.partAdjust{min-width:0;display:flex;flex-direction:column;gap:4px;justify-content:space-between}
+.editLabel{font-size:9px;letter-spacing:.05em;color:#aac3d6}
+.colorLine,.effectLine{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.colorPick{width:22px;height:22px;border-radius:50%;background:var(--pick);border:2px solid #607588;box-shadow:0 0 5px var(--pick)}
+.colorPick.active{border-color:#fff;outline:2px solid #fff7;outline-offset:1px}
+.effectPick{color:#b5d5e9;background:#12243a;border:1px solid #3b576d;border-radius:7px;padding:4px 6px;font-size:9px}
+.effectPick.active{color:#0b1725;background:#d9eeff;border-color:#d9eeff}
+#partSize{width:100%;accent-color:#98dfff;height:14px}
+#partPlace,.fusBtn{border:1px solid #d3f0ff;background:#dbf0ff;color:#0b1825;font-weight:820;border-radius:9px;min-height:37px;font-size:12px;letter-spacing:.02em}
+#partPlace:disabled,.fusBtn:disabled{opacity:.45}
+#fusionPanel{gap:9px}
+.fusionIntro{font-size:11px;color:#acc1d1;line-height:1.45;margin:0}
+.fusionBoxFrame{background:radial-gradient(ellipse at 50% 42%,#28506966,#0b1420 74%);border:1px solid #567e91;border-radius:18px;padding:12px 10px;flex:none;box-shadow:inset 0 0 27px #64cefa15}
+.fusionBoxTitle{font-size:10px;letter-spacing:.24em;text-align:center;color:#b4e5f9;margin:0 0 8px}
+.fusionSlots{display:flex;align-items:center;justify-content:center;gap:9px}
+.fusionSlot{width:42%;height:101px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:1px dashed #92bdd7;border-radius:12px;background:#14253b;color:#dfedff;font-size:10px}
+.fusionSlot .fusionGlyph{width:62px;height:67px}
+.fusionSlot .emptySymbol{font-size:32px;color:#58758d}
+.fusionSlot small{display:block;font-size:9px;color:#91aec2;margin-top:2px}
+.fusionPlus{font-size:23px;color:#99c9df}
+.fusBtn{width:100%;margin-top:10px;height:48px}
+.fusionCount{text-align:center;color:#99d2e4;font-size:11px;margin-top:9px}
+.fusionStockLabel{font-size:11px;color:#a9c0d3;letter-spacing:.07em}
+#fusionStock{grid-template-columns:repeat(4,minmax(0,1fr))}
+#fusionStock .partCard{min-height:85px}
+#fusionTip{color:#b7c9db;font-size:11px;line-height:1.4;min-height:29px;margin:0;text-align:center}
+#recipesPanel,#medalsPanel{overflow-y:auto;display:block;padding-bottom:12px}
+#recipeGrid{display:flex;flex-direction:column;gap:8px}
+.recipeRow{padding:12px 14px;border:1px solid #385068;border-radius:12px;background:#111e2d;display:grid;grid-template-columns:1fr 1fr auto;align-items:center;gap:5px;color:#d5e9f8}
+.recipeRow span{font-size:17px}.recipeRow b{font-size:14px}.recipeRow small{font-size:10px;color:#a0bfd4}
+.recipeRow.unknown{opacity:.58;filter:saturate(.5)}
+#recipeCount{display:block;font-size:11px;color:#a8c2d6;margin:4px 0 12px}
+#fusionResultSheet{z-index:21}
+.fusionResult{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:13px;text-align:center;min-height:0}
+.fusionResultIcon{width:min(52vw,210px);height:min(52vw,210px);display:grid;place-items:center;border:1px solid #658da0;border-radius:22px;background:radial-gradient(circle,#284d6440,#07121d 76%);box-shadow:0 0 45px #6bd6fa25}
+.fusionResultIcon .fusionGlyph{width:75%;height:75%;filter:drop-shadow(0 0 12px var(--glyph-color))}
+.fusionResult.ignite .fusionResultIcon{animation:rewardReveal .8s cubic-bezier(.16,1.18,.2,1) both}
+#fusionRevealName{font-size:32px;font-weight:790;letter-spacing:.11em}
+#fusionResultNote{font-size:12px;color:#b7d0e2;line-height:1.8;max-width:270px}
+#fusionResultPlace,#fusionResultKeep{width:100%;min-height:54px;border-radius:12px;font-weight:750}
+#fusionResultPlace{background:#e5f7ff;color:#0b1a29;border:1px solid #fff}
+#fusionResultKeep{background:#152637;color:#c8e4f8;border:1px solid #4b6678}
+#rewardGlyph .fusionGlyph{width:89%;height:89%}
+#rewardGlyph{font-size:78px}
+@media(max-width:360px){.partCard{min-height:84px}.partCard .fusionGlyph{width:42px;height:42px}.partGrid{gap:5px}.partControl{grid-template-columns:66px 1fr;gap:6px}.partShow .fusionGlyph{width:60px;height:60px}.colorPick{width:19px;height:19px}}
+@media(max-height:700px){#collectionSheet .sheetTop{min-height:18px}.partControl{min-height:133px;padding:6px}.fusionBoxFrame{padding:7px}.fusionSlot{height:79px}.fusionSlot .fusionGlyph{height:49px}.fusBtn{height:42px;margin-top:5px}.partCard{min-height:77px}.partCard .fusionGlyph{height:40px}}
+
+
+/* V17: Fusion UX -- source cards remain visible above an anchored drop BOX.
+   Pointer dragging is on the large glyph grip; card tapping remains a fallback. */
+#fusionPanel{gap:5px;overflow:hidden}
+#fusionPanel .fusionIntro{flex:none;font-size:10px;line-height:1.25;margin:0;color:#c1dbe9;letter-spacing:.025em}
+#fusionPanel .fusionStockLabel{flex:none;display:flex;justify-content:space-between;align-items:center;gap:4px;font-size:10px;line-height:1.2;margin:0;color:#b9d9ee}
+#fusionPanel .fusionStockLabel>span:last-child{color:#b7eaff;text-align:right;font-size:9px}
+#fusionStockCount{font-size:9px;color:#87a3b8;padding-left:4px;font-weight:500}
+#fusionScrollGuide{font-size:8px;color:#8fabbc;font-weight:500}
+#fusionPanel #fusionStock{flex:1;min-height:84px;max-height:none;overflow-y:auto;overflow-x:hidden;align-content:start;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:2px 1px 8px;scrollbar-width:thin;scrollbar-color:#456d88 #111b28}
+#fusionPanel .fusionBoxFrame{order:2;flex:none;padding:7px 9px 6px;border:1.5px solid #649bbc;background:linear-gradient(165deg,#173044,#0a1522);box-shadow:inset 0 0 22px #64cefa15}
+#fusionPanel .fusionBoxTitle{margin-bottom:5px;font-size:10px;text-align:left;display:flex;justify-content:space-between;align-items:center;gap:8px}
+#fusionPanel .fusionBoxTitle span{font-size:9px;color:#96cbe4;letter-spacing:.04em}
+#fusionPanel .fusionSlots{gap:7px}
+#fusionPanel .fusionSlot{height:73px;width:43%;border:1.7px dashed #789bb2;transition:background .15s,border-color .15s,box-shadow .15s,transform .15s;gap:1px;background:#102438}
+#fusionPanel .fusionSlot .fusionGlyph{height:40px;width:45px;flex:none}
+#fusionPanel .fusionSlot>span:not(.emptySymbol){font-size:9px;line-height:1.1;display:flex;align-items:center;flex-direction:column;max-width:100%}
+#fusionPanel .fusionSlot small{font-size:8px;margin:0;color:#b9d7e8}
+#fusionPanel .fusionSlot .emptySymbol{font-size:25px;line-height:1.2;color:#83adc7}
+#fusionPanel .fusionSlot.over{border:2px solid #efffff;background:#21647c;box-shadow:0 0 0 3px #57dff144,inset 0 0 21px #4cddff55;transform:scale(1.035)}
+#fusionPanel .fusionSlot.filled{border-style:solid;border-color:var(--slot-color,#93cae8);background:linear-gradient(135deg,color-mix(in srgb,var(--slot-color) 18%,#112136),#101b2d)}
+#fusionPanel .fusBtn{height:38px;min-height:38px;margin-top:6px;font-size:12px}
+#fusionPanel .fusionCount{margin:4px 0 0;font-size:10px}
+#fusionPanel #fusionTip{margin:2px 0 0;text-align:center;font-size:9px;min-height:13px;line-height:1.35;color:#b9dbe9}
+/* Clearly distinguish white, color and effect at a glance, including mixed colors. */
+.partCard{position:relative;isolation:isolate;padding:5px 2px;min-height:106px;gap:2px;border:1.5px solid color-mix(in srgb,var(--part-ink,#7f9cb4) 48%,#40546b);background:linear-gradient(155deg,color-mix(in srgb,var(--part-ink,#a5d6ff) 14%,#121d2c),#0b1421 80%)}
+.partCard::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:var(--part-ink,#e7f7ff);box-shadow:0 0 11px var(--part-ink,#e7f7ff);opacity:.85}
+.partCard .partColorTag{font-weight:850;font-size:9px;letter-spacing:.035em;display:flex;align-items:center;justify-content:center;gap:4px;color:#e4f4ff;line-height:1.25;white-space:normal;min-height:15px;max-width:100%}
+.partCard .partColorDot{width:10px;height:10px;flex:none;display:inline-block;background:var(--part-ink);border:1px solid #fff9;border-radius:50%;box-shadow:0 0 5px var(--part-ink)}
+.partCard.monochrome .partColorDot{border:2px solid #c4d6e8;box-shadow:inset 0 0 0 1px #0c1b2c}
+.partCard.hasColor .partColorTag{color:var(--part-ink);text-shadow:0 0 5px #0008}
+.partCard .partEffectTag{font-size:8px;font-weight:620;color:#a9bfd1;line-height:1.12}
+.partCard .partEffectTag.hasEffect{color:#f3d9a5}
+.partCard .fusionGlyph{width:46px;height:42px;flex:none;filter:drop-shadow(0 0 7px var(--glyph-color));pointer-events:none}
+.partCard .partCardName{font-size:9px;line-height:1.1;font-weight:820}
+#fusionStock .partCard{min-height:102px}
+#fusionStock .dragGrip{display:grid;place-items:center;min-height:43px;width:100%;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+#fusionStock .dragGrip:active{cursor:grabbing}
+#fusionStock .partCard.inBox{box-shadow:inset 0 0 0 1px #89eafa}
+#fusionStock .partCard.inBox::after{content:"BOXへ配置中";position:absolute;bottom:0;inset-inline:0;text-align:center;background:#154359e8;color:#e9fcff;font-size:8px;letter-spacing:.02em;padding:2px}
+#fusionStock .partCard.isDragging{opacity:.52}
+.fusionDragGhost{position:fixed;z-index:200;pointer-events:none;width:92px;height:103px;box-sizing:border-box;border:2px solid var(--drag-color,#98dfff);border-radius:15px;background:linear-gradient(150deg,#1e3a50f5,#0a192cf8);box-shadow:0 9px 28px #000b,0 0 27px color-mix(in srgb,var(--drag-color) 35%,transparent);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;color:#e3f5ff;transform:translate(-50%,-92%);will-change:left,top}
+.fusionDragGhost .fusionGlyph{width:59px;height:58px}
+.fusionDragGhost strong{font-size:10px;color:var(--drag-color);line-height:1}
+.fusionDragGhost small{font-size:8px;color:#d8eafa}
+.fusionDragGhost.miss{opacity:.2;transition:opacity .25s}
+#fusionPanel #fusionBoxFrame.dragging .fusionBoxTitle span{color:#efffff;font-weight:800}
+@media(max-width:360px){#fusionPanel #fusionStock{gap:4px}#fusionStock .partCard{min-height:93px}#fusionPanel .fusionSlot{height:69px}#fusionPanel .fusionBoxFrame{padding:5px 6px}#fusionPanel #fusionTip{font-size:8px}#fusionPanel .fusionCount{font-size:9px}}
+@media(max-height:700px){#collectionSheet h2{font-size:25px;margin:5px 0 2px}#collectionSheet .sub{margin-bottom:3px}#collectionFilters.collectionFilters{margin:0 0 4px}#collectionFilters button{padding:6px 0}#fusionPanel .fusionIntro{font-size:9px}#fusionPanel .fusionSlot{height:64px}#fusionPanel .fusionSlot .fusionGlyph{height:35px;width:39px}#fusionPanel .fusBtn{height:34px;min-height:34px}#fusionStock .partCard{min-height:92px}#fusionStock .partCard .fusionGlyph{height:32px}#fusionStock .dragGrip{min-height:35px}#fusionPanel .fusionBoxFrame{padding:5px 7px}}
+@media(max-height:600px){#fusionPanel .fusionSlot{height:54px}#fusionPanel .fusionSlot .fusionGlyph{height:28px;width:31px}#fusionPanel .fusionBoxTitle{margin-bottom:3px}#fusionPanel .fusBtn{height:32px;min-height:32px;margin-top:3px}#fusionPanel .fusionCount{margin-top:2px}}
+
+</style></head><body><div id="app"><div class="topbar">
+<div class="brand">
+<div class="eyebrow">TOP RUN PORTAL / MY PAGE</div>
+<div class="title">RUN FIELD</div>
+</div>
+<div class="hud">
+<div class="hudBox"><span>DISTANCE</span><strong id="hudMeters">0</strong><small>m</small></div>
+<div class="hudBox"><span>LAP</span><strong id="hudLap">00</strong><small>400m / LAP</small></div>
+</div>
+</div><div class="stageWrap" id="stageWrap">
+<div class="stageSky" id="stageSky"></div>
+<div class="fieldHeader">
+<div class="left"><b>FIELD / RUN</b><small id="fieldSub">はじまりの小さな光</small></div>
+<div class="right"><b id="fieldState">THE POINT</b><small class="colorDisplay" id="fieldColorName">WHITE / POINT</small></div>
+</div>
+<div class="trackScene">
+<svg aria-hidden="true" id="trackSvg" preserveaspectratio="none" viewbox="0 0 400 560">
+<defs>
+<lineargradient id="trackFill" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#9098a1" stop-opacity="0.34"></stop>
+<stop offset="100%" stop-color="#4f5862" stop-opacity="0.18"></stop>
+</lineargradient>
+<lineargradient id="lightBar" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"></stop>
+<stop offset="100%" stop-color="#ffffff" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+<g class="stands" id="standsLeft"><path d="M8 184 L82 148 L82 218 L8 248 Z" fill="#75808c" opacity=".34"></path><path d="M18 210 L82 180" stroke="#d6dee6" stroke-opacity=".34"></path></g>
+<g class="stands" id="standsRight"><path d="M392 184 L318 148 L318 218 L392 248 Z" fill="#75808c" opacity=".34"></path><path d="M382 210 L318 180" stroke="#d6dee6" stroke-opacity=".34"></path></g>
+<g class="crowd" id="crowdLeft"></g>
+<g class="crowd" id="crowdRight"></g>
+<g class="lights" id="lightsLeft"><rect fill="#cfd7e0" height="80" opacity=".46" width="10" x="54" y="78"></rect><rect fill="#cfd7e0" height="10" opacity=".55" width="42" x="38" y="72"></rect><rect fill="url(#lightBar)" height="52" opacity=".4" width="78" x="20" y="82"></rect></g>
+<g class="lights" id="lightsRight"><rect fill="#cfd7e0" height="80" opacity=".46" width="10" x="336" y="78"></rect><rect fill="#cfd7e0" height="10" opacity=".55" width="42" x="320" y="72"></rect><rect fill="url(#lightBar)" height="52" opacity=".4" width="78" x="302" y="82"></rect></g>
+<ellipse class="trackOuter" cx="200" cy="300" rx="174" ry="126"></ellipse>
+<ellipse class="trackLane" cx="200" cy="300" rx="157" ry="111"></ellipse>
+<ellipse class="trackLane" cx="200" cy="300" rx="143" ry="99"></ellipse>
+<ellipse class="trackLane" cx="200" cy="300" rx="129" ry="88"></ellipse>
+<ellipse class="infield" cx="200" cy="300" rx="112" ry="75"></ellipse>
+<ellipse class="trackGlow" cx="200" cy="300" fill="none" rx="168" ry="120" stroke="hsl(200 85% 80% / .55)" stroke-width="6"></ellipse>
+
+
+<!-- 400m line: the luminous runner starts here and returns only after a credited 400m. -->
+<path id="finishLine" d="M200 407 L200 427" fill="none" stroke="#ecf6ff" stroke-width="3" stroke-dasharray="5 3" opacity=".78"/>
+<text x="200" y="445" fill="#a9c9dc" font-size="11" font-weight="700" text-anchor="middle" letter-spacing="2">START / GOAL</text>
+<g id="motionTrail"></g>
+<ellipse cx="200" cy="300" id="lapFlash" rx="168" ry="120"></ellipse>
+<g id="heroMotion" transform="translate(200 300)">
+<circle cx="0" cy="0" id="heroAura" r="8"></circle>
+<circle cx="0" cy="0" id="heroRing" r="12"></circle>
+<circle cx="0" cy="0" id="heroCore" r="3"></circle>
+<g id="heroShape"></g>
+</g><g id="heroBurst"></g></svg>
+</div>
+
+<div aria-live="polite" class="fieldToast" id="fieldToast" role="status"></div>
+<div class="fieldFooter">
+<div class="lapPanel"><small>RUN PROGRESS</small><b id="lapBig">0 / 400</b><div class="lapBar"><i id="lapFill"></i></div><div class="fieldGearCount" id="fieldGearCount">PHASE / 0 — THE POINT</div></div>
+<button class="introHelpBtn" id="introHelpBtn" type="button">説明を見る</button>
+<div class="hidden" id="fieldEvolutionHint">次の変化へ</div></div>
+</div><div class="dock" id="dock">
+<button class="primary" id="quizBtn">RUN QUIZ</button>
+<button id="taskBtn">m GET</button>
+<button id="collectionBtn">COLLECTION</button>
+</div><section class="sheet" hidden="" id="quizSheet">
+<div class="sheetTop"><div class="eyebrow">RUN QUIZ / STAGE <span id="quizStage"></span></div><button class="sheetClose" data-close="">閉じる</button></div>
+<h2>QUIZ.</h2>
+<div class="sub">V12の6問を継承 / 500問以上は今後の検証対象</div>
+<div class="quizMeta"><span id="quizIndex"></span><span id="quizDiff"></span></div>
+<div class="quizTimerBox" id="quizTimerBox"><div class="quizTimerHeader"><span>TIME BONUS / 速い正解ほど +m</span><strong id="quizTimerValue">15.0s</strong></div><div class="quizTimeRail"><i id="quizTimeFill"></i></div></div>
+<div class="progressLine"><i id="quizProg"></i></div>
+<p class="question" id="question"></p>
+<div class="options" id="options"></div>
+<div aria-live="polite" class="explain" id="explain">残り時間内に答えましょう。終了時には正解と解説を表示します。</div><button class="quizNext fullBtn hidden" id="quizNextBtn">次の問題へ →</button>
+</section><section class="sheet" hidden="" id="awardSheet">
+<div class="awardWrap">
+<div class="pulseRing"></div>
+<div class="burst" id="burst"></div>
+<div class="judge" id="judge">CORRECT!</div>
+<div class="plusM" id="plusM">+120<small>m GET</small></div>
+<div class="ticker" id="ticker"></div>
+<div class="awardNote" id="awardNote">TOTAL 0m → 120m</div>
+</div>
+</section>
+<section class="sheet" id="rewardSheet" hidden>
+ <div class="sheetTop"><div class="eyebrow" id="rewardEyebrow">REWARD / PART GET</div></div>
+ <div class="rewardScene"><div class="rewardMeta" id="rewardMeta">1 / 1</div><div class="rewardGlyph" id="rewardGlyph">?</div><div class="rewardTitle" id="rewardTitle">MYSTERY</div><div class="rewardDescription" id="rewardDescription">新しい形が待っている</div></div>
+ <button type="button" class="fullBtn" id="rewardOpen">開く →</button><button type="button" id="rewardBulkBtn" class="hidden" style="padding:9px;border:1px solid #426379;background:#111e2d;border-radius:12px;color:#c1d8e6;margin-top:7px">たくさんの報酬をまとめて確認する →</button>
+</section>
+<section class="sheet" id="collectionSheet" hidden>
+ <div class="sheetTop"><div class="eyebrow">RUN FIELD / COLLECTION</div><button class="sheetClose" data-close>閉じる</button></div>
+ <h2>COLLECTION.</h2><div class="sub" id="collectionSummary">0m ・ 0周 ・ 0 PARTS</div>
+ <div class="collectionFilters" id="collectionFilters">
+  <button type="button" data-filter="parts" class="active">パーツ</button><button type="button" data-filter="fusion">融合BOX</button><button type="button" data-filter="recipes">融合図鑑</button><button type="button" data-filter="medals">記念</button>
+ </div>
+ <button type="button" class="hidden" id="unseenRewards" style="padding:8px;border:1px solid #89d5e5;border-radius:10px;background:#123649;color:#ecfaff">未開封の報酬を見る →</button>
+ <div class="cPanel" id="partsPanel">
+  <div class="partGrid" id="partGrid"></div>
+  <div class="partControl"><div class="partShow"><div id="partDetailIcon"></div><b id="partDetailName">POINT</b><small id="partDetailSource">はじまりの点</small></div>
+   <div class="partAdjust"><span class="editLabel">COLOR / 獲得した色</span><div class="colorLine" id="partColors"></div>
+    <span class="editLabel">EFFECT / 獲得した光</span><div class="effectLine" id="partEffects"></div>
+    <label class="editLabel" for="partSize">SIZE / <span id="sizeValue">100%</span></label><input id="partSize" type="range" min="70" max="140" step="10" value="100"/>
+    <button type="button" id="partPlace">フィールドに配置 →</button>
+   </div></div>
+  <div class="miniNote">パーツは消費されません。色・光・サイズを選んでフィールドへ。</div>
+ </div>
+ <div class="cPanel" id="fusionPanel" hidden>
+  <p class="fusionIntro">好きな形をつかんで、下のBOXに入れてみよう。</p>
+  <div class="fusionStockLabel"><span>YOUR PARTS <small id="fusionStockCount">0 PARTS</small></span><span>形をつまんで ↓ <span id="fusionScrollGuide">スクロール可</span></span></div>
+  <div class="partGrid" id="fusionStock" aria-label="融合素材一覧・図形をつまんでBOXへ移動"></div>
+  <div class="fusionBoxFrame" id="fusionBoxFrame"><div class="fusionBoxTitle">FUSION BOX <span>ここへドラッグ ↓</span></div>
+   <div class="fusionSlots"><button type="button" class="fusionSlot" id="fuseSlot0" aria-label="融合BOX スロット1・タップで外す"><span class="emptySymbol">＋</span><span>PART 1</span></button><span class="fusionPlus">×</span><button type="button" class="fusionSlot" id="fuseSlot1" aria-label="融合BOX スロット2・タップで外す"><span class="emptySymbol">＋</span><span>PART 2</span></button></div>
+   <button type="button" class="fusBtn" id="fuseBtn" disabled>2つのパーツをBOXへ</button><div class="fusionCount" id="fusionCount">今日の融合 0 / 3</div>
+   <p id="fusionTip" role="status" aria-live="polite">素材は融合後も残ります。</p>
+  </div>
+ </div>
+ <div class="cPanel" id="recipesPanel" hidden><span id="recipeCount">発見 0 / 9</span><div id="recipeGrid"></div><div class="miniNote">見つけた組み合わせだけ図鑑に記録されます。</div></div>
+ <div class="cPanel" id="medalsPanel" hidden></div>
+</section>
+<section class="sheet" id="fusionResultSheet" hidden>
+ <div class="sheetTop"><div class="eyebrow">FUSION / DISCOVERED</div></div>
+ <div class="fusionResult" id="fusionReveal"><span class="introKicker">NEW FORM</span><div class="fusionResultIcon" id="fusionRevealShape"></div><div id="fusionRevealName">STAR</div><div id="fusionResultNote">パーツはそのまま残ります。</div></div>
+ <button id="fusionResultPlace">この形をフィールドへ →</button><button id="fusionResultKeep">コレクションで見る →</button>
+</section>
+<section aria-label="RUN FIELD ゲーム説明" class="sheet introSheet" hidden="" id="introSheet">
+<div class="introTop">
+<span>TOP RUN PORTAL / MY PAGE</span>
+<button class="introSkip" id="introSkipBtn" type="button">スキップ</button>
+</div>
+<div aria-hidden="true" class="introScene">
+<svg class="introTrack" preserveaspectratio="xMidYMid meet" viewbox="0 0 380 235">
+<defs><radialgradient id="introTrackFade"><stop offset="0" stop-color="#2d3541" stop-opacity=".8"></stop><stop offset="1" stop-color="#0a0d12" stop-opacity=".1"></stop></radialgradient></defs>
+<ellipse cx="190" cy="132" fill="url(#introTrackFade)" rx="183" ry="94"></ellipse>
+<ellipse class="introHalo" cx="190" cy="132" rx="172" ry="85"></ellipse>
+<ellipse class="introLane" cx="190" cy="132" pathlength="110" rx="172" ry="85"></ellipse>
+<ellipse class="introLane" cx="190" cy="132" pathlength="110" rx="157" ry="74"></ellipse>
+<ellipse class="introLane" cx="190" cy="132" pathlength="110" rx="143" ry="63"></ellipse>
+<ellipse class="introLane" cx="190" cy="132" pathlength="110" rx="130" ry="52"></ellipse>
+<ellipse class="introFloor" cx="190" cy="132" rx="114" ry="41"></ellipse>
+<path class="introStart" d="M190 80 V184"></path>
+</svg>
+</div>
+<div class="introIntroText">
+<div class="introKicker">THE START OF YOUR STORY</div>
+<h2>RUN FIELD</h2>
+<p class="introTagline">走る。学ぶ。集める。世界が育つ。</p>
+</div>
+<div class="introOverview">
+<div class="introOverviewLabel">HOW TO PLAY</div>
+<p><b>クイズや日々の活動</b>で、ゲーム内の <b>m</b> を獲得。</p>
+<p><b>400mごとにガチャ</b>。新しい形がコレクションに増える。</p>
+<p>最初は<b>白い点ひとつ</b>。走って、形を見つけよう。</p>
+<p class="introAside">休んだ日のふりかえりも、同じ一歩に。</p>
+</div>
+<div class="introActions">
+<button class="fullBtn" id="introContinueBtn" type="button">FIELDへ進む →</button>
+<div class="introFoot">この演出は初回のみ · あとから「説明を見る」で再生</div>
+</div>
+</section>
+<section class="sheet compactTaskSheet" hidden="" id="taskSheet">
+<div class="sheetTop"><div class="eyebrow">RUN FIELD / EARN METERS</div><button class="sheetClose" data-close="">閉じる</button></div>
+<h2>m GET.</h2><div class="sub">ゲーム内のmを獲得できる4つの入口</div>
+<div class="earnGrid">
+<button class="earnTile" id="earnQuiz" type="button"><span class="earnNo">01 / LEARN</span><strong>RUN QUIZ</strong><small>問題に答えてmを獲得</small><em>チャレンジ →</em></button>
+<button class="earnTile" id="earnDaily" type="button"><span class="earnNo">02 / DAILY</span><strong>チェックイン</strong><small>今日の1回</small><em id="earnDailyStatus">獲得する →</em></button>
+<button class="earnTile" id="earnReview" type="button"><span class="earnNo">03 / TRAINING</span><strong>ふりかえり</strong><small>休んだ日も同じm</small><em id="earnReviewStatus">回答する →</em></button>
+<button class="earnTile earnDemo" id="earnDemo" type="button"><span class="earnNo">04 / DEMO</span><strong>大会体験</strong><small>実際の出走情報とは未連携</small><em id="earnEventStatus">試す →</em></button>
+</div>
+<div class="earnFoot">RUN QUIZ以外の獲得条件・配点は試作値です。正式な記録には反映しません。</div>
+</section><section class="sheet activitySheet" hidden="" id="activitySheet">
+<div class="sheetTop"><div class="eyebrow" id="activityKicker">m GET</div><button class="sheetClose" id="taskBackBtn">一覧へ戻る</button></div>
+<h2 id="activityTitle">チェックイン</h2><div class="sub" id="activityDescription">今日の一歩</div>
+<div class="activityPane" hidden="" id="activityDaily"><div class="activityHero">＋180<span>m / DEMO</span></div><p>今日のチェックイン。タップして獲得します。</p><button class="fullBtn" id="dailyBtn">タップで +180m</button></div>
+<div class="activityPane" hidden="" id="activityReview"><div class="activityHero">＋240<span>m / DEMO</span></div><p>今日をふりかえろう。どの回答でも同じmです。</p><div class="moods" id="moods"></div><button class="fullBtn" disabled="" id="reviewBtn">ふりかえりで +240m</button></div>
+<div class="activityPane" hidden="" id="activityDemo"><div class="activityHero">＋400<span>m / DEMO</span></div><p>大会参加の獲得演出を体験するだけです。実際の参加判定ではありません。</p><button class="fullBtn" id="eventBtn">体験用 +400m</button></div>
+</section></div><script>
+'use strict';
+// RUN FIELD V17 — V16 is the direct parent. UI-only fusion drag & color clarity; preserve local game save.
+const QUIZ_BANK=[
+ {stage:'BEGINNER',diff:'EASY',q:'フルマラソンの正式な距離は？',opts:['40.000m','42.195km','30km','21.0975km'],right:1,m:160,exp:'フルマラソンは42.195km。ここではゲーム内距離mに換算して進行します。'},
+ {stage:'BEGINNER',diff:'EASY',q:'400mトラックを2周すると何m？',opts:['600m','700m','800m','1000m'],right:2,m:140,exp:'トラック1周は400m。2周で800mです。'},
+ {stage:'BASIC',diff:'NORMAL',q:'駅伝で使う“タスキ”の主な役割は？',opts:['給水を表す','順位を記録する','チームのつながりを受け渡す','タイムを計測する'],right:2,m:180,exp:'タスキは走者から走者へ、チームの思いをつなぐ象徴です。'},
+ {stage:'BASIC',diff:'NORMAL',q:'ペース走の目的として近いのは？',opts:['完全休養','一定の速さに慣れる','筋トレだけをする','跳躍力だけ上げる'],right:1,m:180,exp:'一定のペースを維持する感覚を身につける練習です。'},
+ {stage:'ADVANCE',diff:'HARD',q:'1500mは400mトラック何周と何m？',opts:['3周と100m','3周と200m','3周と300m','4周ぴったり'],right:2,m:220,exp:'400m×3周=1200m。残り300mで1500mです。'},
+ {stage:'ADVANCE',diff:'HARD',q:'ランニングでPBは何の略？',opts:['Power Balance','Personal Best','Perfect Body','Pulse Break'],right:1,m:160,exp:'PBはPersonal Best。自己ベスト記録のことです。'}
+];
+const $=id=>document.getElementById(id);
+const STORAGE_KEY='RUN_FIELD_V16_FUSION_REVIEW_20261017';
+const OLD_STORAGE_KEY='RUN_FIELD_V13_POINT_REVIEW_ONLY_20261017';
+const FUSION_DAILY_LIMIT=3;
+const QUIZ_RULES={seconds:15,bonusPerSecond:8,baseWrongMeters:60};
+const QUIZ_ACTIVE={timer:null,deadline:0,answered:false,question:null,index:-1};
+const COLOR_SET={white:{hex:'#edf7ff',name:'WHITE'},sky:{hex:'#74d9ff',name:'SKY'},red:{hex:'#ff737a',name:'RED'},blue:{hex:'#65a7ff',name:'BLUE'},mint:{hex:'#81e8c4',name:'MINT'},amber:{hex:'#ffd087',name:'AMBER'},violet:{hex:'#c09bff',name:'VIOLET'},pink:{hex:'#ff91ca',name:'ROSE'}};
+const EFFECT_SET={none:'なし',pulse:'鼓動',trail:'残光',spark:'火花',ring:'光輪',prism:'プリズム'};
+const SHAPE_SET={point:{label:'POINT',symbol:'·'},circle:{label:'CIRCLE',symbol:'◯'},triangle:{label:'TRIANGLE',symbol:'△'},square:{label:'SQUARE',symbol:'□'},bar:{label:'LINE',symbol:'━'},diamond:{label:'DIAMOND',symbol:'◇'},star:{label:'STAR',symbol:'★'},arrow:{label:'ARROW',symbol:'➤'},bolt:{label:'BOLT',symbol:'ϟ'},prism:{label:'PRISM',symbol:'✧'},sigil:{label:'SIGIL',symbol:'✺'},humanoid:{label:'HUMANOID',symbol:'♟'}};
+// Actual recipe table. Fixed results for the same input shapes; colors/effects add variation.
+// No automatic fusion. The handbook only reveals recipes that the player has discovered.
+const RECIPES=[
+ {a:'circle',b:'triangle',out:'star',lap:1},
+ {a:'circle',b:'square',out:'diamond',lap:2},
+ {a:'square',b:'square',out:'diamond',lap:5},
+ {a:'triangle',b:'square',out:'arrow',lap:2},
+ {a:'circle',b:'bar',out:'bolt',lap:6},
+ {a:'star',b:'diamond',out:'prism',lap:18},
+ {a:'arrow',b:'bolt',out:'prism',lap:18},
+ {a:'prism',b:'star',out:'sigil',lap:40},
+ {a:'sigil',b:'bar',out:'humanoid',lap:70}
+];
+const MILESTONES=[{m:1500,label:'1500m 記念'},{m:3000,label:'3000m 記念'},{m:5000,label:'5000m 記念'},{m:10000,label:'10000m 記念'},{m:21098,label:'ハーフ相当 記念'},{m:42195,label:'42,195m 第一章 記念'}];
+const mkItem=(id,shape,color='white',effect='none',source='獲得',size=100)=>({id,shape,color,effect,size,source});
+const defaultState=()=>({schema:16,meters:0,displayMeters:0,quizIndex:0,answered:{},awards:{},laps:{},milestones:{},inventory:[],colorsUnlocked:['white'],effectsUnlocked:['none'],activeId:'point',point:mkItem('point','point'),discovered:[],fusions:[],fusionDaily:{date:'',count:0},unseen:[],mood:null,busy:false,filter:'parts',box:[null,null],selectedId:'point',storageWarning:false});
+function safeJson(key){try{return JSON.parse(localStorage.getItem(key)||'null')}catch(_){return null}}
+const oldState=safeJson(OLD_STORAGE_KEY),prior=safeJson(STORAGE_KEY);
+const S=defaultState();
+if(prior&&prior.schema===16){
+ for(const k of ['meters','quizIndex','answered','awards','laps','milestones','inventory','colorsUnlocked','effectsUnlocked','activeId','point','discovered','fusions','fusionDaily','unseen'])if(Object.prototype.hasOwnProperty.call(prior,k))S[k]=prior[k];
+}else if(oldState&&oldState.schema===13&&Number.isSafeInteger(oldState.meters)&&oldState.meters>0){
+ // Preserve V15 credited meters and quiz ledger. Never carry over V15's automatic star evolution.
+ for(const k of ['meters','quizIndex','answered','awards','milestones'])if(Object.prototype.hasOwnProperty.call(oldState,k))S[k]=oldState[k];
+ S.inventory.push(mkItem('first:circle','circle','white','none','最初のm GET'));
+ for(let lap=1;lap<=Math.floor(S.meters/400);lap++){
+  const kind=lap===1?'triangle':lap===2?'square':lap===6?'bar':lap===8?'bolt':(['circle','triangle','square','bar'][(lap+1)%4]);
+  const item=mkItem('lap:'+lap,kind,'white','none',`LAP ${lap}`);
+  S.inventory.push(item);S.laps[String(lap)]={id:'lap:'+lap,lap,m:lap*400,itemId:item.id};
+ }
+ S.unseen=[]; // Previously seen reward screens must not reappear as new rolls.
+}
+if(!Array.isArray(S.colorsUnlocked))S.colorsUnlocked=['white'];if(!Array.isArray(S.effectsUnlocked))S.effectsUnlocked=['none'];
+for(const it of S.inventory){if(it.color&&!S.colorsUnlocked.includes(it.color))S.colorsUnlocked.push(it.color);if(it.effect&&!S.effectsUnlocked.includes(it.effect))S.effectsUnlocked.push(it.effect)}
+S.meters=Number.isSafeInteger(S.meters)&&S.meters>=0?S.meters:0;S.displayMeters=S.meters;
+for(const k of ['answered','awards','laps','milestones'])if(!S[k]||typeof S[k]!=='object'||Array.isArray(S[k]))S[k]={};
+for(const k of ['inventory','discovered','fusions','unseen'])if(!Array.isArray(S[k]))S[k]=[];
+if(!S.point||S.point.shape!=='point')S.point=mkItem('point','point');
+if(!S.fusionDaily||typeof S.fusionDaily!=='object')S.fusionDaily={date:'',count:0};
+if(!S.inventory.some(x=>x.id===S.activeId))S.activeId='point';
+const fmt=n=>Math.floor(n).toLocaleString('ja-JP');
+const laps=n=>Math.floor(n/400);
+const today=()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')};
+function saveState(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify({schema:16,meters:S.meters,quizIndex:S.quizIndex,answered:S.answered,awards:S.awards,laps:S.laps,milestones:S.milestones,inventory:S.inventory,colorsUnlocked:S.colorsUnlocked,effectsUnlocked:S.effectsUnlocked,activeId:S.activeId,point:S.point,discovered:S.discovered,fusions:S.fusions,fusionDaily:S.fusionDaily,unseen:S.unseen}));S.storageWarning=false;return true}catch(_){S.storageWarning=true;return false}}
+function currentItem(){return S.activeId==='point'?S.point:S.inventory.find(x=>x.id===S.activeId)||S.point}
+function selectedItem(){return S.selectedId==='point'?S.point:S.inventory.find(x=>x.id===S.selectedId)||S.point}
+function itemById(id){return id==='point'?S.point:S.inventory.find(x=>x.id===id)}
+const sheetIds=['quizSheet','awardSheet','rewardSheet','collectionSheet','taskSheet','activitySheet','introSheet','fusionResultSheet'];
+function showSheet(id){sheetIds.forEach(s=>$(s).hidden=s!==id);$('dock').style.pointerEvents=id?'none':'auto'}
+function closeSheets(){if(S.busy)return;stopQuizClock();showSheet(null);renderField()}
+function showFieldToast(msg){const t=$('fieldToast');t.textContent=msg;t.classList.add('show');clearTimeout(showFieldToast.t);showFieldToast.t=setTimeout(()=>t.classList.remove('show'),2800)}
+const svg=$('trackSvg'),hero=$('heroMotion'),trail=$('motionTrail'),bursts=$('heroBurst');
+let heroX=200,heroY=405,trailDots=[];
+const TRACK_CX=200,TRACK_CY=300,TRACK_RX=149,TRACK_RY=105;
+function trackPosition(m){const radians=Math.PI/2-2*Math.PI*((m%400)/400);return{x:TRACK_CX+TRACK_RX*Math.cos(radians),y:TRACK_CY+TRACK_RY*Math.sin(radians)}}
+function placeHero(m){const p=trackPosition(m);heroX=p.x;heroY=p.y;hero.setAttribute('transform',`translate(${p.x.toFixed(2)} ${p.y.toFixed(2)})`)}
+function recordTrail(m){const p=trackPosition(m);if(!trailDots.length||Math.abs(m-trailDots[trailDots.length-1].m)>=1.4)trailDots.push({...p,m});if(trailDots.length>18)trailDots.shift();trail.innerHTML=trailDots.map((d,i)=>`<circle class="trailDot" cx="${d.x.toFixed(1)}" cy="${d.y.toFixed(1)}" r="${(1+1.8*(i+1)/trailDots.length).toFixed(1)}" opacity="${(.04+.44*(i+1)/trailDots.length).toFixed(2)}"/>`).join('')}
+function starPath(outer,inner,spikes=5){let d='';for(let i=0;i<spikes*2;i++){const a=-Math.PI/2+i*Math.PI/spikes,r=i%2?inner:outer;d+=(i?'L':'M')+(r*Math.cos(a)).toFixed(2)+' '+(r*Math.sin(a)).toFixed(2)+' '}return d+'Z'}
+function shapeSvg(shape){const a='fill="none" stroke="currentColor" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"';
+ switch(shape){
+ case 'point':return'<circle r="4.1" fill="currentColor" stroke="#fff" stroke-width=".7"/>';
+ case 'circle':return `<circle r="16" ${a}/>`;
+ case 'triangle':return `<path d="M0 -19L19 16H-19Z" ${a}/>`;
+ case 'square':return `<rect x="-17" y="-17" width="34" height="34" rx="2" ${a}/>`;
+ case 'bar':return `<path d="M-23 0H23" ${a} stroke-width="6"/>`;
+ case 'diamond':return `<path d="M0 -21L20 0L0 21L-20 0Z" ${a}/>`;
+ case 'star':return `<path d="${starPath(24,11)}" fill="currentColor" fill-opacity=".85" stroke="#f7ffff" stroke-width="1.7" stroke-linejoin="round"/>`;
+ case 'arrow':return `<path d="M-23 0L10 -17L10 -6L24 0L10 6L10 17Z" ${a}/>`;
+ case 'bolt':return `<path d="M4 -24L-13 3L-2 3L-8 24L17 -8L5 -8Z" fill="currentColor" stroke="#fff" stroke-width="1.4"/>`;
+ case 'prism':return `<path d="M0 -25L22 -10L19 15L0 25L-19 15L-22 -10Z" ${a}/><path d="M0 -25V25M-22 -10L19 15M22 -10L-19 15" stroke="currentColor" stroke-width="1.4" fill="none"/>`;
+ case 'sigil':return `<path d="${starPath(25,13,8)}" ${a}/><circle r="9" ${a}/>`;
+ case 'humanoid':return '<circle cy="-21" r="7" fill="currentColor"/><path d="M0 -12V13M0 -5L-15 8M0 -5L15 8M0 13L-13 28M0 13L13 28" stroke="currentColor" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M0 -12V13" stroke="#fff" stroke-width=".9"/>';
+ default:return'<circle r="4" fill="currentColor"/>';
+ }
+}
+function effectSvg(effect){if(effect==='trail')return'<path d="M-34 10Q-25 5 -20 10M-33 2L-26 2" stroke="currentColor" stroke-width="1.7" fill="none" opacity=".55"/>';if(effect==='spark')return'<path d="M-29 -20l5 5M29 -20l-5 5M-29 20l5 -5M29 20l-5 -5" stroke="currentColor" stroke-width="2" opacity=".8"/>';if(effect==='ring')return'<circle r="30" stroke="currentColor" fill="none" stroke-width="1.8" opacity=".52"/>';if(effect==='prism')return'<circle r="31" stroke="currentColor" stroke-dasharray="3 5" fill="none" stroke-width="2" opacity=".75"/>';return ''}
+function hexOf(item){return COLOR_SET[item.color]?.hex||(typeof item.color==='string'&&/^#[0-9a-fA-F]{6}$/.test(item.color)?item.color:COLOR_SET.white.hex)}
+function paintGlyph(item,extra=''){const color=hexOf(item),size=Number(item.size)||100;return `<svg class="fusionGlyph ${extra}" viewBox="-45 -45 90 90" aria-hidden="true" style="color:${color};--glyph-color:${color}"><g transform="scale(${Math.max(.6,Math.min(1.5,size/100))})">${shapeSvg(item.shape)}${effectSvg(item.effect)}</g></svg>`}
+function renderField(){const m=Math.floor(S.displayMeters),rem=m%400,item=currentItem(),color=hexOf(item);$('hudMeters').textContent=fmt(m);$('hudLap').textContent=String(laps(m)).padStart(2,'0');$('lapBig').textContent=rem+' / 400';$('lapFill').style.width=(rem/4)+'%';
+ const world=m<4000?0:m<10000?.10:m<21098?.22:m<42195?.44:.80;
+ $('stageWrap').style.setProperty('--aura',color);$('stageWrap').style.setProperty('--world',world);$('stageWrap').classList.toggle('colorized',m>=9000);
+ ['standsLeft','standsRight'].forEach(id=>$(id).classList.toggle('show',m>=10000));['crowdLeft','crowdRight'].forEach(id=>$(id).classList.toggle('show',m>=21098));['lightsLeft','lightsRight'].forEach(id=>$(id).classList.toggle('show',m>=42195));
+ $('stageWrap').dataset.phase=item.shape==='point'?'0':'2';$('fieldState').textContent=m===0?'THE POINT':SHAPE_SET[item.shape]?.label||'RUN FIELD';$('fieldColorName').textContent=(COLOR_SET[item.color]?.name||'MIX COLOR')+' / '+EFFECT_SET[item.effect||'none'];$('fieldSub').textContent=m===0?'はじまりの小さな光':'獲得したmだけトラックを進む';$('fieldGearCount').textContent=`FIELD / ${SHAPE_SET[item.shape]?.label||'POINT'}  ・  PARTS ${S.inventory.length}`;
+ $('heroCore').style.display='none';$('heroAura').setAttribute('r',item.shape==='point'?'13':'27');
+ const sig=[item.shape,color,item.effect,item.size].join('|');if(renderField.lastSig!==sig){renderField.lastSig=sig;$('heroShape').innerHTML=shapeSvg(item.shape)+effectSvg(item.effect);$('heroShape').style.color=color;$('heroShape').setAttribute('transform',`scale(${Math.max(.7,Math.min(1.35,Number(item.size||100)/100))})`)}
+ $('heroAura').style.animationDuration=item.effect==='pulse'?'0.8s':'1.65s';placeHero(S.displayMeters);
+}
+function gatherParticles(){const host=$('heroBurst'),parts=[];for(let i=0;i<14;i++){const a=i*Math.PI*2/14,r=18+Math.random()*29;const node=document.createElementNS('http://www.w3.org/2000/svg','circle');node.setAttribute('r','1.7');node.setAttribute('opacity','0');host.appendChild(node);parts.push({node,x:heroX+Math.cos(a)*r,y:heroY+Math.sin(a)*r})}
+ let start=0;function frame(t){if(!start)start=t;const p=Math.min(1,(t-start)/700),ease=p*p*(3-2*p);for(const x of parts){x.node.setAttribute('cx',(x.x+(heroX-x.x)*ease).toFixed(1));x.node.setAttribute('cy',(x.y+(heroY-x.y)*ease).toFixed(1));x.node.setAttribute('opacity',(1-p).toFixed(2))}if(p<1)requestAnimationFrame(frame);else parts.forEach(x=>x.node.remove())}requestAnimationFrame(frame)}
+function flash(cls){const st=$('stageWrap');st.classList.remove(cls);void st.offsetWidth;st.classList.add(cls);setTimeout(()=>st.classList.remove(cls),1450);gatherParticles()}
+function rollDigits(from,to){const width=Math.max(5,String(to).length),a=String(from).padStart(width,'0'),b=String(to).padStart(width,'0');$('ticker').innerHTML='';for(let i=0;i<width;i++){const d=document.createElement('div');d.className='digit';const tr=document.createElement('div');tr.className='digitTrack';tr.innerHTML=Array.from({length:4},()=>Array.from({length:10},(_,n)=>`<span>${n}</span>`).join('')).join('');d.appendChild(tr);$('ticker').appendChild(d);const dh=parseFloat(getComputedStyle(d).getPropertyValue('--digit-h'))||62;tr.style.transition='none';tr.style.transform=`translateY(-${(10+Number(a[i]))*dh}px)`;requestAnimationFrame(()=>requestAnimationFrame(()=>{tr.style.transition=`transform ${760+i*75}ms cubic-bezier(.12,.8,.15,1)`;tr.style.transform=`translateY(-${(20+Number(b[i]))*dh}px)`}))}}
+function spawnPetals(){const host=$('burst');host.innerHTML='';for(let i=0;i<13;i++){const p=document.createElement('i');p.style.setProperty('--x',((i%2?1:-1)*(50+Math.random()*110))+'px');p.style.setProperty('--y',(-35+Math.random()*165)+'px');p.style.setProperty('--r',((Math.random()-.5)*100)+'deg');p.style.left=(50+Math.random()*20-10)+'%';p.style.top=(43+Math.random()*18-9)+'%';host.appendChild(p)}}
+function randomPickWeighted(list){const weight=list.reduce((a,x)=>a+x.w,0);let x=Math.random()*weight;for(const z of list){x-=z.w;if(x<=0)return z.id}return list[list.length-1].id}
+function randomReward(lap){if(lap===1)return mkItem('lap:1','triangle','white','none','LAP 1');
+ const items=[{id:'circle',w:30},{id:'triangle',w:26},{id:'square',w:lap===2?90:27},{id:'bar',w:lap>=6?22:0},{id:'bolt',w:lap>=8?16:0},
+ {id:'star',w:lap>=9?Math.min(28,3+(lap-9)*.36):0},{id:'diamond',w:lap>=15?Math.min(27,3+(lap-15)*.36):0},
+ {id:'arrow',w:lap>=18?Math.min(24,3+(lap-18)*.3):0},{id:'prism',w:lap>=40?Math.min(18,2+(lap-40)*.26):0},
+ {id:'sigil',w:lap>=70?Math.min(10,1+(lap-70)*.2):0}];
+ const shape=lap===2?'square':lap===6?'bar':lap===8?'bolt':randomPickWeighted(items);
+ // Monochrome for first laps, diluted colors later. Full palette only with long-term progress.
+ let color='white';const c=Math.random();if(lap===4)color='sky';else if(lap===12)color='red';else if(lap>=3&&c<Math.min(.78,.12+(lap-3)*.008))color=lap<9?'sky':['sky','blue','mint','red','amber','violet','pink'][Math.floor(Math.random()*(lap<20?4:7))];
+ let effect='none';const e=Math.random();if(lap===10)effect='pulse';else if(lap===24)effect='trail';else if(lap>=10&&e<Math.min(.62,.05+(lap-10)*.007))effect=lap<25?'pulse':['pulse','trail','spark','ring','prism'][Math.floor(Math.random()*(lap<40?3:5))];
+ return mkItem('lap:'+lap,shape,color,effect,'LAP '+lap);
+}
+function addItem(item){if(!S.inventory.some(x=>x.id===item.id)){S.inventory.push(item);if(item.color&&!S.colorsUnlocked.includes(item.color))S.colorsUnlocked.push(item.color);if(item.effect&&!S.effectsUnlocked.includes(item.effect))S.effectsUnlocked.push(item.effect);return true}return false}
+function grant(m,judge,eventId){if(S.busy||S.awards[eventId]){if(S.awards[eventId])showFieldToast('この獲得は受け取り済みです');return false}const from=S.meters,to=from+m;if(!Number.isSafeInteger(to)||m<=0)return false;
+ S.busy=true;S.awards[eventId]={m,judge,at:Date.now()};S.meters=to;
+ if(from===0&&to>0&&!S.inventory.some(x=>x.id==='first:circle')){const item=mkItem('first:circle','circle','white','none','最初のm GET');addItem(item);S.unseen.push('first:circle')}
+ for(let lap=laps(from)+1;lap<=laps(to);lap++){const key=String(lap);if(S.laps[key])continue;const item=randomReward(lap);addItem(item);S.laps[key]={id:'lap:'+lap,lap,m:lap*400,itemId:item.id};S.unseen.push('lap:'+lap)}
+ for(const milestone of MILESTONES){if(from<milestone.m&&to>=milestone.m&&!S.milestones[String(milestone.m)]){const key=String(milestone.m);S.milestones[key]={id:'milestone:'+key,m:milestone.m,label:milestone.label};S.unseen.push('milestone:'+key)}}
+ const stored=saveState();$('judge').textContent=judge;$('plusM').innerHTML='+'+fmt(m)+'<small>m GET</small>';$('awardNote').textContent=`TOTAL ${fmt(from)}m → ${fmt(to)}m${stored?'':' / 保存できませんでした'}`;rollDigits(from,to);spawnPetals();showSheet('awardSheet');setTimeout(()=>runDistance(from,to),1450);return true;
+}
+function runDistance(from,to){showSheet(null);let start=null,lastLap=laps(from);const duration=Math.min(5100,Math.max(1850,1500+(to-from)*3.3));$('stageWrap').classList.add('running');trailDots=[];trail.innerHTML='';S.displayMeters=from;renderField();
+ function tick(t){if(start===null)start=t;const p=Math.min(1,(t-start)/duration),eased=p<.85?p:.85+.15*(1-(1-(p-.85)/.15)**2);S.displayMeters=p===1?to:from+(to-from)*eased;renderField();recordTrail(S.displayMeters);const lapNow=laps(Math.floor(S.displayMeters));if(lapNow>lastLap){flash('lap-flare');lastLap=lapNow;showFieldToast(`LAP ${lapNow} / 400m走破！`)}if(p<1){requestAnimationFrame(tick);return}
+ $('stageWrap').classList.remove('running');S.displayMeters=to;renderField();flash('evolution-flare');showFieldToast(laps(to)>laps(from)?`${laps(to)-laps(from)}周走破！ 次のパーツが見つかりました`:`+${fmt(to-from)}m 走りました`);setTimeout(()=>{trailDots=[];trail.innerHTML=''},1100);setTimeout(()=>{S.busy=false;if(S.unseen.length)startRewardReveal()},1100)}requestAnimationFrame(tick)}
+function rewardData(id){if(id==='first:circle')return{kind:'part',item:itemById(id),heading:'FIRST SHAPE',desc:'最初の「◯」を獲得。コレクションへ追加しました。'};if(id.startsWith('lap:')){const r=S.laps[id.slice(4)];return r?{kind:'part',item:itemById(r.itemId),heading:`LAP ${r.lap} / PART GET`,desc:r.lap===1?'最初の1周。新しい「△」が加わりました。':'400m到達の報酬。形・色・光は周回で変化します。'}:null}if(id.startsWith('milestone:')){const r=S.milestones[id.slice(10)];return r?{kind:'badge',heading:'MILESTONE',desc:r.label}:null}return null}
+let revealList=[],revealPos=0;
+function startRewardReveal(){if(S.busy)return;revealList=S.unseen.filter(x=>rewardData(x));revealPos=0;if(revealList.length)showReward()}
+function showReward(){const id=revealList[revealPos],data=rewardData(id);if(!data){finishReward();return}const glyph=$('rewardGlyph');glyph.classList.remove('pop');$('rewardEyebrow').textContent=data.heading;$('rewardMeta').textContent=`${revealPos+1} / ${revealList.length}`;$('rewardTitle').textContent='MYSTERY';$('rewardDescription').textContent=data.kind==='badge'?'記念の光が待っています':id==='first:circle'?'小さな変化を開こう':'次は何が見つかる？';glyph.innerHTML='?';$('rewardOpen').dataset.mode='open';$('rewardOpen').textContent='開く →';$('rewardBulkBtn').classList.toggle('hidden',revealList.length<=5);showSheet('rewardSheet')}
+function openReward(){const id=revealList[revealPos],d=rewardData(id);if(!d)return;$('rewardGlyph').innerHTML=d.kind==='part'?paintGlyph(d.item):'<span>✧</span>';$('rewardGlyph').classList.remove('pop');void $('rewardGlyph').offsetWidth;$('rewardGlyph').classList.add('pop');$('rewardTitle').textContent=d.kind==='part'?SHAPE_SET[d.item.shape].label:d.desc;$('rewardDescription').textContent=d.desc+(d.kind==='part'&&d.item.color!=='white'?' / '+(COLOR_SET[d.item.color]?.name||'MIX COLOR'):'');$('rewardOpen').dataset.mode='next';$('rewardOpen').textContent=revealPos+1<revealList.length?`次の報酬へ（残り${revealList.length-revealPos-1}件） →`:'フィールドに戻る →'}
+function finishReward(){const delivered=new Set(revealList);S.unseen=S.unseen.filter(x=>!delivered.has(x));saveState();revealList=[];showSheet(null);renderField();if(S.inventory.some(x=>x.shape==='circle')&&S.inventory.some(x=>x.shape==='triangle')&&!S.discovered.includes('circle|triangle'))showFieldToast('形が2つそろいました。COLLECTIONへ！')}
+$('rewardOpen').onclick=()=>{if($('rewardOpen').dataset.mode==='open')openReward();else if(revealPos+1<revealList.length){revealPos++;showReward()}else finishReward()};
+$('rewardBulkBtn').onclick=()=>{const n=revealList.length;finishReward();showFieldToast(`${n}件の報酬をコレクションに記録しました`)};
+function unlockedColors(){return [...new Set(['white',...S.colorsUnlocked])]}
+function unlockedEffects(){return [...new Set(['none',...S.effectsUnlocked])]}
+function dailyCount(){return S.fusionDaily.date===today()?S.fusionDaily.count:0}
+function itemCard(it,where){const color=hexOf(it),colorName=it.color==='white'?'WHITE':COLOR_SET[it.color]?.name||'MIX',effectName=EFFECT_SET[it.effect]||'なし',inBox=where==='fuse'&&S.box.includes(it.id);return `<button type="button" class="partCard ${it.color==='white'?'monochrome':'hasColor'} ${inBox?'inBox':''} ${S.selectedId===it.id&&where==='parts'?'selected':''}" data-item="${it.id}" data-action="${where}" style="--part-ink:${color}" aria-label="${SHAPE_SET[it.shape].label} ${colorName} エフェクト ${effectName}${where==='fuse'?'。形をつまんでBOXへドラッグ、タップでも選択可能':''}"><span class="dragGrip">${paintGlyph(it)}</span><span class="partCardName">${SHAPE_SET[it.shape].label}</span><span class="partColorTag"><i class="partColorDot"></i>${colorName}</span><span class="partEffectTag ${it.effect!=='none'?'hasEffect':''}">${it.effect==='none'?'光なし':'✦ '+effectName}</span></button>`}
+function openCollection(view){if(S.busy)return;S.filter=view||'parts';renderCollection();showSheet('collectionSheet')}
+function renderCollection(){const m=S.meters;$('collectionSummary').textContent=`${fmt(m)}m ・ ${laps(m)}周 ・ ${S.inventory.length} PARTS`;for(const b of $('collectionFilters').children)b.classList.toggle('active',b.dataset.filter===S.filter);
+ for(const id of ['partsPanel','fusionPanel','recipesPanel','medalsPanel'])$(id).hidden=id!==S.filter+'Panel';
+ $('unseenRewards').classList.toggle('hidden',S.unseen.length===0);
+ if(S.filter==='parts')renderParts();if(S.filter==='fusion')renderFusion();if(S.filter==='recipes')renderRecipes();if(S.filter==='medals')renderMedals();}
+function renderParts(){const all=[S.point,...S.inventory];if(!all.some(x=>x.id===S.selectedId))S.selectedId='point';$('partGrid').innerHTML=all.map(x=>itemCard(x,'parts')).join('');const it=selectedItem();$('partDetailName').textContent=SHAPE_SET[it.shape].label;$('partDetailIcon').innerHTML=paintGlyph(it);$('partDetailSource').textContent=it.source||'はじまりの点';$('partPlace').disabled=S.activeId===it.id;$('partPlace').textContent=S.activeId===it.id?'フィールドに配置中':'フィールドに配置 →';$('sizeValue').textContent=String(it.size||100)+'%';$('partSize').value=it.size||100;
+ $('partColors').innerHTML=unlockedColors().map(c=>`<button type="button" class="colorPick ${it.color===c?'active':''}" style="--pick:${COLOR_SET[c]?.hex||c}" data-color="${c}" aria-label="${COLOR_SET[c]?.name||'MIX'}" title="${COLOR_SET[c]?.name||'MIX'}"></button>`).join('');
+ $('partEffects').innerHTML=unlockedEffects().map(e=>`<button type="button" class="effectPick ${it.effect===e?'active':''}" data-effect="${e}">${EFFECT_SET[e]}</button>`).join('');}
+function choosePart(id){if(!itemById(id))return;S.selectedId=id;renderParts()}
+function setPartColor(c){const it=selectedItem();if(!unlockedColors().includes(c))return;it.color=c;saveState();renderParts();renderField()}
+function setPartEffect(e){const it=selectedItem();if(!unlockedEffects().includes(e))return;it.effect=e;saveState();renderParts();renderField()}
+function placePart(){const it=selectedItem();S.activeId=it.id;saveState();renderField();showSheet(null);flash('evolution-flare');showFieldToast(S.activeId==='point'?'白い点を選びました':`${SHAPE_SET[it.shape].label}をトラックに配置しました`)}
+function renderFusion(){const all=S.inventory,stock=$('fusionStock'),scrollTop=stock.scrollTop;stock.innerHTML=all.length?all.map(x=>itemCard(x,'fuse')).join(''):'<div class="emptyFusion">走って形を集めよう</div>';stock.scrollTop=scrollTop;
+ $('fusionStockCount').textContent=all.length+' PARTS';$('fusionScrollGuide').textContent=all.length>8?'上下にスクロール':'ドラッグ／タップ';
+ for(let i=0;i<2;i++){const it=itemById(S.box[i]),sl=$(`fuseSlot${i}`);sl.style.setProperty('--slot-color',it?hexOf(it):'#93cae8');sl.classList.toggle('filled',!!it);sl.innerHTML=it?paintGlyph(it)+`<span>${SHAPE_SET[it.shape].label}<small>${it.color==='white'?'WHITE':COLOR_SET[it.color]?.name||'MIX'} / 外す</small></span>`:`<span class="emptySymbol">＋</span><span>PART ${i+1}</span>`}
+ const both=S.box.every(Boolean),left=FUSION_DAILY_LIMIT-dailyCount();$('fusionCount').textContent=`今日の融合 ${dailyCount()} / ${FUSION_DAILY_LIMIT} ・ 残り ${Math.max(0,left)}回`;$('fuseBtn').disabled=!both||left<=0;
+ $('fuseBtn').textContent=left<=0?'今日はここまで':both?'融合する →':'2つのパーツをBOXへ';
+ $('fusionTip').textContent=both?'セット完了。融合ボタンを押してみよう。':'素材をつかんで下のBOXへ。タップでも入れられます。';}
+function putInBox(id,targetSlot=null){const it=itemById(id);if(!it||it.shape==='point')return false;if(S.box[0]===id||S.box[1]===id){$('fusionTip').textContent='同じパーツを2枠に入れることはできません';return false}const slot=targetSlot===0||targetSlot===1?targetSlot:S.box[0]===null?0:S.box[1]===null?1:1;S.box[slot]=id;renderFusion();return true} 
+function recipeKey(a,b){return[a,b].sort().join('|')}
+function mixColors(a,b){if(a===b)return a;const x=hexOf({color:a}),y=hexOf({color:b});const n=v=>parseInt(v,16),r=Math.min(255,Math.round((n(x.slice(1,3))+n(y.slice(1,3)))/2)),g=Math.min(255,Math.round((n(x.slice(3,5))+n(y.slice(3,5)))/2)),blue=Math.min(255,Math.round((n(x.slice(5,7))+n(y.slice(5,7)))/2));const result='#'+[r,g,blue].map(v=>v.toString(16).padStart(2,'0')).join('');if(a==='white')return b;if(b==='white')return a;return result}
+function fuse(){if(S.busy||dailyCount()>=FUSION_DAILY_LIMIT||!S.box.every(Boolean))return;const a=itemById(S.box[0]),b=itemById(S.box[1]);if(!a||!b||a.id===b.id)return;const r=RECIPES.find(x=>recipeKey(x.a,x.b)===recipeKey(a.shape,b.shape));if(!r){$('fusionTip').textContent='まだ反応しない組み合わせ。別の形も試してみよう。';showFieldToast('今は融合しない組み合わせです');return}if(laps(S.meters)<r.lap){$('fusionTip').textContent='まだ光が足りないようです。もう少しトラックを進もう。';showFieldToast('この組み合わせはまだ目覚めません');return}
+ // Only successful discoveries count. Repeating the same combination of shapes with the same colors/effects is disallowed.
+ const inputs=[a,b].map(x=>`${x.shape}:${x.color}:${x.effect}`).sort().join('|');if(S.fusions.some(x=>x.signature===inputs)){showFieldToast('この組み合わせは発見済みです。色やエフェクトを変えよう');return}
+ const mixed=mixColors(a.color,b.color);let effect='none';if(a.effect!== 'none'||b.effect!=='none')effect=(a.effect!=='none'&&b.effect!=='none'&&a.effect!==b.effect)?'prism':a.effect!=='none'?a.effect:b.effect;
+ const id='fusion:'+Date.now().toString(36)+':'+Math.random().toString(36).slice(2,8);const item=mkItem(id,r.out,mixed,effect,`融合：${SHAPE_SET[a.shape].symbol}＋${SHAPE_SET[b.shape].symbol}`,Math.round((Number(a.size||100)+Number(b.size||100))/2));addItem(item);
+ S.fusions.push({signature:inputs,id,recipe:recipeKey(r.a,r.b),at:Date.now()});if(!S.discovered.includes(recipeKey(r.a,r.b)))S.discovered.push(recipeKey(r.a,r.b));if(S.fusionDaily.date!==today())S.fusionDaily={date:today(),count:0};S.fusionDaily.count++;S.box=[null,null];S.selectedId=id;saveState();
+ const stage=$('fusionReveal');stage.hidden=false;$('fusionRevealShape').innerHTML=paintGlyph(item);$('fusionRevealName').textContent=SHAPE_SET[item.shape].label;$('fusionResultNote').textContent=`新しい形を獲得！ 元の${SHAPE_SET[a.shape].symbol}と${SHAPE_SET[b.shape].symbol}は残っています。`;stage.classList.remove('ignite');void stage.offsetWidth;stage.classList.add('ignite');$('fusionResultPlace').dataset.item=id;showSheet('fusionResultSheet');}
+function renderRecipes(){const discovered=S.discovered.length;$('recipeCount').textContent=`発見 ${discovered} / ${RECIPES.length}`;$('recipeGrid').innerHTML=RECIPES.map(r=>{const seen=S.discovered.includes(recipeKey(r.a,r.b));return `<div class="recipeRow ${seen?'seen':'unknown'}"><span>${seen?`${SHAPE_SET[r.a].symbol} ＋ ${SHAPE_SET[r.b].symbol}`:'？ ＋ ？'}</span><b>${seen?SHAPE_SET[r.out].symbol+' '+SHAPE_SET[r.out].label:'？？？'}</b><small>${seen?'発見済み':'未発見'}</small></div>`}).join('')}
+function renderMedals(){$('medalsPanel').innerHTML=MILESTONES.map(x=>`<div class="recipeRow ${S.milestones[x.m]?'seen':'unknown'}"><span>${fmt(x.m)}m</span><b>${S.milestones[x.m]?'✧':''} ${x.label}</b><small>${S.milestones[x.m]?'達成':'これから'}</small></div>`).join('')}
+function stopQuizClock(){if(QUIZ_ACTIVE.timer!==null){clearInterval(QUIZ_ACTIVE.timer);QUIZ_ACTIVE.timer=null}}
+function quizRemaining(){return Math.max(0,(QUIZ_ACTIVE.deadline-performance.now())/1000)}
+function drawQuizTimer(){const v=quizRemaining();$('quizTimerValue').textContent=v.toFixed(1)+'s';$('quizTimeFill').style.width=(100*v/QUIZ_RULES.seconds)+'%';$('quizTimerBox').classList.toggle('hurry',v<=5);if(v<=0&&!QUIZ_ACTIVE.answered)expireQuiz()}
+function nextQuizIndex(){for(let off=0;off<QUIZ_BANK.length;off++){const i=(S.quizIndex+off)%QUIZ_BANK.length;if(!S.answered[String(i)])return i}return -1}
+function openQuiz(){if(S.busy)return;stopQuizClock();const i=nextQuizIndex();if(i<0){showFieldToast('試作の6問を学習済みです');showSheet(null);return}QUIZ_ACTIVE.index=i;QUIZ_ACTIVE.question=QUIZ_BANK[i];QUIZ_ACTIVE.answered=false;const q=QUIZ_ACTIVE.question;$('quizStage').textContent=q.stage;$('quizIndex').textContent=`QUESTION ${String(i+1).padStart(2,'0')} / ${QUIZ_BANK.length}`;$('quizDiff').textContent=q.diff;$('quizProg').style.width=((Object.keys(S.answered).length+1)/QUIZ_BANK.length*100)+'%';$('question').textContent=q.q;$('options').innerHTML=q.opts.map((o,j)=>`<button class="option" data-opt="${j}"><b>${'ABCD'[j]}</b>${o}</button>`).join('');$('explain').textContent='速く正解すると、基本m＋タイムボーナス。不正解も学習報酬。';$('quizNextBtn').classList.add('hidden');showSheet('quizSheet');QUIZ_ACTIVE.deadline=performance.now()+QUIZ_RULES.seconds*1000;QUIZ_ACTIVE.timer=setInterval(drawQuizTimer,80);drawQuizTimer()}
+function showQuizSolution(chosen){const q=QUIZ_ACTIVE.question;[...$('options').children].forEach((b,j)=>{b.disabled=true;if(j===q.right)b.classList.add('good');if(j===chosen&&chosen!==q.right)b.classList.add('bad')})}
+function answerQuiz(i){if(S.busy||QUIZ_ACTIVE.answered||!QUIZ_ACTIVE.question)return;const remaining=quizRemaining();if(remaining<=0){expireQuiz();return}QUIZ_ACTIVE.answered=true;stopQuizClock();S.busy=true;const q=QUIZ_ACTIVE.question,good=i===q.right;showQuizSolution(i);const bonus=good?Math.ceil(remaining)*QUIZ_RULES.bonusPerSecond:0,gain=good?q.m+bonus:QUIZ_RULES.baseWrongMeters;$('explain').textContent=(good?`正解！ 基本 ${q.m}m ＋ 速答 ${bonus}m ＝ ${gain}m。`:`不正解。学習報酬 ${gain}m。`)+' '+q.exp;const quizId=QUIZ_ACTIVE.index,id='quiz:'+quizId;setTimeout(()=>{S.busy=false;S.answered[String(quizId)]={correct:good,at:Date.now()};S.quizIndex=(quizId+1)%QUIZ_BANK.length;grant(gain,good?`CORRECT! / SPEED +${bonus}m`:'LEARN & RUN',id)},950)}
+function expireQuiz(){if(QUIZ_ACTIVE.answered||!QUIZ_ACTIVE.question||$('quizSheet').hidden)return;QUIZ_ACTIVE.answered=true;stopQuizClock();showQuizSolution(-1);const q=QUIZ_ACTIVE.question;$('quizTimerValue').textContent='0.0s';$('quizTimeFill').style.width='0%';$('quizTimerBox').classList.add('hurry');$('explain').textContent=`TIME UP / 正解：${'ABCD'[q.right]}「${q.opts[q.right]}」。${q.exp}（今回は獲得0m）`;$('quizNextBtn').classList.remove('hidden')}
+function afterQuizTimeout(){if(S.busy||!QUIZ_ACTIVE.answered)return;const i=QUIZ_ACTIVE.index;S.answered[String(i)]={correct:false,timeout:true,at:Date.now()};S.quizIndex=(i+1)%QUIZ_BANK.length;saveState();openQuiz()}
+function renderEarnStatuses(){$('earnDailyStatus').textContent=S.awards['daily:'+today()]?'今日の獲得済み':'獲得する →';$('earnReviewStatus').textContent=S.awards['review:'+today()]?'今日の獲得済み':'回答する →';$('earnEventStatus').textContent=S.awards['event-demo']?'体験済み':'試す →'}
+function openEarnMenu(){if(S.busy)return;renderEarnStatuses();showSheet('taskSheet')}
+function openEarnAction(which){if(S.busy)return;for(const id of ['activityDaily','activityReview','activityDemo'])$(id).hidden=id!=='activity'+which;const meta={Daily:['DAILY CHECK-IN','チェックイン','今日の1回'],Review:['TRAINING REVIEW','ふりかえり','休んだ日も同じm'],Demo:['RACE / DEMO','大会体験','正式な大会・出走記録とは未連携']}[which];$('activityKicker').textContent=meta[0];$('activityTitle').textContent=meta[1];$('activityDescription').textContent=meta[2];updateButtons();showSheet('activitySheet')}
+function updateButtons(){$('dailyBtn').disabled=!!S.awards['daily:'+today()];$('dailyBtn').textContent=$('dailyBtn').disabled?'本日は獲得済み':'タップで +180m';$('reviewBtn').disabled=!!S.awards['review:'+today()]||!S.mood;$('reviewBtn').textContent=S.awards['review:'+today()]?'本日は獲得済み':'ふりかえりで +240m';$('eventBtn').disabled=!!S.awards['event-demo'];$('eventBtn').textContent=$('eventBtn').disabled?'体験済み':'体験用 +400m'}
+function initMoods(){$('moods').innerHTML=['よくできた','できた','思うようにいかなかった','休んだ'].map(x=>`<button data-mood="${x}">${x}</button>`).join('')}
+const INTRO_SHOWN_KEY='runFieldIntroSeenV16';let introFirstLaunch=false;
+function introWasSeen(){try{return localStorage.getItem(INTRO_SHOWN_KEY)==='1'}catch(_){return false}}
+function rememberIntroSeen(){try{localStorage.setItem(INTRO_SHOWN_KEY,'1')}catch(_){}}
+function playIntro(firstLaunch){if(S.busy)return;introFirstLaunch=firstLaunch;$('introContinueBtn').textContent=firstLaunch?'FIELDへ進む →':'フィールドへ戻る →';$('introSkipBtn').textContent=firstLaunch?'スキップ':'閉じる';const sh=$('introSheet');sh.classList.remove('is-playing');showSheet('introSheet');void sh.offsetWidth;sh.classList.add('is-playing')}
+function finishIntro(){rememberIntroSeen();$('introSheet').classList.remove('is-playing');introFirstLaunch=false;showSheet(null);renderField()}
+$('introHelpBtn').onclick=()=>playIntro(false);$('introContinueBtn').onclick=finishIntro;$('introSkipBtn').onclick=finishIntro;
+$('quizBtn').onclick=openQuiz;$('taskBtn').onclick=openEarnMenu;$('collectionBtn').onclick=()=>openCollection('parts');$('earnQuiz').onclick=openQuiz;$('earnDaily').onclick=()=>openEarnAction('Daily');$('earnReview').onclick=()=>openEarnAction('Review');$('earnDemo').onclick=()=>openEarnAction('Demo');$('taskBackBtn').onclick=openEarnMenu;
+$('options').onclick=e=>{const b=e.target.closest('[data-opt]');if(b)answerQuiz(Number(b.dataset.opt))};$('quizNextBtn').onclick=afterQuizTimeout;
+$('dailyBtn').onclick=()=>grant(180,'DAILY CHECK-IN','daily:'+today());$('moods').onclick=e=>{const b=e.target.closest('[data-mood]');if(!b)return;S.mood=b.dataset.mood;[...$('moods').children].forEach(x=>x.classList.toggle('active',x===b));updateButtons()};$('reviewBtn').onclick=()=>{if(S.mood)grant(240,'TRAINING REVIEW','review:'+today())};$('eventBtn').onclick=()=>grant(400,'RACE MEMORY / DEMO','event-demo');
+$('collectionFilters').onclick=e=>{const b=e.target.closest('[data-filter]');if(!b)return;S.filter=b.dataset.filter;renderCollection()};$('partGrid').onclick=e=>{const b=e.target.closest('[data-item]');if(b)choosePart(b.dataset.item)};$('partPlace').onclick=placePart;$('partColors').onclick=e=>{const b=e.target.closest('[data-color]');if(b)setPartColor(b.dataset.color)};$('partEffects').onclick=e=>{const b=e.target.closest('[data-effect]');if(b)setPartEffect(b.dataset.effect)};$('partSize').oninput=e=>{const it=selectedItem();it.size=Number(e.target.value);$('sizeValue').textContent=String(it.size)+'%';$('partDetailIcon').innerHTML=paintGlyph(it);renderField()};$('partSize').onchange=()=>{saveState();renderParts()};
+
+/* V17 touch / mouse drag: source grip -> visible BOX slot. No HTML5 drag dependency
+   (iOS Safari does not reliably support dragging arbitrary buttons). */
+const FUSION_DRAG={active:null,suppressClickUntil:0};
+function fusionSlotUnder(x,y){for(let i=0;i<2;i++){const r=$(`fuseSlot${i}`).getBoundingClientRect();if(x>=r.left-6&&x<=r.right+6&&y>=r.top-6&&y<=r.bottom+6)return i}return null}
+function fusionDragHighlight(slot){for(let i=0;i<2;i++)$(`fuseSlot${i}`).classList.toggle('over',i===slot)}
+function fusionDragGhost(it){const ghost=document.createElement('div');ghost.className='fusionDragGhost';ghost.style.setProperty('--drag-color',hexOf(it));ghost.innerHTML=paintGlyph(it)+`<strong>${it.color==='white'?'WHITE':COLOR_SET[it.color]?.name||'MIX'}</strong><small>${SHAPE_SET[it.shape].label}</small>`;document.body.appendChild(ghost);return ghost}
+function fusionPointerStart(e){const grip=e.target.closest('.dragGrip');if(!grip||e.button!==0&&e.pointerType==='mouse'||S.filter!=='fusion'||$('collectionSheet').hidden)return;
+ const card=grip.closest('[data-item]'),it=card&&itemById(card.dataset.item);if(!it||FUSION_DRAG.active)return;
+ e.preventDefault();const g=fusionDragGhost(it);
+ FUSION_DRAG.active={pointerId:e.pointerId,id:it.id,grip,card,ghost:g,startX:e.clientX,startY:e.clientY,moved:false};
+ grip.setPointerCapture(e.pointerId);g.style.left=e.clientX+'px';g.style.top=e.clientY+'px';card.classList.add('isDragging');$('fusionBoxFrame').classList.add('dragging');
+}
+function fusionPointerMove(e){const d=FUSION_DRAG.active;if(!d||d.pointerId!==e.pointerId)return;
+ e.preventDefault();d.ghost.style.left=e.clientX+'px';d.ghost.style.top=e.clientY+'px';if(Math.hypot(e.clientX-d.startX,e.clientY-d.startY)>9)d.moved=true;
+ const target=fusionSlotUnder(e.clientX,e.clientY);fusionDragHighlight(target);
+ // Reveal offscreen cards if user drags at the stock's top/bottom edge.
+ const r=$('fusionStock').getBoundingClientRect(),stock=$('fusionStock');
+ if(e.clientY>r.bottom-22&&e.clientY<r.bottom+8)stock.scrollTop+=12;
+ else if(e.clientY<r.top+22&&e.clientY>r.top-8)stock.scrollTop-=12;
+}
+function fusionPointerFinish(e,cancel=false){const d=FUSION_DRAG.active;if(!d||d.pointerId!==e.pointerId)return;
+ const slot=cancel?null:fusionSlotUnder(e.clientX,e.clientY);fusionDragHighlight(null);$('fusionBoxFrame').classList.remove('dragging');
+ if(d.card.isConnected)d.card.classList.remove('isDragging');d.ghost.remove();FUSION_DRAG.active=null;
+ FUSION_DRAG.suppressClickUntil=performance.now()+400;
+ if(slot!==null){if(putInBox(d.id,slot)){$('fusionTip').textContent=`PART ${slot+1}へ配置。素材は残ります。`;}}
+ else if(!cancel&&!d.moved){if(putInBox(d.id))$('fusionTip').textContent='BOXに入りました。もう一つ選ぼう。';}
+ else if(!cancel){$('fusionTip').textContent='BOXの「＋」へドロップしてください';}
+}
+$('fusionStock').addEventListener('pointerdown',fusionPointerStart);
+$('fusionStock').addEventListener('pointermove',fusionPointerMove);
+$('fusionStock').addEventListener('pointerup',e=>fusionPointerFinish(e));
+$('fusionStock').addEventListener('pointercancel',e=>fusionPointerFinish(e,true));
+$('fusionStock').addEventListener('lostpointercapture',e=>fusionPointerFinish(e,true));
+
+$('fusionStock').onclick=e=>{if(performance.now()<FUSION_DRAG.suppressClickUntil)return;const b=e.target.closest('[data-item]');if(b)putInBox(b.dataset.item)};$('fuseSlot0').onclick=()=>{S.box[0]=null;renderFusion()};$('fuseSlot1').onclick=()=>{S.box[1]=null;renderFusion()};$('fuseBtn').onclick=fuse;$('fusionResultPlace').onclick=()=>{const id=$('fusionResultPlace').dataset.item;if(itemById(id)){S.selectedId=id;S.activeId=id;saveState();showSheet(null);renderField();flash('evolution-flare');showFieldToast('融合した形をトラックへ配置しました')}};$('fusionResultKeep').onclick=()=>openCollection('parts');$('unseenRewards').onclick=startRewardReveal;
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeSheets);window.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheets()});
+initMoods();renderField();showSheet(null);if(!introWasSeen())playIntro(true);
+if(S.unseen.length)setTimeout(()=>{if(!S.busy&&sheetIds.every(id=>$(id).hidden))showFieldToast(`未開封の報酬が${S.unseen.length}件あります。COLLECTIONから確認できます`)},1200);
+// In-browser QA hook is only enabled on file:/localhost with ?qa=1. Never on GitHub Pages.
+if((location.protocol==='file:'||location.hostname==='127.0.0.1'||location.hostname==='localhost')&&location.search.includes('qa=1')){
+ window.__RF_QA={getState:()=>JSON.parse(JSON.stringify(S)),grant:(m)=>grant(m,'LOCAL QA / METERS','qa:'+Date.now()+':'+Math.random()),reset:()=>{try{localStorage.removeItem(STORAGE_KEY);localStorage.removeItem(OLD_STORAGE_KEY);localStorage.removeItem(INTRO_SHOWN_KEY)}catch(_){}location.reload()},openCollection,fuse,recipeKey,randomReward};
+}
+</script></body></html>
