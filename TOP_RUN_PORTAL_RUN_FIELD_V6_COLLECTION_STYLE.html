@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#050912">
+<title>TOP RUN PORTAL / RUN FIELD V6 COLLECTION STYLE</title>
+<style>
+:root{
+  --bg:#070b12;--ink:#eaf1f7;--muted:#9aa7b6;--line:#243342;--panel:#0d1420;--panel2:#101a28;
+  --accent:#a8c8ff;--accent2:#9fe6ff;--track:#9aa3ad;--glow:rgba(255,255,255,.18);
+  --fieldBright:.22;--fieldSaturation:0;--fieldHue:210deg;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;height:100%;background:#000;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;overflow:hidden;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit}
+button{-webkit-tap-highlight-color:transparent}
+#app{max-width:480px;height:100dvh;margin:0 auto;background:linear-gradient(180deg,#0a111c,#060910);border-inline:1px solid #1e2936;display:flex;flex-direction:column;position:relative;overflow:hidden}
+@supports not (height:100dvh){#app{height:100vh}}
+.hidden{display:none!important}
+.topbar{height:72px;padding:14px 16px 10px;display:flex;justify-content:space-between;align-items:flex-start;background:linear-gradient(180deg,#0e1623,#09111a);border-bottom:1px solid #1f2b38;z-index:6;flex:none}
+.brand .eyebrow{font-size:10px;letter-spacing:.26em;color:#b5c3cf}
+.brand .title{margin-top:8px;font-size:19px;letter-spacing:.22em;font-weight:820}
+.hud{display:flex;gap:18px;align-items:flex-start}
+.hudBox{text-align:right}
+.hudBox span{display:block;font-size:8px;color:#94a2b0;letter-spacing:.22em}
+.hudBox strong{display:block;font-size:24px;font-weight:360;letter-spacing:-.04em;line-height:1.02;font-variant-numeric:tabular-nums}
+.hudBox small{font-size:10px;color:#c6d2de}
+.stageWrap{position:relative;flex:1;min-height:0;background:radial-gradient(circle at 50% 20%,rgba(150,190,255,.12),transparent 45%),linear-gradient(180deg,#1b2531 0%,#131a23 35%,#0a1119 100%);overflow:hidden}
+.stageSky{position:absolute;inset:0;filter:grayscale(calc(1 - var(--fieldSaturation))) brightness(calc(.78 + var(--fieldBright)));transition:filter .7s ease}
+.stageSky:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 15%,rgba(250,250,255,.20),transparent 30%),linear-gradient(180deg,rgba(255,255,255,.04),transparent 55%)}
+.stageSky:after{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent 0 58%,rgba(255,255,255,.03) 58% 60%,transparent 60% 100%);opacity:.5}
+.fieldHeader{position:absolute;top:12px;left:16px;right:16px;display:flex;justify-content:space-between;z-index:3;text-shadow:0 2px 14px #000c;pointer-events:none}
+.fieldHeader .left b,.fieldHeader .right b{font-size:11px;letter-spacing:.24em}
+.fieldHeader small{display:block;margin-top:4px;font-size:9px;color:#b6c3cf;letter-spacing:.12em}
+.trackScene{position:absolute;inset:62px 8px 96px;z-index:1}
+.trackScene svg{width:100%;height:100%}
+.trackOuter{fill:url(#trackFill);stroke:#e0e6ed;stroke-opacity:.45;stroke-width:2}
+.trackLane{fill:none;stroke:#edf1f6;stroke-opacity:.50;stroke-width:1.4}
+.infield{fill:#101720;stroke:#8090a0;stroke-opacity:.35;stroke-width:1.1}
+.trackGlow{opacity:0;transition:opacity .7s ease}
+.colorized .trackGlow{opacity:.72}
+.trackMarkers{stroke:#dbe7f3;stroke-opacity:.28;stroke-width:1.2}
+.stands{opacity:0;transition:opacity .7s ease, transform .7s ease;transform:translateY(18px)}
+.stands.show{opacity:.9;transform:none}
+.crowd{opacity:0;transition:opacity .7s ease}
+.crowd.show{opacity:.8}
+.lights{opacity:0;transition:opacity .7s ease}
+.lights.show{opacity:1}
+.runnerOrbit{position:absolute;inset:0;z-index:2;pointer-events:none}
+.fieldRunner{position:absolute;width:88px;height:134px;transform:translate(-50%,-72%);filter:drop-shadow(0 8px 10px rgba(0,0,0,.45));will-change:left,top,transform}
+.fieldShadow{position:absolute;width:62px;height:12px;background:rgba(0,0,0,.36);filter:blur(6px);border-radius:50%;transform:translate(-50%,-50%);will-change:left,top}
+.runnerSil svg{width:100%;height:100%}
+.flashLine{position:absolute;inset:0;opacity:0;pointer-events:none;background:linear-gradient(105deg,transparent 30%,rgba(255,255,255,.35) 48%,transparent 58%)}
+.flashLine.play{animation:sweep .85s ease-out}
+@keyframes sweep{0%{opacity:0;transform:translateX(-100%)}25%{opacity:1}100%{opacity:0;transform:translateX(100%)}}
+.fieldFooter{position:absolute;left:12px;right:12px;bottom:10px;display:flex;justify-content:space-between;align-items:flex-end;z-index:4;pointer-events:none}
+.lapPanel,.checkpointPanel{background:rgba(7,11,18,.55);backdrop-filter:blur(6px);border:1px solid rgba(147,164,182,.18);border-radius:12px;padding:10px 12px;min-width:136px}
+.lapPanel b{display:block;font-size:26px;font-weight:340;letter-spacing:-.03em}.lapPanel small{font-size:10px;letter-spacing:.16em;color:#b9c6d0}
+.lapBar{width:122px;height:4px;background:#263341;border-radius:999px;margin-top:8px;overflow:hidden}.lapBar i{display:block;height:100%;background:#eaf4fd;width:0;transition:width .35s}
+.checkpointPanel{text-align:right}.checkpointPanel .label{font-size:10px;letter-spacing:.18em;color:#b5c2cc}.checkpointPanel .value{display:block;margin-top:5px;font-size:12px;color:#fff}
+.dock{flex:none;padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));background:linear-gradient(180deg,#07101b,#04080f);border-top:1px solid #1f2d3a;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;z-index:5}
+.dock button{height:56px;border-radius:14px;border:1px solid #425264;background:linear-gradient(180deg,#111b28,#0a121c);color:#f4f9ff;font-weight:760;letter-spacing:.12em}
+.dock button.primary{background:#e9f0f7;color:#0d1520;border-color:#e9f0f7}
+.sheet{position:absolute;inset:0;z-index:20;background:linear-gradient(180deg,#111925 0%,#0b1119 56%,#060a10 100%);padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(14px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;overflow:hidden}
+.sheet[hidden]{display:none!important}
+.sheetTop{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.sheetClose{border:none;background:none;color:#abb8c5;font-size:12px;letter-spacing:.12em;padding:10px 0 10px 16px}
+.sheet h2{margin:18px 0 4px;font-size:34px;letter-spacing:.08em;line-height:1.08}.sheet .sub{font-size:11px;letter-spacing:.18em;color:#a0b0bd;margin-bottom:18px}
+.setupGrid{display:flex;gap:12px;flex:1;min-height:0}
+.runnerCard{flex:1;border-radius:18px;border:1px solid #35475b;background:radial-gradient(circle at 50% 35%,rgba(165,200,255,.15),transparent 48%),linear-gradient(180deg,#111a25,#0a1018 85%);position:relative;overflow:hidden;padding:14px;cursor:pointer}
+.runnerCard.active{border:2px solid #eff6ff;box-shadow:0 0 0 1px rgba(255,255,255,.08),0 0 26px rgba(234,243,255,.12)}
+.runnerCard .mark{position:absolute;top:12px;right:12px;font-size:12px;color:#fff;opacity:.28}.runnerCard.active .mark{opacity:1}
+.runnerCard .pose{position:absolute;inset:14px 6px 74px}
+.runnerCard .name{position:absolute;left:0;right:0;bottom:26px;text-align:center;font-size:18px;font-weight:820;letter-spacing:.18em}
+.runnerCard .jp{position:absolute;left:0;right:0;bottom:12px;text-align:center;font-size:10px;color:#aebccb;letter-spacing:.12em}
+.fullBtn{height:62px;border-radius:16px;border:1px solid #e7eff6;background:#e7eef6;color:#101821;font-weight:900;letter-spacing:.14em;font-size:14px;margin-top:14px}
+.quizMeta{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.16em;color:#b3c0cc}.progressLine{height:3px;background:#314152;border-radius:999px;overflow:hidden;margin:14px 0 24px}.progressLine i{display:block;height:100%;background:#eef4fa;width:0;transition:width .5s}
+.question{font-size:29px;line-height:1.42;font-weight:640;margin:0 0 22px}
+.options{display:grid;gap:11px}.option{height:62px;border-radius:14px;border:1px solid #39495a;background:linear-gradient(180deg,#162130,#0b121b);color:#eff6fc;text-align:left;padding:0 18px;display:flex;align-items:center;gap:16px;font-size:15px}.option b{color:#95a8ba;font-weight:700;letter-spacing:.15em}.option.good{background:#e8f0f8;color:#0f1820;border-color:#eef6fd}.option.bad{border-color:#8b5b5b;color:#d8b1b1}
+.explain{margin-top:auto;padding-top:14px;font-size:11px;color:#8fa1b3;line-height:1.7}
+.awardWrap{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:8px;flex:1;position:relative;overflow:hidden}
+.burst{position:absolute;inset:0;pointer-events:none}.burst i{position:absolute;width:8px;height:14px;border-radius:100% 100% 100% 0;opacity:0;background:linear-gradient(180deg,rgba(255,255,255,.85),rgba(255,255,255,.15));transform:rotate(var(--r)) translateY(0);animation:petal 1050ms ease-out forwards}
+@keyframes petal{0%{opacity:0;transform:translate(0,0) rotate(var(--r)) scale(.5)}15%{opacity:.96}100%{opacity:0;transform:translate(var(--x),var(--y)) rotate(calc(var(--r) + 35deg)) scale(.8)}}
+.pulseRing{position:absolute;width:340px;height:340px;border-radius:50%;border:1px solid rgba(255,255,255,.16);animation:beat 1.8s ease-in-out infinite}
+@keyframes beat{50%{transform:scale(1.06);opacity:.55}}
+.awardWrap .judge{font-size:12px;letter-spacing:.36em;color:#cfd9e1}.plusM{font-size:clamp(76px,25vw,134px);line-height:1;font-weight:260;letter-spacing:-.08em;font-variant-numeric:tabular-nums}.plusM small{display:block;font-size:20px;letter-spacing:.2em;font-weight:700;margin-top:8px}
+.ticker{display:flex;gap:6px;justify-content:center}.digit{width:46px;height:62px;border-radius:12px;border:1px solid #334252;background:#090f18;display:grid;place-items:center;font-size:40px;font-weight:260;font-variant-numeric:tabular-nums;overflow:hidden;position:relative}.digitTrack{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;transition:transform 1s cubic-bezier(.2,.8,.2,1)}.digitTrack span{height:62px;display:grid;place-items:center;width:100%}
+.awardNote{font-size:12px;color:#bdcad5;letter-spacing:.1em}.revealArea{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:16px;position:relative}
+.capsule{width:min(72vw,260px);aspect-ratio:1/1;border-radius:28px;background:radial-gradient(circle at 50% 30%,rgba(255,255,255,.16),rgba(255,255,255,.04) 45%,rgba(0,0,0,.35) 75%);border:1px solid rgba(255,255,255,.18);box-shadow:0 20px 38px rgba(0,0,0,.45);display:grid;place-items:center;position:relative;overflow:hidden}
+.capsule:before{content:"";position:absolute;inset:14px;border-radius:22px;border:1px solid rgba(255,255,255,.12)}
+.capsule.opening{animation:shake .5s linear infinite}@keyframes shake{0%{transform:translateX(0)}25%{transform:translateX(-2px) rotate(-1deg)}75%{transform:translateX(2px) rotate(1deg)}100%{transform:translateX(0)}}
+.mystery{font-size:80px;font-weight:800;color:#eaf2fa;letter-spacing:.08em}
+.itemPreview{width:160px;height:120px;display:grid;place-items:center}
+.revealTag{font-size:11px;letter-spacing:.34em;color:#bcd0e0}.revealTitle{font-size:32px;letter-spacing:.08em}.revealSub{font-size:13px;color:#a7b6c2;letter-spacing:.14em}
+.swatches{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}.swatch{width:28px;height:28px;border-radius:50%;border:2px solid rgba(255,255,255,.3)}.swatch.active{transform:scale(1.08);border-color:#fff;box-shadow:0 0 0 3px rgba(255,255,255,.08)}
+.fitWrap{display:flex;flex-direction:column;justify-content:center;align-items:center;flex:1;gap:18px;text-align:center}.fitCanvas{width:min(72vw,270px);aspect-ratio:0.62/1;padding:12px 0;display:grid;place-items:center;background:radial-gradient(circle at 50% 38%,rgba(255,255,255,.08),transparent 62%)}
+.equipDesc{font-size:13px;color:#b3c0cb;letter-spacing:.18em}
+.collectionTabs{display:flex;gap:8px;overflow:auto;padding-bottom:6px;flex:none}.collectionTabs button{padding:10px 12px;border-radius:999px;border:1px solid #415465;background:#101926;color:#c7d3de;white-space:nowrap}.collectionTabs button.active{background:#ebf2fa;color:#0e1721;border-color:#ebf2fa}
+.collectionBody{display:flex;gap:14px;flex:1;min-height:0;padding-top:14px}
+.previewPanel{width:42%;min-width:136px;border:1px solid #2a394a;border-radius:20px;background:linear-gradient(180deg,#111a25,#0c121a);padding:14px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:10px}
+.previewPanel .hint{font-size:10px;color:#aab9c6;letter-spacing:.15em;text-align:center}
+.itemGrid{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:10px;overflow:auto;padding-right:2px}
+.itemCard{min-height:118px;border-radius:16px;border:1px solid #334455;background:linear-gradient(180deg,#101826,#0b111a);padding:10px;display:flex;flex-direction:column;gap:8px;position:relative}
+.itemCard.locked{opacity:.42;filter:grayscale(1)}.itemCard.active{border-color:#eff6ff;box-shadow:0 0 0 1px rgba(255,255,255,.08)}
+.itemThumb{height:58px;border-radius:12px;background:radial-gradient(circle at 50% 35%,rgba(255,255,255,.06),transparent 70%),#0a1018;display:grid;place-items:center}.itemName{font-size:11px;line-height:1.35;color:#e7eff7}.itemMeta{font-size:9px;color:#90a0ae;letter-spacing:.12em}.itemColors{display:flex;gap:5px;flex-wrap:wrap}.miniColor{width:12px;height:12px;border-radius:50%;border:1px solid rgba(255,255,255,.28)}
+.medalShelf{display:grid;grid-template-columns:1fr 1fr;gap:10px;overflow:auto;flex:1;padding-top:14px}.medalCard{min-height:120px;border-radius:18px;border:1px solid #334455;background:linear-gradient(180deg,#111826,#0c1118);padding:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px}.medalIcon{width:62px;height:62px;border-radius:50%;display:grid;place-items:center;border:2px solid rgba(255,255,255,.18);background:radial-gradient(circle at 35% 35%,rgba(255,255,255,.3),rgba(255,255,255,.04) 65%)}
+.taskGrid{display:grid;gap:12px;flex:1;overflow:auto}.taskCard{padding:16px;border-radius:18px;border:1px solid #324353;background:linear-gradient(180deg,#111925,#0d131b)}.taskCard b{display:block;font-size:20px;letter-spacing:.12em}.taskCard small{display:block;margin-top:6px;color:#a5b3bf;letter-spacing:.1em;line-height:1.6}.taskCard button{margin-top:14px;width:100%;height:52px;border-radius:14px;border:1px solid #eaf1f7;background:#eaf1f7;color:#0d1620;font-weight:850;letter-spacing:.12em}.taskCard .moods{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}.taskCard .moods button{margin:0;height:48px;background:linear-gradient(180deg,#141d29,#0d141d);color:#e9f1f7;border:1px solid #364757}.taskCard .moods button.active{background:#eaf1f7;color:#111923}
+.devBar{display:flex;justify-content:center;gap:8px;margin-top:12px;flex-wrap:wrap}.devBar button{height:34px;padding:0 10px;border-radius:999px;border:1px solid #3c4c5c;background:#0e1621;color:#c7d4de;font-size:10px;letter-spacing:.12em}
+@media (max-width:360px){.topbar{padding-inline:12px}.hud{gap:10px}.question{font-size:25px}.collectionBody{gap:10px}.previewPanel{width:40%}.itemGrid{grid-template-columns:1fr}.digit{width:40px;height:56px}.digitTrack span{height:56px}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <div class="brand">
+      <div class="eyebrow">TOP RUN PORTAL / MY PAGE</div>
+      <div class="title">RUN FIELD</div>
+    </div>
+    <div class="hud">
+      <div class="hudBox"><span>DISTANCE</span><strong id="hudMeters">0</strong><small>m</small></div>
+      <div class="hudBox"><span>LAP</span><strong id="hudLap">00</strong><small>/ NEXT 400m</small></div>
+    </div>
+  </div>
+
+  <div class="stageWrap" id="stageWrap">
+    <div class="stageSky" id="stageSky"></div>
+    <div class="fieldHeader">
+      <div class="left"><b>FIELD / RUN</b><small id="fieldSub">モノクロのトラックからスタート</small></div>
+      <div class="right"><b id="fieldState">MONOCHROME</b><small id="fieldCheckpoint">次の節目：400m / SHOES</small></div>
+    </div>
+    <div class="trackScene">
+      <svg viewBox="0 0 400 560" id="trackSvg" aria-hidden="true">
+        <defs>
+          <linearGradient id="trackFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#9098a1" stop-opacity="0.34"></stop>
+            <stop offset="100%" stop-color="#4f5862" stop-opacity="0.18"></stop>
+          </linearGradient>
+          <linearGradient id="lightBar" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"></stop>
+            <stop offset="100%" stop-color="#ffffff" stop-opacity="0"></stop>
+          </linearGradient>
+        </defs>
+        <g class="stands" id="standsLeft"><path d="M8 184 L82 148 L82 218 L8 248 Z" fill="#75808c" opacity=".34"/><path d="M18 210 L82 180" stroke="#d6dee6" stroke-opacity=".34"/></g>
+        <g class="stands" id="standsRight"><path d="M392 184 L318 148 L318 218 L392 248 Z" fill="#75808c" opacity=".34"/><path d="M382 210 L318 180" stroke="#d6dee6" stroke-opacity=".34"/></g>
+        <g class="crowd" id="crowdLeft"></g>
+        <g class="crowd" id="crowdRight"></g>
+        <g class="lights" id="lightsLeft"><rect x="54" y="78" width="10" height="80" fill="#cfd7e0" opacity=".46"/><rect x="38" y="72" width="42" height="10" fill="#cfd7e0" opacity=".55"/><rect x="20" y="82" width="78" height="52" fill="url(#lightBar)" opacity=".4"/></g>
+        <g class="lights" id="lightsRight"><rect x="336" y="78" width="10" height="80" fill="#cfd7e0" opacity=".46"/><rect x="320" y="72" width="42" height="10" fill="#cfd7e0" opacity=".55"/><rect x="302" y="82" width="78" height="52" fill="url(#lightBar)" opacity=".4"/></g>
+        <ellipse cx="200" cy="300" rx="174" ry="126" class="trackOuter"></ellipse>
+        <ellipse cx="200" cy="300" rx="157" ry="111" class="trackLane"></ellipse>
+        <ellipse cx="200" cy="300" rx="143" ry="99" class="trackLane"></ellipse>
+        <ellipse cx="200" cy="300" rx="129" ry="88" class="trackLane"></ellipse>
+        <ellipse cx="200" cy="300" rx="112" ry="75" class="infield"></ellipse>
+        <ellipse cx="200" cy="300" rx="168" ry="120" class="trackGlow" fill="none" stroke="hsl(200 85% 80% / .55)" stroke-width="6"></ellipse>
+        <path d="M32 300 H368" class="trackMarkers"></path>
+        <path d="M200 225 V375" class="trackMarkers"></path>
+      </svg>
+    </div>
+    <div class="runnerOrbit">
+      <div class="fieldShadow" id="fieldShadow"></div>
+      <div class="fieldRunner runnerSil" id="fieldRunner"></div>
+      <div class="flashLine" id="flashLine"></div>
+    </div>
+    <div class="fieldFooter">
+      <div class="lapPanel"><small>RUN PROGRESS</small><b id="lapBig">0 / 400</b><div class="lapBar"><i id="lapFill"></i></div></div>
+      <div class="checkpointPanel"><div class="label">NEXT CHECK</div><span class="value" id="nextCheck">400m / SHOES</span></div>
+    </div>
+  </div>
+
+  <div class="dock" id="dock">
+    <button id="quizBtn" class="primary">RUN QUIZ</button>
+    <button id="taskBtn">m GET</button>
+    <button id="collectionBtn">COLLECTION</button>
+  </div>
+
+  <section class="sheet" id="setupSheet">
+    <div class="sheetTop"><div class="eyebrow">RUN FIELD / SETUP</div><div class="flowSpacer"></div></div>
+    <h2>YOUR RUNNER.</h2>
+    <div class="sub">男性・女性を選び、モノクロの世界からスタート</div>
+    <div class="setupGrid">
+      <button class="runnerCard active" data-gender="male"><span class="mark">●</span><div class="pose runnerSil" id="malePreview"></div><div class="name">MALE</div><div class="jp">男性</div></button>
+      <button class="runnerCard" data-gender="female"><span class="mark">●</span><div class="pose runnerSil" id="femalePreview"></div><div class="name">FEMALE</div><div class="jp">女性</div></button>
+    </div>
+    <button class="fullBtn" id="startBtn">FIELDへ進む →</button>
+  </section>
+
+  <section class="sheet" id="quizSheet" hidden>
+    <div class="sheetTop"><div class="eyebrow">RUN QUIZ / STAGE <span id="quizStage"></span></div><button class="sheetClose" data-close>閉じる</button></div>
+    <h2>QUIZ.</h2>
+    <div class="sub">500問以上に拡張できる段階式の問題構造を試作</div>
+    <div class="quizMeta"><span id="quizIndex"></span><span id="quizDiff"></span></div>
+    <div class="progressLine"><i id="quizProg"></i></div>
+    <p class="question" id="question"></p>
+    <div class="options" id="options"></div>
+    <div class="explain" id="explain">正解後にmを獲得し、距離に応じてランナーが走ります。</div>
+  </section>
+
+  <section class="sheet" id="awardSheet" hidden>
+    <div class="awardWrap">
+      <div class="pulseRing"></div>
+      <div class="burst" id="burst"></div>
+      <div class="judge" id="judge">CORRECT!</div>
+      <div class="plusM" id="plusM">+120<small>m GET</small></div>
+      <div class="ticker" id="ticker"></div>
+      <div class="awardNote" id="awardNote">TOTAL 0m → 120m</div>
+    </div>
+  </section>
+
+  <section class="sheet" id="revealSheet" hidden>
+    <div class="sheetTop"><div class="eyebrow" id="revealEyebrow">REWARD / MYSTERY</div></div>
+    <div class="revealArea" id="revealArea">
+      <div class="revealTag" id="revealTag">HIDDEN</div>
+      <div class="capsule" id="capsule"><div class="mystery" id="mystery">?</div><div class="itemPreview hidden" id="revealThumb"></div></div>
+      <div class="revealTitle" id="revealTitle">UNKNOWN</div>
+      <div class="revealSub" id="revealSub">何が出るかは開けるまで秘密</div>
+      <div class="swatches hidden" id="revealSwatches"></div>
+      <button class="fullBtn" id="revealBtn">ガチャを開く →</button>
+      <div class="subline" id="revealLine">同じ素材を使い回し、色やパターンで変化を出します。</div>
+    </div>
+  </section>
+
+  <section class="sheet" id="equipSheet" hidden>
+    <div class="sheetTop"><div class="eyebrow">GEAR / EQUIPPED</div></div>
+    <div class="fitWrap">
+      <div class="fitCanvas runnerSil" id="fitCanvas"></div>
+      <div class="revealTitle" id="equipTitle">EQUIPPED</div>
+      <div class="equipDesc" id="equipDesc">RUNNING SHOES / SKY BLUE</div>
+      <button class="fullBtn" id="backFieldBtn">フィールドに戻る →</button>
+    </div>
+  </section>
+
+  <section class="sheet" id="collectionSheet" hidden>
+    <div class="sheetTop"><div class="eyebrow">COLLECTION / CUSTOMIZE</div><button class="sheetClose" data-close>閉じる</button></div>
+    <h2>COLLECTION.</h2>
+    <div class="sub">手に入れたアイテムを着せ替え。未獲得はボックスのまま残す。</div>
+    <div class="collectionTabs" id="collectionTabs"></div>
+    <div class="collectionBody" id="gearCollectionBody">
+      <div class="previewPanel">
+        <div class="fitCanvas runnerSil" id="collectionPreview"></div>
+        <div class="hint" id="collectionHint">カラーとパターンを選んで装着できます。</div>
+      </div>
+      <div class="itemGrid" id="itemGrid"></div>
+    </div>
+    <div class="medalShelf hidden" id="medalShelf"></div>
+  </section>
+
+  <section class="sheet" id="taskSheet" hidden>
+    <div class="sheetTop"><div class="eyebrow">m GET / DAILY FLOW</div><button class="sheetClose" data-close>閉じる</button></div>
+    <h2>GET m.</h2>
+    <div class="sub">ログイン・ふりかえり・大会参加でゲーム内の距離を増やす</div>
+    <div class="taskGrid">
+      <div class="taskCard"><b>DAILY LOGIN</b><small>毎日1回。押すだけで終わらないよう、長押しでチェックイン。</small><button id="dailyBtn">長押しで +80m</button></div>
+      <div class="taskCard"><b>TRAINING REVIEW</b><small>よくできた／できた／思うようにいかなかった／休んだ。どれでも同じ距離を獲得。</small><div class="moods" id="moods"></div><button id="reviewBtn" disabled>レビューで +120m</button></div>
+      <div class="taskCard"><b>RACE MEMORY</b><small>大会参加や応援の記録。節目到達のきっかけになる大きめボーナス。</small><button id="eventBtn">大会参加で +400m</button></div>
+    </div>
+    <div class="devBar"><button id="boost400">DEMO +400m</button><button id="boost1500">DEMO 1500m</button><button id="boost3000">DEMO 3000m</button></div>
+  </section>
+</div>
+
+<script>
+const S={gender:'male',meters:0,displayMeters:0,quizIndex:0,busy:false,pendingUnlock:null,currentSlot:'shoe',daily:false,review:false,event:false,mood:null,
+  unlocked:{shoe:[],wear:[],tasuki:[],pants:[],arm:[],cap:[],glass:[]},equipped:{},colorsUnlocked:['slate'],medals:[],triggered:[]};
+const SLOT_ORDER=['shoe','wear','tasuki','pants','arm','cap','glass'];
+const SLOT_LABEL={shoe:'SHOES',wear:'WEAR',tasuki:'TASUKI',pants:'RUN PANTS',arm:'ARM COVER',cap:'CAP',glass:'SUNGLASSES'};
+const COLORS={
+  slate:{name:'SLATE',hex:'#90a0b0',tier:'BASE'}, sky:{name:'SKY BLUE',hex:'#82aef7',tier:'RARE'}, lime:{name:'LIME',hex:'#a4f26b',tier:'RARE'}, coral:{name:'CORAL',hex:'#f88974',tier:'RARE'}, gold:{name:'GOLD',hex:'#f0c56c',tier:'EPIC'}, violet:{name:'VIOLET',hex:'#af98ff',tier:'EPIC'}, mint:{name:'MINT',hex:'#9ef0de',tier:'EPIC'}
+};
+const ITEM_DB={
+ shoe:[{id:'shoe-speed',name:'AERO STEP',patterns:['sky','coral','slate']},{id:'shoe-race',name:'CARBON EDGE',patterns:['lime','gold','slate']},{id:'shoe-night',name:'NIGHT FLASH',patterns:['violet','mint','slate']}],
+ wear:[{id:'wear-singlet',name:'RACE SINGLET',patterns:['sky','coral','slate']},{id:'wear-tee',name:'TRAINING TEE',patterns:['mint','lime','slate']},{id:'wear-zip',name:'LIGHT ZIP TOP',patterns:['violet','gold','slate']}],
+ tasuki:[{id:'tasuki-silver',name:'EKIDEN TASUKI',patterns:['slate','sky','gold']},{id:'tasuki-classic',name:'CLASSIC TASUKI',patterns:['coral','mint','slate']}],
+ pants:[{id:'pants-split',name:'SPLIT RUN PANTS',patterns:['slate','sky','coral']},{id:'pants-race',name:'RACE HALF PANTS',patterns:['gold','lime','slate']}],
+ arm:[{id:'arm-cool',name:'COOL ARM COVER',patterns:['slate','sky','mint']},{id:'arm-heat',name:'THERMO ARM COVER',patterns:['coral','gold','slate']}],
+ cap:[{id:'cap-light',name:'LIGHT CAP',patterns:['slate','sky','mint']},{id:'cap-shade',name:'SHADE CAP',patterns:['gold','violet','slate']}],
+ glass:[{id:'glass-race',name:'RACE GLASSES',patterns:['slate','violet','mint']},{id:'glass-aero',name:'AERO GLASSES',patterns:['gold','coral','slate']}]
+};
+const CHECKPOINTS=[
+ {m:400,type:'gear',slot:'shoe',label:'400m / SHOES'},
+ {m:800,type:'gear',slot:'wear',label:'800m / WEAR'},
+ {m:1200,type:'gear',slot:'tasuki',label:'1200m / TASUKI'},
+ {m:1500,type:'medal',medal:'1500m CERTIFICATE',label:'1500m / CERTIFICATE'},
+ {m:3000,type:'gear',slot:'pants',label:'3000m / RUN PANTS'},
+ {m:5000,type:'gear',slot:'arm',label:'5000m / ARM COVER'},
+ {m:10000,type:'gear',slot:'cap',label:'10000m / CAP'},
+ {m:21098,type:'gear',slot:'glass',label:'HALF / GLASSES'},
+ {m:42195,type:'medal',medal:'FULL MARATHON MEDAL',label:'42195m / SPECIAL'}
+];
+const QUIZ_BANK=[
+ {stage:'BEGINNER',diff:'EASY',q:'フルマラソンの正式な距離は？',opts:['40.000m','42.195km','30km','21.0975km'],right:1,m:160,exp:'フルマラソンは42.195km。ここではゲーム内距離mに換算して進行します。'},
+ {stage:'BEGINNER',diff:'EASY',q:'400mトラックを2周すると何m？',opts:['600m','700m','800m','1000m'],right:2,m:140,exp:'トラック1周は400m。2周で800mです。'},
+ {stage:'BASIC',diff:'NORMAL',q:'駅伝で使う“タスキ”の主な役割は？',opts:['給水を表す','順位を記録する','チームのつながりを受け渡す','タイムを計測する'],right:2,m:180,exp:'タスキは走者から走者へ、チームの思いをつなぐ象徴です。'},
+ {stage:'BASIC',diff:'NORMAL',q:'ペース走の目的として近いのは？',opts:['完全休養','一定の速さに慣れる','筋トレだけをする','跳躍力だけ上げる'],right:1,m:180,exp:'一定のペースを維持する感覚を身につける練習です。'},
+ {stage:'ADVANCE',diff:'HARD',q:'1500mは400mトラック何周と何m？',opts:['3周と100m','3周と200m','3周と300m','4周ぴったり'],right:2,m:220,exp:'400m×3周=1200m。残り300mで1500mです。'},
+ {stage:'ADVANCE',diff:'HARD',q:'ランニングでPBは何の略？',opts:['Power Balance','Personal Best','Perfect Body','Pulse Break'],right:1,m:160,exp:'PBはPersonal Best。自己ベスト記録のことです。'}
+];
+const $=id=>document.getElementById(id);
+const sheetIds=['setupSheet','quizSheet','awardSheet','revealSheet','equipSheet','collectionSheet','taskSheet'];
+function showSheet(id){sheetIds.forEach(s=>$(s).hidden=s!==id);$('dock').style.pointerEvents=id?'none':'auto'}
+function closeSheets(){if(S.busy)return;showSheet(null)}
+function fmt(n){return Math.floor(n).toLocaleString('ja-JP')}
+function laps(n){return Math.floor(n/400)}
+function nextCheckpoint(){return CHECKPOINTS.find(c=>!S.triggered.includes(c.m))}
+function fieldTone(){const m=S.meters;const sat=Math.min(1,m/3000);const bright=Math.min(.95,.22 + m/8000);$('stageSky').style.setProperty('--fieldSaturation',sat.toFixed(2));$('stageSky').style.setProperty('--fieldBright',bright.toFixed(2));$('fieldState').textContent=sat<.25?'MONOCHROME':sat<.55?'SOFT COLOR':'BRIGHTENING';
+  if(m>=800){$('stageWrap').classList.add('colorized')}if(m>=3000){$('standsLeft').classList.add('show');$('standsRight').classList.add('show')}if(m>=5000){$('crowdLeft').classList.add('show');$('crowdRight').classList.add('show')}if(m>=10000){$('lightsLeft').classList.add('show');$('lightsRight').classList.add('show')}}
+function buildCrowd(){['crowdLeft','crowdRight'].forEach((id,sideIdx)=>{const g=$(id);g.innerHTML=''; for(let i=0;i<36;i++){const x=sideIdx===0?24+(i%6)*10:320+(i%6)*10; const y=168+Math.floor(i/6)*8 + ((i+sideIdx)%2?0:1); const c=document.createElementNS('http://www.w3.org/2000/svg','circle'); c.setAttribute('cx',x); c.setAttribute('cy',y); c.setAttribute('r',1.6); c.setAttribute('fill','#eef4fb'); c.setAttribute('opacity', String(0.34+((i%5)/10))); g.appendChild(c); }});
+}
+function runnerSvg(gender='male',mode='preview',equip=S.equipped){
+ const baseStroke='rgba(255,255,255,.03)';
+ const shoeItem=equip.shoe?getItem('shoe',equip.shoe.itemId):null; const wearItem=equip.wear?getItem('wear',equip.wear.itemId):null; const tasukiItem=equip.tasuki?getItem('tasuki',equip.tasuki.itemId):null; const pantsItem=equip.pants?getItem('pants',equip.pants.itemId):null; const armItem=equip.arm?getItem('arm',equip.arm.itemId):null; const capItem=equip.cap?getItem('cap',equip.cap.itemId):null; const glassItem=equip.glass?getItem('glass',equip.glass.itemId):null;
+ const colors={shoe:equip.shoe?.color||'#96a3b2',wear:equip.wear?.color||'transparent',tasuki:equip.tasuki?.color||'transparent',pants:equip.pants?.color||'transparent',arm:equip.arm?.color||'transparent',cap:equip.cap?.color||'transparent',glass:equip.glass?.color||'transparent'};
+ const female=gender==='female';
+ return `
+ <svg viewBox="0 0 210 360" aria-hidden="true">
+   <defs>
+    <linearGradient id="bodyGrad-${mode}-${gender}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#171d24"/><stop offset="100%" stop-color="#04070b"/></linearGradient>
+    <linearGradient id="skinGrad-${mode}-${gender}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#222831"/><stop offset="100%" stop-color="#0b0f14"/></linearGradient>
+   </defs>
+   <g>
+    <ellipse cx="108" cy="314" rx="56" ry="13" fill="rgba(0,0,0,.22)" filter="blur(6px)"/>
+    <circle cx="132" cy="58" r="18" fill="url(#skinGrad-${mode}-${gender})" stroke="${baseStroke}" />
+    <path d="M120 44 q18 -8 28 6 q-4 9 -14 14 z" fill="#050709" opacity=".92"/>
+    ${female?`<path d="M149 56 q20 10 14 34 q-11 -5 -18 -13 z" fill="#050709" opacity=".92"/>`:''}
+    <path d="M112 77 ${female?'q-13 12 -17 40 q17 11 49 8 q6 -24 3 -37 q-4 -12 -14 -15 q-8 -2 -21 4 z':'q-11 10 -16 38 q16 10 48 6 q6 -25 1 -39 q-7 -17 -33 -5 z'}" fill="url(#bodyGrad-${mode}-${gender})"/>
+    ${wearItem?gearWear(wearItem.id, colors.wear):''}
+    ${tasukiItem?gearTasuki(tasukiItem.id, colors.tasuki):''}
+    ${female?`<path d="M102 113 q-14 10 -12 28 q16 8 44 5 q4 -11 0 -25 q-13 -5 -32 -8 z" fill="url(#bodyGrad-${mode}-${gender})"/>`:`<path d="M101 113 q-14 9 -13 27 q16 7 45 4 q3 -12 -1 -25 q-17 -4 -31 -6 z" fill="url(#bodyGrad-${mode}-${gender})"/>`}
+    <path d="M99 116 q-21 5 -26 26 q6 8 18 3 q8 -10 14 -16 z" fill="url(#bodyGrad-${mode}-${gender})"/>
+    <path d="M148 118 q16 7 20 27 q-8 8 -19 1 q-5 -10 -10 -17 z" fill="url(#bodyGrad-${mode}-${gender})"/>
+    <path d="M79 142 q-6 22 -17 53 q-7 20 -7 40 q10 9 20 0 q3 -28 12 -50 q8 -20 17 -38 z" fill="url(#bodyGrad-${mode}-${gender})"/>
+    <path d="M129 143 q9 26 20 51 q9 20 14 39 q9 9 18 0 q-4 -31 -15 -54 q-9 -18 -21 -38 z" fill="url(#bodyGrad-${mode}-${gender})"/>
+    ${armItem?gearArm(armItem.id, colors.arm):''}
+    <path d="M96 139 q-3 28 -9 60 q-6 30 -13 62 q8 15 22 4 q10 -41 18 -72 q7 -28 9 -51 z" fill="url(#bodyGrad-${mode}-${gender})"/>
+    <path d="M131 142 q7 27 18 56 q10 28 18 56 q11 12 21 2 q-7 -38 -18 -67 q-11 -29 -18 -51 z" fill="url(#bodyGrad-${mode}-${gender})"/>
+    <path d="M101 145 q-18 22 -18 44 q15 12 55 10 q3 -31 -10 -53 z" fill="#0b0f14"/>
+    ${pantsItem?gearPants(pantsItem.id, colors.pants):''}
+    <path d="M80 248 q-4 27 -7 56 q10 11 26 5 q2 -32 6 -60 z" fill="url(#bodyGrad-${mode}-${gender})"/>
+    <path d="M147 251 q8 23 21 49 q11 5 22 -2 q-10 -32 -18 -55 z" fill="url(#bodyGrad-${mode}-${gender})"/>
+    ${shoeItem?gearShoes(shoeItem.id, colors.shoe):''}
+    ${capItem?gearCap(capItem.id, colors.cap):''}
+    ${glassItem?gearGlass(glassItem.id, colors.glass):''}
+   </g>
+ </svg>`;
+}
+function gearWear(id,color){
+ if(id==='wear-tee') return `<path d="M110 83 q-20 4 -28 18 q3 11 17 14 q13 -14 22 -17 q18 6 31 0 q12 -3 14 -15 q-7 -13 -27 -18 q-9 7 -29 18 q-3 1 0 0 z" fill="${color}" opacity=".96"/><path d="M96 110 q16 5 35 1" stroke="rgba(255,255,255,.45)" stroke-width="2"/>`;
+ if(id==='wear-zip') return `<path d="M114 78 q-13 7 -20 16 q-4 12 -1 31 q20 7 45 2 q4 -21 0 -31 q-7 -11 -24 -18 z" fill="${color}" opacity=".96"/><path d="M116 84 L116 124" stroke="rgba(255,255,255,.55)" stroke-width="2.2"/><path d="M99 97 q18 -6 34 0" stroke="rgba(255,255,255,.38)" stroke-width="2"/>`;
+ return `<path d="M112 77 q-18 5 -20 22 q18 11 46 5 q2 -16 -3 -22 q-8 -8 -23 -5 z" fill="${color}" opacity=".97"/><path d="M95 97 q18 12 43 1" stroke="rgba(255,255,255,.40)" stroke-width="2"/>`;
+}
+function gearTasuki(id,color){
+ if(id==='tasuki-classic') return `<path d="M143 84 q-8 2 -12 6 l-35 66 q7 8 17 7 l34 -65 q4 -8 -4 -14 z" fill="${color}" opacity=".96"/><path d="M135 90 l-34 64" stroke="rgba(255,255,255,.55)" stroke-width="3"/>`;
+ return `<path d="M144 83 q-10 0 -13 8 l-35 69 q6 8 18 6 l34 -67 q3 -11 -4 -16 z" fill="${color}" opacity=".96"/><path d="M133 90 l-32 63" stroke="rgba(255,255,255,.45)" stroke-width="2.4"/><path d="M140 95 l-30 58" stroke="rgba(0,0,0,.15)" stroke-width="1.6"/>`;
+}
+function gearPants(id,color){
+ if(id==='pants-race') return `<path d="M99 145 q-14 19 -12 39 q13 7 50 8 q5 -24 -8 -44 q-10 -2 -30 -3 z" fill="${color}" opacity=".95"/><path d="M118 147 v44" stroke="rgba(255,255,255,.35)" stroke-width="2"/>`;
+ return `<path d="M99 145 q-15 19 -13 49 q10 8 22 3 q4 -24 8 -52 z" fill="${color}" opacity=".95"/><path d="M118 145 q15 18 17 47 q14 6 23 -2 q-2 -31 -17 -47 z" fill="${color}" opacity=".95"/><path d="M111 150 q14 12 25 0" stroke="rgba(255,255,255,.35)" stroke-width="2"/>`;
+}
+function gearArm(id,color){
+ if(id==='arm-heat') return `<path d="M77 146 q-6 18 -10 43 l9 5 q5 -20 11 -43 z" fill="${color}" opacity=".94"/><path d="M147 146 q8 17 15 39 l9 -3 q-7 -24 -14 -41 z" fill="${color}" opacity=".94"/>`;
+ return `<path d="M78 146 q-6 16 -10 43 l11 4 q5 -21 10 -42 z" fill="${color}" opacity=".94"/><path d="M146 146 q8 16 16 39 l11 -2 q-8 -22 -15 -41 z" fill="${color}" opacity=".94"/>`;
+}
+function gearCap(id,color){
+ if(id==='cap-shade') return `<path d="M115 49 q12 -11 27 -5 q8 4 9 13 q-17 5 -37 0 q-3 -3 1 -8 z" fill="${color}" opacity=".97"/><path d="M144 57 q10 1 15 7 q-10 1 -17 0 z" fill="${color}" opacity=".95"/>`;
+ return `<path d="M116 48 q11 -10 25 -5 q10 4 11 15 q-16 3 -36 -1 q-2 -5 0 -9 z" fill="${color}" opacity=".97"/><path d="M142 57 q10 2 13 6 q-10 2 -16 1 z" fill="${color}" opacity=".95"/>`;
+}
+function gearGlass(id,color){
+ if(id==='glass-aero') return `<path d="M121 58 q7 -4 17 -3 q7 0 14 6 q-6 8 -15 7 q-10 0 -17 -5 z" fill="${color}" opacity=".96"/><rect x="135" y="58" width="5" height="2" fill="rgba(255,255,255,.65)"/>`;
+ return `<path d="M122 58 q8 -4 15 -4 q9 0 16 6 q-5 8 -14 8 q-9 0 -17 -4 z" fill="${color}" opacity=".96"/><path d="M119 61 h34" stroke="rgba(255,255,255,.35)" stroke-width="2"/>`;
+}
+function gearShoes(id,color){
+ const base = id==='shoe-night' ? `<path d="M63 306 q7 -4 22 3 q8 3 16 1 q5 4 2 11 h-36 q-12 0 -14 -8 q0 -4 10 -7 z" fill="${color}" opacity=".98"/><path d="M167 296 q9 -4 20 4 q8 5 14 4 q5 5 0 12 h-32 q-13 0 -15 -7 q1 -7 13 -13 z" fill="${color}" opacity=".98"/>`
+   : id==='shoe-race' ? `<path d="M63 306 q8 -4 18 2 q7 4 22 3 q5 3 3 11 h-40 q-11 0 -13 -8 q0 -4 10 -8 z" fill="${color}" opacity=".98"/><path d="M166 296 q10 -6 18 1 q7 6 17 7 q4 4 1 12 h-34 q-13 0 -15 -7 q1 -7 13 -13 z" fill="${color}" opacity=".98"/>`
+   : `<path d="M61 306 q7 -5 20 1 q8 4 19 3 q6 3 4 11 h-39 q-12 0 -14 -8 q0 -4 10 -7 z" fill="${color}" opacity=".98"/><path d="M166 297 q10 -6 19 2 q8 6 15 5 q5 4 2 12 h-35 q-13 0 -15 -8 q1 -5 14 -11 z" fill="${color}" opacity=".98"/>`;
+ return base+`<path d="M68 314 h24" stroke="rgba(255,255,255,.36)" stroke-width="2"/><path d="M172 304 h22" stroke="rgba(255,255,255,.36)" stroke-width="2"/><path d="M67 320 h34" stroke="rgba(255,255,255,.28)" stroke-width="2"/><path d="M168 315 h31" stroke="rgba(255,255,255,.28)" stroke-width="2"/>`;
+}
+function fieldRunnerSvg(){ return runnerSvg(S.gender,'field',S.equipped); }
+function previewRunnerSvg(g){ return runnerSvg(g,'preview',{}); }
+function fitRunnerSvg(){ return runnerSvg(S.gender,'fit',S.equipped); }
+function collectionRunnerSvg(){ return runnerSvg(S.gender,'collection',S.equipped); }
+function itemThumb(slot,item,color){const equip={}; equip[slot]={itemId:item.id,color}; return `<div class="runnerSil" style="width:58px;height:58px">${runnerSvg(S.gender,'thumb'+slot+item.id,equip)}</div>`;}
+function getItem(slot,id){return ITEM_DB[slot].find(x=>x.id===id)}
+function renderSetup(){ $('malePreview').innerHTML=previewRunnerSvg('male'); $('femalePreview').innerHTML=previewRunnerSvg('female'); document.querySelectorAll('[data-gender]').forEach(btn=>btn.classList.toggle('active',btn.dataset.gender===S.gender)); }
+function renderField(){
+  $('fieldRunner').innerHTML=fieldRunnerSvg(); fieldTone(); const m=S.meters; $('hudMeters').textContent=fmt(m); $('hudLap').textContent=String(laps(m)).padStart(2,'0');
+  const rem=m%400; $('lapBig').textContent=`${rem===0&&m>0?400:rem} / 400`; $('lapFill').style.width=((rem===0&&m>0?400:rem)/4)+'%';
+  $('fieldSub').textContent=m<400?'モノクロのトラックからスタート':m<3000?'徐々に色と装備が増えていく':'設備と明るさも段階的に追加';
+  const next=nextCheckpoint(); const txt=next?next.label:'42195m以降もサプライズを継続'; $('fieldCheckpoint').textContent='次の節目：'+txt; $('nextCheck').textContent=txt;
+  $('collectionPreview').innerHTML=collectionRunnerSvg(); $('fitCanvas').innerHTML=fitRunnerSvg(); positionRunner(S.displayMeters||0);
+}
+function positionRunner(meters){
+  const box=$('trackSvg').getBoundingClientRect(), wrap=$('trackSvg').getBoundingClientRect();
+  const p=((Math.max(0,meters)%400)/400); const angle=Math.PI/2 - p*Math.PI*2; const cx=box.left + box.width/2; const cy=box.top + box.height*300/560; const rx=box.width*174/400; const ry=box.height*126/560;
+  const x = cx + rx*Math.cos(angle); const y = cy + ry*Math.sin(angle); const depth=(Math.sin(angle)+1)/2; const scale=.58 + depth*.36;
+  const appBox=$('app').getBoundingClientRect(); const left=x-appBox.left; const top=y-appBox.top; $('fieldRunner').style.left=left+'px'; $('fieldRunner').style.top=top+'px'; $('fieldRunner').style.transform=`translate(-50%,-72%) scale(${scale}) scaleX(${Math.sin(angle)<-.06?-1:1})`; $('fieldRunner').style.zIndex=Math.sin(angle)>0?3:1;
+  $('fieldShadow').style.left=left+'px'; $('fieldShadow').style.top=(top+10)+'px'; $('fieldShadow').style.transform=`translate(-50%,-50%) scale(${scale})`;
+}
+function openQuiz(){if(S.busy)return; const q=QUIZ_BANK[S.quizIndex%QUIZ_BANK.length]; $('quizStage').textContent=q.stage; $('quizIndex').textContent=`QUESTION ${String((S.quizIndex%QUIZ_BANK.length)+1).padStart(2,'0')} / ${QUIZ_BANK.length}`; $('quizDiff').textContent=q.diff; $('quizProg').style.width=((S.quizIndex%QUIZ_BANK.length+1)/QUIZ_BANK.length*100)+'%'; $('question').textContent=q.q; $('options').innerHTML=q.opts.map((o,i)=>`<button class="option" data-opt="${i}"><b>${'ABCD'[i]}</b>${o}</button>`).join(''); $('explain').textContent='正解後にmを獲得し、距離に応じてランナーが走ります。'; showSheet('quizSheet');}
+function answerQuiz(i){ if(S.busy) return; S.busy=true; const q=QUIZ_BANK[S.quizIndex%QUIZ_BANK.length]; const correct=i===q.right; [...$('options').children].forEach((b,idx)=>{b.disabled=true;if(idx===q.right)b.classList.add('good'); if(idx===i&&!correct)b.classList.add('bad')}); $('explain').textContent=q.exp; const gain=correct?q.m:60; setTimeout(()=>{S.quizIndex++; award(gain,correct?'CORRECT!':'TRY AGAIN')}, 900); }
+function spawnPetals(){ const host=$('burst'); host.innerHTML=''; for(let i=0;i<14;i++){const p=document.createElement('i'); p.style.setProperty('--x', ((i%2?1:-1)*(40+Math.random()*120))+'px'); p.style.setProperty('--y', (-40 + Math.random()*180)+'px'); p.style.setProperty('--r', (Math.random()*120-60)+'deg'); p.style.left = (50 + (Math.random()*30-15))+'%'; p.style.top = (46 + (Math.random()*20-10))+'%'; p.style.background = `linear-gradient(180deg, rgba(255,255,255,.92), ${['#82aef7','#f88974','#a4f26b','#f0c56c','#af98ff'][i%5]})`; p.style.animationDelay = (i*40)+'ms'; host.appendChild(p);} }
+function award(m,judge){ const from=S.meters, to=S.meters+m; S.meters=to; $('judge').textContent=judge; $('plusM').innerHTML='+'+fmt(m)+'<small>m GET</small>'; $('awardNote').textContent=`TOTAL ${fmt(from)}m → ${fmt(to)}m`; rollDigits(from,to); spawnPetals(); showSheet('awardSheet'); setTimeout(()=>runDistance(from,to),2250); }
+function rollDigits(from,to){ const a=String(Math.floor(from)).padStart(5,'0'), b=String(Math.floor(to)).padStart(5,'0'); $('ticker').innerHTML=''; for(let i=0;i<5;i++){const d=document.createElement('div'); d.className='digit'; const track=document.createElement('div'); track.className='digitTrack'; let html=''; for(let k=0;k<4;k++){for(let n=0;n<10;n++)html += `<span>${n}</span>`;} track.innerHTML=html; d.appendChild(track); $('ticker').appendChild(d); const start = (10 + Number(a[i]))*62; const end = (20 + Number(b[i]))*62; track.style.transform=`translateY(-${start}px)`; requestAnimationFrame(()=>requestAnimationFrame(()=>{track.style.transition=`transform ${900+i*120}ms cubic-bezier(.12,.8,.15,1) ${i*80}ms`; track.style.transform=`translateY(-${end}px)`;})); }}
+function runDistance(from,to){ showSheet(null); const runner=$('fieldRunner'); const flash=$('flashLine'); flash.classList.remove('play'); void flash.offsetWidth; let start=0; const dur=Math.min(4200,1800+Math.abs(to-from)*4); function frame(t){ if(!start)start=t; const p=Math.min(1,(t-start)/dur); const ease=p<.5?2*p*p:-1+(4-2*p)*p; S.displayMeters = from + (to-from)*ease; positionRunner(S.displayMeters); if(p<1){requestAnimationFrame(frame)} else { S.displayMeters=to; renderField(); flash.classList.add('play'); checkUnlocks(from,to); S.busy=false; } } requestAnimationFrame(frame); }
+function grantDirect(m,label='DISTANCE GET'){ if(S.busy)return; S.busy=true; award(m,label); }
+function pickOne(arr){return arr[Math.floor(Math.random()*arr.length)]}
+function triggerUnlock(slot){ const options=ITEM_DB[slot].filter(item=>!S.unlocked[slot].some(u=>u.itemId===item.id)); const pick=options.length?pickOne(options):pickOne(ITEM_DB[slot]); const colorId = pickOne(pick.patterns); const color=COLORS[colorId]; S.pendingUnlock={slot,itemId:pick.id,color:color.hex,colorId, itemName:pick.name}; $('revealEyebrow').textContent=`REWARD / ${SLOT_LABEL[slot]}`; $('revealTag').textContent='HIDDEN'; $('revealTitle').textContent='UNKNOWN'; $('revealSub').textContent='何が出るかは開けるまで秘密'; $('revealBtn').textContent='ガチャを開く →'; $('revealBtn').dataset.mode='open'; $('mystery').classList.remove('hidden'); $('revealThumb').classList.add('hidden'); $('revealSwatches').classList.add('hidden'); $('capsule').classList.remove('opening'); showSheet('revealSheet'); }
+function openGacha(){ const u=S.pendingUnlock; if(!u)return; $('capsule').classList.add('opening'); $('revealBtn').disabled=true; let tick=0; const timer=setInterval(()=>{$('mystery').textContent=['?','◊','?','◇'][tick++%4]},130); setTimeout(()=>{ clearInterval(timer); $('capsule').classList.remove('opening'); $('mystery').classList.add('hidden'); $('revealThumb').classList.remove('hidden'); $('revealThumb').innerHTML=itemThumb(u.slot,getItem(u.slot,u.itemId),u.color); $('revealTag').textContent=COLORS[u.colorId].tier; $('revealTitle').textContent=u.itemName; $('revealSub').textContent=`${SLOT_LABEL[u.slot]} / ${COLORS[u.colorId].name}`; $('revealSwatches').classList.remove('hidden'); $('revealSwatches').innerHTML=getItem(u.slot,u.itemId).patterns.map(id=>`<div class="swatch ${id===u.colorId?'active':''}" style="background:${COLORS[id].hex}"></div>`).join(''); $('revealBtn').textContent='装着する →'; $('revealBtn').disabled=false; $('revealBtn').dataset.mode='equip'; },1900); }
+function equipPending(){ const u=S.pendingUnlock; if(!u)return; const entry={itemId:u.itemId,color:u.color,colorId:u.colorId}; if(!S.unlocked[u.slot].some(x=>x.itemId===u.itemId && x.colorId===u.colorId)){ S.unlocked[u.slot].push(entry); }
+ S.equipped[u.slot]=entry; if(!S.colorsUnlocked.includes(u.colorId)) S.colorsUnlocked.push(u.colorId); $('equipTitle').textContent='EQUIPPED'; $('equipDesc').textContent=`${u.itemName} / ${COLORS[u.colorId].name}`; renderField(); showSheet('equipSheet'); S.pendingUnlock=null; }
+function awardMedal(name,at){ if(!S.medals.some(m=>m.name===name)){ S.medals.push({name,at}); } }
+function checkUnlocks(from,to){ for(const cp of CHECKPOINTS){ if(from < cp.m && to >= cp.m && !S.triggered.includes(cp.m)){ S.triggered.push(cp.m); if(cp.type==='gear'){ triggerUnlock(cp.slot); return; } else if(cp.type==='medal'){ awardMedal(cp.medal, cp.m); } } } renderField(); }
+function buildTabs(){ const tabs=[...SLOT_ORDER.map(slot=>({id:slot,label:SLOT_LABEL[slot]})),{id:'medal',label:'MEDALS'}]; $('collectionTabs').innerHTML=tabs.map(t=>`<button data-tab="${t.id}" class="${t.id===S.currentSlot?'active':''}">${t.label}</button>`).join(''); }
+function renderCollection(){ buildTabs(); $('collectionPreview').innerHTML=collectionRunnerSvg(); const isMedal=S.currentSlot==='medal'; $('gearCollectionBody').classList.toggle('hidden',isMedal); $('medalShelf').classList.toggle('hidden',!isMedal);
+ if(isMedal){ const medalDefs=[{m:1500,name:'1500m CERTIFICATE'},{m:3000,name:'3000m MEDAL'},{m:5000,name:'5000m MEDAL'},{m:10000,name:'10000m MEDAL'},{m:21098,name:'HALF MARATHON MEDAL'},{m:42195,name:'FULL MARATHON MEDAL'}]; $('medalShelf').innerHTML=medalDefs.map(md=>{const have=S.medals.some(m=>m.name===md.name)||S.triggered.includes(md.m); return `<div class="medalCard ${have?'':'locked'}"><div class="medalIcon" style="background:${have?'radial-gradient(circle at 35% 35%, rgba(255,255,255,.42), rgba(240,197,108,.18) 70%)':'radial-gradient(circle at 35% 35%, rgba(255,255,255,.08), rgba(255,255,255,.03) 70%)'}">${have?'🏅':'?'}</div><div>${md.name}</div><div class="itemMeta">${md.m.toLocaleString('ja-JP')}m</div></div>`; }).join(''); return; }
+ const slot=S.currentSlot; const owned=S.unlocked[slot]; $('collectionHint').textContent=`${SLOT_LABEL[slot]} の未獲得パターンは BOX のまま残ります。`;
+ $('itemGrid').innerHTML=ITEM_DB[slot].map(item=>{
+   const candidates=item.patterns.map(cid=>({cid,owned:owned.find(o=>o.itemId===item.id&&o.colorId===cid)})); const unlocked=candidates.some(c=>c.owned); const active=S.equipped[slot]?.itemId===item.id;
+   return `<button class="itemCard ${unlocked?'':'locked'} ${active?'active':''}" data-item="${item.id}"><div class="itemThumb">${itemThumb(slot,item, unlocked?(candidates.find(c=>c.owned)?.owned.color || COLORS[item.patterns[0]].hex):'#5c6773')}</div><div class="itemName">${item.name}</div><div class="itemMeta">${unlocked?'UNLOCKED':'LOCKED'}</div><div class="itemColors">${candidates.map(c=>`<span class="miniColor" style="background:${c.owned?COLORS[c.owned.colorId].hex:'#1a2431'};opacity:${c.owned?1:.35}"></span>`).join('')}</div></button>`;
+ }).join(''); }
+function equipFromCollection(slot,itemId){ const owned=S.unlocked[slot].filter(x=>x.itemId===itemId); if(!owned.length)return; const current=S.equipped[slot]; let pick=owned[0]; if(current && current.itemId===itemId){ const idx=owned.findIndex(x=>x.colorId===current.colorId); pick=owned[(idx+1)%owned.length]; }
+ S.equipped[slot]={...pick}; renderField(); renderCollection(); }
+function runTaskDaily(){ if(S.daily||S.busy) return; let timer=setTimeout(()=>{ S.daily=true; grantDirect(80,'DAILY CHECK-IN'); },900); const btn=$('dailyBtn'); btn.textContent='押したまま...'; const cancel=()=>{clearTimeout(timer); btn.textContent=S.daily?'獲得済み':'長押しで +80m'; ['pointerup','pointerleave','pointercancel'].forEach(ev=>btn.removeEventListener(ev,cancel));}; ['pointerup','pointerleave','pointercancel'].forEach(ev=>btn.addEventListener(ev,cancel)); }
+function initMoods(){ const moods=['よくできた','できた','思うようにいかなかった','休んだ']; $('moods').innerHTML=moods.map(m=>`<button data-mood="${m}">${m}</button>`).join(''); }
+function updateButtons(){ $('dailyBtn').disabled=S.daily; $('dailyBtn').textContent=S.daily?'獲得済み':'長押しで +80m'; $('reviewBtn').disabled=S.review || !S.mood; $('reviewBtn').textContent=S.review?'獲得済み':'レビューで +120m'; $('eventBtn').disabled=S.event; $('eventBtn').textContent=S.event?'獲得済み':'大会参加で +400m'; }
+// events
+$('startBtn').onclick=()=>{closeSheets();renderField()};
+document.querySelectorAll('[data-gender]').forEach(btn=>btn.onclick=()=>{S.gender=btn.dataset.gender; renderSetup(); renderField();});
+$('quizBtn').onclick=openQuiz; $('taskBtn').onclick=()=>{updateButtons(); showSheet('taskSheet')}; $('collectionBtn').onclick=()=>{S.currentSlot='shoe'; renderCollection(); showSheet('collectionSheet')};
+$('options').onclick=e=>{const btn=e.target.closest('[data-opt]'); if(btn) answerQuiz(Number(btn.dataset.opt));};
+$('revealBtn').onclick=()=>{ const mode=$('revealBtn').dataset.mode; if(mode==='open') openGacha(); else equipPending(); };
+$('backFieldBtn').onclick=()=>{closeSheets(); renderField();};
+document.querySelectorAll('[data-close]').forEach(btn=>btn.onclick=closeSheets);
+$('collectionTabs').onclick=e=>{const btn=e.target.closest('[data-tab]'); if(!btn)return; S.currentSlot=btn.dataset.tab; renderCollection();};
+$('itemGrid').onclick=e=>{const card=e.target.closest('[data-item]'); if(!card)return; equipFromCollection(S.currentSlot, card.dataset.item)};
+$('dailyBtn').addEventListener('pointerdown',runTaskDaily);
+$('moods').onclick=e=>{const btn=e.target.closest('[data-mood]'); if(!btn)return; S.mood=btn.dataset.mood; [...$('moods').children].forEach(x=>x.classList.toggle('active',x===btn)); updateButtons(); };
+$('reviewBtn').onclick=()=>{ if(S.review||!S.mood||S.busy)return; S.review=true; updateButtons(); grantDirect(120,'TRAINING REVIEW'); };
+$('eventBtn').onclick=()=>{ if(S.event||S.busy)return; S.event=true; updateButtons(); grantDirect(400,'RACE MEMORY'); };
+$('boost400').onclick=()=>grantDirect(400,'DEMO CHECKPOINT');
+$('boost1500').onclick=()=>grantDirect(Math.max(0,1500-S.meters),'DEMO 1500m');
+$('boost3000').onclick=()=>grantDirect(Math.max(0,3000-S.meters),'DEMO 3000m');
+window.addEventListener('resize',()=>positionRunner(S.displayMeters||S.meters));
+// init
+buildCrowd(); initMoods(); renderSetup(); renderField(); showSheet('setupSheet');
+</script>
+</body>
+</html>
