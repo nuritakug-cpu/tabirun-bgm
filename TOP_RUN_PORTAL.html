@@ -26,6 +26,7 @@ NO FIREBASE / NO RULES / NO AUTH CHANGE / NO profileId CHANGE / NO binding CHANG
 <meta name="apple-mobile-web-app-title" content="TOP RUN">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="top-run-handoff-api" content="">
 <title>TOP RUN PORTAL</title>
 <!--
 PORTAL v40
@@ -4357,6 +4358,11 @@ html:is([data-portal-personal-color="winter"],[data-portal-personal-color="matte
         <span class="portalPanelAction">カラーを選ぶ ›</span>
       </button>
 
+      <button class="portalPanel portalPanelButton" id="portalHandoffOpen" type="button">
+        <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
+        <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
+      </button>
+
       <button class="portalPanel portalPanelButton" type="button" data-coming="画像・マイページカスタマイズ">
         <div class="portalPanelHead"><small>CUSTOMIZE</small><b>画像・マイページ</b></div>
         
@@ -4366,113 +4372,6 @@ html:is([data-portal-personal-color="winter"],[data-portal-personal-color="matte
   </div>
 </div>
 
-<div class="portalScreen hidden" id="screen-goal-tools" aria-hidden="true">
-  <div class="portalScreenHead"><button class="portalBack" type="button" data-back>← MY PAGE</button><div><small>COMMON PERSONAL</small><b>目標を立てる</b></div><span class="portalHeadSpacer"></span></div>
-  <div class="portalGoalNav" role="tablist" aria-label="目標設定の機能を選択">
-    <label class="portalGoalAudience" id="portalGoalAudienceLabel"><span class="portalAudienceTitle">表示する種目 <strong id="portalGoalAudienceCurrent">中学生</strong></span><span class="portalAudienceControl"><span>中学生</span><input type="checkbox" id="portalGoalAllSports" role="switch" aria-label="共通（全種目）へ切り替え" aria-checked="false"><i aria-hidden="true"></i><span>共通（全種目）</span></span></label>
-    <button type="button" class="portalGoalNavTab is-selected" id="portalGoalTabSetting" role="tab" aria-selected="true" aria-controls="portalGoalViewSetting" data-goal-tab="setting"><b>目標設定</b></button>
-    <button type="button" class="portalGoalNavTab" id="portalGoalTabGuide" role="tab" aria-selected="false" aria-controls="portalGoalViewGuide" data-goal-tab="guide"><b>タイムの目安</b></button>
-    <button type="button" class="portalGoalNavTab" id="portalGoalTabLap" role="tab" aria-selected="false" aria-controls="portalGoalViewLap" data-goal-tab="lap"><b>ラップ換算</b></button>
-    <button type="button" class="portalGoalNavTab portalGoalListTab" id="portalGoalTabOverview" role="tab" aria-selected="false" aria-controls="portalGoalViewOverview" data-goal-tab="overview"><b>目標一覧</b></button>
-  </div>
-  <div class="portalGoalQuickAction" id="portalGoalQuickAction">
-    <span id="portalGoalQuickLabel">目標を選択して確定保存</span>
-    <button type="button" id="portalGoalQuickButton">目標タイムを保存</button>
-    <p id="portalGoalQuickStatus" aria-live="polite"></p>
-  </div>
-  <div class="portalScreenBody portalGoalScreenBody">
-    <div class="portalGoalInner">
-            <div class="portalGoalTools">
-              <div class="portalToolCard portalGoalView" id="portalGoalViewGuide" role="tabpanel" aria-labelledby="portalGoalTabGuide" hidden>
-                <div class="portalToolHeading"><small>TIME GUIDE</small><b>タイムの目安</b></div>
-                <p class="portalGuideSimpleLead">基準の距離・タイムと調整を選択してください。</p>
-                <div class="portalToolInputGrid portalToolInputSelectable"><label>基準となる距離<select id="portalLapBaseDistance"><option value="400">400m</option><option value="800" selected>800m</option><option value="1000">1000m</option><option value="1500">1500m</option><option value="3000">3000m</option><option value="5000">5000m</option><option value="10000">10000m</option><option value="21097.5">ハーフ</option><option value="42195">フルマラソン</option></select></label></div><div class="portalTimeToolInput"><span class="portalTimeLabel">基準記録（選択式）</span><div class="flowTimeField" data-flow-time="portalLapBaseTime"><div class="flowTimeHeading"><span>基準記録（選択式）</span><button type="button" class="flowTimeClear" data-flow-clear="portalLapBaseTime">未設定に戻す</button></div><input type="hidden" id="portalLapBaseTime" value=""><div class="flowTimeControls" role="group" aria-label="基準記録（選択式）の選択"></div><span class="flowTimeCurrent" aria-live="polite">分・秒・100分の1秒を選択</span></div></div>
-                <div class="portalGuideAdjustGrid" aria-label="目安の調整">
-                  <label>走りのタイプ<select id="portalLapType"><option value="standard">標準</option><option value="speed">スピード型</option><option value="endurance">持久型</option></select></label>
-                  <label>調整幅<select id="portalLapPacePercent" aria-label="換算結果の補正幅"></select></label>
-                </div>
-                <div class="portalTypeRefine"><label class="portalTypeLabel" for="portalLapTypeFine">走りのタイプの細かい調整（7段階）</label><input type="range" id="portalLapTypeFine" min="-3" max="3" step="1" value="0" aria-label="スピード寄りから持久寄りまでの7段階"><div class="portalTypeRefineOutput" id="portalLapTypeFineState" aria-live="polite">標準型</div></div>
-                <button type="button" class="portalToolAction" id="portalLapRunGuide">目標タイムの目安を確認</button>
-                <details id="portalGuideResultDetails" class="portalGuideResultDetails">
-                  <summary><span class="portalGuideSummaryTitle">目標タイムの目安を見る</span><span class="portalGuideSummaryMetrics">400m・800m・1000m・1500m・3000m</span></summary>
-                  <div class="portalGuideResultDetailsBody">
-                <div class="portalGuideResultsHeading">目標タイムの目安 <button type="button" id="portalGuideJumpInput" hidden>入力へ</button></div>
-                <small class="portalGuideResultsCaption">中学生は400m・800m・1000m・1500m・3000mが中心です。基準記録と走りのタイプを選ぶと目安が変わります。</small>
-                <div id="portalLapGuideState" class="portalGuideSimpleStatus" aria-live="polite">基準記録を選ぶと一覧が更新されます。</div>
-                <div id="portalLapGuideResults" class="portalToolResults portalGuideSimpleList" aria-live="polite" tabindex="-1"></div>
-                  </div>
-                </details>
-                <details class="portalUnifiedReferenceSection" id="portalGuideComparisonDetails">
-                  <summary class="portalUnifiedReferenceTitle">総合換算表（300m〜フルマラソン）を見る</summary>
-                  <div class="portalUnifiedReferenceBody">
-                    
-                    <div class="portalUnifiedReferenceNavigation" role="group" aria-label="総合換算表を左右へ移動">
-                      <button type="button" id="portalUnifiedReferenceLeft" aria-label="換算表を左へ移動">◀</button>
-                      <span id="portalUnifiedReferenceFocusLabel" aria-live="polite">基準：800m</span>
-                      <button type="button" id="portalUnifiedReferenceRight" aria-label="換算表を右へ移動">▶</button>
-                    </div>
-                    <div id="portalUnifiedPinnedDock" class="portalUnifiedPinnedDock" aria-hidden="true"><div class="portalUnifiedPinnedViewport"><div id="portalUnifiedPinnedTrack" class="portalUnifiedPinnedTrack"></div></div></div>
-                    <div id="portalLapUnifiedReference" class="portalUnifiedReferenceScroll" tabindex="0" aria-label="300mからフルマラソンまでの横スクロール換算表"></div>
-                  </div>
-                </details>
-                <details class="portalToolDetails portalGuideExplanation">
-                  <summary>目安の説明を見る</summary>
-                  <p>基準記録から距離ごとの参考タイムを換算します。実際の結果を保証するものではありません。</p>
-                  <p>走りのタイプ・調整幅で目安が変わります。「目標欄へ」で取り込んだ場合、目標設定画面で保存してください。</p>
-                  </details>
-                <input type="checkbox" id="portalLapShowOther" checked hidden aria-hidden="true">
-                <div id="portalGuideHiddenEvidence" class="portalGuideSources">
-                  <details class="portalToolDetails portalGuideSourceEvidence"><summary>計算根拠・元の比較資料を見る</summary>
-                     <p>距離別の比較資料から参考値を求めています。走りのタイプによる調整は本人が選択する比較用であり、自動的な走力判定ではありません。</p>
-                    <div id="portalLapCalibratedSummary" class="portalLapCalibration"></div>
-                    <div class="portalLapTableNav"><span>比較資料（1500m〜フル）</span><button type="button" id="portalLapLongLeft" aria-label="長距離表を左へ">◀</button><button type="button" id="portalLapLongRight" aria-label="長距離表を右へ">▶</button></div>
-                    <div class="portalLapTableScroll" id="portalLapLongSourceTable" tabindex="0" aria-label="長距離の参考資料"></div>
-                    <div class="portalLapTableNav"><span>比較資料（300m〜1500m）</span><button type="button" id="portalLapTableLeft" aria-label="表を左へ">◀</button><button type="button" id="portalLapTableRight" aria-label="表を右へ">▶</button></div>
-                    <div class="portalLapTableScroll" id="portalLapSourceTable" tabindex="0" aria-label="短距離の参考資料"></div>
-                  </details>
-                </div>
-              </div>
-
-              <div class="portalToolCard portalGoalView" id="portalGoalViewLap" role="tabpanel" aria-labelledby="portalGoalTabLap" hidden>
-                <div class="portalToolHeading"><small>LAP GUIDE</small><b>ラップ換算</b></div>
-                <p class="portalToolNote">自分で決めた目標タイムを、区間ごとの通過目安にします。</p>
-                <div class="portalToolInputGrid portalToolInputSelectable"><label>距離<select id="portalLapRaceDistance"><option value="400">400m</option><option value="800">800m</option><option value="1000">1000m</option><option value="1500" selected>1500m</option><option value="3000">3000m</option><option value="5000">5000m</option><option value="10000">10000m</option><option value="21097.5">ハーフマラソン</option><option value="42195">フルマラソン（42.195km）</option><option value="relay">駅伝（登録済み大会から選択）</option><option value="custom">ロード（自由距離）</option></select></label></div><div class="portalTimeToolInput"><span class="portalTimeLabel">目標タイム（選択式）</span><div class="flowTimeField" data-flow-time="portalLapTargetTime"><div class="flowTimeHeading"><span>目標タイム（選択式）</span><button type="button" class="flowTimeClear" data-flow-clear="portalLapTargetTime">未設定に戻す</button></div><input type="hidden" id="portalLapTargetTime" value=""><div class="flowTimeControls" role="group" aria-label="目標タイム（選択式）の選択"></div><span class="flowTimeCurrent" aria-live="polite">分・秒・100分の1秒を選択</span></div></div>
-                <div class="portalLapRelaySelect" id="portalLapRelayEventWrap" hidden><label>駅伝大会（開催前・EVENTS登録済み）<select id="portalLapRelayEvent"><option value="">大会を選択してください</option></select></label><label>出走区間（大会に登録済みの区間）<select id="portalLapRelayLeg"><option value="">大会を先に選択してください</option></select></label><p id="portalLapRelayInfo" class="portalToolNote" aria-live="polite">大会と区間を選択してください。</p></div><div id="portalLapCustomDistanceWrap" hidden><label>自由設計の合計距離（m・選択式）<select id="portalLapCustomDistance" aria-label="自由設計の合計距離"></select></label></div>
-                <label class="portalLapFullLine">ラップ表示パターン（選択式）<select id="portalLapPreset" aria-label="ラップ表示パターン"></select></label>
-                <div class="portalLapFullLine" id="portalLapPresetHint" aria-live="polite"></div>
-                <div id="portalLapCustomSegmentsWrap" hidden><div class="portalLapBlockHeader"><b>自由分割をブロックで設計</b><span>＋をタップして区間を追加</span></div><div id="portalLapBlocks" class="portalLapBlocks"></div><button type="button" id="portalLapAddBlock" class="portalLapBlockAdd">＋ 区間を追加</button><input type="hidden" id="portalLapSegments" value="600+1000+1000+1000+1400"><div class="portalLapFreeSum" id="portalLapFreeSumStatus" aria-live="polite">合計距離と分割距離を一致させてください</div></div><div class="portalLapCorrections"><label>スタートダッシュ補正（秒）<select id="portalLapStartOffset"></select></label><label>ラストスパート補正（秒）<select id="portalLapLastOffset"></select></label></div><p class="portalToolNote">マイナスは速く、プラスは遅く設定します。目標タイムは固定し、残りの区間へ差を再配分します。各区間の通過タイムをタップして個別調整もできます。</p>
-                <button type="button" class="portalToolAction" id="portalLapRunSplits">通過ラップを見る　→</button>
-                <div id="portalLapSplitState" class="portalToolNote" aria-live="polite"></div>
-                <div id="portalLapAdjustPanel" class="portalLapAdjustBar" hidden aria-live="polite"></div>
-                <div id="portalLapSplitResults" class="portalToolResults"></div>
-                <div id="portalLapFixedStatus" class="portalLapFixedTotal" role="status" aria-live="polite"></div>
-                <details class="portalToolDetails"><summary>コース補正などの未実装項目</summary><p>区間ごとの時間調整・スタート・ラスト補正は合計目標を固定して再配分します。上り下りによる自動補正の係数は未確定です。</p></details>
-              </div>
-            </div>
-            <section class="portalGoalView portalToolCard portalGoalSettingCard" id="portalGoalViewSetting" role="tabpanel" aria-labelledby="portalGoalTabSetting">
-              <div class="portalToolHeading"><small>GOAL SETTINGS</small><b>目標タイムを決定</b></div>
-              <label class="portalGoalMetricPicker">目標を設定する距離
-                <select id="portalGoalMetricPicker" aria-label="目標を設定する距離">
-                  <option value="400">400m</option><option value="800">800m</option><option value="1000">1000m</option><option value="1500" selected>1500m</option><option value="3000">3000m</option><option value="5000">5000m</option><option value="10000">10000m</option><option value="21097.5">ハーフ</option><option value="42195">フルマラソン</option><option value="relay">駅伝</option><option value="other">その他</option>
-                </select>
-              </label>
-              <p class="portalToolNote">距離と分・秒・100分の1秒を選んで目標を設定します。換算した目安も取り込めます。</p><div id="portalGoalRelayInfo" class="portalToolNote" hidden>駅伝の大会・区間指定は「ラップ換算」で選択できます。PORTALの現行イベント登録には区間距離がないため、区間別の自動反映は未接続です。</div>
-              <p id="portalGoalHandoffState" class="portalToolNote" aria-live="polite"></p>
-              <div id="portalCommonGoalForm" class="portalGoalForm"></div>
-              <button type="button" id="portalSaveCommonGoals" class="portalGoalSave">目標タイムを保存</button>
-              <p id="portalCommonGoalsState" class="portalFlowStatus" aria-live="polite"></p>
-              <p class="portalToolNote">この候補の目標保存は端末内のみです。大会Firebaseには同期しません。</p>
-              <p class="portalGoalSafeNote">※すでに目標設定済みの大会（イベント）の目標タイムは変更されません。変更する場合は各イベントで再入力してください。<br>※申告タイム（大会エントリー時に目標としたタイム）は変更されません。</p>
-            </section>
-            <section class="portalGoalView portalToolCard portalGoalOverviewCard" id="portalGoalViewOverview" role="tabpanel" aria-labelledby="portalGoalTabOverview" hidden>
-              <div class="portalToolHeading"><small>MY TARGETS</small><b>設定済み目標一覧</b></div>
-              <p class="portalToolNote">自分で決定して保存した目標タイムです。種目をタップすると目標設定へ戻り、変更できます。</p>
-              <div id="portalGoalSavedList" class="portalGoalSavedList" aria-live="polite"></div>
-              <p class="portalGoalSafeNote">※すでに目標設定済みの大会（イベント）の目標タイムは変更されません。変更する場合は各イベントで再入力してください。<br>※申告タイム（大会エントリー時に目標としたタイム）は変更されません。</p>
-            </section>
-    </div>
-  </div>
-</div>
 
 <!-- PERSONAL COLOR: visual-candidate UI only; no identity/Firebase write, no new profile copy. -->
 <div class="portalScreen hidden" id="screen-personal-color" aria-hidden="true">
@@ -10052,8 +9951,164 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
 })();
 </script>
 <!-- RESOURCE SAVE ACK REPAIR 2026-10-16. Physical parent: COLOR_FIX_CROSS_DEVICE_INTEGRATION_REVIEW. No Rules/Auth/new DB paths. -->
+
+<!-- STAGE18 API CONTRACT COMPATIBILITY CANDIDATE 2026-10-17: UI + API mapping only; no server activation or deployment. -->
+<!-- PARTICIPANT RELEASE CANDIDATE 2026-10-17: no changes to Firebase init/Auth/UID/profileId/Rules/data paths.
+     Authenticated existing participants open their own MY PAGE after self-profile READ.
+     No-session and missing-profile devices must not create replacement identities. -->
+<style id="portalParticipantIdentityEntryStyles">
+  #portalParticipantIdentityGate[hidden]{display:none!important}
+  #portalParticipantIdentityGate{position:fixed;inset:0;z-index:10000;background:rgba(33,39,38,.96);display:flex;align-items:center;justify-content:center;padding:calc(16px + env(safe-area-inset-top)) 20px calc(16px + env(safe-area-inset-bottom));color:#f8f7ee;overflow-y:auto}
+  .portalParticipantGateCard{width:min(430px,100%);max-height:95%;overflow-y:auto;padding:26px 23px;border:1px solid rgba(220,195,83,.42);border-radius:20px;background:#303735;box-shadow:0 24px 80px rgba(0,0,0,.26);font-family:-apple-system,BlinkMacSystemFont,'Hiragino Kaku Gothic ProN',Meiryo,sans-serif}
+  .portalParticipantGateCard small{font-size:11px;letter-spacing:.15em;font-weight:900;color:#dbc455}
+  .portalParticipantGateCard h2{font-size:23px;font-weight:950;line-height:1.35;margin:13px 0}
+  .portalParticipantGateCard p{font-size:14px;line-height:1.75;margin:12px 0;color:#eceadd}
+  #portalParticipantLoginMessage{padding:12px 14px;background:rgba(255,255,255,.09);border-radius:12px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.7}
+  .portalParticipantGateCard button{display:block;width:100%;min-height:48px;margin-top:16px;border:1px solid #dfc34c;background:#dfc34c;color:#292e2c;border-radius:12px;padding:13px;font-weight:900}
+  .portalParticipantGateCard details{font-size:12px;color:#f0eee7;margin-top:15px;line-height:1.65}
+  .portalParticipantGateCard details summary{font-weight:900;cursor:pointer;padding:8px 0}
+  .portalParticipantGateCard details p{font-size:12px;margin:7px 0}
+  #portalHandoffCodeForm[hidden],#portalHandoffIssued[hidden],#portalHandoffIssueButton[hidden],#portalHandoffStatus[hidden]{display:none!important}
+  #portalHandoffCodeForm{margin-top:14px}
+  #portalHandoffCodeInput{width:100%;height:52px;font-size:17px;letter-spacing:.08em;text-align:center;border-radius:10px;border:1px solid #b9baa9;background:#fff;color:#222;padding:9px}
+  #portalHandoffIssued{margin:18px 0 4px;padding:18px 12px;border:1px solid #d9bf60;background:rgba(255,255,255,.07);border-radius:12px;text-align:center}
+  #portalHandoffIssuedCode{display:block;font-size:22px;letter-spacing:.06em;font-weight:900;overflow-wrap:anywhere}
+  #portalHandoffIssued small{display:block;margin-top:10px;font-size:12px;color:#e6db9a;letter-spacing:0}
+  #portalHandoffStatus{font-size:13px;margin-top:12px;line-height:1.65;white-space:pre-wrap}
+  .portalParticipantGateCard .portalHandoffSecondary{background:transparent;color:#fff;border-color:#a9a58a}
+</style>
+<div id="portalParticipantIdentityGate" role="dialog" aria-modal="true" aria-labelledby="portalParticipantLoginTitle" aria-describedby="portalParticipantLoginMessage">
+  <section class="portalParticipantGateCard">
+    <small>TOP RUN PORTAL / MEMBER SIGN IN</small>
+    <h2 id="portalParticipantLoginTitle">本人ログインを確認しています</h2>
+    <p id="portalParticipantLoginMessage" role="status" aria-live="polite">登録済みの本人情報とマイページを確認中です。</p>
+    <p id="portalParticipantLoginHelp">本人情報の確認が完了すると、参加者は自分のマイページが自動で開きます。</p>
+    <button id="portalParticipantLoginRetry" type="button" hidden>本人ログインを再確認する</button>
+    <div id="portalHandoffStatus" role="status" aria-live="polite" hidden></div>
+    <div id="portalHandoffIssued" hidden><strong id="portalHandoffIssuedCode"></strong><small>使い切り・期限付き。引継ぎ先の端末で入力してください。</small></div>
+    <button id="portalHandoffIssueButton" type="button" hidden>この本人の引継ぎコードを発行</button>
+    <form id="portalHandoffCodeForm" autocomplete="off">
+      <label for="portalHandoffCodeInput">別の端末から引き継ぐコード（32文字）</label>
+      <input id="portalHandoffCodeInput" maxlength="39" inputmode="text" spellcheck="false" autocapitalize="characters" autocomplete="one-time-code" placeholder="32桁のコードを入力" aria-label="引継ぎコード">
+      <button id="portalHandoffRedeemButton" type="submit">同じ本人でログイン</button>
+    </form>
+    <button id="portalHandoffCancel" class="portalHandoffSecondary" type="button" hidden>マイページに戻る</button>
+    <details id="portalParticipantHelpDetails"><summary>ホーム画面への追加・ログインについて</summary>
+      <p>iPhoneはSafariの共有メニューから「ホーム画面に追加」、AndroidはChromeのメニューから「ホーム画面に追加」または「アプリをインストール」を選んでください。</p>
+      <p>すでにEVENT BASEなどで登録した方は、本人情報を新規登録し直さないでください。ホーム画面アプリとSafari・Chromeではログイン情報が別になることがあります。</p>
+      <p>以前の登録と同じ本人に接続できない場合は、管理者に本人引継ぎを依頼してください。認証コードを他人と共有しないでください。</p>
+    </details>
+  </section>
+</div>
+<script id="portalParticipantIdentityEntryLogic">
+(function(){
+  'use strict';
+  const panel=document.getElementById('portalParticipantIdentityGate');
+  const heading=document.getElementById('portalParticipantLoginTitle');
+  const message=document.getElementById('portalParticipantLoginMessage');
+  const helper=document.getElementById('portalParticipantLoginHelp');
+  const retry=document.getElementById('portalParticipantLoginRetry');
+  const sourceButton=document.getElementById('portalHandoffOpen');
+  const issueButton=document.getElementById('portalHandoffIssueButton');
+  const issueBox=document.getElementById('portalHandoffIssued');
+  const issueCode=document.getElementById('portalHandoffIssuedCode');
+  const codeForm=document.getElementById('portalHandoffCodeForm');
+  const codeInput=document.getElementById('portalHandoffCodeInput');
+  const redeemButton=document.getElementById('portalHandoffRedeemButton');
+  const handoffState=document.getElementById('portalHandoffStatus');
+  const cancel=document.getElementById('portalHandoffCancel');
+  const endpoint=(document.querySelector('meta[name="top-run-handoff-api"]')?.content||'').replace(/\/$/,'');
+  // A configured, fixed trusted HTTPS endpoint is required. No query-string or user-supplied API URL.
+  const configured=/^https:\/\/[a-zA-Z0-9.-]+$/.test(endpoint) && !/\/\/eventbase-identity-handoff-1071631357620\.asia-southeast1\.run\.app$/.test(endpoint);
+  function setHandoffState(text){handoffState.hidden=false;handoffState.textContent=text;}
+  const adapter=window.__TR_COMMON_PILOT_UI__;
+  if(new URLSearchParams(location.search).get('commonPilot')==='1'){panel.hidden=true;return;}
+  retry.addEventListener('click',()=>location.reload());
+  function openSource(){
+    const v=window.__TR_PORTAL_SYNC__;
+    if(!v?.uid||!v?.profileId||v.loaded?.personal!==true){
+      panel.hidden=false;heading.textContent='本人を確認できません';message.textContent='元の端末で本人ログインを確認してください。';return;
+    }
+    panel.hidden=false;
+    heading.textContent='同じマイページを他の端末へ';
+    message.textContent='この端末で本人確認済みです。引継ぎ先で入力するコードを発行します。';
+    helper.textContent='コードを知る人が同じ本人としてログインできます。本人だけが利用してください。';
+    codeForm.hidden=true;issueBox.hidden=true;issueButton.hidden=false;cancel.hidden=false;retry.hidden=true;
+    setHandoffState(configured?'コードは使い切りで、期限があります。':'引継ぎ用の公開中継サービスが未接続です。接続完了までコード発行はできません。');
+    issueButton.disabled=!configured;
+  }
+  function openTarget(){
+    if(resolved)return;
+    panel.hidden=false;
+    codeForm.hidden=false;issueBox.hidden=true;issueButton.hidden=true;cancel.hidden=true;
+    setHandoffState(configured?'元の端末で発行したコードを入力してください。':'引継ぎ用の公開中継サービスが未接続です。接続完了までコード入力はできません。');
+    redeemButton.disabled=!configured;
+  }
+  sourceButton?.addEventListener('click',openSource);
+  cancel.addEventListener('click',()=>{panel.hidden=true;issueButton.hidden=true;issueBox.hidden=true;});
+  issueButton.addEventListener('click',async()=>{
+    const sync=window.__TR_PORTAL_SYNC__;
+    if(!configured||!sync?.issueHandoff)return;
+    issueButton.disabled=true;setHandoffState('既存の本人確認とコード発行を処理しています。');
+    try {
+      const result=await sync.issueHandoff();
+      issueCode.textContent=String(result.code||'');issueBox.hidden=false;
+      setHandoffState('発行しました。引継ぎ先の端末でコードを入力してください。');
+    } catch(err){setHandoffState('発行できません：'+String(err?.message||err).slice(0,170));}
+    finally{issueButton.disabled=false;}
+  });
+  codeForm.addEventListener('submit',async event=>{
+    event.preventDefault();
+    const sync=window.__TR_PORTAL_SYNC__;
+    if(!configured||!sync?.redeemHandoff){setHandoffState('本人引継ぎサーバーへの接続が未完了です。');return;}
+    redeemButton.disabled=true;setHandoffState('引継ぎコードを確認しています。');
+    try{await sync.redeemHandoff(codeInput.value);codeInput.value='';setHandoffState('本人認証を受け付けました。元のプロフィールを照合しています。');}
+    catch(err){setHandoffState('ログインできません：'+String(err?.message||err).slice(0,170));redeemButton.disabled=false;}
+  });
+
+  let entered=false, resolved=false;
+  const warn=(title,body)=>{
+    if(resolved)return;
+    heading.textContent=title;
+    message.textContent=String(body||'ログイン状態を確認できませんでした。').slice(0,300);
+    helper.textContent='既存の登録を消したり、新しい本人アカウントを作り直したりしないでください。';
+    retry.hidden=false;
+    openTarget();
+  };
+  const readDone=()=>{
+    const v=window.__TR_PORTAL_SYNC__;
+    if(!v?.uid||!v?.profileId||v.loaded?.personal!==true)return;
+    if(v.personal?.profileId&&v.personal.profileId!==v.profileId){
+      warn('本人情報を確認できません','プロフィールIDが一致しません。別の本人情報として開かず、管理者に確認してください。');
+      return;
+    }
+    resolved=true;panel.hidden=true;issueButton.hidden=true;issueBox.hidden=true;
+    // Staff members retain their existing PORTAL entry and management flow.
+    if(!entered&&v.role==='participant'){
+      entered=true;
+      document.querySelector('.headerMy[data-screen="mypage"]')?.click();
+    }
+  };
+  const noSession=()=>warn('この端末ではログインが必要です',
+    'この起動環境に登録済みの本人UIDがありません。以前利用した端末の本人情報を引き継ぐ必要があります。現時点で新規UIDを自動発行しません。');
+  const noProfile=()=>warn('本人プロフィールが見つかりません',
+    'Firebaseのログイン状態はありますが、対応するprofileIdを確認できませんでした。別人として再登録せず、管理者へ確認してください。');
+  const failed=(msg)=>warn('本人ログインを確認できません',msg);
+  const personal=adapter?.applyPersonal;
+  if(typeof personal==='function')adapter.applyPersonal=function(){const out=personal.apply(this,arguments);readDone();return out;};
+  const entryError=adapter?.applyEntryError;
+  if(typeof entryError==='function')adapter.applyEntryError=function(msg){const out=entryError.apply(this,arguments);failed(msg);return out;};
+  window.__TR_PARTICIPANT_ENTRY__={readDone,noSession,noProfile,failed};
+  // Do not show a permanent spinner when the network stalls; no Firebase write is issued.
+  setTimeout(()=>{
+    if(!resolved&&!retry.hidden)return;
+    if(!resolved)warn('接続状況を確認してください','ログインの確認に時間がかかっています。通信状態を確認してから再試行してください。');
+  },15000);
+})();
+</script>
+
 <script type="module" id="top-run-portal-unified-firebase-20261016">
-// REVIEW CANDIDATE. Uses existing Firebase/Auth UID and portalCommon/topRun.
+// DISTRIBUTION PREPARATION. Uses existing Firebase/Auth UID and portalCommon/topRun.
 // No signIn; no new identity/profile database; no writes to events/<eventId> or results.
 if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
   const ui=window.__TR_COMMON_PILOT_UI__;
@@ -10207,6 +10262,7 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
       gate.errors[key]=String(error?.code||error?.message||error).slice(0,90);
       statusResources();
       if(key==='chat')ui?.disableChat();
+      if(key==='personal')window.__TR_PARTICIPANT_ENTRY__?.failed('マイページの本人情報を取得できません。既存のFirebase権限・Rulesをご確認ください。');
     };
     const run=(path,fn)=>dbMod.runTransaction(ref(path),fn,{applyLocally:false});
     const makePractice=(v,uid,original=null)=>({kind:'practice',title:'練習予定',place:String(v.place||'').slice(0,120),start:String(v.start||''),end:String(v.end||''),other:String(v.other||'—').slice(0,1000),enabled:v.enabled!==false,createdAt:original?.createdAt||Date.now(),createdByUid:original?.createdByUid||uid,updatedAt:Date.now(),updatedByUid:uid});
@@ -10514,15 +10570,24 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
         officialSubs.push(stop);
       }
     };
+    let handoffExpected=null;
     const onUser=async user=>{
       reset();const seq=generation;
-      if(!user){status('この起動領域に既存の本人UIDはありません。ホーム画面PWAとSafariは別領域の場合があります。元の本人引継ぎを行うまで新UIDは生成しません');ui?.applyEntryError('本人引継ぎが必要です。既存のホーム画面アイコンを削除・再登録しないでください');return;}
+      if(!user){status('この起動領域に既存の本人UIDはありません。ホーム画面PWAとSafariは別領域の場合があります。元の本人引継ぎを行うまで新UIDは生成しません');ui?.applyEntryError('本人引継ぎが必要です。既存のホーム画面アイコンを削除・再登録しないでください');window.__TR_PARTICIPANT_ENTRY__?.noSession();return;}
       try{
         const uid=user.uid;
         const profile=await dbMod.get(dbMod.ref(db,'profiles/'+uid));
         if(seq!==generation||auth.currentUser?.uid!==uid)return;
         const p=profile.val();
-        if(typeof p?.profileId!=='string'||!p.profileId){status('profiles/<uid>/profileIdが取得できません');ui?.applyEntryError('本人profileIdが取得できません');return;}
+        if(handoffExpected){
+          const expected=handoffExpected;handoffExpected=null;
+          if(uid!==expected.uid||p?.profileId!==expected.profileId){
+            status('引継ぎ元UIDとprofileIdの検証に失敗しました。個人画面を開きません');
+            window.__TR_PARTICIPANT_ENTRY__?.failed('引継ぎ後の本人UIDまたはprofileIdが一致しません。管理者へ確認してください。');
+            return;
+          }
+        }
+        if(typeof p?.profileId!=='string'||!p.profileId){status('profiles/<uid>/profileIdが取得できません');ui?.applyEntryError('本人profileIdが取得できません');window.__TR_PARTICIPANT_ENTRY__?.noProfile();return;}
         gate.uid=uid;gate.profileId=p.profileId;gate.displayName=String(p.displayName||'').slice(0,24);
         ui?.applyIdentity({profileId:p.profileId,displayName:gate.displayName});
         window.dispatchEvent(new Event('tr-portal-identity-ready'));
@@ -10562,7 +10627,7 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
         const ownPortalData=dbMod.ref(db,'profiles/'+uid+'/portalSelf');
         const ownProfileSub=dbMod.onValue(ownPortalData,snap=>{
           if(seq!==generation||auth.currentUser?.uid!==uid)return;
-          gate.personal=snap.val()||{};gate.loaded.personal=true;delete gate.errors.personal;
+          gate.personal=snap.val()||{};if(gate.personal.profileId&&gate.personal.profileId!==gate.profileId){fail('personal',new Error('本人profileIdが一致しません'));return;}gate.loaded.personal=true;delete gate.errors.personal;
           ui?.applyPersonal(gate.personal);statusResources();
         },error=>{if(seq===generation)fail('personal',error);});
         unsubs.push(ownProfileSub);
@@ -10605,13 +10670,74 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
           const chatRef=dbMod.query(ref('chat'),dbMod.orderByChild('ts'),dbMod.limitToLast(100));
           bind('chat','chat',items=>ui?.applyChat(Object.entries(items).map(([id,r])=>({...r,id})).sort((a,b)=>Number(a.ts||0)-Number(b.ts||0))),chatRef);
         }else{ui?.applyNotices([]);ui?.applyChat([]);ui?.disableChat();status('本人接続済み（参加者：練習予定・イベントのみ権限内で受信）');}
-      }catch(error){if(seq!==generation)return;reset();status('本人READ不可：'+String(error?.code||error?.message||error));}
+      }catch(error){if(seq!==generation)return;reset();status('本人READ不可：'+String(error?.code||error?.message||error));window.__TR_PARTICIPANT_ENTRY__?.failed('既存の本人情報を読み込めません。元の端末の登録と権限を確認してください。');}
+    };
+    // One-time handoff: the single, existing Firebase Auth instance is reused.
+    // Never create an anonymous UID or a second profile for this transfer.
+    const handoffBase=(document.querySelector('meta[name="top-run-handoff-api"]')?.content||'').replace(/\/$/,'');
+    const handoffReady=/^https:\/\/[a-zA-Z0-9.-]+$/.test(handoffBase) && !/\/\/eventbase-identity-handoff-1071631357620\.asia-southeast1\.run\.app$/.test(handoffBase);
+    const handoffFetch=async(path,payload,bearer)=>{
+      if(!handoffReady)throw Error('引継ぎサーバーが未設定です');
+      const response=await fetch(handoffBase+path,{
+        method:'POST',mode:'cors',cache:'no-store',referrerPolicy:'no-referrer',
+        headers:{'Content-Type':'application/json',...(bearer?{'Authorization':'Bearer '+bearer}:{})},
+        body:JSON.stringify(payload)
+      });
+      const result=await response.json().catch(()=>({}));
+      const errors={
+        GATEWAY_NOT_ENABLED:'中継サーバーは停止中です。管理者の接続設定が必要です。',
+        HANDOFF_NOT_ENABLED:'本人引継ぎ機能は停止中です。管理者の有効化が必要です。',
+        ORIGIN_NOT_ALLOWED:'この公開ページからのアクセスが許可されていません。',
+        AUTH_REQUIRED:'元端末で本人ログインを確認してください。',
+        PROFILE_MISSING:'元端末の本人プロフィールが確認できません。',
+        PROFILE_CHANGED:'発行後に本人情報が変更されています。管理者へ確認してください。',
+        BAD_OR_EXPIRED_CODE:'コードが違うか、期限切れ・使用済みです。元端末で再発行してください。',
+        HANDOFF_RATE_LIMIT:'発行回数の制限中です。時間をおいてください。',
+        GATEWAY_BUSY:'処理が集中しています。時間をおいてください。',
+        CREATE_BUSY:'発行リクエストが集中しています。時間をおいてください。',
+        CLAIM_BUSY:'認証リクエストが集中しています。時間をおいてください。',
+        SOURCE_IDENTITY_UNAVAILABLE:'元の本人アカウントが利用できません。管理者に確認してください。',
+        SOURCE_AUTH_REVOKED:'元の本人認証が失効しました。管理者に確認してください。',
+        TEMPORARILY_UNAVAILABLE:'本人引継ぎサービスに接続できません。しばらくして再試行してください。'
+      };
+      if(!response.ok||result?.ok!==true){
+        const code=String(result?.code||'');
+        throw Error(errors[code]||'本人引継ぎサービスの応答を確認できません。');
+      }
+      return result;
+    };
+    gate.issueHandoff=async()=>{
+      if(!auth.currentUser||!gate.uid||auth.currentUser.uid!==gate.uid||!gate.profileId||!gate.loaded.personal)throw Error('元の本人プロフィールが確認できません');
+      if(gate.personal?.profileId&&gate.personal.profileId!==gate.profileId)throw Error('本人profileIdが一致しません');
+      const idToken=await auth.currentUser.getIdToken();
+      return handoffFetch('/v1/identity-handoff/create',{},idToken);
+    };
+    gate.redeemHandoff=async(code)=>{
+      const value=String(code||'').toUpperCase().replace(/[\s-]/g,'');
+      if(!/^[A-F0-9]{32}$/.test(value))throw Error('32桁の引継ぎコードを確認してください');
+      const result=await handoffFetch('/v1/identity-handoff/claim',{code:value});
+      if(typeof result?.token!=='string'||!result.token||typeof result?.uid!=='string'||typeof result?.profileId!=='string'||!result.profileId)throw Error('本人のログイン情報が取得できません');
+      // Confirm the claimed UID matches the signed Firebase Custom Token before a session change.
+      let tokenUid='';
+      try{const claims=JSON.parse(atob(result.token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));tokenUid=String(claims.uid||'');}catch(_){throw Error('サーバーの本人認証情報が不正です');}
+      const incomingUid=String(result.uid);
+      if(!/^[A-Za-z0-9_-]{6,128}$/.test(incomingUid)||tokenUid!==incomingUid)throw Error('引継ぎ元の本人UIDとログイン情報が一致しません');
+      if(auth.currentUser&&auth.currentUser.uid!==incomingUid){
+        const accepted=window.confirm('この端末には別のログイン情報があります。現在のログインを解除して、引継ぎ元の本人へ切り替えますか？\n端末の保存領域を消去することはありません。');
+        if(!accepted)throw Error('ログイン切替を中止しました');
+      }
+      await authMod.setPersistence(auth,authMod.browserLocalPersistence);
+      handoffExpected={uid:incomingUid,profileId:result.profileId};
+      let credential;
+      try{credential=await authMod.signInWithCustomToken(auth,result.token);}catch(error){handoffExpected=null;throw error;}
+      if(credential.user?.uid!==incomingUid)throw Error('引継ぎ後のUIDが一致しません');
+      return {uid:incomingUid,profilePending:true};
     };
     unsubs=[];
     authMod.onAuthStateChanged(auth,onUser);
     window.addEventListener('pagehide',reset);
     window.addEventListener('pageshow',e=>{if(e.persisted)location.reload();});
-  }catch(error){status('Firebase SDK / Auth開始失敗：'+String(error?.message||error).slice(0,150));}
+  }catch(error){status('Firebase SDK / Auth開始失敗：'+String(error?.message||error).slice(0,150));window.__TR_PARTICIPANT_ENTRY__?.failed('Firebase認証を開始できません。通信とブラウザ設定を確認してください。');}
 }
 </script>
 </body>
