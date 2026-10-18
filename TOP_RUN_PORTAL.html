@@ -5524,37 +5524,58 @@ html:is([data-portal-personal-color="winter"],[data-portal-personal-color="matte
   close.addEventListener('click', () => modal.classList.add('hidden'));
   modal.addEventListener('click', e => { if(e.target === modal) modal.classList.add('hidden'); });
 
-  // MY PAGE UI-only.
-  $('portalSaveName').addEventListener('click', () => {
+  // MY PAGE displayName uses the one existing Firebase identity gateway.
+  // Never claim success for a view-only change; keep developer preview local-only.
+  $('portalSaveName').addEventListener('click', async () => {
     const input=$('portalDisplayName');
-    const value = input.value.trim();
-    if(value){
-      $('portalMyPageName').textContent = value;
-      if(portalParticipantPreviewMode && isDeveloper){
-        const actor=portalDevPreviewUsers.find(x=>x.id===portalDevPreviewActiveId);
-        if(actor){
-          const oldName=actor.name,oldStamp=actor.savedAt;
-          actor.name=value; actor.savedAt=Date.now();
-          if(!savePortalDevPreviewUsers()){
-            actor.name=oldName;actor.savedAt=oldStamp;
-            $('portalNameState').textContent='端末内へ保存できません。ブラウザ設定を確認してください。';
-            refreshPortalDevPreviewSaveStatus();
-            showActionFeedback('未保存','この端末のローカル保存ができませんでした。');
-            input.blur();return;
-          }
-          refreshPortalDevPreviewSaveStatus();
-        }
-        showActionFeedback('ローカル保存しました','この確認対象の表示名を端末内に保存しました。Firebase未保存です。');
-      }else{
-        showActionFeedback('保存しました','表示名をこのHTML内に反映しました。Firebase未保存です。');
+    const value=input.value.trim();
+    const state=$('portalNameState');
+    const button=$('portalSaveName');
+    if(!value){state.textContent='表示名を入力してください。';return;}
+    if(portalParticipantPreviewMode && isDeveloper){
+      const actor=portalDevPreviewUsers.find(x=>x.id===portalDevPreviewActiveId);
+      if(!actor){state.textContent='確認対象を選択してください。';return;}
+      const oldName=actor.name,oldStamp=actor.savedAt;
+      actor.name=value;actor.savedAt=Date.now();
+      if(!savePortalDevPreviewUsers()){
+        actor.name=oldName;actor.savedAt=oldStamp;
+        state.textContent='端末内へ保存できません。ブラウザ設定を確認してください。';
+        refreshPortalDevPreviewSaveStatus();
+        showActionFeedback('未保存','この端末のローカル保存ができませんでした。');
+        return;
       }
+      $('portalMyPageName').textContent=value;
+      refreshPortalDevPreviewSaveStatus();
+      state.textContent='確認対象の表示名をローカル保存しました。Firebase未保存です。';
+      showActionFeedback('ローカル保存しました','確認対象の表示名を端末内に保存しました。Firebase未保存です。');
+    }else{
+      const gateway=window.__TR_PORTAL_SYNC__;
+      if(!gateway?.saveOwnDisplayName || !gateway?.canSavePersonal?.() || flowSelfId()!==flowBaseSelfId){
+        state.textContent='本人Firebaseの認証とプロフィールを確認できません。未保存です。';
+        showActionFeedback('未保存','本人プロフィールの受信が必要です。');
+        return;
+      }
+      button.disabled=true;
+      state.textContent='Firebaseへ保存しています…';
+      try{
+        await gateway.saveOwnDisplayName(value);
+        // Commit UI only after the single canonical profile path acknowledges and re-READs.
+        $('portalMyPageName').textContent=value;
+        const self=flowState.actors.find(x=>x?.id===flowBaseSelfId);
+        if(self)self.name=value;
+        state.textContent='表示名をFirebaseに保存し、再読込で確認しました。';
+        showActionFeedback('保存しました','本人プロフィールの表示名をFirebaseに保存しました。');
+      }catch(error){
+        state.textContent='未保存：'+String(error?.message||error).slice(0,135);
+        showActionFeedback('未保存','Firebaseへの保存が成立していません。');
+        return;
+      }finally{button.disabled=false;}
     }
-    $('portalNameState').textContent = value ? (portalParticipantPreviewMode && isDeveloper?'確認対象の表示名をローカル保存しました。Firebase未保存です。':'このHTML内の表示だけ更新しました。Firebase未接続です。') : '表示名を入力してください。';
-    if(value)portalRefreshProfileDisclosure();
+    portalRefreshProfileDisclosure();
     input.blur();
     document.body.classList.remove('portalFieldInputActive');
     const screen=$('screen-mypage');
-    if(screen) setTimeout(()=>screen.scrollTo({top:0,behavior:'smooth'}),80);
+    if(screen)setTimeout(()=>screen.scrollTo({top:0,behavior:'smooth'}),80);
   });
   if(canManage) $('portalAdminRecordNote').classList.remove('hidden');
 
@@ -9634,7 +9655,18 @@ list.innerHTML=output.map(metric=>{
       if(typeof profileId!=='string'||!profileId)return;
       flowBaseSelfId=profileId;
       portalSelfProfileId=profileId;portalPersonalTargetId=profileId;
-      if(displayName && !flowState.actors.some(x=>x?.id===profileId))flowState.actors.push({id:profileId,name:displayName});
+      if(displayName){
+        const self=flowState.actors.find(x=>x?.id===profileId);
+        if(self)self.name=displayName;
+        else flowState.actors.push({id:profileId,name:displayName});
+        // Re-entry must render the canonical Firebase name, not the HTML placeholder.
+        // Do not replace a name actively being typed, or a local developer preview.
+        if(!portalParticipantPreviewMode){
+          $('portalMyPageName').textContent=displayName;
+          const nameInput=$('portalDisplayName');
+          if(nameInput && document.activeElement!==nameInput)nameInput.value=displayName;
+        }
+      }
       flowRefreshAll();
     },
     applyPersonal(value){
@@ -10138,9 +10170,32 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
     const appB=appMod.getApps().find(a=>a.name==='eventbase-rebuild-v22')||appMod.initializeApp(firebaseConfig,'eventbase-rebuild-v22');
     const authA=authMod.getAuth(appA),authB=authMod.getAuth(appB);
     await Promise.all([authA,authB].map(a=>typeof a.authStateReady==='function'?a.authStateReady():Promise.resolve()));
-    if(authA.currentUser&&authB.currentUser&&authA.currentUser.uid!==authB.currentUser.uid){status('既存の認証UIDが競合したため接続を停止しました');throw Error('Firebase UID conflict');}
-    const auth=authA.currentUser?authA:authB;
-    const db=dbMod.getDatabase(authA.currentUser?appA:appB);
+    // Existing EVENT BASE app names may retain different authenticated sessions.
+    // This is a READ-ONLY resolution of existing credentials; never sign in, mint a UID,
+    // merge profiles, alter bindings, or silently choose between two valid identities.
+    const selectPersistedPortalSession=async ({authA,authB,appA,appB,dbMod})=>{
+      const candidates=[{auth:authA,app:appA},{auth:authB,app:appB}];
+      const [a,b]=candidates;
+      const aUid=a.auth.currentUser?.uid||'';
+      const bUid=b.auth.currentUser?.uid||'';
+      if(!aUid||!bUid||aUid===bUid)return aUid?a:b;
+      const checked=await Promise.all(candidates.map(async candidate=>{
+        try{
+          const uid=candidate.auth.currentUser.uid;
+          const snapshot=await dbMod.get(dbMod.ref(dbMod.getDatabase(candidate.app),'profiles/'+uid));
+          const profile=snapshot.val();
+          return {candidate,status:typeof profile?.profileId==='string'&&profile.profileId.trim()?'bound':'unbound'};
+        }catch(_){return {candidate,status:'unknown'};}
+      }));
+      const bound=checked.filter(x=>x.status==='bound');
+      // A denied READ is not evidence that this person has no profile.
+      if(checked.some(x=>x.status==='unknown')||bound.length!==1)
+        throw Error('PORTAL_MULTIPLE_IDENTITY_CONFLICT');
+      return bound[0].candidate;
+    };
+    const selected=await selectPersistedPortalSession({authA,authB,appA,appB,dbMod});
+    const auth=selected.auth;
+    const db=dbMod.getDatabase(selected.app);
     const root='portalCommon/topRun';
     const ref=(path)=>dbMod.ref(db,root+'/'+path);
     let unsubs=[],ownSubs=[],officialSubs=[],ownSignature='',officialSignature='',generation=0;
@@ -10167,6 +10222,26 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
         return {...prev,profileId:actualProfile,[key]:value,updatedAt:Date.now()};
       },{applyLocally:false});
       if(!result.committed)throw Error('別端末の更新または本人照合のため保存を停止しました');
+    };
+    // Canonical display name is profiles/<uid>/displayName, not portalSelf or a local UI value.
+    // This uses the already-selected Firebase Auth and RTDB app (no extra initialization).
+    gate.saveOwnDisplayName=async(rawName)=>{
+      if(!gate.canSavePersonal())throw Error('本人Firebaseの受信が未成立です');
+      const name=String(rawName||'').trim();
+      if(!name||name.length>24||/[\x00-\x1f]/.test(name))throw Error('表示名は1〜24文字で入力してください');
+      const uid=gate.uid,profileId=gate.profileId;
+      const profileRef=dbMod.ref(db,'profiles/'+uid);
+      const before=await dbMod.get(profileRef);
+      if(auth.currentUser?.uid!==uid || before.val()?.profileId!==profileId)
+        throw Error('保存前の本人UID・profileId照合が一致しません');
+      const now=Date.now();
+      // Atomic update of only existing canonical fields: preserve every other profile property.
+      await dbMod.update(profileRef,{displayName:name,updatedAt:now});
+      if(auth.currentUser?.uid!==uid)throw Error('保存処理中に本人認証が変わりました');
+      const confirmed=await dbMod.get(profileRef);
+      if(confirmed.val()?.profileId!==profileId || confirmed.val()?.displayName!==name)
+        throw Error('保存後の本人情報を再確認できませんでした');
+      gate.displayName=name;
     };
     gate.saveOwnBasicProfile=value=>gate.savePersonalField('basicProfile',value);
     gate.saveOwnGoals=value=>gate.savePersonalField('defaultGoals',value);
@@ -10737,7 +10812,15 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
     authMod.onAuthStateChanged(auth,onUser);
     window.addEventListener('pagehide',reset);
     window.addEventListener('pageshow',e=>{if(e.persisted)location.reload();});
-  }catch(error){status('Firebase SDK / Auth開始失敗：'+String(error?.message||error).slice(0,150));window.__TR_PARTICIPANT_ENTRY__?.failed('Firebase認証を開始できません。通信とブラウザ設定を確認してください。');}
+  }catch(error){
+    if(error?.message==='PORTAL_MULTIPLE_IDENTITY_CONFLICT'){
+      status('複数の既存Firebase UIDが確認されたため、本人の自動選択を停止しました');
+      window.__TR_PARTICIPANT_ENTRY__?.failed('この起動環境に複数の本人認証が残っています。どちらも自動解除・統合せず停止しています。');
+    }else{
+      status('Firebase SDK / Auth開始失敗：'+String(error?.message||error).slice(0,150));
+      window.__TR_PARTICIPANT_ENTRY__?.failed('Firebase認証を開始できません。通信とブラウザ設定を確認してください。');
+    }
+  }
 }
 </script>
 </body>
