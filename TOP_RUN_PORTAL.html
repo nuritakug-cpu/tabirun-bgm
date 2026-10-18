@@ -5359,6 +5359,16 @@ html[data-portal-personal-color="matte"] #screen-management .portalWorkflowChoic
       portalNumberRegistrationState={checked:0,expected:2,errors:[],loading:false};
       portalRosterSourceState={events:0,received:0,errors:[]};
       refreshVerifiedParticipantDirectory();
+      // Revocation also discards stale names from the staff-only UI projection.
+      portalDevPreviewActiveId='';
+      portalSelfProfileId=flowBaseSelfId;
+      portalPersonalTargetId=flowBaseSelfId;
+      portalAthletes.length=0;
+      const previewPicker=$('portalDevPreviewSelector');
+      if(previewPicker)previewPicker.innerHTML='<option value="">対象を選択してください</option>';
+      const inlineRoster=$('portalAthleteInlineList'),fullRoster=$('portalAthleteDirectoryList');
+      if(inlineRoster)inlineRoster.replaceChildren();
+      if(fullRoster)fullRoster.replaceChildren();
       portalParticipantPreviewMode=false;
       document.body.classList.remove('portalParticipantPreview');
       // Screen history must not retain a manager view on identity loss.
@@ -7636,7 +7646,10 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
   }
   function renderPortalAthleteDirectory(){
     if(!canManage || portalParticipantPreviewMode)return;
-    const html=portalAthletes.length?portalAthletes.map(a=>`<button type="button" class="portalDirectoryRow" data-pr-athlete="${esc(a.profileId)}"><span><b>${esc(a.name)}</b><small>個人記録を閲覧</small></span><strong>›</strong></button>`).join(''):'<div class="portalEmpty">登録選手なし。Firebase接続後に一覧を表示します。</div>';
+    const state=portalNumberRegistrationState;
+    const note=isDeveloper?(state.loading?'大会番号登録の読込中…':state.errors.length?'大会番号登録の読込失敗：'+state.errors.join(' ／ '):'Firebaseで確認した参加者と端末内の仮データを区別して表示します。'):'';
+    const html=(note?`<div class="portalDeveloperEmpty" role="status">${esc(note)}</div>`:'')+
+      (portalAthletes.length?portalAthletes.map(a=>`<button type="button" class="portalDirectoryRow" data-pr-athlete="${esc(a.profileId)}"><span><b>${esc(a.name)}${a.verified?'':'（仮）'}</b><small>${esc(a.verified?(a.linked?'Firebase登録を確認／取得できた個人記録のみ表示':'Firebase大会番号登録／本人IDと過去記録は未紐付け'):'この端末の確認用データ（Firebaseには未登録）')}</small></span><strong>›</strong></button>`).join(''):'<div class="portalEmpty">確認できた選手はありません。Firebaseの読込状態を確認してください。</div>');
     $('portalAthleteDirectoryList').innerHTML=html;
     $('portalAthleteInlineList').innerHTML=html;
     const needle=($('portalAthleteDirectorySearch')?.value||'').trim().toLocaleLowerCase('ja-JP');
@@ -7663,8 +7676,48 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
     try{localStorage.setItem(PORTAL_PREVIEW_USERS_KEY,JSON.stringify(portalDevPreviewUsers));return true}
     catch(_){return false}
   }
+  // Canonical selection projection only: no new profile, binding or result is written here.
+  // A UID is NOT a profileId. A player subjectUid may link to a stored profileId,
+  // but display-name equality never links people (parents and duplicates are common).
   function portalActualPreviewPeople(){
-    return portalDeveloperParticipants.filter(p=>p.profileId).map(p=>({id:p.profileId,name:p.name,verified:true}));
+    const verified=new Map();
+    const byUid=new Map();
+    for(const row of portalVerifiedEventBasePeople){
+      const uid=String(row?.uid||'');
+      const pid=String(row?.profileId||'').trim();
+      if(!/^[A-Za-z0-9_-]{6,128}$/.test(uid)||!pid)continue;
+      if(!byUid.has(uid))byUid.set(uid,new Set());
+      byUid.get(uid).add(pid);
+    }
+    for(const row of portalDeveloperParticipants){
+      const pid=String(row?.profileId||'').trim();
+      if(!pid)continue;
+      verified.set(pid,{id:pid,name:row.name,verified:true,linked:true,kind:'event',detail:row.detail||'大会出走・参加回答'});
+    }
+    for(const row of portalVerifiedNumberRegistrations){
+      const uid=String(row?.uid||'');
+      if(!/^[A-Za-z0-9_-]{6,128}$/.test(uid))continue;
+      const candidateIds=byUid.get(uid);
+      // Only an unambiguous event-player subject UID may supply a real profileId.
+      const pid=candidateIds?.size===1?[...candidateIds][0]:'';
+      const id=pid||'number-binding:'+uid;
+      const current=verified.get(id);
+      verified.set(id,{
+        id,name:current?.name||row.name,verified:true,linked:!!pid,
+        kind:'number',detail:String(row.detail||'大会番号登録')+(pid?' ／ 大会出走カードで本人ID照合済み':' ／ 本人ID・記録は未紐付け')
+      });
+    }
+    return [...verified.values()].sort((a,b)=>a.name.localeCompare(b.name,'ja'));
+  }
+  function refreshVerifiedAthleteViews(){
+    // All three existing screens consume the same in-memory verified roster.
+    // Nothing is fetched/saved separately for those screens.
+    if(!isDeveloper||!verifiedPortalUid)return;
+    refreshPortalDevPreviewPicker();
+    flowUpdateRecords();
+    renderPortalAthleteDirectory();
+    flowRenderManagerExternal();
+    if(currentScreen()?.id==='screen-competition-results')renderPortalPersonalRecord();
   }
   function portalDevPreviewSelected(){
     const id=$('portalDevPreviewSelector').value;
@@ -7674,14 +7727,14 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
     const sel=$('portalDevPreviewSelector'),before=sel.value;
     const real=portalActualPreviewPeople();
     sel.innerHTML='<option value="">対象を選択してください</option>'
-      +(real.length?'<optgroup label="Firebaseで確認した大会出走・参加回答">'+real.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}（登録記録あり）</option>`).join('')+'</optgroup>':'')
+      +(real.length?'<optgroup label="Firebaseの登録者・大会出走・参加回答">'+real.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}（${p.kind==='number'?'大会番号登録':'出走・回答'}${p.linked?'':'／本人ID未紐付け'}）</option>`).join('')+'</optgroup>':'')
       +(portalDevPreviewUsers.length?'<optgroup label="この端末だけの仮データ（本登録ではありません）">'+portalDevPreviewUsers.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}（仮）</option>`).join('')+'</optgroup>':'');
     const all=[...real,...portalDevPreviewUsers];
     sel.value=all.some(p=>p.id===before)?before:'';
     const selected=portalDevPreviewSelected();
     $('portalDeveloperParticipantSwitch').disabled=!selected;
     $('portalDevPreviewDelete').disabled=!selected||selected.verified===true;
-    const actualNote=real.length?'Firebaseの大会出走・参加回答から氏名を確認しました。プロフィール詳細・過去結果は他人のものを読みません。':'本人登録済みでも大会出走・回答がない方はこの欄に出ません。';
+    const actualNote=real.length?'Firebaseから取得できた登録者・出走者を表示中。本人ID未紐付けの方は記録の保存先を決定できません。':'大会番号登録の読込状態と権限を確認してください。未回答・未出走でも大会番号登録者は対象です。';
     $('portalDevPreviewState').textContent=note||actualNote;
     $('portalDevPreviewState').hidden=false;
   }
@@ -8127,8 +8180,13 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
     return portalActualPreviewPeople().find(a=>a.id===id)?.name||portalDevPreviewUsers.find(a=>a.id===id)?.name||flowState.actors.find(a=>a.id===id)?.name||'確認対象';
   }
   function flowActorRoster(){
-    const arr=[{id:flowBaseSelfId,name:flowActorName(flowBaseSelfId)},...portalActualPreviewPeople(),...portalDevPreviewUsers,...flowState.actors];
-    return [...new Map(arr.map(a=>[a.id,a])).values()];
+    const actual=portalActualPreviewPeople();
+    const arr=[...flowState.actors.map(a=>({...a,verified:false,kind:'local'})),
+      ...portalDevPreviewUsers.map(a=>({...a,verified:false,kind:'local'})),
+      ...actual,
+      {id:flowBaseSelfId,name:flowActorName(flowBaseSelfId),verified:true,linked:true,kind:'self'}];
+    // Stable verified identities override old local labels with the same exact ID.
+    return [...new Map(arr.filter(a=>a&&a.id).map(a=>[a.id,a])).values()];
   }
   function flowEntries(eventId,actorId){return flowState.entries.filter(r=>r.eventId===eventId&&r.actorId===actorId);}
   function flowEntry(eventId,actorId,metric){return flowState.entries.find(r=>r.eventId===eventId&&r.actorId===actorId&&(metric===undefined||r.metric===metric))||null;}
@@ -9041,9 +9099,15 @@ list.innerHTML=output.map(metric=>{
     }
     // EVENT BASE results remain authoritative and are never written by this screen.
     for(const records of portalEventBaseReadRecords.values()){
-      for(const row of records){if(row.profileId===flowBaseSelfId)portalPersonalRecords.push(row);}
+      for(const row of records){
+        // The upstream gateway filters staff-vs-participant access before projection.
+        // Keep the event's own profileId; never reassign a record by display name.
+        if(row.profileId===flowBaseSelfId || (canManage&&row.profileId))portalPersonalRecords.push(row);
+      }
     }
-    portalAthletes.splice(0,portalAthletes.length,...flowActorRoster().filter(a=>a.id!==flowBaseSelfId||flowState.entries.some(r=>r.actorId===a.id)).map(a=>({profileId:a.id,name:a.name})));
+    portalAthletes.splice(0,portalAthletes.length,...flowActorRoster()
+      .filter(a=>a.id!==flowBaseSelfId||flowState.entries.some(r=>r.actorId===a.id))
+      .map(a=>({profileId:a.id,name:a.name,verified:a.verified===true,linked:a.linked!==false,kind:a.kind||'local',detail:a.detail||''})));
   }
   function flowRenderMyRaces(){
     flowUpdateRecords();
@@ -9132,8 +9196,8 @@ list.innerHTML=output.map(metric=>{
     if(shown.some(a=>a.id===flowSelectedManagerActor))$('flowManagerAthlete').value=flowSelectedManagerActor;
     else{flowSelectedManagerActor='';$('flowManagerAthlete').value='';}
     $('flowManagerActorHint').textContent=eligible.length===0?
-      flowManagerMode==='missing'?'このイベントに未登録の選手はいません。確認対象がなければ先に「①新しい選手を登録」で追加してください。':'このイベントの出走登録済み選手はいません。先に①または②で登録してください。':
-      `${eligible.length}人から選択できます。実参加者一覧との接続はまだありません。`;
+      flowManagerMode==='missing'?'このイベントで選べる選手はいません。Firebase登録者の読込状態を確認してください。':'このイベントの出走登録済み選手はいません。先に①または②で登録してください。':
+      `${eligible.length}人から選択できます。Firebase確認済みと端末内の仮データを区別し、正式出走登録はEVENT BASE本体で行います。`;
     flowManagerLoad();
   }
   function flowLoadManagerMetric(){
@@ -9597,6 +9661,9 @@ list.innerHTML=output.map(metric=>{
       actor='local-test-'+flowId();flowState.actors.push({id:actor,name});$('flowManagerNewAthlete').value='';
     }else{
       if(!actor){flowSaveState('flowManagerStatus','対象の選手を選択してください');return;}
+      if(actor.startsWith('number-binding:')){
+        flowSaveState('flowManagerStatus','大会番号登録者の本人profileIdが未確認です。誤った人物への出走登録を防ぐため保存できません。正式な出走登録はEVENT BASE本体で行ってください。');return;
+      }
       if(flowManagerMode==='missing'&&flowEntry(e.id,actor,metric)){flowSaveState('flowManagerStatus','この選手の同じ種目は登録済みです。別の種目を選んでください。');return;}
       if(flowManagerMode==='edit'&&!flowEntry(e.id,actor,metric)){flowSaveState('flowManagerStatus','この種目は未登録です。②で種目を追加してください。');return;}
     }
@@ -9652,7 +9719,7 @@ list.innerHTML=output.map(metric=>{
   function flowRenderManagerExternal(){
     const roster=flowActorRoster();
     const picker=$('flowMgrExtAthlete'),last=picker.value;
-    picker.innerHTML='<option value="">記録の対象選手を選択</option>'+roster.map(a=>`<option value="${esc(a.id)}">${esc(a.name)}</option>`).join('');
+    picker.innerHTML='<option value="">記録の対象選手を選択</option>'+roster.map(a=>`<option value="${esc(a.id)}">${esc(a.name)}${a.kind==='number'&&!a.linked?'（本人ID未紐付け・保存不可）':a.verified?'（Firebase確認）':'（仮・端末内のみ）'}</option>`).join('');
     if(roster.some(a=>a.id===last))picker.value=last;
     else picker.value='';
     flowRenderManagerExternalList();
@@ -9669,6 +9736,10 @@ list.innerHTML=output.map(metric=>{
     if(!canManage||portalParticipantPreviewMode)return;
     const actor=$('flowMgrExtAthlete').value,name=$('flowMgrExtName').value.trim(),date=$('flowMgrExtDate').value,time=$('flowMgrExtResultStatus').value!=='time'?'':$('flowMgrExtTime').value.trim(),status=$('flowMgrExtResultStatus').value,metric=$('flowMgrExtMetric').value,venue=$('flowMgrExtVenue').value.trim();
     if(!actor){flowSaveState('flowMgrExtStatus','対象選手を選択してください');return;}
+    // A binding UID alone must NEVER become a fabricated profileId or result owner.
+    if(actor.startsWith('number-binding:')){
+      flowSaveState('flowMgrExtStatus','この登録者はFirebaseで大会番号を確認できましたが、本人profileIdとの対応が未確認です。過去記録を誤った人物へ保存しないため停止しました。');return;
+    }
     if(!name||!date||(status==='time'&&(!time||!flowTimeGood(time)))){flowSaveState('flowMgrExtStatus','大会名・開催日・結果タイムを正しく入力してください');return;}
     const old=flowState.external.find(r=>r.id===flowMgrExtEditId&&r.actorId===actor);
     const official=document.querySelector('input[name="flowMgrExtOfficial"]:checked')?.value==='yes';
@@ -9695,7 +9766,7 @@ list.innerHTML=output.map(metric=>{
     // explicitly labelled. Never attach another person's records to the staff member's UID.
     if(old)Object.assign(old,updated);else flowState.external.push(updated);
     flowPersist();flowManagerExternalReset();flowRenderManagerExternalList();flowRefreshAll();
-    $('flowMgrExtStatus').textContent='仮選手の記録を端末内に保存しました。Firebase共有は未接続です。';
+    $('flowMgrExtStatus').textContent='この端末内にだけ保存しました。本人Firebase・正式大会結果には反映されません。';
   });
   document.addEventListener('click',async e=>{
     const edit=e.target.closest('[data-flow-edit-ext]'),del=e.target.closest('[data-flow-delete-ext]');if(!edit&&!del)return;
@@ -9849,12 +9920,15 @@ list.innerHTML=output.map(metric=>{
       portalVerifiedEventBasePeople=Array.isArray(rows)?rows:[];
       portalRosterSourceState=state&&typeof state==='object'?state:{events:0,received:0,errors:[]};
       refreshVerifiedParticipantDirectory();
+      refreshVerifiedAthleteViews();
     },
     applyVerifiedNumberRegistrations(rows,state){
       if(!isDeveloper||!verifiedPortalUid)return;
       portalVerifiedNumberRegistrations=Array.isArray(rows)?rows:[];
       portalNumberRegistrationState=state||{checked:0,expected:2,errors:[],loading:false};
       renderDeveloperParticipants();
+      refreshVerifiedParticipantDirectory();
+      refreshVerifiedAthleteViews();
     },
     applyIdentity({profileId,displayName}){
       if(typeof profileId!=='string'||!profileId)return;
@@ -9940,8 +10014,16 @@ list.innerHTML=output.map(metric=>{
         if(!target||seen.has(target.id))continue;
         seen.add(target.id);targets.push(target);
       }
-      // This list is the subscription discovery list; the bridge limits the
-      // live subscribed event count separately to protect reads/bandwidth.
+      // The first live competition is not guaranteed to appear in local eventItems.
+      // For verified PORTAL staff, include its known ID in the EXISTING unified
+      // EVENT BASE subscription; never invent a local event or registration record.
+      if(canManage&&verifiedPortalUid){
+        const first='eventbase_mu4ujce3_xxx1';
+        if(!seen.has(first))targets.unshift({id:first,catalogId:'eventbase-first',
+          title:'第一回大会',date:'',place:'',
+          openUrl:'https://nuritakug-cpu.github.io/tabirun-bgm/EVENT_BASE_PRODUCTION.html?event='+first+'&portal=1'});
+      }
+      // Subscription count remains bounded by the original gate; no extra Auth/path.
       return targets;
     },
     applyEventBaseEntries(byEvent){
@@ -11013,6 +11095,9 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
             // operating parent's UID as the competitor's identity.
             if(p&&typeof p==='object'&&String(p.name||'').trim()){
               registered.push({playerId,eventId:info.id,eventTitle:info.title,
+                // A verified subjectUid is the ONLY cross-source link to a number binding.
+                // Never use the parent's ownerUid or matching display names to join people.
+                uid:typeof p.subjectUid==='string'?p.subjectUid:'',
                 profileId:typeof p.profileId==='string'?p.profileId:'',
                 name:String(p.name).trim().slice(0,24)});
             }
@@ -11022,8 +11107,13 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
               const name=String(p.name||'出走登録者').trim().slice(0,24)||'出走登録者';
               attendance.set(p.subjectUid,{uid:p.subjectUid,name,note:'EVENT BASE出走登録'});
             }
-            if(!p||typeof p!=='object'||p.subjectUid!==uid)continue;
-            if(p.profileId&&p.profileId!==profileId)continue;
+            if(!p||typeof p!=='object')continue;
+            const recordProfileId=typeof p.profileId==='string'?p.profileId.trim():'';
+            const ownPlayer=p.subjectUid===uid&&(!recordProfileId||recordProfileId===profileId);
+            // Staff may view results in this ALREADY-authorized EVENT BASE players
+            // subscription. Participant visibility stays restricted to their own identity.
+            const staffPlayer=['developer','admin'].includes(gate.role)&&!!recordProfileId;
+            if(!ownPlayer&&!staffPlayer)continue;
             const result=String(p.result||'').trim().slice(0,40);
             const sourceMetric=String(p.event||'').trim();
             const match=sourceMetric.match(/(?:^|[^0-9])(10000|5000|3000|1500|1000|800|400)\s*(?:m|ｍ|メートル)?(?:$|[^0-9])/i);
@@ -11032,12 +11122,12 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
             const validTime=/^(?:\d+:)?\d{1,3}:\d{2}(?:\.\d{1,2})?$/.test(result);
             // A player row is registration evidence even before a result exists.
             // The source of truth stays EVENT BASE and the row is never made editable here.
-            entries.push({id:'eb-'+info.id+'-'+playerId,profileId,catalogId:info.catalogId,
+            if(ownPlayer)entries.push({id:'eb-'+info.id+'-'+playerId,profileId,catalogId:info.catalogId,
               metric,metricName:sourceMetric,date:day,title:info.title,openUrl:info.openUrl,
               result:validTime?result:''});
             if(!validTime)continue; // Never make DNS, places, or unclear result notation into a time.
-            records.push({id:'eb-'+info.id+'-'+playerId,profileId,metric,date:day,event:info.title,
-              venue:info.place,label:'EVENT BASE大会結果（読取専用）',time:result,official:false,status:'time',source:'EVENT_BASE'});
+            records.push({id:'eb-'+info.id+'-'+playerId,profileId:ownPlayer?profileId:recordProfileId,metric,date:day,event:info.title,
+              venue:info.place,label:'EVENT BASE大会結果（読取専用・公認区分未確認）',time:result,official:false,status:'time',source:'EVENT_BASE'});
           }
           gate.officialResults[info.id]=records;gate.officialEntries[info.id]=entries;gate.officialAttendance[info.catalogId]=[...attendance.values()];
           gate.officialParticipantRoster[info.id]=registered;
