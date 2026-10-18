@@ -4847,13 +4847,13 @@ html[data-portal-personal-color="matte"] #screen-management .portalWorkflowChoic
         <summary>参加者画面の確認（開発者用）</summary>
     <section class="portalDeveloperPreviewPicker" id="portalDeveloperPreviewPicker" aria-label="開発者専用・参加者画面確認">
       <div class="portalPanelHead"><small>DEVELOPER / PARTICIPANT PREVIEW</small><b>参加者の画面を確認</b></div>
-      <label for="portalDevPreviewSelector">確認対象の参加者</label>
+      <label for="portalDevPreviewSelector">確認対象（実登録者は氏名のみ・閲覧用）</label>
       <select id="portalDevPreviewSelector" aria-label="確認対象の参加者"><option value="">対象を選択してください</option></select>
       <div class="portalDevPreviewActions">
         <button type="button" class="portalDeveloperParticipantSwitch" id="portalDeveloperParticipantSwitch" disabled>選択した参加者の画面を開く</button>
         <button type="button" id="portalDevPreviewDelete" class="portalDevPreviewSecondary" disabled>対象を削除</button>
       </div>
-      <div class="portalDevPreviewAdd"><label for="portalDevPreviewNewName">確認用の参加者を追加</label>
+      <div class="portalDevPreviewAdd"><label for="portalDevPreviewNewName">端末内の仮データを追加（正式登録ではありません）</label>
         <div><input id="portalDevPreviewNewName" type="text" maxlength="24" autocomplete="off" placeholder="確認用の名前（仮名可）"><button type="button" id="portalDevPreviewAdd">追加</button></div>
       </div>
       <div class="portalDevPreviewState" id="portalDevPreviewState" role="status" aria-live="polite" hidden></div>
@@ -5109,7 +5109,7 @@ html[data-portal-personal-color="matte"] #screen-management .portalWorkflowChoic
 
     <div class="portalManagePane portalDeveloperOnlyPane hidden" id="manage-pane-participants">
       <section class="portalDeveloperToolCard">
-        <h3>参加者一覧</h3>
+        <h3>参加者一覧（実データ）</h3>
         
         <div class="portalDeveloperSummary"><b id="developerParticipantCount">参加者 —</b><span>閲覧専用</span></div>
         <input class="portalSimpleSearch" id="developerParticipantSearch" type="search" placeholder="名前で検索" aria-label="参加者名で検索"><div class="portalDeveloperList" id="developerParticipantList"><div class="portalDeveloperEmpty">未接続</div></div>
@@ -5355,8 +5355,9 @@ html[data-portal-personal-color="matte"] #screen-management .portalWorkflowChoic
     isDeveloper = trusted && role === 'developer';
     document.body.classList.toggle('portalIsDeveloper',isDeveloper);
     if(!trusted){
-      portalDeveloperParticipants.splice(0,portalDeveloperParticipants.length);
-      renderDeveloperParticipants();
+      portalVerifiedResponsePeople=[];portalVerifiedEventBasePeople=[];
+      portalRosterSourceState={events:0,received:0,errors:[]};
+      refreshVerifiedParticipantDirectory();
       portalParticipantPreviewMode=false;
       document.body.classList.remove('portalParticipantPreview');
       // Screen history must not retain a manager view on identity loss.
@@ -7172,7 +7173,41 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
   let developerHomeImageApplied=false;
   let developerHomeImagePreviewAspect=0;
   const developerHomeImageAdjust={opacity:24,x:76,y:6,zoom:144,range:125,feather:17,fadeDirection:'both',bottomFade:22};
+  // A presentation-only union of already-authorized shared response and EVENT BASE
+  // player streams. No independent Firebase Auth, path, subscription or copy of
+  // the membership canonical database is introduced.
   const portalDeveloperParticipants=[];
+  let portalVerifiedResponsePeople=[];
+  let portalVerifiedEventBasePeople=[];
+  let portalRosterSourceState={events:0,received:0,errors:[]};
+  function refreshVerifiedParticipantDirectory(){
+    const byKey=new Map();
+    const take=(row,kind)=>{
+      if(!row||typeof row!=='object')return;
+      const name=String(row.name||'').trim().slice(0,24);
+      const pid=String(row.profileId||'').trim().slice(0,120);
+      const uid=String(row.uid||'').trim().slice(0,128);
+      if(!name)return;
+      // Never merge different competitors by display name or by a parent's UID.
+      // A validated shared profileId is the only allowed cross-source join key.
+      const key=pid?'profile:'+pid:(kind==='event'?'race:'+String(row.eventId||'')+':'+String(row.playerId||''):'response:'+String(row.id||''));
+      const before=byKey.get(key);
+      const notes=new Set(before?.notes||[]);
+      if(kind==='event')notes.add('EVENT BASE出走登録：'+String(row.eventTitle||'大会').slice(0,70));
+      else notes.add(String(row.detail||'PORTAL参加回答').slice(0,95));
+      byKey.set(key,{
+        id:key,profileId:pid,name:before?.name||name,
+        notes:[...notes],detail:[...notes].join(' ／ '),
+        verifiedFromEvent:(before?.verifiedFromEvent===true||kind==='event'),
+        verifiedFromResponse:(before?.verifiedFromResponse===true||kind==='response')
+      });
+    };
+    portalVerifiedEventBasePeople.forEach(x=>take(x,'event'));
+    portalVerifiedResponsePeople.forEach(x=>take(x,'response'));
+    portalDeveloperParticipants.splice(0,portalDeveloperParticipants.length,...[...byKey.values()].sort((a,b)=>a.name.localeCompare(b.name,'ja')));
+    renderDeveloperParticipants();
+    if(isDeveloper&&!portalParticipantPreviewMode)refreshPortalDevPreviewPicker();
+  }
 
   function portalChatLocalDay(ts){
     const d=new Date(Number(ts));
@@ -7195,10 +7230,13 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
     if(!count||!list)return;
     const query=String($('developerParticipantSearch')?.value||'').trim().toLocaleLowerCase('ja');
     const rows=portalDeveloperParticipants.filter(p=>!query||String(p.name||'').toLocaleLowerCase('ja').includes(query));
-    count.textContent=rows.length?`共有参加回答で本人確認済み ${rows.length}人（全登録者数ではありません）`:'共有参加回答者 0人（出走者名簿とは別）';
-    list.innerHTML=rows.length
+    const raceCount=portalDeveloperParticipants.filter(x=>x.verifiedFromEvent).length;
+    const replyCount=portalDeveloperParticipants.filter(x=>x.verifiedFromResponse).length;
+    count.textContent=`実データ確認 ${portalDeveloperParticipants.length}件（大会出走 ${raceCount}件・回答 ${replyCount}件、同一profileIdのみ重複統合）`;
+    const sources=`<div class="portalDeveloperEmpty" role="status">対象：PORTAL参加回答と、現在のPORTAL大会リンクから読めたEVENT BASE出走登録。<b>全員のFirebaseプロフィール一覧ではありません。</b> 未出走・未回答者は含まれません。${portalRosterSourceState.events?` 大会データ ${portalRosterSourceState.received}/${portalRosterSourceState.events}件受信。`:' PORTAL内に有効なEVENT BASE大会リンクがなければ、出走登録は読み込めません。'}${portalRosterSourceState.errors.length?' 読込失敗 '+esc(portalRosterSourceState.errors.join(' / ')):''}</div>`;
+    list.innerHTML=sources+(rows.length
       ? rows.map(p=>`<div class="portalDeveloperListRow"><b>${esc(p.name||'名前未設定')}</b><span>${esc(p.detail||'')}</span></div>`).join('')
-      : '<div class="portalDeveloperEmpty">共有参加回答で本人を確認できた方はいません。出走登録者全体の一覧ではありません。</div>';
+      : '<div class="portalDeveloperEmpty">対象の出走登録・参加回答をまだ確認できません。本人が未登録とは限りません。</div>');
   }
   function renderDeveloperTools(){
     if(!isDeveloper)return;
@@ -7613,22 +7651,36 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
     try{localStorage.setItem(PORTAL_PREVIEW_USERS_KEY,JSON.stringify(portalDevPreviewUsers));return true}
     catch(_){return false}
   }
+  function portalActualPreviewPeople(){
+    return portalDeveloperParticipants.filter(p=>p.profileId).map(p=>({id:p.profileId,name:p.name,verified:true}));
+  }
   function portalDevPreviewSelected(){
-    return portalDevPreviewUsers.find(p=>p.id===$('portalDevPreviewSelector').value)||null;
+    const id=$('portalDevPreviewSelector').value;
+    return portalActualPreviewPeople().find(p=>p.id===id)||portalDevPreviewUsers.find(p=>p.id===id)||null;
   }
   function refreshPortalDevPreviewPicker(note=''){
     const sel=$('portalDevPreviewSelector'),before=sel.value;
-    sel.innerHTML='<option value="">対象を選択してください</option>'+portalDevPreviewUsers.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
-    sel.value=portalDevPreviewUsers.some(p=>p.id===before)?before:'';
+    const real=portalActualPreviewPeople();
+    sel.innerHTML='<option value="">対象を選択してください</option>'
+      +(real.length?'<optgroup label="Firebaseで確認した大会出走・参加回答">'+real.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}（登録記録あり）</option>`).join('')+'</optgroup>':'')
+      +(portalDevPreviewUsers.length?'<optgroup label="この端末だけの仮データ（本登録ではありません）">'+portalDevPreviewUsers.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}（仮）</option>`).join('')+'</optgroup>':'');
+    const all=[...real,...portalDevPreviewUsers];
+    sel.value=all.some(p=>p.id===before)?before:'';
     const selected=portalDevPreviewSelected();
     $('portalDeveloperParticipantSwitch').disabled=!selected;
-    $('portalDevPreviewDelete').disabled=!selected;
-    $('portalDevPreviewState').textContent=note||'';
-    $('portalDevPreviewState').hidden=!note;
+    $('portalDevPreviewDelete').disabled=!selected||selected.verified===true;
+    const actualNote=real.length?'Firebaseの大会出走・参加回答から氏名を確認しました。プロフィール詳細・過去結果は他人のものを読みません。':'本人登録済みでも大会出走・回答がない方はこの欄に出ません。';
+    $('portalDevPreviewState').textContent=note||actualNote;
+    $('portalDevPreviewState').hidden=false;
   }
   function refreshPortalDevPreviewSaveStatus(){
-    const actor=portalDevPreviewUsers.find(p=>p.id===portalDevPreviewActiveId);
+    const actor=portalActualPreviewPeople().find(p=>p.id===portalDevPreviewActiveId)||portalDevPreviewUsers.find(p=>p.id===portalDevPreviewActiveId);
     if(!actor)return;
+    if(actor.verified===true){
+      $('portalDevPreviewActorName').textContent=actor.name;
+      $('portalDevPreviewSaveState').textContent='Firebase上で氏名を確認した対象です。本人のプロフィール詳細・記録はこの画面では取得していません。本人としてのログインや保存はできません。';
+      return;
+    }
     $('portalDevPreviewActorName').textContent=actor.name;
     $('portalDevPreviewSaveState').textContent=actor.savedAt
       ? `確認対象：${actor.name} ／ 表示名：ローカル保存済み（${new Date(actor.savedAt).toLocaleString('ja-JP')}）。Firebaseには保存していません。`
@@ -7658,7 +7710,8 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
       }
       portalDevRestoreName=null;
       portalDevPreviewActiveId='';
-      portalSelfProfileId='unconnected-local-viewer';
+      // Leaving a read-only preview always restores the verified developer's own identity.
+      portalSelfProfileId=flowBaseSelfId;
       portalPersonalTargetId=portalSelfProfileId;
       $('portalDevPreviewSaveState').classList.add('hidden');
       $('portalDevPreviewActor').hidden=true;
@@ -8059,10 +8112,10 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
 
   function flowActorName(id){
     if(id===flowBaseSelfId)return String($('portalMyPageName')?.textContent||'本人').trim()||'本人';
-    return portalDevPreviewUsers.find(a=>a.id===id)?.name||flowState.actors.find(a=>a.id===id)?.name||'確認対象';
+    return portalActualPreviewPeople().find(a=>a.id===id)?.name||portalDevPreviewUsers.find(a=>a.id===id)?.name||flowState.actors.find(a=>a.id===id)?.name||'確認対象';
   }
   function flowActorRoster(){
-    const arr=[{id:flowBaseSelfId,name:flowActorName(flowBaseSelfId)},...portalDevPreviewUsers,...flowState.actors];
+    const arr=[{id:flowBaseSelfId,name:flowActorName(flowBaseSelfId)},...portalActualPreviewPeople(),...portalDevPreviewUsers,...flowState.actors];
     return [...new Map(arr.map(a=>[a.id,a])).values()];
   }
   function flowEntries(eventId,actorId){return flowState.entries.filter(r=>r.eventId===eventId&&r.actorId===actorId);}
@@ -9776,8 +9829,14 @@ list.innerHTML=output.map(metric=>{
     applyEntryError(message){if(!canManage){portalSetEntryStatus(message);entryStatus.hidden=false;}},
     applyVerifiedResponseRoster(rows){
       if(!isDeveloper||!verifiedPortalUid)return;
-      portalDeveloperParticipants.splice(0,portalDeveloperParticipants.length,...(Array.isArray(rows)?rows:[]));
-      renderDeveloperParticipants();
+      portalVerifiedResponsePeople=Array.isArray(rows)?rows:[];
+      refreshVerifiedParticipantDirectory();
+    },
+    applyVerifiedEventBaseRoster(rows,state){
+      if(!isDeveloper||!verifiedPortalUid)return;
+      portalVerifiedEventBasePeople=Array.isArray(rows)?rows:[];
+      portalRosterSourceState=state&&typeof state==='object'?state:{events:0,received:0,errors:[]};
+      refreshVerifiedParticipantDirectory();
     },
     applyIdentity({profileId,displayName}){
       if(typeof profileId!=='string'||!profileId)return;
@@ -10880,13 +10939,29 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
       if(signature===officialSignature)return;
       officialSubs.splice(0).forEach(stop=>{try{stop();}catch(_){}});
       officialSignature=signature;gate.officialResults={};gate.officialEntries={};gate.officialAttendance={};
+      gate.officialParticipantRoster={};
+      const pushOfficialDirectory=()=>{
+        if(!['developer','admin'].includes(gate.role))return;
+        const received=Object.keys(gate.officialParticipantRoster).length;
+        const errors=Object.entries(gate.errors||{}).filter(([k])=>k.startsWith('eventBase:')).map(([k,v])=>k.slice(10)+' '+v);
+        const people=Object.values(gate.officialParticipantRoster).flat();
+        ui?.applyVerifiedEventBaseRoster(people,{events:targets.length,received,errors});
+      };
       ui?.applyEventBaseRecords(gate.officialResults);ui?.applyEventBaseEntries(gate.officialEntries);
+      pushOfficialDirectory();
       const uid=gate.uid,profileId=gate.profileId,seq=generation;
       for(const info of targets){
         const stop=dbMod.onValue(dbMod.ref(db,'events/'+info.id+'/players'),snap=>{
           if(seq!==generation||auth.currentUser?.uid!==uid)return;
-          const raw=snap.val()||{};const records=[],entries=[],attendance=new Map();
+          const raw=snap.val()||{};const records=[],entries=[],attendance=new Map(),registered=[];
           for(const [playerId,p] of Object.entries(raw)){
+            // List every genuine player card for staff without treating the
+            // operating parent's UID as the competitor's identity.
+            if(p&&typeof p==='object'&&String(p.name||'').trim()){
+              registered.push({playerId,eventId:info.id,eventTitle:info.title,
+                profileId:typeof p.profileId==='string'?p.profileId:'',
+                name:String(p.name).trim().slice(0,24)});
+            }
             // Reuse the already-subscribed, existing EVENT BASE players node.
             // Only participants explicitly associated with an Auth subject UID are countable.
             if(p && typeof p==='object' && typeof p.subjectUid==='string' && /^[A-Za-z0-9_-]{6,128}$/.test(p.subjectUid)) {
@@ -10911,13 +10986,14 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
               venue:info.place,label:'EVENT BASE大会結果（読取専用）',time:result,official:false,status:'time',source:'EVENT_BASE'});
           }
           gate.officialResults[info.id]=records;gate.officialEntries[info.id]=entries;gate.officialAttendance[info.catalogId]=[...attendance.values()];
-          delete gate.errors['eventBase:'+info.id];ui?.applyEventBaseRecords(gate.officialResults);
+          gate.officialParticipantRoster[info.id]=registered;
+          delete gate.errors['eventBase:'+info.id];pushOfficialDirectory();ui?.applyEventBaseRecords(gate.officialResults);
           ui?.applyEventBaseEntries(gate.officialEntries);ui?.refreshCurrentScheduleDetail?.();statusResources();
         },error=>{
           if(seq!==generation)return;
           gate.errors['eventBase:'+info.id]=String(error?.code||error?.message||error).slice(0,90);
-          delete gate.officialEntries[info.id];delete gate.officialResults[info.id];delete gate.officialAttendance[info.catalogId];
-          ui?.applyEventBaseRecords(gate.officialResults);ui?.applyEventBaseEntries(gate.officialEntries);
+          delete gate.officialEntries[info.id];delete gate.officialResults[info.id];delete gate.officialAttendance[info.catalogId];delete gate.officialParticipantRoster[info.id];
+          pushOfficialDirectory();ui?.applyEventBaseRecords(gate.officialResults);ui?.applyEventBaseEntries(gate.officialEntries);
           statusResources();
         });
         officialSubs.push(stop);
@@ -11025,7 +11101,7 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
               }
             }
           }
-          ui?.applyVerifiedResponseRoster([...found.values()].map(r=>({name:r.name,detail:'Firebase参加回答：'+[...r.types].join('・')+' ／ 同一profileIdを重複除外'})));
+          ui?.applyVerifiedResponseRoster([...found.values()].map(r=>({id:r.id,profileId:r.id,name:r.name,detail:'Firebase参加回答：'+[...r.types].join('・')})));
         };
         if(['developer','admin'].includes(gate.role)){
           bind('practiceResponses','practiceResponses',items=>{ui?.applyPracticeResponses(items);pushVerifiedRoster();});
