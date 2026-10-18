@@ -4115,6 +4115,19 @@ html:is([data-portal-personal-color="winter"],[data-portal-personal-color="matte
 #portalExistingDevCode,#portalGrantAdminUid{display:block;width:100%;min-height:48px;margin:8px 0;border:1px solid #a6bfc1;background:#fff;border-radius:12px;padding:10px 12px;color:#223238;font-size:16px}
 #portalExistingStaffAuth .portalInlineState,#portalExistingGrantAdmin .portalInlineState{font-size:12px;line-height:1.6;overflow-wrap:anywhere}
 </style>
+
+<style id="portalLimitedViewGuard">
+body.portalLimitedView .headerMy,
+body.portalLimitedView .headerManage,
+body.portalLimitedView #portalManagementEntry,
+body.portalLimitedView .portalBottomTab,
+body.portalLimitedView .portalScreen:not(#screen-links){display:none!important}
+#portalLimitedNotice{position:sticky;top:0;z-index:200;background:#353d39;color:#fff;
+  font:700 12px/1.65 -apple-system,BlinkMacSystemFont,'Hiragino Kaku Gothic ProN',sans-serif;
+  padding:9px 13px;text-align:center;border-bottom:2px solid #dbc05b}
+#portalLimitedNotice button{display:inline-block;margin:2px 4px;padding:7px 10px;
+  font-size:12px;font-weight:800;border:1px solid #dbc05b;border-radius:8px;background:#dbc05b;color:#242922}
+</style>
 </head>
 <body>
 <header class="top">
@@ -5452,6 +5465,7 @@ html:is([data-portal-personal-color="winter"],[data-portal-personal-color="matte
     return qsa('.portalScreen').find(s => !s.classList.contains('hidden')) || null;
   }
   function showScreen(name, push=true){
+    if(window.__TR_PORTAL_VIEW_ONLY__ && !['links'].includes(name))return;
     if(['management','athlete-directory','flow-manager'].includes(name) && (!canManage || !verifiedPortalUid || portalParticipantPreviewMode))return;
     const next = $('screen-' + name);
     if(!next) return;
@@ -6138,6 +6152,7 @@ html:is([data-portal-personal-color="winter"],[data-portal-personal-color="matte
     document.body.scrollTop=0;
   }
   function showRootScreen(name){
+    if(window.__TR_PORTAL_VIEW_ONLY__)return;
     hideAllScreens();
     qsa('.portalBottomTab').forEach(b=>b.classList.toggle('active', b.dataset.bottomTarget===name));
     const next=$('screen-'+name); if(!next) return;
@@ -10116,16 +10131,55 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
       return;
     }
     resolved=true;panel.hidden=true;issueButton.hidden=true;issueBox.hidden=true;
+    window.__TR_PORTAL_VIEW_ONLY__=false;document.body.classList.remove('portalLimitedView');
+    document.getElementById('portalLimitedNotice')?.remove();
     // Staff members retain their existing PORTAL entry and management flow.
     if(!entered&&v.role==='participant'){
       entered=true;
       document.querySelector('.headerMy[data-screen="mypage"]')?.click();
     }
   };
-  const noSession=()=>warn('この端末ではログインが必要です',
-    'この起動環境に登録済みの本人UIDがありません。以前利用した端末の本人情報を引き継ぐ必要があります。現時点で新規UIDを自動発行しません。');
-  const noProfile=()=>warn('本人プロフィールが見つかりません',
-    'Firebaseのログイン状態はありますが、対応するprofileIdを確認できませんでした。別人として再登録せず、管理者へ確認してください。');
+  // TEMPORARY VISUAL-QA ENTRY.  Does not authenticate anyone or enable private data.
+  // Only the shared HOME and non-private external links can be browsed here.
+  const showSafeHome=()=>{
+    if(resolved||window.__TR_PORTAL_VIEW_ONLY__)return;
+    window.__TR_PORTAL_VIEW_ONLY__=true;
+    document.body.classList.add('portalLimitedView');
+    panel.hidden=true;
+    const note=document.createElement('div');
+    note.id='portalLimitedNotice';
+    note.setAttribute('role','status');
+    note.textContent='PORTAL HOME（閲覧確認のみ）｜本人情報の確認が未完了です。マイページ・管理・CHAT・参加登録は利用できません。';
+    const reopen=document.createElement('button');reopen.type='button';
+    reopen.textContent='本人引継ぎ画面を表示';
+    reopen.addEventListener('click',()=>{panel.hidden=false;});
+    note.appendChild(reopen);
+    document.body.prepend(note);
+    if(!window.__TR_PORTAL_VIEW_ONLY_CLICK_GUARD__){
+      window.__TR_PORTAL_VIEW_ONLY_CLICK_GUARD__=true;
+      document.addEventListener('click',event=>{
+        if(!window.__TR_PORTAL_VIEW_ONLY__)return;
+        if(event.target?.closest?.('#portalLimitedNotice'))return;
+        const link=event.target?.closest?.('a[href^="http"]');
+        // External links may be viewed; all buttons/forms/other handlers are held back.
+        if(link)return;
+        if(event.target?.closest?.('button,input,select,textarea,[role="button"],a,[data-screen],[data-bottom-target]')){
+          event.preventDefault();event.stopImmediatePropagation();
+        }
+      },true);
+      document.addEventListener('submit',event=>{
+        if(window.__TR_PORTAL_VIEW_ONLY__){event.preventDefault();event.stopImmediatePropagation();}
+      },true);
+    }
+    // Never open another locally-cached person's private screen while identity is unknown.
+    document.querySelectorAll('.portalScreen').forEach(screen=>{
+      screen.classList.add('hidden');screen.setAttribute('aria-hidden','true');
+    });
+  };
+  const noSession=()=>{warn('この端末ではログインが必要です',
+    'この起動環境に登録済みの本人UIDがありません。以前利用した端末の本人情報を引き継ぐ必要があります。現時点で新規UIDを自動発行しません。');showSafeHome();};
+  const noProfile=()=>{warn('本人プロフィールが見つかりません',
+    'Firebaseのログイン状態はありますが、対応するprofileIdを確認できませんでした。別人として再登録せず、管理者へ確認してください。');showSafeHome();};
   // Developer identity audit is READ-ONLY and only shown after missing-profile failure.
   // UID suffixes reveal neither full UID, profileId, auth tokens nor handoff codes.
   const identityAudit=details=>{
