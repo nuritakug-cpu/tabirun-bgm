@@ -5,6 +5,7 @@
 <!-- UNAPPROVED LOCAL TEST CANDIDATE. Physical parent: TOP_RUN_PORTAL_20261013_MYPAGE_GOAL_LIST_EVENT_DECLARE_CANDIDATE.html (user supplied). Scope: goal time predictions and lap adjustment UI only. Firebase/Auth/Rules/saving paths unchanged. -->
 <!-- PORTAL COMMON PILOT / 2026-10-10 / UNAPPROVED. PARENT: TOP_RUN_PORTAL_ROLE_ENTRY_REBUILD_20261009.html. Reapplied prior user-requested UI/filters/past-goal changes, and review-only common pilot. Firebase Rules unchanged; multi-client and RTDB permission unverified. -->
 <!-- UNAPPROVED LOCAL CANDIDATE. Scope: multiday event calendar, event-per-metric entries, separate rounds/results and DNS. Parent: 20261013_UNIFIED_GUIDE_PROFILE_ENTRY_RULES_CANDIDATE. Existing Firebase/Auth/Rules untouched. -->
+<!-- 2026-10-19 STAFF ROSTER REPAIR: verified admin now receives existing staff EVENT BASE players/response projection; developer-only binding-root READ stays restricted. No Auth/Rules/DB writes, no local-only record promotion. -->
 <!doctype html>
 <!--
 TOP RUN PORTAL PROTOTYPE v37 — v31 FROZEN / EVENT BASE CHAT ISOLATED
@@ -7647,11 +7648,22 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
   function renderPortalAthleteDirectory(){
     if(!canManage || portalParticipantPreviewMode)return;
     const state=portalNumberRegistrationState;
-    const note=isDeveloper?(state.loading?'大会番号登録の読込中…':state.errors.length?'大会番号登録の読込失敗：'+state.errors.join(' ／ '):'Firebaseで確認した参加者と端末内の仮データを区別して表示します。'):'';
+    const note=isDeveloper
+      ? (state.loading?'大会番号登録の読込中…':state.errors.length?'大会番号登録の読込失敗：'+state.errors.join(' ／ '):'Firebaseで確認した参加者と端末内の仮データを区別して表示します。')
+      : (portalRosterSourceState.errors.length
+          ? '大会の出走者情報を取得できません：'+portalRosterSourceState.errors.join(' ／ ')
+          : '大会の出走登録・参加回答から確認できた名前を表示しています。参加番号のみで登録した方の全件一覧は、現在の管理者権限では取得できません。');
     const html=(note?`<div class="portalDeveloperEmpty" role="status">${esc(note)}</div>`:'')+
       (portalAthletes.length?portalAthletes.map(a=>`<button type="button" class="portalDirectoryRow" data-pr-athlete="${esc(a.profileId)}"><span><b>${esc(a.name)}${a.verified?'':'（仮）'}</b><small>${esc(a.verified?(a.linked?'Firebase登録を確認／取得できた個人記録のみ表示':'Firebase大会番号登録／本人IDと過去記録は未紐付け'):'この端末の確認用データ（Firebaseには未登録）')}</small></span><strong>›</strong></button>`).join(''):'<div class="portalEmpty">確認できた選手はありません。Firebaseの読込状態を確認してください。</div>');
-    $('portalAthleteDirectoryList').innerHTML=html;
-    $('portalAthleteInlineList').innerHTML=html;
+    // A genuine EVENT BASE player may lack an authoritative profileId.
+    // Show the name to authorized staff, but never offer a false person/record link.
+    const unlinked=portalDeveloperParticipants.filter(p=>!p.profileId);
+    const unlinkedMarkup=unlinked.length
+      ? '<div class="portalDeveloperEmpty">出走カードに名前はありますが、本人profileIdが未確認のため記録を紐付けず表示しています。</div>'
+        +unlinked.map(p=>`<div class="portalDirectoryRow" role="listitem"><span><b>${esc(p.name)}</b><small>${esc(p.detail)} ／ 本人ID未紐付け・閲覧のみ</small></span></div>`).join('')
+      : '';
+    $('portalAthleteDirectoryList').innerHTML=html+unlinkedMarkup;
+    $('portalAthleteInlineList').innerHTML=html+unlinkedMarkup;
     const needle=($('portalAthleteDirectorySearch')?.value||'').trim().toLocaleLowerCase('ja-JP');
     if(needle)[...$('portalAthleteDirectoryList').querySelectorAll('.portalDirectoryRow')].forEach(row=>row.hidden=!row.textContent.toLocaleLowerCase('ja-JP').includes(needle));
   }
@@ -7710,10 +7722,11 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
     return [...verified.values()].sort((a,b)=>a.name.localeCompare(b.name,'ja'));
   }
   function refreshVerifiedAthleteViews(){
-    // All three existing screens consume the same in-memory verified roster.
-    // Nothing is fetched/saved separately for those screens.
-    if(!isDeveloper||!verifiedPortalUid)return;
-    refreshPortalDevPreviewPicker();
+    // Both verified staff roles consume the same already-authorized sources.
+    // Binding-root enumeration remains developer-only; this does NOT grant it
+    // to managers, alter Auth/Rules, or create a second Firebase read path.
+    if(!canManage||!verifiedPortalUid||portalParticipantPreviewMode)return;
+    if(isDeveloper)refreshPortalDevPreviewPicker();
     flowUpdateRecords();
     renderPortalAthleteDirectory();
     flowRenderManagerExternal();
@@ -9911,12 +9924,13 @@ list.innerHTML=output.map(metric=>{
     refreshCurrentScheduleDetail(){if(currentScreen()?.id==='screen-schedule-detail')renderScheduleDetailBody(selectedDateKey);},
     applyEntryError(message){if(!canManage){portalSetEntryStatus(message);entryStatus.hidden=false;}},
     applyVerifiedResponseRoster(rows){
-      if(!isDeveloper||!verifiedPortalUid)return;
+      if(!canManage||!verifiedPortalUid)return;
       portalVerifiedResponsePeople=Array.isArray(rows)?rows:[];
       refreshVerifiedParticipantDirectory();
+      refreshVerifiedAthleteViews();
     },
     applyVerifiedEventBaseRoster(rows,state){
-      if(!isDeveloper||!verifiedPortalUid)return;
+      if(!canManage||!verifiedPortalUid)return;
       portalVerifiedEventBasePeople=Array.isArray(rows)?rows:[];
       portalRosterSourceState=state&&typeof state==='object'?state:{events:0,received:0,errors:[]};
       refreshVerifiedParticipantDirectory();
@@ -11231,7 +11245,7 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
         // PDF ACL is checked by the real per-file upload/read. No fake __probe__ READ gate.
         bind('homeImage','homeImage',value=>ui?.applyHomeImage(value));
         const pushVerifiedRoster=()=>{
-          if(gate.role!=='developer'||!gate.loaded.practiceResponses||!gate.loaded.eventResponses)return;
+          if(!['developer','admin'].includes(gate.role)||!gate.loaded.practiceResponses||!gate.loaded.eventResponses)return;
           const found=new Map();
           for(const [kind,source] of [['練習',gate.practiceResponses],['イベント',gate.eventResponses]]){
             for(const answers of Object.values(source||{})){
