@@ -5355,7 +5355,8 @@ html[data-portal-personal-color="matte"] #screen-management .portalWorkflowChoic
     isDeveloper = trusted && role === 'developer';
     document.body.classList.toggle('portalIsDeveloper',isDeveloper);
     if(!trusted){
-      portalVerifiedResponsePeople=[];portalVerifiedEventBasePeople=[];
+      portalVerifiedResponsePeople=[];portalVerifiedEventBasePeople=[];portalVerifiedNumberRegistrations=[];
+      portalNumberRegistrationState={checked:0,expected:2,errors:[],loading:false};
       portalRosterSourceState={events:0,received:0,errors:[]};
       refreshVerifiedParticipantDirectory();
       portalParticipantPreviewMode=false;
@@ -7179,6 +7180,11 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
   const portalDeveloperParticipants=[];
   let portalVerifiedResponsePeople=[];
   let portalVerifiedEventBasePeople=[];
+  // EVENT BASE already records actual number-enrolled participants as
+  // bindings/<eventId>/<uid>. This one-shot view is deliberately separate
+  // from athlete/response records; a name or player's profileId is not a UID.
+  let portalVerifiedNumberRegistrations=[];
+  let portalNumberRegistrationState={checked:0,expected:2,errors:[],loading:false};
   let portalRosterSourceState={events:0,received:0,errors:[]};
   function refreshVerifiedParticipantDirectory(){
     const byKey=new Map();
@@ -7232,11 +7238,17 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
     const rows=portalDeveloperParticipants.filter(p=>!query||String(p.name||'').toLocaleLowerCase('ja').includes(query));
     const raceCount=portalDeveloperParticipants.filter(x=>x.verifiedFromEvent).length;
     const replyCount=portalDeveloperParticipants.filter(x=>x.verifiedFromResponse).length;
-    count.textContent=`実データ確認 ${portalDeveloperParticipants.length}件（大会出走 ${raceCount}件・回答 ${replyCount}件、同一profileIdのみ重複統合）`;
-    const sources=`<div class="portalDeveloperEmpty" role="status">対象：PORTAL参加回答と、現在のPORTAL大会リンクから読めたEVENT BASE出走登録。<b>全員のFirebaseプロフィール一覧ではありません。</b> 未出走・未回答者は含まれません。${portalRosterSourceState.events?` 大会データ ${portalRosterSourceState.received}/${portalRosterSourceState.events}件受信。`:' PORTAL内に有効なEVENT BASE大会リンクがなければ、出走登録は読み込めません。'}${portalRosterSourceState.errors.length?' 読込失敗 '+esc(portalRosterSourceState.errors.join(' / ')):''}</div>`;
-    list.innerHTML=sources+(rows.length
-      ? rows.map(p=>`<div class="portalDeveloperListRow"><b>${esc(p.name||'名前未設定')}</b><span>${esc(p.detail||'')}</span></div>`).join('')
-      : '<div class="portalDeveloperEmpty">対象の出走登録・参加回答をまだ確認できません。本人が未登録とは限りません。</div>');
+    const realRegistered=portalVerifiedNumberRegistrations.filter(x=>!query||x.name.toLocaleLowerCase('ja').includes(query));
+    count.textContent=`大会番号登録 ${portalVerifiedNumberRegistrations.length}人 ／ 出走 ${raceCount}件 ／ 回答 ${replyCount}件`;
+    const bindingMessage=portalNumberRegistrationState.loading?'登録者の正本を取得中…'
+      :portalNumberRegistrationState.errors.length?'大会番号登録の読込失敗：'+portalNumberRegistrationState.errors.join(' ／ ')
+      :portalNumberRegistrationState.checked<portalNumberRegistrationState.expected?'大会番号登録を未確認'
+      :'大会番号登録を確認済み（対象は過去2大会）';
+    const bindingRows=realRegistered.length?realRegistered.map(p=>`<div class="portalDeveloperListRow"><b>${esc(p.name)}</b><span>${esc(p.detail)}</span></div>`).join('')
+      :'<div class="portalDeveloperEmpty">この条件に一致する大会番号登録者はまだ表示できません。読込状態を確認してください。</div>';
+    const sources=`<div class="portalDeveloperEmpty" role="status">${esc(bindingMessage)}。参加番号での正式登録はEVENT BASEのbindingsから取得します。<b>プロフィール全件一覧とは別です。</b></div>`;
+    const other=`<details style="margin-top:14px"><summary>参考：出走カード・参加回答 ${portalDeveloperParticipants.length}件（正式登録者数ではありません）</summary><div class="portalDeveloperEmpty">${portalRosterSourceState.events?` 大会データ ${portalRosterSourceState.received}/${portalRosterSourceState.events}件受信。`:''}${portalRosterSourceState.errors.length?' 読込失敗 '+esc(portalRosterSourceState.errors.join(' / ')):''}</div>${rows.length?rows.map(p=>`<div class="portalDeveloperListRow"><b>${esc(p.name)}</b><span>${esc(p.detail)}</span></div>`).join(''):'<div class="portalDeveloperEmpty">該当データなし</div>'}</details>`;
+    list.innerHTML=sources+bindingRows+other;
   }
   function renderDeveloperTools(){
     if(!isDeveloper)return;
@@ -9838,6 +9850,12 @@ list.innerHTML=output.map(metric=>{
       portalRosterSourceState=state&&typeof state==='object'?state:{events:0,received:0,errors:[]};
       refreshVerifiedParticipantDirectory();
     },
+    applyVerifiedNumberRegistrations(rows,state){
+      if(!isDeveloper||!verifiedPortalUid)return;
+      portalVerifiedNumberRegistrations=Array.isArray(rows)?rows:[];
+      portalNumberRegistrationState=state||{checked:0,expected:2,errors:[],loading:false};
+      renderDeveloperParticipants();
+    },
     applyIdentity({profileId,displayName}){
       if(typeof profileId!=='string'||!profileId)return;
       flowBaseSelfId=profileId;
@@ -10932,6 +10950,42 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
       ids.forEach(id=>selfBind('eventResponses',id,'eventResponses/'+id+'/'+myUid,rows=>ui?.applyEventResponses(rows)));
       statusResources();
     };
+    // Reuse the *same authenticated Firebase app/db*. One bounded READ of
+    // each documented live/archived EVENT BASE registration directory.
+    // No new listener, auth app, canonical data path or Rules change.
+    gate.loadNumberRegistrationDirectory=async()=>{
+      if(gate.role!=='developer'||!gate.uid||auth.currentUser?.uid!==gate.uid)return;
+      const requestUid=gate.uid,seq=generation;
+      const known=[
+        {id:'eventbase_mu4ujce3_xxx1',title:'第1大会'},
+        {id:'eventbase_ekiden_dev_20261006',title:'第2大会'}
+      ];
+      const state={checked:0,expected:known.length,errors:[],loading:true};
+      const byUid=new Map();
+      const emit=()=>{
+        if(seq!==generation||gate.uid!==requestUid||auth.currentUser?.uid!==requestUid)return;
+        ui?.applyVerifiedNumberRegistrations([...byUid.values()].sort((a,b)=>a.name.localeCompare(b.name,'ja')),{...state,errors:state.errors.slice()});
+      };
+      emit();
+      await Promise.all(known.map(async info=>{
+        try{
+          const snap=await dbMod.get(dbMod.ref(db,'bindings/'+info.id));
+          if(seq!==generation||gate.uid!==requestUid||auth.currentUser?.uid!==requestUid)return;
+          for(const [memberUid,record] of Object.entries(snap.val()||{})){
+            if(!record||!['participant','member'].includes(record.role))continue;
+            const name=String(record.displayName||'').trim().slice(0,24);
+            if(!name||!/^[A-Za-z0-9_-]{6,128}$/.test(memberUid))continue;
+            const existing=byUid.get(memberUid);
+            const titles=new Set(existing?.titles||[]);titles.add(info.title);
+            byUid.set(memberUid,{uid:memberUid,name:existing?.name||name,titles:[...titles],detail:'参加番号登録：'+[...titles].join('・')});
+          }
+        }catch(error){
+          if(seq!==generation)return;
+          state.errors.push(info.title+' '+String(error?.code||error?.message||error).slice(0,80));
+        }finally{if(seq===generation){state.checked++;emit();}}
+      }));
+      if(seq===generation){state.loading=false;emit();}
+    };
     gate.watchOfficialResults=()=>{
       if(!gate.uid||!gate.profileId)return;
       const targets=(ui?.officialTargets?.()||[]).filter(v=>/^[a-zA-Z0-9_-]{6,100}$/.test(v.id)).slice(0,8);
@@ -11046,6 +11100,7 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
           gate.role=['developer','admin'].includes(role.val()?.role)?role.val().role:'participant';
         }catch(error){gate.role='participant';}
         ui?.applyVerifiedRole(gate.role,uid);
+        if(gate.role==='developer')void gate.loadNumberRegistrationDirectory();
         // Firebase is the authority for role changes after entry too.
         // An invalidated grant closes UI immediately; a new UID is never generated.
         if(['developer','admin'].includes(gate.role)){
