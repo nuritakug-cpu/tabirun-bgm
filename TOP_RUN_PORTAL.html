@@ -10015,6 +10015,7 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
     <h2 id="portalParticipantLoginTitle">本人ログインを確認しています</h2>
     <p id="portalParticipantLoginMessage" role="status" aria-live="polite">登録済みの本人情報とマイページを確認中です。</p>
     <p id="portalParticipantLoginHelp">本人情報の確認が完了すると、参加者は自分のマイページが自動で開きます。</p>
+    <p id="portalExistingIdentityAudit" hidden role="status" aria-live="polite" style="white-space:pre-line;font-size:12px;line-height:1.7;padding:12px;border:1px solid #a9a58a;border-radius:9px;background:#242c29;color:#ffffff"></p>
     <button id="portalParticipantLoginRetry" type="button" hidden>本人ログインを再確認する</button>
     <div id="portalHandoffStatus" role="status" aria-live="polite" hidden></div>
     <div id="portalHandoffIssued" hidden><strong id="portalHandoffIssuedCode"></strong><small>使い切り・期限付き。引継ぎ先の端末で入力してください。</small></div>
@@ -10125,12 +10126,20 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
     'この起動環境に登録済みの本人UIDがありません。以前利用した端末の本人情報を引き継ぐ必要があります。現時点で新規UIDを自動発行しません。');
   const noProfile=()=>warn('本人プロフィールが見つかりません',
     'Firebaseのログイン状態はありますが、対応するprofileIdを確認できませんでした。別人として再登録せず、管理者へ確認してください。');
+  // Developer identity audit is READ-ONLY and only shown after missing-profile failure.
+  // UID suffixes reveal neither full UID, profileId, auth tokens nor handoff codes.
+  const identityAudit=details=>{
+    const box=document.getElementById('portalExistingIdentityAudit');
+    if(!box||!details)return;
+    box.hidden=false;
+    box.textContent='本人識別・照合結果（読取のみ）\n'+details;
+  };
   const failed=(msg)=>warn('本人ログインを確認できません',msg);
   const personal=adapter?.applyPersonal;
   if(typeof personal==='function')adapter.applyPersonal=function(){const out=personal.apply(this,arguments);readDone();return out;};
   const entryError=adapter?.applyEntryError;
   if(typeof entryError==='function')adapter.applyEntryError=function(msg){const out=entryError.apply(this,arguments);failed(msg);return out;};
-  window.__TR_PARTICIPANT_ENTRY__={readDone,noSession,noProfile,failed};
+  window.__TR_PARTICIPANT_ENTRY__={readDone,noSession,noProfile,failed,identityAudit};
   // Do not show a permanent spinner when the network stalls; no Firebase write is issued.
   setTimeout(()=>{
     if(!resolved&&!retry.hidden)return;
@@ -10662,7 +10671,27 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
             return;
           }
         }
-        if(typeof p?.profileId!=='string'||!p.profileId){status('profiles/<uid>/profileIdが取得できません');ui?.applyEntryError('本人profileIdが取得できません');window.__TR_PARTICIPANT_ENTRY__?.noProfile();return;}
+        if(typeof p?.profileId!=='string'||!p.profileId){
+          status('profiles/<uid>/profileIdが取得できません');
+          ui?.applyEntryError('本人profileIdが取得できません');
+          window.__TR_PARTICIPANT_ENTRY__?.noProfile();
+          // Observe both persisted Auth contexts without attempting to sign in or write.
+          // The normal selector above has already completed; do not re-read profiles.
+          const mask=user=>user?.uid?('末尾'+String(user.uid).slice(-4)):'ログインなし';
+          const launch=window.matchMedia?.('(display-mode: standalone)')?.matches?'ホーム画面アプリ':'ブラウザ';
+          const selectedName=selected.app===appA?'A (eventbase-rebuild)':'B (eventbase-rebuild-v22)';
+          window.__TR_PARTICIPANT_ENTRY__?.identityAudit([
+            '起動環境：'+launch,
+            '選択された認証：'+selectedName,
+            '認証A：'+mask(authA.currentUser),
+            '認証B：'+mask(authB.currentUser),
+            '使用中UID：'+mask(user),
+            'profiles/使用中UID/profileId：取得値なし',
+            '開発者権限：本人照合前のため未確認',
+            '※ UIDの作成・登録削除・Firebase書込は行いません。'
+          ].join('\n'));
+          return;
+        }
         gate.uid=uid;gate.profileId=p.profileId;gate.displayName=String(p.displayName||'').slice(0,24);
         ui?.applyIdentity({profileId:p.profileId,displayName:gate.displayName});
         window.dispatchEvent(new Event('tr-portal-identity-ready'));
