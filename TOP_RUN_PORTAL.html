@@ -1,3 +1,4 @@
+<!-- 2026-10-20 PRODUCTION FIELD TRIAL focused repairs: common goal edits, past-practice read-only, race cancellation Firebase attendance ACK. No Rules/deployment change. -->
 <!-- EVENT BASE / TOP RUN PORTAL 2026-10-20 PRODUCTION FIELD TRIAL. Parent: TOP_RUN_PORTAL_20261019_EVENT_PHASED_RULES_COMPATIBLE_REVIEW.html. Explicit new participant signup only; no changes to existing event/save routes, Rules or deployment. Recovered from Library indexed text, NOT byte-identical to parent. -->
 <!-- PORTAL 2026-10-17 FIREBASE INTEGRATION REVIEW: physical parent PORTAL_STEP(2).html; preserved all latest UI and management navigation. New unified Firebase gate; no production deployment. -->
 <!-- MERGED REVIEW / 2026-10-17: physical parent PORTAL_MANAGE.html; selectively integrated MANAGEMENT_STEP_FLOW_REVIEW candidate, keeping latest management hierarchy. Unapproved. No Firebase/Auth/Rules/save-route changes. -->
@@ -6241,6 +6242,7 @@ button.disabled=true;
     if(typeof flowState==='undefined')return [];
     return flowState.entries.filter(r=>r.eventId===eventId);
   }
+  function portalPracticeIsPast(date){return /^\d{4}-\d{2}-\d{2}$/.test(date||'') && date<todayDateKey();}
   function schedulePracticeResponse(date,actorId){
     const gateway=window.__TR_PORTAL_SYNC__;
     if(gateway && gateway.loaded.practiceResponses){
@@ -6351,7 +6353,8 @@ button.disabled=true;
     if(entry.kind==='practice'){
       const answer=schedulePracticeResponse(entry.date,flowSelfId());
       const people=practiceAttendancePeople(entry.date);
-      action=`<div class="portalRsvpSection"><b class="portalRsvpTitle">練習への参加</b><p class="portalRsvpCurrent">自分の回答：<strong>${esc(answer==='join'?'参加する':answer==='decline'?'参加しない':answer==='maybe'?'未定':'未回答')}</strong></p><div class="portalRsvpOptions" role="group" aria-label="練習への参加回答">${[['join','参加する'],['decline','参加しない'],['maybe','未定']].map(([id,label])=>`<button type="button" data-practice-response="${id}" data-practice-date="${esc(entry.date)}" class="${answer===id?'chosen':''}" aria-pressed="${answer===id?'true':'false'}">${label}</button>`).join('')}</div><details class="portalRsvpRoster"><summary>参加者一覧を見る（${people.length}人）</summary>${scheduleParticipantsMarkup(people,'参加するを選択した人はまだいません。')}</details></div>`;
+      const pastPractice=portalPracticeIsPast(entry.date);
+      action=`<div class="portalRsvpSection${pastPractice?' portalPastLocked':''}"><b class="portalRsvpTitle">練習への参加</b><p class="portalRsvpCurrent">自分の回答：<strong>${esc(answer==='join'?'参加する':answer==='decline'?'参加しない':answer==='maybe'?'未定':'未回答')}</strong></p>${pastPractice?'<p class="portalHelp">開催済みの練習は回答を変更できません。変更が必要な場合は管理者に連絡してください。</p>':''}<div class="portalRsvpOptions" role="group" aria-label="練習への参加回答">${[['join','参加する'],['decline','参加しない'],['maybe','未定']].map(([id,label])=>`<button type="button" data-practice-response="${id}" data-practice-date="${esc(entry.date)}" class="${answer===id?'chosen':''}" aria-pressed="${answer===id?'true':'false'}" ${pastPractice?'disabled aria-disabled="true" title="開催済みの練習"':''}>${label}</button>`).join('')}</div><details class="portalRsvpRoster"><summary>参加者一覧を見る（${people.length}人）</summary>${scheduleParticipantsMarkup(people,'参加するを選択した人はまだいません。')}</details></div>`;
     }else{
              const item=eventItems.find(x=>x.id===entry.eventId),locallyRecorded=!!flowEntry(entry.eventId,flowSelfId()),registered=flowOfficiallyRegistered(entry.eventId)||(!window.__TR_PORTAL_SYNC__&&locallyRecorded),people=flowAttendanceParticipants(entry.eventId);
        const answer=scheduleEventAnswer(entry.eventId,flowSelfId()),allowRace=item?.raceEntryEnabled!==false,attendanceOpen=portalEventAttendanceOpen(item);
@@ -8431,8 +8434,9 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
   function flowRefreshCommonGoals(){
     const v=flowGoalsFor();portalGoalMetrics.forEach(([metric,label,id])=>flowSetTime(id,v[metric]||''));
     portalNamedGoalsDraft=Array.isArray(v.namedGoals)?v.namedGoals.map(g=>({...g})):[];flowRenderNamedGoals();
-    $('portalCommonGoalsState').textContent='本人の共通目標です。出走登録した種目の目標は登録期間中ロックされます。';
-    for(const [metric,,id] of portalGoalMetrics){const locked=flowLockedGoal(flowSelfId(),metric),field=document.querySelector(`[data-flow-time="${id}"]`);if(field){field.classList.toggle('portalPastLocked',!!locked);field.querySelectorAll('select,button').forEach(el=>el.disabled=!!locked);}}
+    $('portalCommonGoalsState').textContent='本人の共通目標はいつでも変更できます。出走登録時に保存した大会別の目標・申告タイムは変わりません。';
+    // A locked EVENT ENTRY must not lock MY PAGE common goal controls.
+    for(const [metric,,id] of portalGoalMetrics){const field=document.querySelector(`[data-flow-time="${id}"]`);if(field){field.classList.remove('portalPastLocked');field.querySelectorAll('select,button').forEach(el=>el.disabled=false);}}
   }
   function flowCommonGoal(metric,actorId=flowSelfId()){return flowGoalsFor(actorId)[metric]||'';}
   let portalNamedGoalsDraft=[];
@@ -8465,9 +8469,7 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
     flowReadNamedGoals();
     if(portalNamedGoalsDraft.some((g,i)=>!g.name||!g.time||flowTimeIncomplete('portalNamedGoal'+i)||!flowTimeGood(g.time))){$('portalCommonGoalsState').textContent='追加した大会名・タイムを確認してください。';return;}
     goal.namedGoals=portalNamedGoalsDraft.map(g=>({kind:g.kind,name:g.name.trim().slice(0,70),time:g.time}));
-    const locked=portalGoalMetrics.map(([metric])=>flowLockedGoal(flowSelfId(),metric)).filter(Boolean);
-    const changed=locked.find(entry=>goal[entry.metric]!==entry.goal);
-    if(changed){const notice='出走登録済みの'+(portalMetricNames[changed.metric]||changed.metric)+'目標は変更できません。必要な場合は管理者へ連絡してください。';$('portalCommonGoalsState').textContent=notice;$('portalGoalQuickStatus').textContent=notice;flowRefreshCommonGoals();return;}
+    // This writes only personal defaultGoals. It does not change existing race entries or declared times.
     const actor=flowSelfId(),gateway=window.__TR_PORTAL_SYNC__;
     if(actor!==flowBaseSelfId||!gateway?.canSavePersonal?.()){
       $('portalCommonGoalsState').textContent='本人Firebaseの受信が未成立です。保存していません。';
@@ -9883,21 +9885,54 @@ $('portalLapPacePercent').closest('label').hidden=isStandard;
   });
   // One cancellation path for visible controls. The last race requires an attendance choice.
   let portalPendingRaceCancel=null;
-  function portalCancelRaceCommit(eventId,actorId,metric,answer){
+  let portalRaceCancelSaving=false;
+  async function portalCancelRaceCommit(eventId,actorId,metric,answer){
+    if(portalRaceCancelSaving)return;
+    const gateway=window.__TR_PORTAL_SYNC__;
+    const self=actorId===flowBaseSelfId;
     const oldEntries=flowState.entries.slice(),oldAnswers=flowState.eventResponses.slice();
+    const remaining=flowEntries(eventId,actorId).filter(r=>r.metric!==metric);
+    const nextAnswer=remaining.length?'join':answer||'maybe';
+    // For the signed-in person's shared events, the Firebase response is canonical.
+    // Never silently claim a successful cancellation when the response is still 'join'.
+    const shared=self&&!!gateway;
+    if(shared&&(!gateway.canRespondEvent?.() || !gateway.eventItems?.[eventId])){
+      flowSaveState('flowSelfStatus','本人の参加回答または共有イベントをFirebaseで確認できません。取消していません。');
+      showActionFeedback('取消できません','本人Firebaseの参加回答・イベント受信を確認してから再試行してください。');
+      return;
+    }
+    portalRaceCancelSaving=true;
     flowState.entries=flowState.entries.filter(r=>r.eventId!==eventId||r.actorId!==actorId||r.metric!==metric);
-    const remaining=flowEntries(eventId,actorId);
-    if(!remaining.length)flowSetAttendanceInState(eventId,actorId,answer||'maybe');
-    else flowSetAttendanceInState(eventId,actorId,'join');
+    flowSetAttendanceInState(eventId,actorId,nextAnswer);
     if(!flowPersist()){
       flowState.entries=oldEntries;flowState.eventResponses=oldAnswers;
+      portalRaceCancelSaving=false;
       flowSaveState('flowSelfStatus','保存に失敗したため出走登録は取り消していません。');
       showActionFeedback('取消できませんでした','端末内保存に失敗しました。');return;
     }
-    flowRefreshAll();flowRefreshCommonGoals();if(canManage&&!portalParticipantPreviewMode)flowRenderAudit();
+    if(shared){
+      $('flowSelfStatus').textContent='Firebaseに大会参加回答を保存しています…';
+      try{await gateway.saveEventResponse(eventId,nextAnswer);}
+      catch(error){
+        flowState.entries=oldEntries;flowState.eventResponses=oldAnswers;
+        flowPersist();portalRaceCancelSaving=false;
+        flowRefreshAll();flowRefreshCommonGoals();
+        const reason=String(error?.code||error?.message||error).slice(0,150);
+        $('flowSelfStatus').textContent='Firebaseの参加回答を更新できなかったため、取消を戻しました：'+reason;
+        showActionFeedback('取消できませんでした','Firebase側の参加回答は未更新です。'+reason);
+        return;
+      }
+    }
+    portalRaceCancelSaving=false;
+    flowRefreshAll();flowRefreshCommonGoals();
+    if(canManage&&!portalParticipantPreviewMode)flowRenderAudit();
     if(selectedDateKey&&currentScreen()?.id==='screen-schedule-detail')renderScheduleDetailBody(selectedDateKey);
-    $('flowSelfStatus').textContent='出走登録を取り消しました。大会当日の予定も更新しました（この端末のみ）。';
-    flowEntrySuccess('出走登録を取り消しました',remaining.length?'別種目の出走予定は維持されます。':'大会当日の予定を更新しました。');
+    $('flowSelfStatus').textContent=shared
+      ?'出走登録を端末内で取り消し、Firebaseの大会参加回答も更新しました。正式なEVENT BASE出走登録は別管理です。'
+      :'端末内の試作出走登録を取り消しました。共有Firebaseや正式な大会結果は更新していません。';
+    showActionFeedback('出走登録を取り消しました',shared
+      ?'Firebase参加回答の保存応答を確認しました。正式な出走登録には影響しません。'
+      :'端末内の試作データのみの変更です。');
   }
   function flowCancelRegisteredMetric(selectedMetric){
     const e=flowEvent(flowSelectedEventId);if(!e)return;
@@ -10130,6 +10165,7 @@ portalPendingRaceCancel=null;flowRenderManagerWorkspace();
     if(reply){
       const date=reply.dataset.practiceDate,actorId=flowSelfId(),answer=reply.dataset.practiceResponse;
       if(!schedules[date]||schedules[date].enabled===false)return;
+      if(portalPracticeIsPast(date)){showActionFeedback('変更できません','開催済みの練習への参加回答は変更できません。');return;}
       const gateway=window.__TR_PORTAL_SYNC__;
       if(!gateway?.canRespondPractice?.() || gateway.profileId!==actorId){
         showActionFeedback('回答を保存できません','Firebaseの本人認証・練習予定・参加回答の受信を確認してください。');return;
@@ -10199,7 +10235,8 @@ portalPendingRaceCancel=null;flowRenderManagerWorkspace();
     const next={...initial};
     const registered=flowState.entries.filter(r=>r.actorId===actor&&r.goal&&flowEvent(r.eventId)&&!flowIsEndedEvent(flowEvent(r.eventId)))
       .sort((a,b)=>(a.updatedAt||0)-(b.updatedAt||0));
-    for(const r of registered)next[r.metric]=r.goal;
+    // Historical migration may fill a missing goal, but must never overwrite an explicit later edit.
+    for(const r of registered)if(!next[r.metric])next[r.metric]=r.goal;
     if(JSON.stringify(initial)===JSON.stringify(next))return;
     flowState.defaultGoals[actor]=next;
     if(!flowPersist()){if(old===undefined)delete flowState.defaultGoals[actor];else flowState.defaultGoals[actor]=old;}
@@ -11110,6 +11147,7 @@ const makePractice=(v,uid,original=null)=>({kind:'practice',title:'練習予定'
       if(!gate.canRespondPractice())throw Error('練習予定または参加回答の受信が未成立です');
       if(auth.currentUser?.uid!==gate.uid)throw Error('本人UIDが一致しません');
       if(!/^\d{4}-\d{2}-\d{2}$/.test(date))throw Error('日付形式が不正です');
+      if(date<new Date().toLocaleDateString('sv-SE'))throw Error('開催済みの練習には参加回答を変更できません');
       if(!['join','decline','maybe'].includes(answer))throw Error('回答値が不正です');
       if(gate.practices?.[date]?.kind!=='practice'||gate.practices[date].enabled===false)throw Error('有効な練習予定がありません');
       const result=await run('practiceResponses/'+date+'/'+gate.uid,()=>({
