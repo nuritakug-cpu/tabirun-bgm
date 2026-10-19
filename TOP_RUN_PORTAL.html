@@ -1,3 +1,4 @@
+<!-- 2026-10-19 FIRST EVENT ROSTER SOURCE REPAIR: fixed legacy event priority and explicit Firebase per-event source status; no Auth/Rules/WRITE changes. -->
 <!-- PORTAL 2026-10-19 CORRECTED: athlete-only evidence = EVENT BASE players or entered timing/results; participant registration remains separate. Name lookup is read-only, no automatic identity linking. -->
 <!-- PORTAL 2026-10-17 FIREBASE INTEGRATION REVIEW: physical parent PORTAL_STEP(2).html; preserved all latest UI and management navigation. New unified Firebase gate; no production deployment. -->
 <!-- MERGED REVIEW / 2026-10-17: physical parent PORTAL_MANAGE.html; selectively integrated MANAGEMENT_STEP_FLOW_REVIEW candidate, keeping latest management hierarchy. Unapproved. No Firebase/Auth/Rules/save-route changes. -->
@@ -7269,7 +7270,8 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
     const bindingRows=realRegistered.length?realRegistered.map(p=>`<div class="portalDeveloperListRow"><b>${esc(p.name)}</b><span>${esc(p.detail)}</span></div>`).join('')
       :'<div class="portalDeveloperEmpty">この条件に一致する大会番号登録者はまだ表示できません。読込状態を確認してください。</div>';
     const sources=`<div class="portalDeveloperEmpty" role="status">${esc(bindingMessage)}。参加番号での正式登録はEVENT BASEのbindingsから取得します。<b>プロフィール全件一覧とは別です。</b></div>`;
-    const other=`<details style="margin-top:14px"><summary>参考：出走カード・参加回答 ${portalDeveloperParticipants.length}件（正式登録者数ではありません）</summary><div class="portalDeveloperEmpty">${portalRosterSourceState.events?` 大会データ ${portalRosterSourceState.received}/${portalRosterSourceState.events}件受信。`:''}${portalRosterSourceState.errors.length?' 読込失敗 '+esc(portalRosterSourceState.errors.join(' / ')):''}</div>${rows.length?rows.map(p=>`<div class="portalDeveloperListRow"><b>${esc(p.name)}</b><span>${esc(p.detail)}</span></div>`).join(''):'<div class="portalDeveloperEmpty">該当データなし</div>'}</details>`;
+    const sourceDetails=(portalRosterSourceState.details||[]).map(x=>`${x.title||x.id}: 出走${x.playersStatus==='ok'?x.players+'件（結果 '+x.playerResults+'件）':x.playersStatus==='error'?'取得失敗('+x.playerError+')':'未取得'}／結果${x.timingStatus==='ok'?x.timing+'件':x.timingStatus==='error'?'取得失敗('+x.timingError+')':'未取得'}`).join(' ／ ');
+    const other=`<details style="margin-top:14px"><summary>参考：出走カード・参加回答 ${portalDeveloperParticipants.length}件（正式登録者数ではありません）</summary><div class="portalDeveloperEmpty">${esc(sourceDetails||'大会データ未取得')}${portalRosterSourceState.errors.length?' 読込失敗 '+esc(portalRosterSourceState.errors.join(' / ')):''}</div>${rows.length?rows.map(p=>`<div class="portalDeveloperListRow"><b>${esc(p.name)}</b><span>${esc(p.detail)}</span></div>`).join(''):'<div class="portalDeveloperEmpty">該当データなし</div>'}</details>`;
     list.innerHTML=sources+bindingRows+other;
   }
   function renderDeveloperTools(){
@@ -7695,8 +7697,11 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
     if(!canManage || portalParticipantPreviewMode)return;
     const athletes=portalCompetitionAthletes();
     const errors=portalRosterSourceState.errors||[];
-    const note=errors.length?'EVENT BASEの出走登録を取得できない大会があります：'+errors.join(' ／ ')
-      :'選手一覧：EVENT BASEの出走登録者、またはEVENT BASEで結果を入力した選手のみ。参加番号登録だけの人や仮選手は含みません。';
+    const sourceRows=Array.isArray(portalRosterSourceState.details)?portalRosterSourceState.details:[];
+    const formatRead=(state,count,error)=>state==='ok'?count+'件取得':state==='error'?'取得失敗：'+String(error||'不明のエラー'):state==='pending'?'取得待ち':'対象外';
+    const detailLines=sourceRows.map(src=>String(src.title||src.id)+'：出走登録 '+formatRead(src.playersStatus,src.players,src.playerError)+(src.playersStatus==='ok'?'（カード結果 '+src.playerResults+'件）':'')+' ／ 計測結果 '+formatRead(src.timingStatus,src.timing,src.timingError));
+    const note=detailLines.length?detailLines.join('\n')
+      :'大会データの取得待ち。第一回・第二回大会の登録者は取得成功まで0人と判定しません。';
     const list=athletes.map(person=>{
       if(person.linked){
         return `<button type="button" class="portalDirectoryRow" data-pr-athlete="${esc(person.profileId)}"><span><b>${esc(person.name)}</b><small>${esc(person.detail)} ／ 本人ID確認済み・取得できた記録を表示</small></span><strong>›</strong></button>`;
@@ -7705,7 +7710,9 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
       // The disclosure is a name-based LOOKUP, never identity confirmation or WRITE.
       return `<details class="portalDirectoryRow portalUnlinkedAthlete" data-athlete-name="${esc(person.name)}"><summary><span><b>${esc(person.name)}</b><small>${esc(person.detail)} ／ 本人未紐付け</small></span><strong>＋</strong></summary><div class="portalUnlinkedDetail"><b>名前から登録候補を確認（閲覧のみ）</b><p>${esc(portalNameComparison(person.name))}</p><small>同姓同名だけでは本人を確定しません。本人紐付け・記録の保存はEVENT BASEの正規手続きで行います。</small></div></details>`;
     }).join('');
-    const status=`<div class="portalDeveloperEmpty" role="status">${esc(note)}<br>選手 ${athletes.length}件（本人ID未紐付けは個別表示）</div>`;
+    const allReady=sourceRows.length>0&&sourceRows.every(src=>src.playersStatus==='ok'&&src.timingStatus==='ok');
+    const status=`<div class="portalDeveloperEmpty" role="status" style="white-space:pre-line;line-height:1.8">${esc(note)}
+表示できた選手 ${athletes.length}人${allReady?'（対象大会の読取成功）':'（取得未完了／権限エラーがあれば全員数ではありません）'}</div>`;
     const markup=status+(list||'<div class="portalEmpty">出走登録・結果入力が確認できた選手はいません。大会の取得状況を確認してください。</div>');
     $('portalAthleteDirectoryList').innerHTML=markup;
     $('portalAthleteInlineList').innerHTML=markup;
@@ -10075,18 +10082,18 @@ list.innerHTML=output.map(metric=>{
         if(!target||seen.has(target.id))continue;
         seen.add(target.id);targets.push(target);
       }
-      // The first live competition is not guaranteed to appear in local eventItems.
-      // For verified PORTAL staff, include its known ID in the EXISTING unified
-      // EVENT BASE subscription; never invent a local event or registration record.
+      // First/second live competitions must be INSIDE the original 8-event limit.
+      // The previous fallback could leave the first event beyond .slice(0,8)
+      // when its catalogue item existed after eight newer events.
+      // Put the known canonical event IDs first, REUSING metadata if supplied.
       if(canManage&&verifiedPortalUid){
-        const first='eventbase_mu4ujce3_xxx1';
-        if(!seen.has(first))targets.unshift({id:first,catalogId:'eventbase-first',
-          title:'第一回大会',date:'',place:'',
-          openUrl:'https://nuritakug-cpu.github.io/tabirun-bgm/EVENT_BASE_PRODUCTION.html?event='+first+'&portal=1'});
-        const second='eventbase_ekiden_dev_20261006';
-        if(!seen.has(second))targets.push({id:second,catalogId:'eventbase-second',
-          title:'第二回大会（駅伝）',date:'',place:'',
-          openUrl:'https://nuritakug-cpu.github.io/tabirun-bgm/EVENT_BASE_PRODUCTION.html?event='+second+'&portal=1'});
+        const base='https://nuritakug-cpu.github.io/tabirun-bgm/EVENT_BASE_PRODUCTION.html?event=';
+        const fixed=[['eventbase_mu4ujce3_xxx1','第一回大会','eventbase-first'],
+          ['eventbase_ekiden_dev_20261006','第二回大会（駅伝）','eventbase-second']];
+        const prioritized=fixed.map(([id,title,catalogId])=>
+          targets.find(v=>v.id===id)||{id,catalogId,title,date:'',place:'',openUrl:base+id+'&portal=1'});
+        const fixedIds=new Set(fixed.map(x=>x[0]));
+        return prioritized.concat(targets.filter(v=>!fixedIds.has(v.id)));
       }
       // Subscription count remains bounded by the original gate; no extra Auth/path.
       return targets;
@@ -11142,6 +11149,11 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
       officialSignature=signature;gate.officialResults={};gate.officialEntries={};gate.officialAttendance={};
       gate.officialParticipantRoster={};
       gate.officialTimingPeople={};gate.officialTimingRecords={};gate.officialPlayerResults={};
+      // A real zero is different from a denied/missing Firebase READ.
+      gate.officialReadStatus=Object.fromEntries(targets.map(info=>[info.id,{
+        id:info.id,title:info.title,playersStatus:'pending',players:0,playerResults:0,
+        timingStatus:['developer','admin'].includes(gate.role)?'pending':'not-applicable',timing:0
+      }]));
       const updateOfficialResultRecords=(id)=>{
         const fromPlayers=gate.officialPlayerResults[id]||[],fromTiming=gate.officialTimingRecords[id]||[];
         const playerIds=new Set(fromPlayers.map(x=>x.playerId).filter(Boolean));
@@ -11153,7 +11165,8 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
         const received=Object.keys(gate.officialParticipantRoster).length;
         const errors=Object.entries(gate.errors||{}).filter(([k])=>k.startsWith('eventBase:')||k.startsWith('eventBaseTiming:')).map(([k,v])=>k.replace(/^eventBase(Timing)?:/,'')+' '+v);
         const people=Object.values(gate.officialParticipantRoster).flat().concat(Object.values(gate.officialTimingPeople).flat());
-        ui?.applyVerifiedEventBaseRoster(people,{events:targets.length,received,errors});
+        const details=targets.map(info=>({...gate.officialReadStatus[info.id]}));
+        ui?.applyVerifiedEventBaseRoster(people,{events:targets.length,received,errors,details});
       };
       ui?.applyEventBaseRecords(gate.officialResults);ui?.applyEventBaseEntries(gate.officialEntries);
       pushOfficialDirectory();
@@ -11206,11 +11219,13 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
           gate.officialPlayerResults[info.id]=records;gate.officialEntries[info.id]=entries;gate.officialAttendance[info.catalogId]=[...attendance.values()];
           updateOfficialResultRecords(info.id);
           gate.officialParticipantRoster[info.id]=registered;
+          gate.officialReadStatus[info.id]={...gate.officialReadStatus[info.id],playersStatus:'ok',players:registered.length,playerResults:registered.filter(p=>p.hasResult).length,playerError:''};
           delete gate.errors['eventBase:'+info.id];pushOfficialDirectory();ui?.applyEventBaseRecords(gate.officialResults);
           ui?.applyEventBaseEntries(gate.officialEntries);ui?.refreshCurrentScheduleDetail?.();statusResources();
         },error=>{
           if(seq!==generation)return;
           gate.errors['eventBase:'+info.id]=String(error?.code||error?.message||error).slice(0,90);
+          gate.officialReadStatus[info.id]={...gate.officialReadStatus[info.id],playersStatus:'error',playerError:gate.errors['eventBase:'+info.id]};
           delete gate.officialEntries[info.id];delete gate.officialResults[info.id];delete gate.officialPlayerResults[info.id];delete gate.officialAttendance[info.catalogId];delete gate.officialParticipantRoster[info.id];
           pushOfficialDirectory();ui?.applyEventBaseRecords(gate.officialResults);ui?.applyEventBaseEntries(gate.officialEntries);
           statusResources();
@@ -11248,11 +11263,13 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
             }
             gate.officialTimingPeople[info.id]=people;
             gate.officialTimingRecords[info.id]=resultRows;
+            gate.officialReadStatus[info.id]={...gate.officialReadStatus[info.id],timingStatus:'ok',timing:people.length,timingError:''};
             delete gate.errors['eventBaseTiming:'+info.id];
             updateOfficialResultRecords(info.id);pushOfficialDirectory();statusResources();
           }).catch(error=>{
             if(seq!==generation||auth.currentUser?.uid!==uid)return;
             gate.errors['eventBaseTiming:'+info.id]=String(error?.code||error?.message||error).slice(0,100);
+            gate.officialReadStatus[info.id]={...gate.officialReadStatus[info.id],timingStatus:'error',timingError:gate.errors['eventBaseTiming:'+info.id]};
             delete gate.officialTimingPeople[info.id];delete gate.officialTimingRecords[info.id];
             updateOfficialResultRecords(info.id);pushOfficialDirectory();statusResources();
           });
