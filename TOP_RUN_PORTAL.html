@@ -1,3 +1,4 @@
+<!-- PORTAL 2026-10-19 CORRECTED: athlete-only evidence = EVENT BASE players or entered timing/results; participant registration remains separate. Name lookup is read-only, no automatic identity linking. -->
 <!-- PORTAL 2026-10-17 FIREBASE INTEGRATION REVIEW: physical parent PORTAL_STEP(2).html; preserved all latest UI and management navigation. New unified Firebase gate; no production deployment. -->
 <!-- MERGED REVIEW / 2026-10-17: physical parent PORTAL_MANAGE.html; selectively integrated MANAGEMENT_STEP_FLOW_REVIEW candidate, keeping latest management hierarchy. Unapproved. No Firebase/Auth/Rules/save-route changes. -->
 <!-- WORKFLOW UX CANDIDATE / 2026-10-17. Physical parent: PORTAL_EVENT.html (current Library latest). Management: notice/practice/event new vs. edit, search lists, athlete contrast, manager's explicit operation/event selection. Firebase/Rules/Auth/persistence paths unchanged. No claims of remote validation. -->
@@ -29,6 +30,16 @@ NO FIREBASE / NO RULES / NO AUTH CHANGE / NO profileId CHANGE / NO binding CHANG
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="top-run-handoff-api" content="https://eventbase-handoff-gateway-1071631357620.asia-southeast1.run.app">
 <title>TOP RUN PORTAL</title>
+<style id="portal-competition-athletes-only-20261019">
+.portalUnlinkedAthlete{display:block!important;padding:0!important;overflow:hidden;}
+.portalUnlinkedAthlete summary{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:68px;padding:12px;cursor:pointer;list-style:none;}
+.portalUnlinkedAthlete summary::-webkit-details-marker{display:none;}
+.portalUnlinkedAthlete summary span{min-width:0}.portalUnlinkedAthlete summary b{font-size:14px;display:block;overflow-wrap:anywhere}
+.portalUnlinkedAthlete summary small{display:block;font-size:11px;line-height:1.5;margin-top:3px}
+.portalUnlinkedDetail{padding:12px;border-top:1px solid #bcb5a5;line-height:1.6;font-size:12px}
+.portalUnlinkedDetail b{font-size:12px}.portalUnlinkedDetail p{overflow-wrap:anywhere;margin:8px 0}
+.portalUnlinkedDetail small{font-size:10px;line-height:1.55}
+</style>
 <style id="portal-first-paint-auth-no-flash-20261018">
 /* Display-only: early full-viewport splash prevents the temporary credential/entry view from flashing.
    The real authenticated/unauthenticated state stays under the existing original gates. */
@@ -7254,7 +7265,7 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
     const bindingMessage=portalNumberRegistrationState.loading?'登録者の正本を取得中…'
       :portalNumberRegistrationState.errors.length?'大会番号登録の読込失敗：'+portalNumberRegistrationState.errors.join(' ／ ')
       :portalNumberRegistrationState.checked<portalNumberRegistrationState.expected?'大会番号登録を未確認'
-      :'大会番号登録を確認済み（対象は過去2大会）';
+      :'大会番号登録を確認済み（対象は過去2大会。ただし本人profiles全件は閲覧権限外）';
     const bindingRows=realRegistered.length?realRegistered.map(p=>`<div class="portalDeveloperListRow"><b>${esc(p.name)}</b><span>${esc(p.detail)}</span></div>`).join('')
       :'<div class="portalDeveloperEmpty">この条件に一致する大会番号登録者はまだ表示できません。読込状態を確認してください。</div>';
     const sources=`<div class="portalDeveloperEmpty" role="status">${esc(bindingMessage)}。参加番号での正式登録はEVENT BASEのbindingsから取得します。<b>プロフィール全件一覧とは別です。</b></div>`;
@@ -7529,7 +7540,8 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
   const portalMetricNames={'400':'400m','800':'800m','1000':'1000m','1500':'1500m','3000':'3000m','5000':'5000m','10000':'10000m','21097.5':'ハーフ','42195':'フルマラソン','relay':'駅伝','other':'その他'};
   const portalGraphMetrics=['800','1000','1500','3000'];
   function portalRecFor(metric=null){
-    const all=portalPersonalRecords.filter(r=>r.profileId===portalPersonalTargetId&&(r.time||r.status==='DNS'||r.status==='RESERVE_ACCOMPANY'||r.status==='ELIMINATED'));
+    const onlyEventBase=canManage&&portalPersonalTargetId!==flowBaseSelfId&&portalCompetitionAthletes().some(a=>a.linked&&a.profileId===portalPersonalTargetId);
+    const all=portalPersonalRecords.filter(r=>r.profileId===portalPersonalTargetId&&(!onlyEventBase||r.source==='EVENT_BASE')&&(r.time||r.status==='DNS'||r.status==='RESERVE_ACCOMPANY'||r.status==='ELIMINATED'));
     return (metric ? all.filter(r=>r.metric===metric):all).sort((a,b)=>a.date.localeCompare(b.date));
   }
   function portalRecSeconds(t){if(!t||!String(t).trim())return NaN;const parts=String(t).split(':').map(Number);if(parts.some(x=>!Number.isFinite(x)))return NaN;return parts.reduce((v,n)=>v*60+n,0)}
@@ -7595,7 +7607,7 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
     const person=portalAthletes.find(x=>x.profileId===portalPersonalTargetId);
     $('crPersonName').textContent=isSelf?displayName:(person?.name||'名前未登録');
     const baseRows=portalRecFor().filter(row=>row.source==='EVENT_BASE');
-    $('crViewerContext').textContent=baseRows.length?'EVENT BASE大会結果を本人UID一致で参照中（読取専用）。正式な結果の編集はEVENT BASEで行います。ローカル検証記録が併記される場合があります。':portalRecFor().length?'表示中の結果はローカル検証用の入力です。Firebaseの正式大会結果とは未接続です。':'大会結果は未取得または未登録です。';    const logo=$('crTeamLogo'),src=document.querySelector('.logoWrap img');
+    $('crViewerContext').textContent=baseRows.length?'EVENT BASE大会結果を本人profileIdで照合中（読取専用）。正式結果の編集はEVENT BASEで行います。':portalRecFor().length?'表示中の結果はローカル検証用の入力です。Firebaseの正式大会結果とは未接続です。':'大会結果は未取得または未登録です。';    const logo=$('crTeamLogo'),src=document.querySelector('.logoWrap img');
     if(src?.src&&!logo.querySelector('img')){logo.innerHTML='';const img=document.createElement('img');img.src=src.src;img.alt='TOP RUN';logo.appendChild(img)}
     const personal=portalRecFor();$('crRecordCount').innerHTML=personal.length+'<em>件</em>';$('crRelayCount').innerHTML=personal.filter(r=>r.metric==='relay').length+'<em>大会</em>';
     $('crPbGrid').innerHTML=['800','1500','3000'].map(m=>{const r=portalRecBest(m);return `<button type="button" class="crPbCard" data-cr-open-metric="${m}"><small>${portalMetricNames[m]}</small><b>${esc(r?.time||'—')}</b><em>${r?'PB':'記録なし'}</em></button>`}).join('');
@@ -7645,27 +7657,61 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
     $('crDetailSvg').innerHTML=portalRecordChart(portalPersonalMetric,true);
     $('crDetailRecordList').innerHTML=portalRecFor(portalPersonalMetric).slice().reverse().map(portalRecordRow).join('')||'<div class="portalEmpty">記録はありません。</div>';
   }
+  // Read-only athlete directory: only EVENT BASE players or completed timing/results
+  // count as athlete evidence. Registration-only, response-only and local preview
+  // people are NOT athletes. Never join distinct people by matching names.
+  function portalCompetitionAthletes(){
+    const rows=new Map();
+    // Only an exact (eventId, playerId) relation can carry a player card's
+    // profileId over to its matching timing entry; display names are not keys.
+    const playerProfileIds=new Map();
+    for(const row of portalVerifiedEventBasePeople){
+      if(row?.source==='player'&&row.eventId&&row.playerId&&row.profileId)
+        playerProfileIds.set(String(row.eventId)+'|'+String(row.playerId),String(row.profileId));
+    }
+    for(const source of portalVerifiedEventBasePeople){
+      const name=String(source?.name||'').trim(),eventId=String(source?.eventId||''),playerId=String(source?.playerId||''),pid=String(source?.profileId||playerProfileIds.get(eventId+'|'+playerId)||'').trim();
+      if(!name||!eventId||(!playerId&&!pid))continue;
+      if(source.source==='timing'&&!source.hasResult)continue;
+      const key=pid?'profile:'+pid:'race:'+eventId+':'+playerId;
+      const prior=rows.get(key);
+      const reasons=new Set(prior?.reasons||[]);
+      reasons.add((source.source==='timing'?'結果入力':'出走登録')+'：'+String(source.eventTitle||'大会')+(source.resultTime?' ／ '+source.resultTime:''));
+      rows.set(key,{key,profileId:pid,name:prior?.name||name,linked:!!pid,
+        reasons:[...reasons],detail:[...reasons].join(' ／ '),
+        eventId,playerId,hasResult:!!(prior?.hasResult||source.hasResult)});
+    }
+    return [...rows.values()].sort((a,b)=>a.name.localeCompare(b.name,'ja'));
+  }
+  function portalNameComparison(name){
+    const normalize=x=>String(x||'').normalize('NFKC').replace(/[\s　]+/g,'').toLocaleLowerCase('ja');
+    const matches=portalVerifiedNumberRegistrations.filter(p=>normalize(p.name)===normalize(name));
+    if(!isDeveloper)return '同じ名前の大会番号登録者について、管理者権限で全件照合はできません。EVENT BASEの本人識別を確認してください。';
+    if(portalNumberRegistrationState.errors.length)return '参加番号登録者を取得できないため、名前の照合候補を確認できません。';
+    if(!matches.length)return '取得済みの参加番号登録者には同名候補がありません。未取得の登録者が存在する可能性があります。';
+    return matches.map(p=>p.name+'｜'+p.detail+'（氏名一致のみ・本人確定ではありません）').join(' ／ ');
+  }
   function renderPortalAthleteDirectory(){
     if(!canManage || portalParticipantPreviewMode)return;
-    const state=portalNumberRegistrationState;
-    const note=isDeveloper
-      ? (state.loading?'大会番号登録の読込中…':state.errors.length?'大会番号登録の読込失敗：'+state.errors.join(' ／ '):'Firebaseで確認した参加者と端末内の仮データを区別して表示します。')
-      : (portalRosterSourceState.errors.length
-          ? '大会の出走者情報を取得できません：'+portalRosterSourceState.errors.join(' ／ ')
-          : '大会の出走登録・参加回答から確認できた名前を表示しています。参加番号のみで登録した方の全件一覧は、現在の管理者権限では取得できません。');
-    const html=(note?`<div class="portalDeveloperEmpty" role="status">${esc(note)}</div>`:'')+
-      (portalAthletes.length?portalAthletes.map(a=>`<button type="button" class="portalDirectoryRow" data-pr-athlete="${esc(a.profileId)}"><span><b>${esc(a.name)}${a.verified?'':'（仮）'}</b><small>${esc(a.verified?(a.linked?'Firebase登録を確認／取得できた個人記録のみ表示':'Firebase大会番号登録／本人IDと過去記録は未紐付け'):'この端末の確認用データ（Firebaseには未登録）')}</small></span><strong>›</strong></button>`).join(''):'<div class="portalEmpty">確認できた選手はありません。Firebaseの読込状態を確認してください。</div>');
-    // A genuine EVENT BASE player may lack an authoritative profileId.
-    // Show the name to authorized staff, but never offer a false person/record link.
-    const unlinked=portalDeveloperParticipants.filter(p=>!p.profileId);
-    const unlinkedMarkup=unlinked.length
-      ? '<div class="portalDeveloperEmpty">出走カードに名前はありますが、本人profileIdが未確認のため記録を紐付けず表示しています。</div>'
-        +unlinked.map(p=>`<div class="portalDirectoryRow" role="listitem"><span><b>${esc(p.name)}</b><small>${esc(p.detail)} ／ 本人ID未紐付け・閲覧のみ</small></span></div>`).join('')
-      : '';
-    $('portalAthleteDirectoryList').innerHTML=html+unlinkedMarkup;
-    $('portalAthleteInlineList').innerHTML=html+unlinkedMarkup;
+    const athletes=portalCompetitionAthletes();
+    const errors=portalRosterSourceState.errors||[];
+    const note=errors.length?'EVENT BASEの出走登録を取得できない大会があります：'+errors.join(' ／ ')
+      :'選手一覧：EVENT BASEの出走登録者、またはEVENT BASEで結果を入力した選手のみ。参加番号登録だけの人や仮選手は含みません。';
+    const list=athletes.map(person=>{
+      if(person.linked){
+        return `<button type="button" class="portalDirectoryRow" data-pr-athlete="${esc(person.profileId)}"><span><b>${esc(person.name)}</b><small>${esc(person.detail)} ／ 本人ID確認済み・取得できた記録を表示</small></span><strong>›</strong></button>`;
+      }
+      // Show the name and race/result evidence even before a player is linked.
+      // The disclosure is a name-based LOOKUP, never identity confirmation or WRITE.
+      return `<details class="portalDirectoryRow portalUnlinkedAthlete" data-athlete-name="${esc(person.name)}"><summary><span><b>${esc(person.name)}</b><small>${esc(person.detail)} ／ 本人未紐付け</small></span><strong>＋</strong></summary><div class="portalUnlinkedDetail"><b>名前から登録候補を確認（閲覧のみ）</b><p>${esc(portalNameComparison(person.name))}</p><small>同姓同名だけでは本人を確定しません。本人紐付け・記録の保存はEVENT BASEの正規手続きで行います。</small></div></details>`;
+    }).join('');
+    const status=`<div class="portalDeveloperEmpty" role="status">${esc(note)}<br>選手 ${athletes.length}件（本人ID未紐付けは個別表示）</div>`;
+    const markup=status+(list||'<div class="portalEmpty">出走登録・結果入力が確認できた選手はいません。大会の取得状況を確認してください。</div>');
+    $('portalAthleteDirectoryList').innerHTML=markup;
+    $('portalAthleteInlineList').innerHTML=markup;
     const needle=($('portalAthleteDirectorySearch')?.value||'').trim().toLocaleLowerCase('ja-JP');
-    if(needle)[...$('portalAthleteDirectoryList').querySelectorAll('.portalDirectoryRow')].forEach(row=>row.hidden=!row.textContent.toLocaleLowerCase('ja-JP').includes(needle));
+    for(const row of $('portalAthleteDirectoryList').querySelectorAll('.portalDirectoryRow'))
+      row.hidden=!!needle&&!row.querySelector('b')?.textContent.toLocaleLowerCase('ja-JP').includes(needle);
   }
   $('portalOpenAthleteDirectory').addEventListener('click',()=>{if(canManage&&!portalParticipantPreviewMode)showScreen('athlete-directory')});
   $('portalAthleteDirectorySearch')?.addEventListener('input',renderPortalAthleteDirectory);
@@ -7695,6 +7741,7 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
     const verified=new Map();
     const byUid=new Map();
     for(const row of portalVerifiedEventBasePeople){
+      if(row.source==='timing')continue;
       const uid=String(row?.uid||'');
       const pid=String(row?.profileId||'').trim();
       if(!/^[A-Za-z0-9_-]{6,128}$/.test(uid)||!pid)continue;
@@ -9118,9 +9165,9 @@ list.innerHTML=output.map(metric=>{
         if(row.profileId===flowBaseSelfId || (canManage&&row.profileId))portalPersonalRecords.push(row);
       }
     }
-    portalAthletes.splice(0,portalAthletes.length,...flowActorRoster()
-      .filter(a=>a.id!==flowBaseSelfId||flowState.entries.some(r=>r.actorId===a.id))
-      .map(a=>({profileId:a.id,name:a.name,verified:a.verified===true,linked:a.linked!==false,kind:a.kind||'local',detail:a.detail||''})));
+    portalAthletes.splice(0,portalAthletes.length,...portalCompetitionAthletes()
+      .filter(a=>a.linked)
+      .map(a=>({profileId:a.profileId,name:a.name,verified:true,linked:true,kind:'eventbase',detail:a.detail})));
   }
   function flowRenderMyRaces(){
     flowUpdateRecords();
@@ -10036,6 +10083,10 @@ list.innerHTML=output.map(metric=>{
         if(!seen.has(first))targets.unshift({id:first,catalogId:'eventbase-first',
           title:'第一回大会',date:'',place:'',
           openUrl:'https://nuritakug-cpu.github.io/tabirun-bgm/EVENT_BASE_PRODUCTION.html?event='+first+'&portal=1'});
+        const second='eventbase_ekiden_dev_20261006';
+        if(!seen.has(second))targets.push({id:second,catalogId:'eventbase-second',
+          title:'第二回大会（駅伝）',date:'',place:'',
+          openUrl:'https://nuritakug-cpu.github.io/tabirun-bgm/EVENT_BASE_PRODUCTION.html?event='+second+'&portal=1'});
       }
       // Subscription count remains bounded by the original gate; no extra Auth/path.
       return targets;
@@ -11090,11 +11141,18 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
       officialSubs.splice(0).forEach(stop=>{try{stop();}catch(_){}});
       officialSignature=signature;gate.officialResults={};gate.officialEntries={};gate.officialAttendance={};
       gate.officialParticipantRoster={};
+      gate.officialTimingPeople={};gate.officialTimingRecords={};gate.officialPlayerResults={};
+      const updateOfficialResultRecords=(id)=>{
+        const fromPlayers=gate.officialPlayerResults[id]||[],fromTiming=gate.officialTimingRecords[id]||[];
+        const playerIds=new Set(fromPlayers.map(x=>x.playerId).filter(Boolean));
+        gate.officialResults[id]=fromPlayers.concat(fromTiming.filter(x=>!x.playerId||!playerIds.has(x.playerId)));
+        ui?.applyEventBaseRecords(gate.officialResults);
+      };
       const pushOfficialDirectory=()=>{
         if(!['developer','admin'].includes(gate.role))return;
         const received=Object.keys(gate.officialParticipantRoster).length;
-        const errors=Object.entries(gate.errors||{}).filter(([k])=>k.startsWith('eventBase:')).map(([k,v])=>k.slice(10)+' '+v);
-        const people=Object.values(gate.officialParticipantRoster).flat();
+        const errors=Object.entries(gate.errors||{}).filter(([k])=>k.startsWith('eventBase:')||k.startsWith('eventBaseTiming:')).map(([k,v])=>k.replace(/^eventBase(Timing)?:/,'')+' '+v);
+        const people=Object.values(gate.officialParticipantRoster).flat().concat(Object.values(gate.officialTimingPeople).flat());
         ui?.applyVerifiedEventBaseRoster(people,{events:targets.length,received,errors});
       };
       ui?.applyEventBaseRecords(gate.officialResults);ui?.applyEventBaseEntries(gate.officialEntries);
@@ -11113,7 +11171,9 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
                 // Never use the parent's ownerUid or matching display names to join people.
                 uid:typeof p.subjectUid==='string'?p.subjectUid:'',
                 profileId:typeof p.profileId==='string'?p.profileId:'',
-                name:String(p.name).trim().slice(0,24)});
+                name:String(p.name).trim().slice(0,24),source:'player',
+                hasResult:!!(p.result||p.officialResult||p.provisionalResult||p.place||p.officialPlace||p.provisionalPlace),
+                resultTime:String(p.officialResult||p.provisionalResult||p.result||'').trim().slice(0,40)});
             }
             // Reuse the already-subscribed, existing EVENT BASE players node.
             // Only participants explicitly associated with an Auth subject UID are countable.
@@ -11128,7 +11188,7 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
             // subscription. Participant visibility stays restricted to their own identity.
             const staffPlayer=['developer','admin'].includes(gate.role)&&!!recordProfileId;
             if(!ownPlayer&&!staffPlayer)continue;
-            const result=String(p.result||'').trim().slice(0,40);
+            const result=String(p.officialResult||p.provisionalResult||p.result||'').trim().slice(0,40);
             const sourceMetric=String(p.event||'').trim();
             const match=sourceMetric.match(/(?:^|[^0-9])(10000|5000|3000|1500|1000|800|400)\s*(?:m|ｍ|メートル)?(?:$|[^0-9])/i);
             const metric=match?match[1]:(/駅伝|リレー/.test(sourceMetric)?'relay':'other');
@@ -11143,18 +11203,60 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
             records.push({id:'eb-'+info.id+'-'+playerId,profileId:ownPlayer?profileId:recordProfileId,metric,date:day,event:info.title,
               venue:info.place,label:'EVENT BASE大会結果（読取専用・公認区分未確認）',time:result,official:false,status:'time',source:'EVENT_BASE'});
           }
-          gate.officialResults[info.id]=records;gate.officialEntries[info.id]=entries;gate.officialAttendance[info.catalogId]=[...attendance.values()];
+          gate.officialPlayerResults[info.id]=records;gate.officialEntries[info.id]=entries;gate.officialAttendance[info.catalogId]=[...attendance.values()];
+          updateOfficialResultRecords(info.id);
           gate.officialParticipantRoster[info.id]=registered;
           delete gate.errors['eventBase:'+info.id];pushOfficialDirectory();ui?.applyEventBaseRecords(gate.officialResults);
           ui?.applyEventBaseEntries(gate.officialEntries);ui?.refreshCurrentScheduleDetail?.();statusResources();
         },error=>{
           if(seq!==generation)return;
           gate.errors['eventBase:'+info.id]=String(error?.code||error?.message||error).slice(0,90);
-          delete gate.officialEntries[info.id];delete gate.officialResults[info.id];delete gate.officialAttendance[info.catalogId];delete gate.officialParticipantRoster[info.id];
+          delete gate.officialEntries[info.id];delete gate.officialResults[info.id];delete gate.officialPlayerResults[info.id];delete gate.officialAttendance[info.catalogId];delete gate.officialParticipantRoster[info.id];
           pushOfficialDirectory();ui?.applyEventBaseRecords(gate.officialResults);ui?.applyEventBaseEntries(gate.officialEntries);
           statusResources();
         });
         officialSubs.push(stop);
+        if(['developer','admin'].includes(gate.role)){
+          // EVENT BASE timingRecords is a different canonical result field.
+          // Use one bounded READ per event in the existing unified subscription
+          // lifecycle; no new Auth app, subscription, renderer or Firebase WRITE.
+          void dbMod.get(dbMod.ref(db,'events/'+info.id+'/timingRecords')).then(snapshot=>{
+            if(seq!==generation||auth.currentUser?.uid!==uid)return;
+            const people=[],resultRows=[];
+            for(const [recordId,record] of Object.entries(snapshot.val()||{})){
+              if(!record||typeof record!=='object')continue;
+              const persons=Array.isArray(record.athletes)?record.athletes:Object.values(record.athletes||{});
+              persons.forEach((person,index)=>{
+                if(!person||typeof person!=='object')return;
+                const name=String(person.name||'').trim().slice(0,24);
+                const recordPlayerId=String(person.playerId||'').slice(0,120);
+                const pid=String(person.profileId||'').trim().slice(0,120);
+                const result=String(person.correctedTime||person.finalTime||'').trim().slice(0,40);
+                const elapsed=Number(person.finalMs);
+                const hasResult=!!result||(Number.isFinite(elapsed)&&elapsed>0);
+                if(!name||!hasResult)return;
+                const shownResult=result||((elapsed/1000).toFixed(2)+'秒（計測値）');
+                people.push({eventId:info.id,eventTitle:info.title,playerId:recordPlayerId||'timing:'+recordId+':'+index,
+                  profileId:pid,name,source:'timing',hasResult:true,resultTime:shownResult});
+                if(pid && /^(?:\d+:)?\d{1,3}:\d{2}(?:\.\d{1,2})?$/.test(result)){
+                  resultRows.push({id:'eb-timing-'+info.id+'-'+recordId+'-'+index,
+                    playerId:recordPlayerId,profileId:pid,metric:(String(record.event||'').match(/(?:10000|5000|3000|1500|1000|800|400)/)||['other'])[0],
+                    date:String(record.dayDate||info.date||'').slice(0,10),event:info.title,venue:info.place,
+                    label:'EVENT BASE計測結果（読取専用・公認未確認）',time:result,official:false,status:'time',source:'EVENT_BASE'});
+                }
+              });
+            }
+            gate.officialTimingPeople[info.id]=people;
+            gate.officialTimingRecords[info.id]=resultRows;
+            delete gate.errors['eventBaseTiming:'+info.id];
+            updateOfficialResultRecords(info.id);pushOfficialDirectory();statusResources();
+          }).catch(error=>{
+            if(seq!==generation||auth.currentUser?.uid!==uid)return;
+            gate.errors['eventBaseTiming:'+info.id]=String(error?.code||error?.message||error).slice(0,100);
+            delete gate.officialTimingPeople[info.id];delete gate.officialTimingRecords[info.id];
+            updateOfficialResultRecords(info.id);pushOfficialDirectory();statusResources();
+          });
+        }
       }
     };
     let handoffExpected=null;
