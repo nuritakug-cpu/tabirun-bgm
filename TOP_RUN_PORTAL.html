@@ -1,3 +1,4 @@
+<!-- 2026-10-21 scoped repair: LOCAL preview race cancellation never performs Firebase eventResponses WRITE.  Physical parent: 2026-10-20 deployed PWA approval TOP_RUN_PORTAL.html, 1,317,632 bytes. Existing identity, PWA, Auth, CHAT/NOTICE, attendance, event and practice saving, EVENT BASE canonical records, and Rules are unchanged. REVIEW; NOT DEPLOYED. -->
 <!-- 2026-10-20 STAGE 1 / APPROVAL WORKFLOW: parent V4_PRIVACY_GUARD_REVIEW.html; PWA-first signup, staff approved memberAccess, existing Auth/UID, no push identity migration. Requires matching deployed Firebase Rules; NOT PUBLISHED. -->
 <!-- 2026-10-20 PORTAL ADMISSION V4 / REVIEW ONLY. Physical parent: V3_REVOKE_GUARD_REVIEW.html. Refuse destructive local applyPersonal reset; revocation overlay and nonpersistent shared render clear. -->
 <!-- SECURITY HOLD / 2026-10-20: standalone, unpublished review candidate.
@@ -548,12 +549,7 @@ html[data-portal-personal-color="matte"] #screen-management .portalEventWorkspac
 #screen-management .portalManageWorkspaceInfo{margin:0 0 12px;font-size:13px;line-height:1.6;opacity:.88}
 #screen-management #manage-pane-athletes .portalAthleteDirectoryOpen{width:100%}
 /* Cancellation choices use the same local event state and do not create a save route. */
-.portalRaceCancelDecision{max-width:min(94vw,430px);width:100%;padding:20px;border:2px solid #98bab7;border-radius:18px;background:#f8f7f3;color:#19292d;box-shadow:0 20px 70px #061d2588;box-sizing:border-box}
-.portalRaceCancelDecision::backdrop{background:#001a24b8}
-.portalRaceCancelDecision h3{margin:0 0 10px;font-size:20px;color:#152a31}
-.portalRaceCancelDecision p{font-size:15px;line-height:1.6;color:#344e52}
-.portalRaceCancelDecision button{display:block;width:100%;margin:9px 0 0;padding:13px;border-radius:12px;border:1px solid #75aaa4;background:#e0f6f0;color:#17323a;font-weight:900;font-size:15px}
-.portalRaceCancelDecision button.secondary{background:#f4f4f0;color:#47595d}
+/* 2026-10-21: old attendance-changing preview-cancel dialog retired. */
 .portalFlowEntryDisclosure{margin-top:12px;padding:0 10px 12px;border:1px solid var(--line,#9aa);border-radius:14px}
 .portalFlowEntryDisclosure summary{padding:14px 5px;font-weight:900;cursor:pointer;font-size:16px}
 .portalFlowEntryDisclosure[hidden]{display:none!important}
@@ -5523,14 +5519,7 @@ html[data-portal-personal-color="matte"] #screen-flow-manager :is(#flowManagerRe
  </div>
 </div>
 
-<dialog id="portalRaceCancelDecision" class="portalRaceCancelDecision" aria-labelledby="portalRaceCancelTitle">
- <h3 id="portalRaceCancelTitle">最後の出走登録を取り消します</h3>
- <p>大会当日はどうされますか？ 出走しなくても、応援や帯同で会場に行く場合は「会場へ行く」を選んでください。</p>
- <button type="button" data-cancel-attendance="support">会場へ行く（応援・帯同）</button>
- <button type="button" data-cancel-attendance="decline">会場へ行かない</button>
- <button type="button" data-cancel-attendance="maybe">まだ決めていない</button>
- <button type="button" data-cancel-attendance="abort" class="secondary">出走登録を取り消さず戻る</button>
-</dialog>
+<!-- 2026-10-21: preview-race cancellation is separate from Firebase attendance choices. -->
 <div class="portalScreen hidden" id="screen-flow-manager" data-flow-active="menu" aria-hidden="true">
  <div class="portalScreenHead"><button class="portalBack" type="button" data-back>← 管理画面</button><div><small>ATHLETE MANAGEMENT</small><b>選手の出走・過去大会記録</b></div><span class="portalHeadSpacer"></span></div>
   <div class="portalScreenBody portalFlowBody">
@@ -9911,56 +9900,63 @@ $('portalLapPacePercent').closest('label').hidden=isStandard;
     flowRefreshAll();flowRefreshCommonGoals();flowSaveState('flowSelfStatus','出走登録と大会参加予定を端末内の試作データへ保存しました。正式な大会出走登録には反映されません。');
     flowEntrySuccess('出走登録（端末内のみ）','正式登録ではありません。EVENT BASE未接続イベントです。');
   });
-  // One cancellation path for visible controls. The last race requires an attendance choice.
-  let portalPendingRaceCancel=null;
+  // 2026-10-21: This event's race entries are LOCAL-ONLY preview objects.
+  // They are not EVENT BASE registrations and did not WRITE eventResponses on creation.
+  // Therefore their cancellation MUST NOT require or modify Firebase eventResponses.
+  // Venue attendance is an independent, UID-keyed Firebase answer, managed only by
+  // the pre-existing event attendance UI. No new Firebase app, path or listener.
   let portalRaceCancelSaving=false;
-  async function portalCancelRaceCommit(eventId,actorId,metric,answer){
-    if(portalRaceCancelSaving)return;
-    const gateway=window.__TR_PORTAL_SYNC__;
-    const self=actorId===flowBaseSelfId;
-    const oldEntries=flowState.entries.slice(),oldAnswers=flowState.eventResponses.slice();
-    const remaining=flowEntries(eventId,actorId).filter(r=>r.metric!==metric);
-    const nextAnswer=remaining.length?'join':answer||'maybe';
-    // For the signed-in person's shared events, the Firebase response is canonical.
-    // Never silently claim a successful cancellation when the response is still 'join'.
-    const shared=self&&!!gateway;
-    if(shared&&(!gateway.canRespondEvent?.() || !gateway.eventItems?.[eventId])){
-      flowSaveState('flowSelfStatus','本人の参加回答または共有イベントをFirebaseで確認できません。取消していません。');
-      showActionFeedback('取消できません','本人Firebaseの参加回答・イベント受信を確認してから再試行してください。');
-      return;
+  async function portalCancelRaceCommit(eventId,actorId,metric){
+    if(portalRaceCancelSaving)return false;
+    const e=flowEvent(eventId),entry=flowEntry(eventId,actorId,metric);
+    if(!e||!entry)return false;
+    // Canonical EVENT BASE entries/results must never be deleted as preview data.
+    if(flowOfficialDestination(e)){
+      flowSaveState('flowSelfStatus','正式な出走登録の取消はEVENT BASEで行ってください。');
+      return false;
+    }
+    if(flowResultsForEntry(entry).length){
+      flowSaveState('flowSelfStatus','結果登録済みの出走はここから取り消せません。');
+      return false;
+    }
+    if(flowIsRegistrationClosed(e)){
+      flowSaveState('flowSelfStatus','出走登録期日を過ぎています。個別にご連絡ください。');
+      return false;
     }
     portalRaceCancelSaving=true;
-    flowState.entries=flowState.entries.filter(r=>r.eventId!==eventId||r.actorId!==actorId||r.metric!==metric);
-    flowSetAttendanceInState(eventId,actorId,nextAnswer);
-    if(!flowPersist()){
-      flowState.entries=oldEntries;flowState.eventResponses=oldAnswers;
-      portalRaceCancelSaving=false;
-      flowSaveState('flowSelfStatus','保存に失敗したため出走登録は取り消していません。');
-      showActionFeedback('取消できませんでした','端末内保存に失敗しました。');return;
-    }
-    if(shared){
-      $('flowSelfStatus').textContent='Firebaseに大会参加回答を保存しています…';
-      try{await gateway.saveEventResponse(eventId,nextAnswer);}
-      catch(error){
-        flowState.entries=oldEntries;flowState.eventResponses=oldAnswers;
-        flowPersist();portalRaceCancelSaving=false;
-        flowRefreshAll();flowRefreshCommonGoals();
-        const reason=String(error?.code||error?.message||error).slice(0,150);
-        $('flowSelfStatus').textContent='Firebaseの参加回答を更新できなかったため、取消を戻しました：'+reason;
-        showActionFeedback('取消できませんでした','Firebase側の参加回答は未更新です。'+reason);
-        return;
+    try{
+      const oldEntries=flowState.entries.slice(),oldAnswers=flowState.eventResponses.slice();
+      const remaining=flowEntries(eventId,actorId).filter(r=>r.metric!==metric);
+      flowState.entries=flowState.entries.filter(r=>r!==entry);
+      // A preview entry previously set a LOCAL 'join' response. Remove or update
+      // only that local preview state. When known, mirror the existing REMOTE
+      // response without writing to Firebase, preventing stale local attendance.
+      const gateway=window.__TR_PORTAL_SYNC__;
+      const signedInSelf=actorId===flowBaseSelfId&&gateway?.profileId===actorId;
+      if(signedInSelf&&gateway.loaded?.eventResponses){
+        const remote=String(gateway.eventResponses?.[eventId]?.[gateway.uid]?.answer||'');
+        flowSetAttendanceInState(eventId,actorId,
+          ['join','support','decline','maybe'].includes(remote)?remote:'');
+      }else{
+        flowSetAttendanceInState(eventId,actorId,remaining.length?'join':'');
       }
-    }
-    portalRaceCancelSaving=false;
-    flowRefreshAll();flowRefreshCommonGoals();
-    if(canManage&&!portalParticipantPreviewMode)flowRenderAudit();
-    if(selectedDateKey&&currentScreen()?.id==='screen-schedule-detail')renderScheduleDetailBody(selectedDateKey);
-    $('flowSelfStatus').textContent=shared
-      ?'出走登録を端末内で取り消し、Firebaseの大会参加回答も更新しました。正式なEVENT BASE出走登録は別管理です。'
-      :'端末内の試作出走登録を取り消しました。共有Firebaseや正式な大会結果は更新していません。';
-    showActionFeedback('出走登録を取り消しました',shared
-      ?'Firebase参加回答の保存応答を確認しました。正式な出走登録には影響しません。'
-      :'端末内の試作データのみの変更です。');
+      if(!flowPersist()){
+        flowState.entries=oldEntries;flowState.eventResponses=oldAnswers;
+        throw Error('端末内の試用出走取消を保存できませんでした。');
+      }
+      flowRefreshAll();flowRefreshCommonGoals();
+      if(canManage&&!portalParticipantPreviewMode)flowRenderAudit();
+      if(selectedDateKey&&currentScreen()?.id==='screen-schedule-detail')renderScheduleDetailBody(selectedDateKey);
+      const note='試用出走をこの端末から取り消しました。会場への参加回答・正式なEVENT BASE出走登録・大会結果は変更していません。';
+      $('flowSelfStatus').textContent=note;
+      showActionFeedback('試用出走を取り消しました',note);
+      return true;
+    }catch(error){
+      const detail=String(error?.message||error).slice(0,160);
+      $('flowSelfStatus').textContent=detail;
+      showActionFeedback('試用出走の取消に失敗しました',detail);
+      return false;
+    }finally{portalRaceCancelSaving=false;}
   }
   function flowCancelRegisteredMetric(selectedMetric){
     const e=flowEvent(flowSelectedEventId);if(!e)return;
@@ -9969,28 +9965,9 @@ $('portalLapPacePercent').closest('label').hidden=isStandard;
     if(!saved){$('flowSelfStatus').textContent='対象の出走登録が見つかりません。';return;}
     if(flowResultsForEntry(saved).length){$('flowSelfStatus').textContent='結果登録済みの取消は管理者へ連絡してください。';return;}
     if(flowIsRegistrationClosed(e)){$('flowSelfStatus').textContent='期日をすぎた場合は個別に連絡してください。';return;}
-    if(!window.confirm('選択した'+(portalMetricNames[selectedMetric]||selectedMetric)+'の出走登録を取り消しますか？'))return;
-    if(flowEntries(e.id,actor).length>1){portalCancelRaceCommit(e.id,actor,selectedMetric,'join');return;}
-    portalPendingRaceCancel={eventId:e.id,actorId:actor,metric:selectedMetric};
-    const dialog=$('portalRaceCancelDecision');
-    if(typeof dialog.showModal==='function')dialog.showModal();
-    else{ // Older embedded browsers: do not silently mark absent.
-      const absent=window.confirm('最後の出走登録を取り消します。大会当日も会場へ行きませんか？\nOK：会場へ行かない／キャンセル：応援・帯同などで会場へ行く');
-      portalCancelRaceCommit(e.id,actor,selectedMetric,absent?'decline':'support');
-      portalPendingRaceCancel=null;
-    }
+    if(!window.confirm('この種目の試用出走を端末から取り消しますか？\n会場への参加回答・正式出走登録・大会結果は変更しません。'))return;
+    void portalCancelRaceCommit(e.id,actor,selectedMetric);
   }
-  $('portalRaceCancelDecision').addEventListener('click',event=>{
-    const btn=event.target.closest('[data-cancel-attendance]');if(!btn)return;
-    const status=btn.dataset.cancelAttendance,pending=portalPendingRaceCancel;
-    $('portalRaceCancelDecision').close();portalPendingRaceCancel=null;
-    if(status==='abort'||!pending)return;
-    // Prevent stale modal from modifying a different or already changed entry.
-    if(!flowEntry(pending.eventId,pending.actorId,pending.metric))return;
-    portalCancelRaceCommit(pending.eventId,pending.actorId,pending.metric,status);
-    if(pending.mode==='manager'){flowRenderManagerWorkspace();flowSaveState('flowManagerStatus','出走登録と大会当日の予定を更新しました（この端末）。');}
-  });
-  $('portalRaceCancelDecision').addEventListener('close',()=>{portalPendingRaceCancel=null;});
   $('flowLeave').addEventListener('click',()=>flowCancelRegisteredMetric($('flowMetric').value));
   $('portalMultiEntryList').addEventListener('click',event=>{
     const target=event.target.closest('button[data-flow-cancel-metric]');
@@ -10044,26 +10021,17 @@ $('portalLapPacePercent').closest('label').hidden=isStandard;
     flowSaveState('flowManagerStatus','試作の出走・結果をこの端末に保存しました。Firebase・大会正式結果には未反映です。');
     flowEntrySuccess('試作保存（端末内のみ）','大会正式結果には反映されません。');
   });
-  $('flowManagerCancel').addEventListener('click',()=>{
+  $('flowManagerCancel').addEventListener('click',async()=>{
     if(!canManage||portalParticipantPreviewMode||flowManagerMode!=='edit')return;
     if(flowOpenCanonicalEvent(flowManagerActiveEvent(),'flowManagerStatus'))return;
-    const id=$('flowManagerAthlete').value;
-    if(!id)return;
-    if(!window.confirm('この選手の出走登録を取り消しますか？'))return;
-    const metric=$('flowManagerMetric').value;
-    if(flowResultsForEntry(flowEntry(flowManagerEventId,id,metric)).length){flowSaveState('flowManagerStatus','結果が保存済みの出走登録はここから取消できません。');return;}
-    if(flowEntries(flowManagerEventId,id).length>1){
-      portalCancelRaceCommit(flowManagerEventId,id,metric,'join');
-      flowRenderManagerWorkspace();flowSaveState('flowManagerStatus','出走登録を取り消しました。他種目の出走予定は維持されます。');return;
+    const id=$('flowManagerAthlete').value,metric=$('flowManagerMetric').value;
+    if(!id||!flowEntry(flowManagerEventId,id,metric))return;
+    if(flowResultsForEntry(flowEntry(flowManagerEventId,id,metric)).length){
+      flowSaveState('flowManagerStatus','結果が保存済みの試用出走はここから取り消せません。');return;
     }
-    portalPendingRaceCancel={eventId:flowManagerEventId,actorId:id,metric,mode:'manager'};
-    const dialog=$('portalRaceCancelDecision');
-    if(typeof dialog.showModal==='function')dialog.showModal();
-    else{
-      const away=window.confirm('最後の出走を取り消します。会場へ行かない場合はOK、応援・帯同で行く場合はキャンセルを選択してください。');
-      portalCancelRaceCommit(flowManagerEventId,id,metric,away?'decline':'support');
-portalPendingRaceCancel=null;flowRenderManagerWorkspace();
-    }
+    if(!window.confirm('この選手の端末内の試用出走を取り消しますか？\n正式登録・大会結果・本人のFirebase参加回答は変更しません。'))return;
+    const saved=await portalCancelRaceCommit(flowManagerEventId,id,metric);
+    if(saved){flowRenderManagerWorkspace();flowSaveState('flowManagerStatus','試用出走を端末内で取り消しました。Firebaseの参加回答・正式登録は変更していません。');}
   });
   function flowExternalRows(actor,filter='external'){return flowState.external.filter(r=>r.actorId===actor&&portalListAccept(filter,r.date)).slice().sort((a,b)=>b.date.localeCompare(a.date));}
   function flowRecordRowMarkup(r,mode){
