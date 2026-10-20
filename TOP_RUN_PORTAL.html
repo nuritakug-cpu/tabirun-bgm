@@ -1,3 +1,12 @@
+<!-- 2026-10-20 STAGE 1 / APPROVAL WORKFLOW: parent V4_PRIVACY_GUARD_REVIEW.html; PWA-first signup, staff approved memberAccess, existing Auth/UID, no push identity migration. Requires matching deployed Firebase Rules; NOT PUBLISHED. -->
+<!-- 2026-10-20 PORTAL ADMISSION V4 / REVIEW ONLY. Physical parent: V3_REVOKE_GUARD_REVIEW.html. Refuse destructive local applyPersonal reset; revocation overlay and nonpersistent shared render clear. -->
+<!-- SECURITY HOLD / 2026-10-20: standalone, unpublished review candidate.
+Purpose: stop unauthorised self-registration and UI-level participant READ, pending canonical
+server-verified participant numbers and deployed RTDB Rules. NOT a security certification.
+Parent: TOP_RUN_PORTAL.html (2026-10-20 goal/past-attendance fix).
+No production database, Firebase Rules, Auth users, or GitHub were changed.
+CAUTION: Until the Rules enforce the same admission check, a modified client can still READ.
+-->
 <!-- 2026-10-20 PRODUCTION FIELD TRIAL focused repairs: common goal edits, past-practice read-only, race cancellation Firebase attendance ACK. No Rules/deployment change. -->
 <!-- EVENT BASE / TOP RUN PORTAL 2026-10-20 PRODUCTION FIELD TRIAL. Parent: TOP_RUN_PORTAL_20261019_EVENT_PHASED_RULES_COMPATIBLE_REVIEW.html. Explicit new participant signup only; no changes to existing event/save routes, Rules or deployment. Recovered from Library indexed text, NOT byte-identical to parent. -->
 <!-- PORTAL 2026-10-17 FIREBASE INTEGRATION REVIEW: physical parent PORTAL_STEP(2).html; preserved all latest UI and management navigation. New unified Firebase gate; no production deployment. -->
@@ -29,7 +38,13 @@ NO FIREBASE / NO RULES / NO AUTH CHANGE / NO profileId CHANGE / NO binding CHANG
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="top-run-handoff-api" content="https://eventbase-handoff-gateway-1071631357620.asia-southeast1.run.app">
+<!-- Manager-approved first enrollment uses the existing RTDB; no admission Cloud Run endpoint. -->
 <title>TOP RUN PORTAL</title>
+<script id="portal-stop-legacy-pilot-20261020">
+// Existing legacy pilot uses a separate Auth/read path and bypasses the production gate.
+// Remove this opt-in from the address before any Firebase script executes.
+try{const url=new URL(location.href);if(url.searchParams.has('commonPilot')){url.searchParams.delete('commonPilot');location.replace(url.href);}}catch(_){}
+</script>
 <style id="portal-first-paint-auth-no-flash-20261018">
 /* Display-only: early full-viewport splash prevents the temporary credential/entry view from flashing.
    The real authenticated/unauthenticated state stays under the existing original gates. */
@@ -5100,6 +5115,19 @@ html[data-portal-personal-color="matte"] #screen-flow-manager :is(#flowManagerRe
     <div class="portalRoleBadge"><i></i><span id="portalRoleLabel">MANAGEMENT</span></div>
     <div id="commonPilotState" class="portalManageState" role="status" aria-live="polite" hidden></div>
 
+
+    <!-- PORTAL MEMBER ENTRY: staff review only; uses the existing unified Auth/RTDB. -->
+    <section id="portalApprovalPanel" class="portalManageForm" hidden aria-label="初回参加者の承認">
+      <h3>初回参加者の承認</h3>
+      <p style="font-size:12px;line-height:1.6">ホーム画面アイコンから申請した参加者を承認します。番号だけ・氏名だけでは本人確認になりません。運営の既存連絡経路で本人を確認してから操作してください。</p>
+      <div style="display:grid;gap:6px;margin:10px 0 12px">
+        <button type="button" id="portalApprovalReadCheck" class="portalManageOpenResource" style="min-height:44px">Firebase接続を確認（読取のみ）</button>
+        <pre id="portalApprovalReadReport" role="status" aria-live="polite" hidden style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.7;padding:10px;border:1px solid #9996;border-radius:8px">確認前</pre>
+        <small style="font-size:11px;line-height:1.5">申請・承認・イベントのREAD権限を実Firebaseで確認します。保存・認証変更はせず、氏名やUID全文を表示しません。</small>
+      </div>
+      <p id="portalApprovalStatus" role="status" aria-live="polite" style="font-size:12px">申請を確認しています…</p>
+      <div id="portalApprovalList" style="display:grid;gap:9px"></div>
+    </section>
 
     <div class="portalManageChoiceHead" id="portalManagementChoicesTitle">
       <b>管理する内容を選択</b><span>最初に行いたい操作を選んでください。</span>
@@ -10676,14 +10704,18 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
     </form>
     <button id="portalHandoffCancel" class="portalHandoffSecondary" type="button" hidden>マイページに戻る</button>
     <!-- 2026-10-20: explicitly opted-in NEW registration; no old-person auto-link or merge. -->
+    <!-- 2026-10-20: PWA first, staff-approved admission. Firebase Rules must enforce the same membership. -->
     <div id="portalNewParticipantArea" hidden>
       <button id="portalNewParticipantOpen" class="portalHandoffSecondary" type="button">本人を引き継がず、新しく参加登録する</button>
       <form id="portalNewParticipantForm" autocomplete="off" hidden>
-        <p>新しい本人として登録します。以前の出走・大会記録は自動的に紐付きません。登録済みの方は先に本人引継ぎをお試しください。</p>
+        <p>ホーム画面アイコン内で初回申請します。管理者が本人確認して承認するまで、カレンダー・共有情報は開けません。以前の記録は自動的に紐付きません。</p>
+        <label for="portalParticipantInviteCode">参加番号（申請時の照合用。番号だけでは入場できません）</label>
+        <input id="portalParticipantInviteCode" inputmode="text" autocomplete="off" required minlength="4" maxlength="48" spellcheck="false" placeholder="参加番号を入力" style="display:block;width:100%;height:46px;padding:9px;background:white;color:#292e2c;border-radius:10px;margin:8px 0 14px">
+        <p style="font-size:12px">番号の末尾4文字だけを申請記録へ保存します。番号と名前だけでは自動承認されません。</p>
         <label for="portalNewParticipantName">登録する方の名前</label>
         <input id="portalNewParticipantName" required maxlength="24" autocomplete="name" placeholder="名前を入力" style="display:block;width:100%;height:46px;padding:9px;background:white;color:#252a29;border:1px solid #bbb;border-radius:9px;font-size:16px;box-sizing:border-box">
         <label style="display:flex;align-items:start;gap:9px;margin-top:12px;line-height:1.6;font-size:13px"><input id="portalNewParticipantConfirm" type="checkbox" required style="width:20px;height:20px;flex:none;margin-top:2px">過去の記録は氏名だけでは結び付けず、管理者と本人確認してから反映することを理解しました。</label>
-        <button id="portalNewParticipantSubmit" type="submit">この本人として新規登録する</button>
+        <button id="portalNewParticipantSubmit" type="submit">管理者へ初回承認を申請する</button>
         <button id="portalNewParticipantCancel" class="portalHandoffSecondary" type="button">戻る</button>
       </form>
       <p id="portalNewParticipantState" aria-live="polite" hidden></p>
@@ -10691,7 +10723,7 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
     <details id="portalParticipantHelpDetails"><summary>ホーム画面への追加・ログインについて</summary>
       <p>iPhoneはSafariの共有メニューから「ホーム画面に追加」、AndroidはChromeのメニューから「ホーム画面に追加」または「アプリをインストール」を選んでください。</p>
       <p>すでにEVENT BASEなどで登録した方は、本人情報を新規登録し直さないでください。ホーム画面アプリとSafari・Chromeではログイン情報が別になることがあります。</p>
-      <p>以前の登録と同じ本人に接続できない場合は、管理者に本人引継ぎを依頼してください。認証コードを他人と共有しないでください。</p>
+      <p>初回登録はホーム画面アイコンから行います。既存の本人を引き継げない場合は、旧記録を自動統合せず運営による本人確認・初回承認を受けてください。</p>
     </details>
   </section>
 </div>
@@ -10716,23 +10748,33 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
   const newOpen=document.getElementById('portalNewParticipantOpen');
   const newForm=document.getElementById('portalNewParticipantForm');
   const newName=document.getElementById('portalNewParticipantName');
+  const inviteCode=document.getElementById('portalParticipantInviteCode');
   const newConfirm=document.getElementById('portalNewParticipantConfirm');
   const newSubmit=document.getElementById('portalNewParticipantSubmit');
   const newState=document.getElementById('portalNewParticipantState');
   const newCancel=document.getElementById('portalNewParticipantCancel');
+  // Offer a clearly labelled enrollment form, but the server request fails closed
+  // until the protected admission endpoint and Rules are actually deployed.
+  const launchedFromIcon=()=>window.matchMedia?.('(display-mode: standalone)')?.matches===true||navigator.standalone===true;
   const offerNewRegistration=()=>{if(!resolved){newArea.hidden=false;newOpen.hidden=false;}};
-  newOpen.addEventListener('click',()=>{newForm.hidden=false;newOpen.hidden=true;newState.hidden=true;newName.focus();});
+  // Safari/Chrome is only a launcher for first install. Do not create a separate browser UID.
+  const showInstallHelp=()=>{
+    heading.textContent='最初にホーム画面へ追加してください';
+    message.textContent='SafariまたはChromeからホーム画面にPORTALのアイコンを作り、そのアイコンを開いて初回参加申請をしてください。ブラウザで登録を完成させると、アイコン内へ本人情報が引き継がれないことがあります。';
+    helper.textContent='iPhone：Safariの共有→「ホーム画面に追加」。Android：Chromeのメニュー→「ホーム画面に追加」。';
+  };
+  newOpen.addEventListener('click',()=>{if(!launchedFromIcon()){showInstallHelp();return;}newForm.hidden=false;newOpen.hidden=true;newState.hidden=true;newName.focus();});
   newCancel.addEventListener('click',()=>{newForm.hidden=true;newOpen.hidden=false;newState.hidden=true;});
   newForm.addEventListener('submit',async event=>{
     event.preventDefault();
     if(!newConfirm.checked)return;
     const sync=window.__TR_PORTAL_SYNC__;
     if(!sync?.registerNewParticipant){newState.hidden=false;newState.textContent='Firebase接続の準備ができていません。再読み込みしてください。';return;}
-    if(!window.confirm('新しい本人UIDとして登録します。以前の登録・大会結果との自動連携は行いません。続行しますか？'))return;
-    newSubmit.disabled=true;newState.hidden=false;newState.textContent='新しい本人のFirebase登録を確認しています…';
+    if(!window.confirm('ホーム画面アプリの本人UIDから、管理者へ初回参加申請します。既存大会記録は自動で引き継ぎません。続けますか？'))return;
+    newSubmit.disabled=true;newState.hidden=false;newState.textContent='本人プロフィールと承認申請の保存を確認しています…';
     try{
-      const outcome=await sync.registerNewParticipant(newName.value);
-      newState.textContent=(outcome?.created?'Firebaseに新しい本人プロフィールを保存しました。':'既存の本人プロフィールを確認しました。')+'本人の読込を確認しています。';
+      const outcome=await sync.registerNewParticipant(newName.value,inviteCode.value);
+      inviteCode.value='';newForm.hidden=true;newState.textContent='初回参加申請をFirebaseへ保存しました。管理者の承認待ちです。承認後は同じアイコンを開くだけで利用できます。';
     }catch(error){newState.textContent='新規登録できません：'+String(error?.code||error?.message||error).slice(0,190);newSubmit.disabled=false;}
   });
 
@@ -10790,7 +10832,7 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
     if(resolved)return;
     heading.textContent=title;
     message.textContent=String(body||'ログイン状態を確認できませんでした。').slice(0,300);
-    helper.textContent='既存の登録を消したり、新しい本人アカウントを作り直したりしないでください。';
+    helper.textContent='初めての方は参加番号で登録します。以前の登録がある方は既存UIDを消したり、本人情報を自動で付け替えたりしないでください。';
     retry.hidden=false;
     openTarget();
   };
@@ -10816,7 +10858,8 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
     if(resolved||window.__TR_PORTAL_VIEW_ONLY__)return;
     window.__TR_PORTAL_VIEW_ONLY__=true;
     document.body.classList.add('portalLimitedView');
-    panel.hidden=true;
+    // Never expose a potentially cached HOME while membership is unknown.
+    panel.hidden=false;
     const note=document.createElement('div');
     note.id='portalLimitedNotice';
     note.setAttribute('role','status');
@@ -10830,7 +10873,7 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
       window.__TR_PORTAL_VIEW_ONLY_CLICK_GUARD__=true;
       document.addEventListener('click',event=>{
         if(!window.__TR_PORTAL_VIEW_ONLY__)return;
-        if(event.target?.closest?.('#portalLimitedNotice'))return;
+        if(event.target?.closest?.('#portalLimitedNotice,#portalParticipantIdentityGate'))return;
         const link=event.target?.closest?.('a[href^="http"]');
         // External links may be viewed; all buttons/forms/other handlers are held back.
         if(link)return;
@@ -10839,7 +10882,7 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
         }
       },true);
       document.addEventListener('submit',event=>{
-        if(window.__TR_PORTAL_VIEW_ONLY__){event.preventDefault();event.stopImmediatePropagation();}
+        if(window.__TR_PORTAL_VIEW_ONLY__ && !event.target?.closest?.('#portalParticipantIdentityGate')){event.preventDefault();event.stopImmediatePropagation();}
       },true);
     }
     // Never open another locally-cached person's private screen while identity is unknown.
@@ -10859,12 +10902,36 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
     box.hidden=false;
     box.textContent='本人識別・照合結果（読取のみ）\n'+details;
   };
+  const pending=()=>{
+    panel.hidden=false;heading.textContent='管理者の承認待ち';
+    message.textContent='初回参加申請は受付済みです。管理者が本人確認して承認するまで、共有のカレンダー・氏名・お知らせなどは表示しません。';
+    helper.textContent='承認後は、この同じホーム画面アイコンを開くだけで利用できます。アプリを削除したり、再登録を繰り返したりしないでください。';
+    newArea.hidden=true;newForm.hidden=true;retry.hidden=false;
+    showSafeHome();
+  };
+  const notMember=()=>{offerNewRegistration();warn('参加資格を確認できません',
+    'この本人の参加資格がまだ確認されていません。配布された参加番号で登録してください。');showSafeHome();};
   const failed=(msg)=>warn('本人ログインを確認できません',msg);
   const personal=adapter?.applyPersonal;
   if(typeof personal==='function')adapter.applyPersonal=function(){const out=personal.apply(this,arguments);readDone();return out;};
   const entryError=adapter?.applyEntryError;
   if(typeof entryError==='function')adapter.applyEntryError=function(msg){const out=entryError.apply(this,arguments);failed(msg);return out;};
-  window.__TR_PARTICIPANT_ENTRY__={readDone,noSession,noProfile,failed,identityAudit};
+  // Revocation must withdraw already rendered private content, not only Firebase listeners.
+  // Do not silently re-register, reauthenticate, or consume a new invitation.
+  const revokeAccess=(reason)=>{
+    resolved=false;entered=false;
+    heading.textContent='参加資格を確認できません';
+    message.textContent=String(reason||'資格が失効しました。').slice(0,220);
+    helper.textContent='個人情報の表示を終了しました。運営へ確認してください。';
+    newArea.hidden=true;newForm.hidden=true;newOpen.hidden=true;
+    issueBox.hidden=true;issueButton.hidden=true;codeForm.hidden=true;cancel.hidden=true;
+    retry.hidden=false;panel.hidden=false;
+    // Reset visual gate and explicitly remove any previous already-rendered HOME.
+    window.__TR_PORTAL_VIEW_ONLY__=false;
+    document.getElementById('portalLimitedNotice')?.remove();
+    showSafeHome();
+  };
+  window.__TR_PARTICIPANT_ENTRY__={readDone,noSession,noProfile,notMember,pending,failed,identityAudit,revokeAccess};
   // Do not show a permanent spinner when the network stalls; no Firebase write is issued.
   setTimeout(()=>{
     if(!resolved&&!retry.hidden)return;
@@ -10937,10 +11004,17 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
       generation++;
       unsubs.splice(0).concat(ownSubs.splice(0),officialSubs.splice(0)).forEach(stop=>{try{stop();}catch(_){}});ownSignature='';officialSignature='';
       gate.ready=false;gate.uid='';gate.profileId='';gate.role='participant';
+      document.getElementById('portalApprovalPanel')?.setAttribute('hidden','');
       ui?.applyVerifiedRole('participant','');ui?.applyVerifiedResponseRoster([]);
       gate.practiceResponses={};gate.eventResponses={};gate.resources={};gate.homeImage=null;gate.personal={};gate.officialResults={};gate.officialEntries={};gate.officialAttendance={};gate.errors={};
       Object.keys(gate.loaded).forEach(key=>gate.loaded[key]=false);
+      // Drop all cached participant and management views on an identity change
+      // or membership revocation; emptying gate state alone leaves visible DOM.
       ui?.disableChat();ui?.applyEventBaseRecords({});ui?.applyEventBaseEntries({});
+      ui?.applyPractices({});ui?.applyEvents({});ui?.applyResources({});ui?.applyHomeImage(null);
+      ui?.applyPracticeResponses({});ui?.applyEventResponses({});ui?.applyNotices([]);ui?.applyChat([]);
+      // Do not call applyPersonal({}) here: it persists local state and can erase cached personal records.
+      // The opaque entry overlay hides prior personal views without changing local/Firebase records.
     };
     gate.canSavePersonal=()=>!!gate.uid&&!!gate.profileId&&gate.loaded.personal===true&&auth.currentUser?.uid===gate.uid;
     gate.savePersonalField=async(key,value)=>{
@@ -10983,32 +11057,73 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
     // 2026-10-20 prioritized production trial: optional new participant registration.
     // It uses the already selected Auth/RTDB, never another app, listener, person DB or profile store.
     // Never auto-link someone else's event result by matching a display name.
-    gate.registerNewParticipant=async(rawName)=>{
-      if(gate.uid&&gate.profileId)throw Error('既存の本人プロフィールで接続済みです。新規登録は行いません');
+    // Existing Auth + canonical profiles only. Enrollment is NOT a person database.
+    // The trusted server must verify the distributed number and write memberAccess
+    // with Firebase Admin BEFORE any sensitive READ is attempted.
+    // PWA-first + manager-confirmed enrollment. Firebase Auth UID & canonical profile remain the sole person identity.
+    // Invitation is a supporting application detail (last four chars), NEVER an automatic membership credential.
+    gate.registerNewParticipant=async(rawName,rawCode)=>{
       const name=String(rawName||'').trim();
+      const code=String(rawCode||'').trim().replace(/[\s-]/g,'').toUpperCase();
       if(!name||name.length>24||/[\x00-\x1f]/.test(name))throw Error('名前は1〜24文字で入力してください');
-      // Sign-in is performed only after an explicit user choice. No automatic UID generation.
+      if(!/^[A-Z0-9]{4,48}$/.test(code))throw Error('配布された参加番号を確認してください');
+      const isStandalone=window.matchMedia?.('(display-mode: standalone)')?.matches===true||navigator.standalone===true;
+      if(!isStandalone)throw Error('最初にホーム画面に追加し、アイコンを開いて申請してください。');
+      if(gate.role==='developer'||gate.role==='admin')throw Error('管理者の認証中は参加者として再登録できません');
+      // Only an explicit initial application may mint an anonymous Auth UID.
+      await authMod.setPersistence(auth,authMod.browserLocalPersistence);
       if(!auth.currentUser)await authMod.signInAnonymously(auth);
       const uid=auth.currentUser?.uid;
-      if(!uid||!auth.currentUser)throw Error('Firebase匿名認証を確認できませんでした');
-      const own=dbMod.ref(db,'profiles/'+uid);
-      const before=await dbMod.get(own);
-      if(before.exists()){
-        if(typeof before.val()?.profileId!=='string'||!before.val()?.profileId)throw Error('このUIDの既存本人情報が不完全です。自動上書きせず管理者に確認してください');
-        await onUser(auth.currentUser);return {created:false};
+      if(!uid)throw Error('本人認証を保持できません。登録を停止しました。');
+      const ownRef=dbMod.ref(db,'profiles/'+uid);
+      const original=await dbMod.get(ownRef);
+      if(auth.currentUser?.uid!==uid)throw Error('本人UIDが変わったため停止しました');
+      let profileId=String(original.val()?.profileId||'');
+      let nameForRequest=name;
+      let created=false;
+      if(original.exists()){
+        // Never overwrite a prior identity using a shared invitation or typed name.
+        if(!profileId||profileId.length>120)throw Error('既存本人情報に問題があります。自動で上書きせず運営へお問い合わせください。');
+        const registeredName=String(original.val()?.displayName||'').trim();
+        if(registeredName!==name)throw Error('このアイコンに保存された本人名と一致しません。別人として上書きせず運営に確認してください。');
+        nameForRequest=registeredName;
+      }else{
+        const bytes=new Uint8Array(12);
+        crypto.getRandomValues(bytes);
+        profileId='profile_'+Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');
+        const tx=await dbMod.runTransaction(ownRef,current=>{
+          if(current!==null||auth.currentUser?.uid!==uid)return;
+          return {profileId,displayName:name,updatedAt:Date.now()};
+        },{applyLocally:false});
+        if(!tx.committed)throw Error('本人の新規保存に失敗しました。再読込して確認してください');
+        created=true;
       }
-      const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(uid));
-      const hash=Array.from(new Uint8Array(digest)).map(v=>v.toString(16).padStart(2,'0')).join('');
-      const profileId='profile_'+hash.slice(0,24); // Consistent with EVENT BASE canonical person-id derivation.
-      const answer=await dbMod.runTransaction(own,current=>{
-        if(current!==null||auth.currentUser?.uid!==uid)return;
-        return {profileId,displayName:name,updatedAt:Date.now()};
-      },{applyLocally:false});
-      if(!answer.committed)throw Error('既存の本人情報があるか、Firebaseが登録を拒否しました。別人として上書きしません');
-      if(auth.currentUser?.uid!==uid)throw Error('登録中に認証UIDが変わったため確認を停止しました');
-      // Re-enter the original unified role/profile/READ lifecycle; no independent subscriber.
+      if(auth.currentUser?.uid!==uid)throw Error('保存中に本人UIDが変わりました');
+      const access=dbMod.ref(db,'portalCommon/topRun/memberAccess/'+uid);
+      const existingAccess=await dbMod.get(access);
+      if(existingAccess.val()?.active===true && existingAccess.val()?.profileId===profileId){
+        await onUser(auth.currentUser);
+        return {created,approved:true};
+      }
+      // Store no full invitation secret. Administrator authenticates person through an existing trusted contact channel.
+      const requestRef=dbMod.ref(db,'portalCommon/topRun/memberRequests/'+uid);
+      const existing=await dbMod.get(requestRef);
+      if(existing.exists()){
+        if(existing.val()?.profileId!==profileId||existing.val()?.status!=='pending')
+          throw Error('既存の申請記録と本人情報が一致しません。運営へ確認してください。');
+      }else{
+        const payload={profileId,displayName:nameForRequest,status:'pending',numberSuffix:code.slice(-4),requestedAt:Date.now()};
+        const result=await dbMod.runTransaction(requestRef,current=>{
+          if(current!==null||auth.currentUser?.uid!==uid)return;
+          return payload;
+        },{applyLocally:false});
+        if(!result.committed)throw Error('申請の保存を確認できません。再読込してください。');
+      }
+      const checked=await dbMod.get(requestRef);
+      if(checked.val()?.profileId!==profileId||checked.val()?.status!=='pending')
+        throw Error('申請の保存ACKを確認できません。');
       await onUser(auth.currentUser);
-      return {created:true};
+      return {created,pending:true};
     };
 
     gate.saveOwnExternalRecord=async(value,expectedAt=null)=>{
@@ -11417,6 +11532,92 @@ const makePractice=(v,uid,original=null)=>({kind:'practice',title:'練習予定'
         officialSubs.push(stop);
       }
     };
+    // Request and membership are authorization state, not a second persons database.
+    const approvalPanel=document.getElementById('portalApprovalPanel');
+    const approvalList=document.getElementById('portalApprovalList');
+    const approvalStatus=document.getElementById('portalApprovalStatus');
+    // Real-Firebase diagnostic, staff-only, read-only and on demand.
+    // This does not infer security from client UI: unapproved participant denial
+    // must separately be verified with deployed RTDB Rules.
+    const admissionCheckButton=document.getElementById('portalApprovalReadCheck');
+    const admissionCheckReport=document.getElementById('portalApprovalReadReport');
+    admissionCheckButton?.addEventListener('click',async()=>{
+      if(!admissionCheckReport)return;
+      if(!['developer','admin'].includes(gate.role)||!gate.uid||auth.currentUser?.uid!==gate.uid||!gate.profileId){
+        admissionCheckReport.hidden=false;
+        admissionCheckReport.textContent='管理者本人・権限が確認できないため停止しました。';
+        return;
+      }
+      admissionCheckButton.disabled=true;
+      admissionCheckReport.hidden=false;
+      admissionCheckReport.textContent='FirebaseのREAD権限を確認しています…';
+      const inspectedUid=gate.uid;
+      const inspections=[
+        ['本人プロフィール',dbMod.ref(db,'profiles/'+inspectedUid)],
+        ['管理者権限',dbMod.ref(db,'portalRoles/'+inspectedUid)],
+        ['初回参加申請一覧',ref('memberRequests')],
+        ['参加承認一覧',ref('memberAccess')]
+      ];
+      const rows=[];
+      for(const [label,node] of inspections){
+        if(auth.currentUser?.uid!==inspectedUid||gate.uid!==inspectedUid){rows.push('認証が変更されたため中断');break;}
+        try {
+          const snapshot=await dbMod.get(node);
+          rows.push(label+'：READ OK'+(snapshot.exists()?'（記録あり）':'（記録なし）'));
+        }catch(error){
+          const err=String(error?.code||'READ_FAILED').replace(/[^a-zA-Z0-9/_-]/g,'').slice(0,50);
+          rows.push(label+'：READ不可（'+err+'）');
+        }
+      }
+      if(auth.currentUser?.uid===inspectedUid&&gate.uid===inspectedUid){
+        const keys=['eventItems','practices'];
+        for(const key of keys){
+          rows.push((key==='eventItems'?'イベント':'練習予定')+'：'+(gate.loaded[key]?'既存のFirebase購読OK':gate.errors[key]?'購読失敗（'+String(gate.errors[key]).slice(0,50)+'）':'購読結果を待機中'));
+        }
+      }
+      rows.push('※ READ OKは管理者の取得結果のみです。未承認参加者へのREAD拒否は別途確認が必要です。');
+      admissionCheckReport.textContent=rows.join('\n');
+      admissionCheckButton.disabled=false;
+    });
+    let approvalRequests={},approvalMemberships={};
+    const renderApprovalQueue=()=>{
+      if(!approvalPanel||approvalPanel.hidden)return;
+      approvalList.replaceChildren();
+      const pending=Object.entries(approvalRequests||{}).filter(([uid,r])=>
+        r?.status==='pending'&&r?.profileId&&!(approvalMemberships?.[uid]?.active===true&&approvalMemberships[uid]?.profileId===r.profileId));
+      approvalStatus.textContent=pending.length+'件の未承認申請（個人名や番号だけで承認しないでください）';
+      for(const [uid,request] of pending){
+        const row=document.createElement('div');row.className='portalManageRow';
+        const info=document.createElement('div');
+        const title=document.createElement('b');title.textContent=String(request.displayName||'名前未入力').slice(0,24);
+        const details=document.createElement('span');
+        const d=Number(request.requestedAt||0);const timestamp=Number.isFinite(d)&&d>0?new Date(d).toLocaleString('ja-JP'):'日時未確認';
+        details.textContent='申請：'+timestamp+' / 番号末尾：'+String(request.numberSuffix||'—')+' / UID末尾：'+uid.slice(-6);
+        info.append(title,details);
+        const action=document.createElement('button');action.type='button';action.className='portalManageOpenResource';action.textContent='本人確認後に承認';
+        action.dataset.approveUid=uid;row.append(info,action);approvalList.append(row);
+      }
+    };
+    approvalPanel?.addEventListener('click',async event=>{
+      const button=event.target?.closest?.('button[data-approve-uid]');if(!button)return;
+      const targetUid=button.dataset.approveUid;
+      const application=approvalRequests?.[targetUid];
+      if(!['developer','admin'].includes(gate.role)||auth.currentUser?.uid!==gate.uid||!application?.profileId)return;
+      if(!window.confirm('運営の連絡先など別経路で本人確認できましたか？\n氏名・参加番号だけでの承認はできません。確認済みの場合のみOKを押してください。'))return;
+      button.disabled=true;approvalStatus.textContent='既存Firebaseの承認情報を保存しています…';
+      try{
+        const payload={profileId:application.profileId,active:true,approvedAt:Date.now(),approvedBy:gate.uid};
+        const target=dbMod.ref(db,'portalCommon/topRun/memberAccess/'+targetUid);
+        const existing=await dbMod.get(target);
+        if(existing.exists()&&existing.val()?.profileId!==payload.profileId)throw Error('承認対象のprofileIdが変更されています');
+        await dbMod.set(target,payload);
+        const ack=await dbMod.get(target);
+        if(ack.val()?.active!==true||ack.val()?.profileId!==payload.profileId||ack.val()?.approvedBy!==gate.uid)
+          throw Error('承認保存後の再読込が一致しません');
+        approvalMemberships[targetUid]=payload;
+        renderApprovalQueue();approvalStatus.textContent='承認をFirebaseに保存し、再読込確認しました。';
+      }catch(error){approvalStatus.textContent='承認を保存できません：'+String(error?.code||error?.message||error).slice(0,120);button.disabled=false;}
+    });
     let handoffExpected=null;
     const onUser=async user=>{
       reset();const seq=generation;
@@ -11463,6 +11664,61 @@ const makePractice=(v,uid,original=null)=>({kind:'practice',title:'練習予定'
           if(seq!==generation||auth.currentUser?.uid!==uid)return;
           gate.role=['developer','admin'].includes(role.val()?.role)?role.val().role:'participant';
         }catch(error){gate.role='participant';}
+        // SECURITY REVIEW: Auth/profileId prove a browser identity, not club membership.
+        // No localStorage fallback and no second Firebase application/subscription.
+        // Server-verified enrollment and corresponding Rules must be deployed
+        // before participant rollout; until then participant data reads fail closed.
+        if(gate.role==='participant'){
+          // Never treat profileId as proof of invitation. Firebase Rules must
+          // verify the same canonical membership on each sensitive READ/WRITE.
+          const memberRef=dbMod.ref(db,'portalCommon/topRun/memberAccess/'+uid);
+          let member;
+          try {member=(await dbMod.get(memberRef)).val();}
+          catch(error){status('参加資格を確認できません：'+String(error?.code||'READ拒否'));window.__TR_PARTICIPANT_ENTRY__?.failed('参加資格の読込を確認できません。情報を開きません。');return;}
+          if(seq!==generation||auth.currentUser?.uid!==uid)return;
+          const isApproved=member?.active===true&&member?.profileId===gate.profileId;
+          if(!isApproved){
+            let application;
+            try{application=(await dbMod.get(ref('memberRequests/'+uid))).val();}catch(error){status('申請READ不可：'+String(error?.code||error?.message||error));}
+            if(seq!==generation||auth.currentUser?.uid!==uid)return;
+            const waiting=application?.status==='pending'&&application.profileId===gate.profileId;
+            status(waiting?'初回参加申請は承認待ちです':'本人の参加資格が未承認です');
+            if(waiting)window.__TR_PARTICIPANT_ENTRY__?.pending();
+            else window.__TR_PARTICIPANT_ENTRY__?.notMember();
+            // Keep only the existing per-UID membership node subscribed. Approval restarts the unified flow.
+            const pendingStop=dbMod.onValue(memberRef,snap=>{
+              if(seq!==generation||auth.currentUser?.uid!==uid)return;
+              if(snap.val()?.active===true&&snap.val()?.profileId===gate.profileId){
+                pendingStop();onUser(auth.currentUser);
+              }
+            },error=>{if(seq!==generation)return;status('参加資格の監視に失敗：'+String(error?.code||error?.message||error));});
+            unsubs.push(pendingStop);
+            return;
+          }
+          const membershipStop=dbMod.onValue(memberRef,snap=>{
+            if(seq!==generation||auth.currentUser?.uid!==uid)return;
+            if(snap.val()?.active!==true||snap.val()?.profileId!==gate.profileId){
+              reset();status('参加資格が失効したため共有情報を停止しました');
+              window.__TR_PARTICIPANT_ENTRY__?.revokeAccess('参加資格が失効しました。運営へご確認ください。');
+            }
+          },error=>{
+            if(seq!==generation)return;
+            reset();status('参加資格の継続確認に失敗しました');
+            window.__TR_PARTICIPANT_ENTRY__?.revokeAccess('参加資格の継続確認ができません。個人情報の表示を終了しました。');
+          });
+          unsubs.push(membershipStop);
+        }
+        // Same auth, same RTDB and central lifecycle. Two small role-scoped authorization reads.
+        approvalPanel.hidden=!['developer','admin'].includes(gate.role);
+        if(!approvalPanel.hidden){
+          approvalRequests={};approvalMemberships={};approvalStatus.textContent='承認申請をFirebaseから読み込み中…';
+          unsubs.push(dbMod.onValue(ref('memberRequests'),snap=>{if(seq!==generation)return;approvalRequests=snap.val()||{};renderApprovalQueue();},error=>{
+            if(seq===generation)approvalStatus.textContent='申請READ不可：'+String(error?.code||error?.message||error);
+          }));
+          unsubs.push(dbMod.onValue(ref('memberAccess'),snap=>{if(seq!==generation)return;approvalMemberships=snap.val()||{};renderApprovalQueue();},error=>{
+            if(seq===generation)approvalStatus.textContent='承認READ不可：'+String(error?.code||error?.message||error);
+          }));
+        }
         ui?.applyVerifiedRole(gate.role,uid);
         // Firebase is the authority for role changes after entry too.
         // An invalidated grant closes UI immediately; a new UID is never generated.
