@@ -1,3 +1,4 @@
+<!-- 2026-10-21 READABILITY REPAIR: unify native select contrast across goal/guide/lap; quiet personal record toggles; remove unused canonical-status prose. Parent SHA256=552f22fd389086f83d14b0b61d1928b3614e11c1035a05cfa5712424682296f3; no Firebase/Auth/RTDB/Rules changes. -->
 <!-- 2026-10-21 Goal-save invalid RTDB key fix: encode only 21097.5 as halfMarathon at the canonical goal save boundary; decode on own goal read. Existing themes: goal selects only. Other Firebase paths and permissions unchanged. -->
 <!-- 2026-10-21 MY PAGE goal save feedback + verified Firebase readback. Existing shared Auth/RTDB only; no Rules or other feature writes. -->
 <!-- 2026-10-21 MY PAGE COMMON GOAL INDEPENDENCE + CALENDAR REGISTERED ENTRY RSVP GUARD. Physical parent: prior TOP_RUN_PORTAL.html. Existing Firebase Auth/UID/profileId/Rules/official EVENT BASE data unchanged. -->
@@ -4773,7 +4774,7 @@ html #screen-competition-results .crSectionHead{align-items:center!important;gap
 html #screen-competition-results .crSectionHead small{font-size:11px!important;letter-spacing:.06em!important}
 html #screen-competition-results .crSectionHead h3{font-size:22px!important;line-height:1.25!important}
 html #screen-competition-results .crHeadActions span{display:none!important}
-html #screen-competition-results .crHeadActions button{min-width:57px!important;min-height:37px!important;padding:7px 10px!important;font-size:13px!important}
+html #screen-competition-results .crHeadActions button{min-width:0!important;min-height:29px!important;padding:4px 7px!important;font-size:10px!important;font-weight:800!important;line-height:1.15!important;color:var(--op-muted)!important;-webkit-text-fill-color:var(--op-muted)!important;background:var(--op-bg)!important;border:1px solid var(--op-line)!important;box-shadow:none!important}
 html #screen-competition-results .crHeroCopy>small{font-size:12px!important}
 html #screen-competition-results .crHeroCopy h2{font-size:clamp(24px,7vw,30px)!important}
 html #screen-competition-results .crHeroCopy p{font-size:13px!important;line-height:1.55!important}
@@ -4894,19 +4895,28 @@ html #screen-competition-results .crOpenAll{font-size:14px!important;min-height:
  font-size:13px;line-height:1.6;
 }
 
-/* Common goal-only selectors: visible native values in every existing theme. */
-html #screen-goal-tools #portalGoalViewSetting #portalGoalMetricPicker,
-html #screen-goal-tools #portalGoalViewSetting .portalGoalRow .flowTimeControls select{
+/* Single shared control contract for all MY PAGE goal / guide / lap views.
+   On iOS Safari the native select text needs explicit -webkit-text-fill-color;
+   the previous setting-only selector did not include the Guide/Lap tab panels. */
+html #screen-goal-tools :is(#portalGoalViewSetting,#portalGoalViewGuide,#portalGoalViewLap) select{
  background:var(--op-bg)!important;
  color:var(--op-fg)!important;
  -webkit-text-fill-color:var(--op-fg)!important;
  border-color:var(--op-line)!important;
- opacity:1!important;font-weight:800!important;
+ opacity:1!important;font-weight:850!important;
+ text-shadow:none!important;
 }
-html #screen-goal-tools #portalGoalViewSetting #portalGoalMetricPicker option,
-html #screen-goal-tools #portalGoalViewSetting .portalGoalRow .flowTimeControls select option{
- background:var(--op-bg)!important;color:var(--op-fg)!important;
+html #screen-goal-tools :is(#portalGoalViewSetting,#portalGoalViewGuide,#portalGoalViewLap) select option{
+ background:var(--op-bg)!important;
+ color:var(--op-fg)!important;
+ -webkit-text-fill-color:var(--op-fg)!important;
 }
+html #screen-goal-tools :is(#portalGoalViewGuide,#portalGoalViewLap) :is(.portalGuideSimpleLead,.portalToolNote,#portalLapPresetHint){
+ color:var(--op-muted)!important;-webkit-text-fill-color:var(--op-muted)!important;
+}
+html[data-portal-personal-color="matte"] #screen-goal-tools :is(#portalGoalViewSetting,#portalGoalViewGuide,#portalGoalViewLap) select,
+html[data-portal-personal-color="winter"] #screen-goal-tools :is(#portalGoalViewSetting,#portalGoalViewGuide,#portalGoalViewLap) select{color-scheme:dark!important}
+html #screen-goal-tools :is(#portalGoalViewSetting,#portalGoalViewGuide,#portalGoalViewLap) select:disabled{opacity:.65!important}
 </style>
 </head>
 <body>
@@ -8515,29 +8525,6 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
     const displayName=enteredName && enteredName!=='表示名' ? enteredName : '名前未登録';
     const person=portalAthletes.find(x=>x.profileId===portalPersonalTargetId);
     $('crPersonName').textContent=isSelf?displayName:(person?.name||'名前未登録');
-    const baseRows=portalRecFor().filter(row=>row.source==='EVENT_BASE');
-    const recordGateway=window.__TR_PORTAL_SYNC__;
-    const officialTargets=recordGateway?.officialTargets?.()||[];
-    const officialStatuses=officialTargets.map(t=>recordGateway?.officialReadStatus?.[t.id]||{});
-    const officialErrors=officialTargets.filter((t,i)=>officialStatuses[i].playersStatus==='error');
-    const officialWaiting=officialTargets.filter((t,i)=>!['ok','error'].includes(officialStatuses[i].playersStatus));
-    const realRows=portalRecFor();
-    let recordReadout='';
-    if(baseRows.length){
-      recordReadout='EVENT BASEの本人確認済み記録 '+baseRows.length+'件を表示中（読取専用）。正式結果の修正はEVENT BASEで行います。';
-      if(officialErrors.length)recordReadout+=' ／ ほかの大会で読込不可があります。';
-    }else if(!recordGateway?.uid||!recordGateway?.profileId){
-      recordReadout='EVENT BASEの結果を確認するため、既存の本人認証を確認中です。';
-    }else if(officialErrors.length){
-      recordReadout='EVENT BASEの大会結果を読み取れませんでした（'+officialErrors.length+'大会）。大会のアクセス権限と本人登録を管理者に確認してください。結果0件とは判定していません。';
-    }else if(officialWaiting.length){
-      recordReadout='EVENT BASEの大会結果を受信中です（'+officialWaiting.length+'大会）。まだ結果0件とは判定していません。';
-    }else if(officialTargets.length){
-      recordReadout='EVENT BASEの大会情報は受信済みですが、現在のUID・profileIdに一致する記録は未確認です。大会側の出走者と正式結果の本人紐付けを管理者に確認してください。';
-    }else{
-      recordReadout='EVENT BASEの大会接続先がありません。本人と大会の紐付けを管理者に確認してください。';
-    }
-    if(realRows.length&&!baseRows.length)recordReadout+=' ／ 現在の表示に過去大会の管理入力または試用記録が含まれる場合があります。';
     const logo=$('crTeamLogo'),src=document.querySelector('.logoWrap img');
     if(src?.src&&!logo.querySelector('img')){logo.innerHTML='';const img=document.createElement('img');img.src=src.src;img.alt='TOP RUN';logo.appendChild(img)}
     const personal=portalRecFor();$('crRecordCount').innerHTML=personal.length+'<em>件</em>';$('crRelayCount').innerHTML=personal.filter(r=>r.metric==='relay').length+'<em>大会</em>';
