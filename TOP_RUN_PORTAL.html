@@ -1,3 +1,4 @@
+<!-- 2026-10-21 TIME DROPDOWN ONLY / Master fixed directive: event/past result/goal/declared time MUST use selects, never text input. Local UI correction, no Firebase / Rules change. -->
 <!-- 2026-10-21 PARTICIPANT OPERATIONS: no local-only RSVP success, memberAccess verified once through canonical RTDB, state-specific NOTICE/CHAT/RSVP errors. Existing unified Firebase and official record authority retained. Not field PASS. -->
 <!-- 2026-10-21 MY PAGE / PAST RECORD visual and canonical-read UX: latest FIELD_REPAIR physical parent retained. No new Firebase app/Auth/Rules/RTDB path, no profile merge, no official-result writer or deployment. -->
 <!-- 2026-10-21 PORTAL RELEASE CANDIDATE / physical parent verified past-results V2 (SHA256 5ad72f3eb376a1371b03e64949dc60692e2ee974abc6f6186cf9e964e4035753). Integrated attendance 3-way shared roster, member CHAT/NOTICE with existing approved-member Auth and singular Firebase gateway; past record save, edit and delete remain in the physical parent. Production deployment and real-RTDB tests NOT done. -->
@@ -4610,226 +4611,252 @@ html[data-portal-personal-color="matte"] #screen-flow-manager :is(#flowManagerRe
 #portalOfficialHandoffCard .portalFlowStatus{color:#714a22;line-height:1.5}
 </style>
 
-<style id="portal-20261021-integrated-field-contrast-layout">
-/* Keep light controls readable on ALL personal themes. Never inherit white type
-   from a dark theme into a white input, summary, dialog or archive note. */
-#screen-schedule-detail .portalParticipationGroups .portalRsvpRoster{background:#fffdfa!important;border-color:#b5b9b4!important}
-#screen-schedule-detail .portalParticipationGroups .portalRsvpRoster>summary{
-  display:grid!important;grid-template-columns:minmax(0,1fr) 66px 23px!important;
-  align-items:center!important;column-gap:8px!important;min-height:64px!important;
-  background:#fffdfa!important;color:#24373b!important;padding:12px 14px!important;
-  -webkit-text-fill-color:#24373b!important;text-shadow:none!important
-}
-#screen-schedule-detail .portalParticipationGroups .portalRsvpRoster[open]>summary{background:#f3e8c5!important}
-#screen-schedule-detail .portalParticipationGroups .portalRsvpGroupLabel{text-align:left!important;color:#22383b!important;-webkit-text-fill-color:#22383b!important;font-size:15px!important;font-weight:900!important}
-#screen-schedule-detail .portalParticipationGroups .portalRsvpGroupCount{text-align:right!important;color:#604916!important;-webkit-text-fill-color:#604916!important;font-size:16px!important;font-variant-numeric:tabular-nums!important}
-#screen-schedule-detail .portalParticipationGroups .portalRsvpRoster>summary::after{content:'＋';display:block;text-align:right;color:#22383b!important;-webkit-text-fill-color:#22383b!important;font-size:20px!important}
-#screen-schedule-detail .portalParticipationGroups .portalRsvpRoster[open]>summary::after{content:'−'}
-#screen-schedule-detail .portalParticipationGroups .portalRsvpPeople{background:#fffdfa!important;color:#23363b!important}
-#screen-schedule-detail .portalParticipationGroups .portalRsvpPerson{background:#f3f5f3!important;color:#20353a!important}
-#screen-schedule-detail .portalParticipationGroups .portalRsvpPerson :is(b,small,span){color:#20353a!important;-webkit-text-fill-color:#20353a!important;text-shadow:none!important}
-#screen-schedule-detail .portalParticipationGroups .portalRsvpTime{font-size:12px!important;line-height:1.6!important;white-space:normal!important;overflow-wrap:anywhere!important}
-#screen-flow-manager :is(#portalTrialResetManager select,#flowMgrExtEvent,#flowMgrExtAthlete,#flowMgrExtName,#flowMgrExtDate,#flowMgrExtAthleteSearch,#flowManagerActorSearch,#flowManagerAthlete),
-#portalExistingGrantAdmin input,#screen-links .portalLinkCard{
- background:#fffefa!important;color:#203339!important;-webkit-text-fill-color:#203339!important;text-shadow:none!important;
- border-color:#b1b9b6!important;color-scheme:light!important
-}
-#screen-flow-manager :is(#portalTrialResetManager select,#flowMgrExtEvent,#flowMgrExtAthlete,#flowManagerAthlete) option{background:#fff!important;color:#203339!important}
-#screen-flow-manager input::placeholder,#portalExistingGrantAdmin input::placeholder{color:#637982!important;-webkit-text-fill-color:#637982!important;opacity:1!important}
-#screen-flow-manager #portalTrialResetManager :is(h4,b,small,p),#screen-flow-manager #flowManagerExternalArea .portalHelp{color:inherit}
-#screen-flow-manager #portalTrialResetManager select{color:#213638!important;-webkit-text-fill-color:#213638!important}
-#screen-links .portalLinkCard :is(small,b,em){color:#203339!important;-webkit-text-fill-color:#203339!important}
-.portalPastEventSelector{padding:14px;margin:0 0 17px;border:1px solid #80c2bc;border-radius:15px;background:#e7f6f3;color:#1d3338!important}
-.portalPastEventSelector>strong{display:block;color:#153f41!important;margin-bottom:10px}
-#screen-flow-manager .portalPastEventSelector .portalHelp{color:#324e50!important;font-size:12px}
-.portalPastEventRoster{display:grid;gap:8px;margin-top:12px}
-.portalPastBatchRow{padding:12px;border:1px solid #b9c7c6;border-radius:11px;background:#fffefa;color:#22343a!important;display:grid;gap:7px}
-.portalPastBatchRow b,.portalPastBatchRow small,.portalPastBatchRow label{color:#22343a!important;-webkit-text-fill-color:#22343a!important}
-.portalPastBatchRow input{min-height:44px!important;width:100%;background:#fff!important;color:#20343a!important;-webkit-text-fill-color:#20343a!important;border:1px solid #b7c3c0!important;border-radius:9px;padding:8px;font-size:16px!important}
-.portalPastBatchRow button,#flowMgrExtOpenEventManager{min-height:45px;padding:9px 11px;border:1px solid #54847f;border-radius:10px;background:#e6f3f0!important;color:#194047!important;-webkit-text-fill-color:#194047!important;font-size:13px;font-weight:900}
-.portalPastBatchRow button{justify-self:start}
-#flowMgrExtBatchSave{min-height:52px}
-#screen-flow-manager #flowMgrExtName[readonly],#screen-flow-manager #flowMgrExtDate[readonly]{background:#e3ebe7!important;color:#294345!important;-webkit-text-fill-color:#294345!important;opacity:1!important}
-.portalPastBatchRow :disabled{opacity:.65}
-/* White modal cards keep their copy dark in winter/matte; surface & text must agree. */
-html[data-portal-personal-color] .modalCard,html[data-portal-personal-color] #screen-flow-manager #portalTrialResetManager{color:#283539}
-html[data-portal-personal-color] .modalCard :is(h3,p,small,span){color:#283539!important;-webkit-text-fill-color:#283539!important}
-/* Global semantic form contract, common to every personal-color mode.
-   A pale native field must always use dark ink, also on iOS where text-fill wins.
-   This intentionally favors usability over matching each decorative theme. */
-html[data-portal-personal-color] .portalScreen :is(input:not([type="hidden"]):not([type="radio"]):not([type="checkbox"]),textarea,select){
-  background-color:#fffefa!important;color:#23353a!important;
-  -webkit-text-fill-color:#23353a!important;color-scheme:light!important;
-  border-color:#aebdbb!important;text-shadow:none!important
-}
-html[data-portal-personal-color] .portalScreen input::placeholder,
-html[data-portal-personal-color] .portalScreen textarea::placeholder{
-  color:#60757b!important;-webkit-text-fill-color:#60757b!important;opacity:1!important
-}
-html[data-portal-personal-color] .portalScreen select option{color:#23353a!important;background-color:#fffefa!important}
-#screen-flow-manager #portalTrialResetManager select, #screen-flow-manager #portalTrialResetManager select option{color:#26393e!important;-webkit-text-fill-color:#26393e!important;background:#fffefa!important}
-#portalTrialResetManager>summary,#portalExistingGrantAdmin>summary{cursor:pointer;list-style:none;min-height:44px;padding:10px 8px;color:#26393e!important;-webkit-text-fill-color:#26393e!important;font-size:13px;font-weight:950}
-#portalTrialResetManager>summary::after,#portalExistingGrantAdmin>summary::after{content:'＋';float:right}
-#portalTrialResetManager[open]>summary::after,#portalExistingGrantAdmin[open]>summary::after{content:'−'}
-#portalExistingGrantAdmin{background:#f8f5e9!important;color:#24383b!important}
-#portalExistingGrantAdmin :is(.portalPanelHead b,.portalHelp,label,p){color:#273b3c!important;-webkit-text-fill-color:#273b3c!important}
-#portalExistingGrantAdmin button{background:#e5c843!important;color:#28300f!important;-webkit-text-fill-color:#28300f!important}
-html[data-portal-personal-color] .portalPastBatchRow :is(b,small,label){text-shadow:none!important}
-html[data-portal-personal-color] #screen-flow-manager #flowManagerExternalArea .portalPastEventSelector{background:#e7f6f3!important;color:#1d3338!important;-webkit-text-fill-color:#1d3338!important}
-html[data-portal-personal-color] #screen-flow-manager #flowManagerExternalArea .portalPastEventSelector .portalHelp{color:#1d3338!important;-webkit-text-fill-color:#1d3338!important}
-</style><style id="portal-20261021-personal-record-visibility-and-attendance-tone">
-/* Field feedback: soften extreme white blocks; keep the three-theme visual language. */
+
+
+<style id="portal-20261021-unified-semantic-palette">
+/* PORTAL UI CONTRACT 2026-10-21
+ * One semantic palette for operations/records in each existing theme.
+ * Supersedes the two overlapping 2026-10-21 contrast patches instead of layering onto them.
+ * Presentation only: no Auth/Firebase/UID/profile/record changes.
+ */
 html{
-  --tr-quiet-surface:#f5f2e9;--tr-quiet-open:#ede9db;--tr-quiet-detail:#f9f7f1;
-  --tr-quiet-ink:#293a3c;--tr-quiet-sub:#566c6a;--tr-quiet-line:#c7c9be;
-  --tr-quiet-accent:#9b7f30;
-}
-html[data-portal-personal-color="winter"]{
-  --tr-quiet-surface:#173d44;--tr-quiet-open:#245056;--tr-quiet-detail:#11343b;
-  --tr-quiet-ink:#edfaf6;--tr-quiet-sub:#b6d8d3;--tr-quiet-line:#4e7778;
-  --tr-quiet-accent:#83d6c8;
-}
-html[data-portal-personal-color="matte"]{
-  --tr-quiet-surface:#2b2428;--tr-quiet-open:#393036;--tr-quiet-detail:#211c21;
-  --tr-quiet-ink:#f6ede7;--tr-quiet-sub:#d1bdb5;--tr-quiet-line:#74564d;
-  --tr-quiet-accent:#e69c73;
+  --op-bg:#f5f3ef; --op-raised:#eae8e0; --op-deep:#fcfbf7;
+  --op-fg:#253434; --op-muted:#4e6162; --op-line:#b7c2be;
+  --op-accent:#75612c; --op-outline:#839995;
+  --op-field:#fffefa; --op-field-fg:#233536; --op-placeholder:#65777a;
+  --op-action:#e8e2ce; --op-action-fg:#334544;
 }
 html[data-portal-personal-color="blue"]{
-  --tr-quiet-surface:#e6f0f5;--tr-quiet-open:#d9e9f3;--tr-quiet-detail:#f0f6fa;
-  --tr-quiet-ink:#233f50;--tr-quiet-sub:#516c7e;--tr-quiet-line:#aec9d9;
-  --tr-quiet-accent:#527f9a;
+  --op-bg:#e9f1f6; --op-raised:#dbe9f0; --op-deep:#f6f9fb;
+  --op-fg:#244154; --op-muted:#4c6778; --op-line:#b2c9d5;
+  --op-accent:#437b9b; --op-outline:#789db3;
+  --op-action:#d6e9f2; --op-action-fg:#27485d;
 }
 html[data-portal-personal-color="sakura"]{
-  --tr-quiet-surface:#fff2f4;--tr-quiet-open:#f8e4eb;--tr-quiet-detail:#fff9f9;
-  --tr-quiet-ink:#493841;--tr-quiet-sub:#755b66;--tr-quiet-line:#dfbfcb;
-  --tr-quiet-accent:#a95d78;
+  --op-bg:#f9eff2; --op-raised:#f2e3e9; --op-deep:#fff9fa;
+  --op-fg:#473841; --op-muted:#745f69; --op-line:#d9bfcb;
+  --op-accent:#a15f78; --op-outline:#c497aa;
+  --op-action:#eedce4; --op-action-fg:#61414d;
 }
-/* Apply to the existing shared roster, not a new renderer. */
+html[data-portal-personal-color="winter"]{
+  --op-bg:#12353d; --op-raised:#1e454b; --op-deep:#0d2b33;
+  --op-fg:#ecf8f6; --op-muted:#b6d5d4; --op-line:#52777b;
+  --op-accent:#95d6ca; --op-outline:#568b8d;
+  --op-action:#24565c; --op-action-fg:#f0fbf8;
+}
+html[data-portal-personal-color="matte"]{
+  --op-bg:#282328; --op-raised:#353034; --op-deep:#1d1a1f;
+  --op-fg:#f4ece8; --op-muted:#d0beba; --op-line:#6a5350;
+  --op-accent:#dca085; --op-outline:#876158;
+  --op-action:#42353a; --op-action-fg:#f5ebe5;
+}
+/* Semantic contrast and layout for existing roster. One 3-column grid across themes. */
 html #screen-schedule-detail .portalParticipationGroups .portalRsvpRoster{
-  background:var(--tr-quiet-surface)!important;border-color:var(--tr-quiet-line)!important;
+  background:var(--op-bg)!important;border-color:var(--op-line)!important;color:var(--op-fg)!important;
+  box-shadow:none!important;overflow:hidden!important;
 }
 html #screen-schedule-detail .portalParticipationGroups .portalRsvpRoster>summary{
-  background:var(--tr-quiet-surface)!important;color:var(--tr-quiet-ink)!important;
-  -webkit-text-fill-color:var(--tr-quiet-ink)!important;border-color:var(--tr-quiet-line)!important;
+  display:grid!important;grid-template-columns:minmax(0,1fr) 70px 28px!important;
+  align-items:center!important;gap:8px!important;min-height:68px!important;
+  padding:12px 15px!important;background:var(--op-bg)!important;
+  color:var(--op-fg)!important;-webkit-text-fill-color:var(--op-fg)!important;
+  text-shadow:none!important;border-color:var(--op-line)!important;
 }
-html #screen-schedule-detail .portalParticipationGroups .portalRsvpRoster[open]>summary{background:var(--tr-quiet-open)!important}
-html #screen-schedule-detail .portalParticipationGroups .portalRsvpGroupLabel,
-html #screen-schedule-detail .portalParticipationGroups .portalRsvpRoster>summary::after{
-  color:var(--tr-quiet-ink)!important;-webkit-text-fill-color:var(--tr-quiet-ink)!important;
+html #screen-schedule-detail .portalParticipationGroups .portalRsvpRoster[open]>summary{background:var(--op-raised)!important}
+html #screen-schedule-detail .portalParticipationGroups .portalRsvpGroupLabel{font-size:16px!important;font-weight:900!important;text-align:left!important;color:var(--op-fg)!important;-webkit-text-fill-color:var(--op-fg)!important}
+html #screen-schedule-detail .portalParticipationGroups .portalRsvpGroupCount{font-size:17px!important;text-align:right!important;color:var(--op-accent)!important;-webkit-text-fill-color:var(--op-accent)!important;font-variant-numeric:tabular-nums!important}
+html #screen-schedule-detail .portalParticipationGroups .portalRsvpRoster>summary::after{content:'＋';display:block;text-align:center;font-size:20px!important;color:var(--op-fg)!important;-webkit-text-fill-color:var(--op-fg)!important}
+html #screen-schedule-detail .portalParticipationGroups .portalRsvpRoster[open]>summary::after{content:'−'}
+html #screen-schedule-detail .portalParticipationGroups .portalRsvpPeople{background:var(--op-deep)!important;color:var(--op-fg)!important}
+html #screen-schedule-detail .portalParticipationGroups .portalRsvpPerson{background:var(--op-raised)!important;color:var(--op-fg)!important}
+html #screen-schedule-detail .portalParticipationGroups .portalRsvpPerson :is(b,small,span){color:var(--op-fg)!important;-webkit-text-fill-color:var(--op-fg)!important;text-shadow:none!important}
+html #screen-schedule-detail .portalParticipationGroups .portalRsvpEmpty{color:var(--op-muted)!important;-webkit-text-fill-color:var(--op-muted)!important}
+html #screen-schedule-detail .portalParticipationGroups .portalRsvpTime{font-size:12px!important;line-height:1.55!important;white-space:normal!important;overflow-wrap:anywhere!important}
+/* Forms deliberately use neutral light native controls and separate dark labels. */
+html .portalScreen :is(input:not([type="hidden"]):not([type="radio"]):not([type="checkbox"]),textarea,select){
+  background-color:var(--op-field)!important;color:var(--op-field-fg)!important;
+  -webkit-text-fill-color:var(--op-field-fg)!important;color-scheme:light!important;
+  border-color:#afbdba!important;text-shadow:none!important;
 }
-html #screen-schedule-detail .portalParticipationGroups .portalRsvpGroupCount{
-  color:var(--tr-quiet-accent)!important;-webkit-text-fill-color:var(--tr-quiet-accent)!important;
+html .portalScreen :is(input,textarea)::placeholder{color:var(--op-placeholder)!important;-webkit-text-fill-color:var(--op-placeholder)!important;opacity:1!important}
+html .portalScreen select option{color:var(--op-field-fg)!important;background:var(--op-field)!important}
+/* Past event: soft theme panel rather than mint box imposed on a dark matte design. */
+html #screen-flow-manager .portalPastEventSelector{
+  margin:0 0 16px!important;padding:16px!important;
+  background:var(--op-bg)!important;color:var(--op-fg)!important;
+  border:1px solid var(--op-line)!important;border-radius:15px!important;
+  box-shadow:none!important;
 }
-html #screen-schedule-detail .portalParticipationGroups .portalRsvpPeople{
-  background:var(--tr-quiet-detail)!important;color:var(--tr-quiet-ink)!important;
+html #screen-flow-manager .portalPastEventSelector :is(strong,.portalHelp,.portalFlowLabel,label){
+  color:var(--op-fg)!important;-webkit-text-fill-color:var(--op-fg)!important;text-shadow:none!important;
 }
-html #screen-schedule-detail .portalParticipationGroups .portalRsvpPerson{
-  background:var(--tr-quiet-open)!important;color:var(--tr-quiet-ink)!important;
+html #screen-flow-manager .portalPastEventSelector>.portalHelp,
+html #screen-flow-manager .portalPastEventSelector .portalHelp{font-size:13px!important;line-height:1.6!important;color:var(--op-muted)!important;-webkit-text-fill-color:var(--op-muted)!important}
+html #screen-flow-manager .portalPastOfficialChoice{
+  margin:12px 0!important;padding:14px!important;
+  background:var(--op-raised)!important;color:var(--op-fg)!important;
+  border:1px solid var(--op-line)!important;border-radius:13px!important;
 }
-html #screen-schedule-detail .portalParticipationGroups .portalRsvpPerson :is(b,small,span){
-  color:var(--tr-quiet-ink)!important;-webkit-text-fill-color:var(--tr-quiet-ink)!important;
+html #screen-flow-manager .portalPastOfficialChoice>strong{
+  display:block!important;margin-bottom:10px!important;font-size:15px!important;line-height:1.45!important;
+  color:var(--op-fg)!important;-webkit-text-fill-color:var(--op-fg)!important;
 }
-html #screen-schedule-detail .portalParticipationGroups .portalRsvpEmpty{
-  color:var(--tr-quiet-sub)!important;-webkit-text-fill-color:var(--tr-quiet-sub)!important;
+html #screen-flow-manager .portalPastOfficialChoice .portalRuleChoice{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+html #screen-flow-manager .portalPastOfficialChoice .portalRuleChoice label{
+  display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:7px!important;
+  min-height:52px!important;padding:10px!important;
+  color:var(--op-fg)!important;-webkit-text-fill-color:var(--op-fg)!important;
+  background:var(--op-bg)!important;border:1px solid var(--op-line)!important;
+  border-radius:10px!important;font-size:13px!important;font-weight:850!important;
 }
-/* Personal record: legible at a glance, without garish bright panels. */
-#screen-competition-results .crSectionHead{margin-bottom:12px!important;align-items:center!important}
-#screen-competition-results .crSectionHead small{font-size:11px!important;letter-spacing:.07em}
-#screen-competition-results .crSectionHead h3{font-size:21px!important;line-height:1.32!important}
-#screen-competition-results .crHeadActions{gap:7px!important}
-#screen-competition-results .crHeadActions span{font-size:11px!important}
-#screen-competition-results .crHeadActions button{font-size:12px!important;min-height:32px!important;padding:5px 10px!important}
-#screen-competition-results .crPbGrid{gap:9px!important}
+html #screen-flow-manager .portalPastOfficialChoice input[type=radio]{width:19px;height:19px;flex:none;accent-color:var(--op-accent)}
+html #screen-flow-manager .portalPastEventSelector button#flowMgrExtOpenEventManager,
+html #screen-flow-manager .portalPastBatchRow button{
+  min-height:46px!important;border:1px solid var(--op-outline)!important;border-radius:11px!important;
+  background:var(--op-action)!important;color:var(--op-action-fg)!important;
+  -webkit-text-fill-color:var(--op-action-fg)!important;font-size:13px!important;font-weight:900!important;
+  text-shadow:none!important;
+}
+html #screen-flow-manager .portalPastBatchRow{
+  padding:12px!important;background:var(--op-deep)!important;
+  color:var(--op-fg)!important;border:1px solid var(--op-line)!important;border-radius:12px!important;
+  display:grid!important;gap:9px!important;
+}
+html #screen-flow-manager .portalPastBatchRow :is(b,small,label){color:var(--op-fg)!important;-webkit-text-fill-color:var(--op-fg)!important}
+html #screen-flow-manager #flowManagerExternalArea .portalPastBatchRow input{font-size:16px!important;min-height:44px!important}
+html #screen-flow-manager #flowMgrExtName[readonly],
+html #screen-flow-manager #flowMgrExtDate[readonly]{background:#e6eeeb!important;color:#294345!important;-webkit-text-fill-color:#294345!important;opacity:1!important}
+/* Secondary staff-only utilities should not overwhelm the primary task. */
+html #screen-flow-manager #portalTrialResetManager{
+  background:var(--op-bg)!important;border:1px solid var(--op-line)!important;
+  box-shadow:none!important;color:var(--op-fg)!important;
+}
+html #screen-flow-manager #portalTrialResetManager :is(summary,b,p,small,h4){
+  color:var(--op-fg)!important;-webkit-text-fill-color:var(--op-fg)!important;
+}
+html #screen-flow-manager #portalTrialResetManager p{color:var(--op-muted)!important;-webkit-text-fill-color:var(--op-muted)!important;font-size:12px!important;line-height:1.55!important}
+html #screen-flow-manager #portalTrialResetManager>summary{cursor:pointer;list-style:none;min-height:44px;padding:10px 8px;font-size:14px!important;font-weight:850!important}
+html #screen-flow-manager #portalTrialResetManager>summary::after{content:'＋';float:right}
+html #screen-flow-manager #portalTrialResetManager[open]>summary::after{content:'−'}
+html #screen-flow-manager #portalTrialResetManager button,
+html #portalExistingGrantAdmin button{background:var(--op-action)!important;color:var(--op-action-fg)!important;-webkit-text-fill-color:var(--op-action-fg)!important;border:1px solid var(--op-outline)!important;box-shadow:none!important}
+html #portalExistingGrantAdmin{background:var(--op-bg)!important;border-color:var(--op-line)!important;color:var(--op-fg)!important}
+html #portalExistingGrantAdmin :is(summary,b,p,.portalHelp,label){color:var(--op-fg)!important;-webkit-text-fill-color:var(--op-fg)!important}
+/* Notice dialog: never transfer dark input ink to a dark themed surface. */
+html #modal .modalCard{
+  background:var(--op-bg)!important;color:var(--op-fg)!important;
+  border:1px solid var(--op-line)!important;box-shadow:0 12px 35px #0005!important;
+}
+html #modal .modalCard :is(h3,p,small,span,div,strong,#modalTitle,#modalText){
+  color:var(--op-fg)!important;-webkit-text-fill-color:var(--op-fg)!important;text-shadow:none!important;
+}
+html #modal .modalCard small{color:var(--op-accent)!important;-webkit-text-fill-color:var(--op-accent)!important}
+html #modal .modalCard :is(h3,#modalTitle){font-size:22px!important;line-height:1.35!important;font-weight:900!important}
+html #modal .modalCard :is(p,#modalText){font-size:16px!important;line-height:1.65!important}
+html[data-portal-personal-color] #modal .modalCard button,
+html #modal .modalCard button{
+  border:1px solid var(--op-outline)!important;background:var(--op-action)!important;
+  color:var(--op-action-fg)!important;-webkit-text-fill-color:var(--op-action-fg)!important;
+  box-shadow:none!important;font-size:16px!important;font-weight:900!important;
+}
+/* Record: true readable mobile type scale, still preserves 3 at-a-glance PB cards. */
+html #screen-competition-results .crScreenBody,
+html #screen-competition-records .crScreenBody,
+html #screen-competition-graph-detail .crScreenBody{font-size:15px!important}
+html #screen-competition-results .crSection{margin-top:18px!important}
+html #screen-competition-results .crSectionHead{align-items:center!important;gap:10px!important;margin-bottom:12px!important}
+html #screen-competition-results .crSectionHead small{font-size:11px!important;letter-spacing:.06em!important}
+html #screen-competition-results .crSectionHead h3{font-size:22px!important;line-height:1.25!important}
+html #screen-competition-results .crHeadActions span{display:none!important}
+html #screen-competition-results .crHeadActions button{min-width:57px!important;min-height:37px!important;padding:7px 10px!important;font-size:13px!important}
+html #screen-competition-results .crHeroCopy>small{font-size:12px!important}
+html #screen-competition-results .crHeroCopy h2{font-size:clamp(24px,7vw,30px)!important}
+html #screen-competition-results .crHeroCopy p{font-size:13px!important;line-height:1.55!important}
+html #screen-competition-results .crHeroStats small{font-size:12px!important}
+html #screen-competition-results .crHeroStats b{font-size:24px!important}
+html #screen-competition-results .crHeroStats em{font-size:12px!important}
+html #screen-competition-results .crPbGrid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:8px!important}
 html #screen-competition-results .crPbCard,
+html #screen-competition-results .portalOfficialGrid .crPbCard,
 html #screen-competition-results .crOtherGrid,
-html #screen-competition-records .crRecordRow,
-html #screen-competition-graph-detail .crRecordRow{
-  background:var(--tr-quiet-surface)!important;color:var(--tr-quiet-ink)!important;
-  border-color:var(--tr-quiet-line)!important;box-shadow:none!important;
-}
-html #screen-competition-results .crPbCard{
-  padding:13px 8px 12px 12px!important;min-height:104px!important;border-radius:13px!important;
-  border-left:3px solid var(--tr-quiet-accent)!important;
-}
-html #screen-competition-results .crPbCard::before{display:none!important}
-html #screen-competition-results .crPbCard small{
-  display:block!important;font-size:clamp(13px,3.55vw,16px)!important;
-  line-height:1.25!important;font-weight:950!important;letter-spacing:0!important;
-  color:var(--tr-quiet-ink)!important;-webkit-text-fill-color:var(--tr-quiet-ink)!important;
-}
-html #screen-competition-results .crPbCard b{
-  display:block!important;font-size:clamp(17px,5vw,24px)!important;line-height:1.2!important;
-  margin-top:9px!important;letter-spacing:-.035em!important;overflow-wrap:anywhere;
-  color:var(--tr-quiet-ink)!important;-webkit-text-fill-color:var(--tr-quiet-ink)!important;
-}
-html #screen-competition-results .crPbCard em{
-  font-size:clamp(10px,2.7vw,12px)!important;line-height:1.4!important;
-  color:var(--tr-quiet-sub)!important;-webkit-text-fill-color:var(--tr-quiet-sub)!important;
-}
-html #screen-competition-results .crOtherGrid{gap:0!important;padding:6px!important;border-radius:13px!important}
-html #screen-competition-results .crOtherItem{padding:10px 8px!important;border-right-color:var(--tr-quiet-line)!important}
-html #screen-competition-results .crOtherItem small{
-  font-size:clamp(12px,3.2vw,14px)!important;font-weight:950!important;
-  color:var(--tr-quiet-ink)!important;-webkit-text-fill-color:var(--tr-quiet-ink)!important;
-}
-html #screen-competition-results .crOtherItem b{
-  font-size:clamp(12px,3.45vw,16px)!important;line-height:1.45!important;
-  color:var(--tr-quiet-ink)!important;-webkit-text-fill-color:var(--tr-quiet-ink)!important;
-}
-html #screen-competition-results .crOtherItem em{font-size:11px!important;line-height:1.35!important;color:var(--tr-quiet-sub)!important;-webkit-text-fill-color:var(--tr-quiet-sub)!important}
-#screen-competition-results .crMetricTabs button,
-#screen-competition-records .crMetricTabs button,
-#screen-competition-graph-detail .crMetricTabs button{
-  font-size:12px!important;min-height:36px!important;padding:6px 11px!important;
-}
+html #screen-competition-results .crGraphCard,
+html #screen-competition-results .crTargetCard,
 html #screen-competition-results .crRecordRow,
 html #screen-competition-records .crRecordRow,
 html #screen-competition-graph-detail .crRecordRow{
-  border-left:3px solid var(--tr-quiet-accent)!important;
-  color:var(--tr-quiet-ink)!important;
+  background:var(--op-bg)!important;color:var(--op-fg)!important;
+  border-color:var(--op-line)!important;box-shadow:none!important;
 }
-:is(#screen-competition-results,#screen-competition-records,#screen-competition-graph-detail) .crRecordInfo b{font-size:13px!important;line-height:1.4!important}
-:is(#screen-competition-results,#screen-competition-records,#screen-competition-graph-detail) .crDate small{font-size:10px!important}
-:is(#screen-competition-results,#screen-competition-records,#screen-competition-graph-detail) .crRecordInfo span{font-size:11px!important}
-:is(#screen-competition-results,#screen-competition-records,#screen-competition-graph-detail) .crRecordTime small{font-size:10px!important}
-:is(#screen-competition-results,#screen-competition-records,#screen-competition-graph-detail) .crRecordTime b{font-size:15px!important}
-#screen-competition-results #crViewerContext{
-  font-size:13px!important;line-height:1.65!important;padding:10px 12px!important;
-  border-left:3px solid var(--tr-quiet-accent)!important;
-  background:var(--tr-quiet-surface)!important;border-radius:0 9px 9px 0!important;
-  color:var(--tr-quiet-ink)!important;-webkit-text-fill-color:var(--tr-quiet-ink)!important;
+html #screen-competition-results .crPbCard,
+html #screen-competition-results .portalOfficialGrid .crPbCard{
+  min-height:126px!important;padding:16px 9px 12px!important;
+  border-left:3px solid var(--op-accent)!important;border-radius:14px!important;
+  text-align:left!important;
 }
-/* Keep official status visually subordinate to the recorded distance/time. */
-html #screen-flow-manager .portalPastEventSelector{
-  background:var(--tr-quiet-surface)!important;color:var(--tr-quiet-ink)!important;
-  border-color:var(--tr-quiet-line)!important;
+html #screen-competition-results .crPbCard::before,
+html #screen-competition-results .portalOfficialGrid .crPbCard::before{display:none!important}
+html #screen-competition-results .crPbCard small,
+html #screen-competition-results .portalOfficialGrid .crPbCard small{
+  display:block!important;font-size:clamp(17px,4.45vw,20px)!important;line-height:1.2!important;
+  letter-spacing:0!important;font-weight:950!important;
+  color:var(--op-fg)!important;-webkit-text-fill-color:var(--op-fg)!important;
 }
-html #screen-flow-manager .portalPastEventSelector>strong,
-html #screen-flow-manager .portalPastEventSelector .portalHelp{
-  color:var(--tr-quiet-ink)!important;-webkit-text-fill-color:var(--tr-quiet-ink)!important;
+html #screen-competition-results .crPbCard b,
+html #screen-competition-results .portalOfficialGrid .crPbCard b{
+  display:block!important;margin-top:11px!important;
+  font-size:clamp(22px,5.7vw,28px)!important;line-height:1.2!important;
+  font-weight:950!important;letter-spacing:-.045em!important;
+  color:var(--op-fg)!important;-webkit-text-fill-color:var(--op-fg)!important;
+  white-space:normal!important;overflow-wrap:anywhere!important;
 }
-#screen-flow-manager .portalPastOfficialChoice{
-  margin:12px 0 9px!important;padding:12px!important;
-  background:var(--tr-quiet-detail)!important;border:1px solid var(--tr-quiet-line)!important;
-  border-radius:10px!important;
+html #screen-competition-results .crPbCard em,
+html #screen-competition-results .portalOfficialGrid .crPbCard em{display:block!important;margin-top:10px!important;font-size:12px!important;line-height:1.35!important;font-weight:750!important;color:var(--op-muted)!important;-webkit-text-fill-color:var(--op-muted)!important}
+html #screen-competition-results .crOtherGrid{padding:7px!important;gap:0!important;border-radius:14px!important}
+html #screen-competition-results .crOtherItem{padding:12px 8px!important;border-right-color:var(--op-line)!important;color:var(--op-fg)!important}
+html #screen-competition-results .crOtherItem small{font-size:15px!important;line-height:1.25!important;font-weight:900!important;color:var(--op-fg)!important;-webkit-text-fill-color:var(--op-fg)!important}
+html #screen-competition-results .crOtherItem b{display:block!important;margin-top:7px!important;font-size:16px!important;line-height:1.35!important;color:var(--op-fg)!important;-webkit-text-fill-color:var(--op-fg)!important}
+html #screen-competition-results .crOtherItem em{font-size:12px!important;line-height:1.4!important;color:var(--op-muted)!important;-webkit-text-fill-color:var(--op-muted)!important}
+html #screen-competition-results #crViewerContext{font-size:14px!important;line-height:1.6!important;background:var(--op-bg)!important;color:var(--op-fg)!important;border-left:3px solid var(--op-accent)!important;padding:12px!important;border-radius:0 10px 10px 0!important}
+html :is(#screen-competition-results,#screen-competition-records,#screen-competition-graph-detail) .crMetricTabs button{font-size:14px!important;min-height:39px!important;padding:8px 12px!important}
+html :is(#screen-competition-results,#screen-competition-records,#screen-competition-graph-detail) .crRecordInfo b{font-size:15px!important;line-height:1.45!important}
+html :is(#screen-competition-results,#screen-competition-records,#screen-competition-graph-detail) .crRecordInfo span{font-size:12px!important;line-height:1.5!important}
+html :is(#screen-competition-results,#screen-competition-records,#screen-competition-graph-detail) .crDate small{font-size:11px!important}
+html :is(#screen-competition-results,#screen-competition-records,#screen-competition-graph-detail) .crRecordTime b{font-size:18px!important}
+html :is(#screen-competition-results,#screen-competition-records,#screen-competition-graph-detail) .crRecordTime small{font-size:11px!important}
+html :is(#screen-competition-results,#screen-competition-records,#screen-competition-graph-detail) .crRecordRow{grid-template-columns:52px minmax(0,1fr) minmax(78px,95px)!important;gap:8px!important;padding:11px!important}
+@media(max-width:360px){
+ html #screen-competition-results .crPbGrid{gap:5px!important}
+ html #screen-competition-results .crPbCard{padding:13px 5px!important}
+ html #screen-competition-results .crPbCard small,
+html #screen-competition-results .portalOfficialGrid .crPbCard small{font-size:15px!important}
+ html #screen-competition-results .crPbCard b,
+html #screen-competition-results .portalOfficialGrid .crPbCard b{font-size:17px!important}
+ html #screen-flow-manager .portalPastOfficialChoice .portalRuleChoice{grid-template-columns:1fr!important}
 }
-#screen-flow-manager .portalPastOfficialChoice>strong{font-size:14px!important;display:block;margin-bottom:10px;color:var(--tr-quiet-ink)!important}
-#screen-flow-manager .portalPastOfficialChoice .portalRuleChoice{display:flex;gap:10px;flex-wrap:wrap}
-#screen-flow-manager .portalPastOfficialChoice label{
-  display:flex;align-items:center;gap:8px;min-height:43px;padding:8px 11px;
-  border:1px solid var(--tr-quiet-line);border-radius:9px;color:var(--tr-quiet-ink)!important;
-  background:var(--tr-quiet-surface)!important;font-size:14px;font-weight:850;
-}
-#screen-flow-manager .portalPastOfficialChoice input{accent-color:var(--tr-quiet-accent);width:19px;height:19px}
-#screen-flow-manager .portalPastOfficialChoice .portalHelp{font-size:12px!important;line-height:1.55!important;margin-top:9px}
-@media(max-width:390px){
-  #screen-competition-results .crPbGrid{gap:6px!important}
-  html #screen-competition-results .crPbCard{padding:12px 5px 11px 9px!important;min-height:101px!important}
-  html #screen-competition-results .crPbCard b{font-size:clamp(16px,4.65vw,20px)!important}
-  #screen-competition-results .crHeadActions span{display:none!important}
-}
-</style>
 
+/* Keep official PB comparable to the overview, not the historical 8px cards. */
+html #screen-competition-results .portalOfficialGrid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important}
+html #screen-competition-results .crTargetCard :is(h4,.crNextEvent){font-size:16px!important;line-height:1.45!important}
+html #screen-competition-results .crTargetCard>small{font-size:12px!important}
+html #screen-competition-results .crTargetCard>span{font-size:13px!important}
+html #screen-competition-results .crTargetCard>strong{font-size:22px!important}
+html #screen-competition-results .crGraphHint{font-size:13px!important}
+html #screen-competition-results .crTargetEdit{font-size:14px!important;min-height:42px!important}
+html #screen-competition-results .crOpenAll{font-size:14px!important;min-height:44px!important}
+
+</style>
+<style id="portal-time-dropdown-only-global-20261021">
+/* 2026-10-21: fixed project rule. Time values are dropdown-only, including past-event batch.
+   For short event records the extra hours column creates mistouches; never expose it. */
+#screen-flow-event .flowTimeField:not(.goal-allow-hours) .flowTimeControls,
+#screen-flow-manager .flowTimeField:not(.goal-allow-hours) .flowTimeControls {grid-template-columns:repeat(3,minmax(0,1fr));}
+#screen-flow-event .flowTimeField:not(.goal-allow-hours) .flowTimePart:first-child,
+#screen-flow-manager .flowTimeField:not(.goal-allow-hours) .flowTimePart:first-child {display:none!important;}
+#screen-flow-manager .portalPastBatchRow .flowTimeField {min-width:0;}
+#screen-flow-manager .portalPastBatchRow .flowTimeControls {gap:6px;}
+#screen-flow-manager .portalPastBatchRow .flowTimeField.goal-allow-hours .flowTimeControls {grid-template-columns:repeat(4,minmax(0,1fr));}
+#screen-flow-manager .portalPastBatchRow .flowTimeField.goal-allow-hours .flowTimePart:first-child {display:flex!important;}
+</style>
 </head>
 <body>
 <div id="portalFirstPaintAuthOverlay" role="status" aria-live="polite" aria-label="TOP RUN PORTAL 認証中">
@@ -5786,13 +5813,14 @@ html #screen-flow-manager .portalPastEventSelector .portalHelp{
 </div>
 
 
+
 <!-- EVENT / PERSONAL RECORD PRE-CONNECTION FLOW: role and Firebase independent UI -->
 <div class="portalScreen hidden" id="screen-flow-event" aria-hidden="true">
  <div class="portalScreenHead"><button class="portalBack" type="button" data-back>← イベント</button><div><small>EVENT DETAIL</small><b>マイ出走登録</b></div><span class="portalHeadSpacer"></span></div>
  <div class="portalScreenBody portalFlowBody">
   <section class="portalPanel"><div class="portalPanelHead"><small>EVENT</small><b id="flowEventTitle">イベント</b></div><p id="flowEventFacts" class="portalHelp"></p><div id="flowEventRaceMetrics" class="portalEventRaceMetrics" aria-live="polite"></div><div id="flowEventConnection" class="portalFlowBanner" hidden></div><div id="flowEventLink"></div></section>
   <section class="portalPanel"><div class="portalPanelHead"><small>MY ENTRY</small><b>マイ出走登録・目標</b></div><p class="portalHelp" id="flowEntryActor"></p><div id="flowRegistrationState" class="portalFlowBanner"></div><div id="portalOfficialSelfList" class="portalMultiEntryList" hidden></div><div id="portalMultiEntryList" class="portalMultiEntryList"></div><div id="flowEligibilityNotice" class="portalQualificationNote hidden" aria-live="polite"></div><div id="flowProfileRuleStatus" class="portalQualificationNote hidden" aria-live="polite"></div><div class="portalFlowDeadline" id="flowEntryDeadlineNotice" aria-live="polite"></div>
-   <details id="flowNewRaceDisclosure" class="portalFlowEntryDisclosure" open><summary id="flowNewRaceSummary">出走する種目を登録する</summary><div class="portalFlowFields"><label>① 種目を選択 <select id="flowMetric"><option value="800">800m</option><option value="1000">1000m</option><option value="1500">1500m</option><option value="3000">3000m</option><option value="relay">駅伝</option><option value="other">その他</option></select></label><div class="flowTimeField" data-flow-time="flowGoal"><div class="flowTimeHeading"><span>② 目標タイムを入力</span><button type="button" class="flowTimeClear" data-flow-clear="flowGoal">未設定に戻す</button></div><input type="hidden" id="flowGoal" value=""><div class="flowTimeControls" role="group" aria-label="目標タイムの選択"></div><span class="flowTimeCurrent" aria-live="polite">未設定（時間・分・秒・100分の1秒を選択）</span></div><div id="flowDeclaredTimeWrap" hidden><div class="portalRuleTitle">エントリー時の申告タイム（目標タイム）</div><p class="portalHelp">MY PAGEに保存した目標を初期値として表示。申告内容を確認して出走登録してください。登録後に共通目標を変更しても、この申告タイムは変わりません。</p><div class="flowTimeField" data-flow-time="flowDeclaredTime"><div class="flowTimeHeading"><span>申告タイム</span><button type="button" class="flowTimeClear" data-flow-clear="flowDeclaredTime">未設定に戻す</button></div><input type="hidden" id="flowDeclaredTime" value=""><div class="flowTimeControls" role="group" aria-label="申告タイムの選択"></div><span class="flowTimeCurrent" aria-live="polite">目標を参考に選択</span></div><strong id="flowDeclaredReadonly" class="portalGoalDeclarationReadonly" hidden></strong></div><div id="flowOfficialResult" class="portalOfficialResult" hidden></div><div id="flowOfficialResultReadout" class="portalResultReadout">記録：管理者・開発者の登録待ち</div></div>
+   <details id="flowNewRaceDisclosure" class="portalFlowEntryDisclosure" open><summary id="flowNewRaceSummary">出走する種目を登録する</summary><div class="portalFlowFields"><label>① 種目を選択 <select id="flowMetric"><option value="800">800m</option><option value="1000">1000m</option><option value="1500">1500m</option><option value="3000">3000m</option><option value="relay">駅伝</option><option value="other">その他</option></select></label><div class="flowTimeField" data-flow-time="flowGoal"><div class="flowTimeHeading"><span>② 目標タイムを選択</span><button type="button" class="flowTimeClear" data-flow-clear="flowGoal">未設定に戻す</button></div><input type="hidden" id="flowGoal" value=""><div class="flowTimeControls" role="group" aria-label="目標タイムの選択"></div><span class="flowTimeCurrent" aria-live="polite">未設定（時間・分・秒・100分の1秒を選択）</span></div><div id="flowDeclaredTimeWrap" hidden><div class="portalRuleTitle">エントリー時の申告タイム（目標タイム）</div><p class="portalHelp">MY PAGEに保存した目標を初期値として表示。申告内容を確認して出走登録してください。登録後に共通目標を変更しても、この申告タイムは変わりません。</p><div class="flowTimeField" data-flow-time="flowDeclaredTime"><div class="flowTimeHeading"><span>申告タイム</span><button type="button" class="flowTimeClear" data-flow-clear="flowDeclaredTime">未設定に戻す</button></div><input type="hidden" id="flowDeclaredTime" value=""><div class="flowTimeControls" role="group" aria-label="申告タイムの選択"></div><span class="flowTimeCurrent" aria-live="polite">目標を参考に選択</span></div><strong id="flowDeclaredReadonly" class="portalGoalDeclarationReadonly" hidden></strong></div><div id="flowOfficialResult" class="portalOfficialResult" hidden></div><div id="flowOfficialResultReadout" class="portalResultReadout">記録：管理者・開発者の登録待ち</div></div>
    <div id="portalGoalPresetWrap" class="hidden portalFlowFields"><label>MY PAGEの目標から選ぶ <select id="portalGoalPreset"></select></label></div>
    <div id="portalOfficialRaceAccess" class="portalFlowFields" hidden><label>大会参加番号（この大会への初回接続時のみ／6桁）<input id="portalOfficialParticipantPin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="off" placeholder="接続済みの場合は空欄のまま"></label><p class="portalHelp">PORTALの初回利用申請番号ではなく、EVENT BASEで発行したこの大会専用の参加番号です。既存の本人UIDとprofileIdを維持します。</p></div><div class="portalFlowActions" id="flowJoinActions"><button type="button" id="flowJoin" class="portalPrimary">③ 出走登録する</button><button type="button" id="flowLeave" class="portalFlowSecondary">出走登録を取り消す</button></div>
    <p class="portalHelp" id="flowEntryLockNote">登録時の目標タイムはMY PAGEへ連動します。出走登録後は、目標・種目・申告タイムを本人が変更できません。</p></details>
@@ -5842,7 +5870,7 @@ html #screen-flow-manager .portalPastEventSelector .portalHelp{
    <div id="flowManagerCreateRow"><label class="portalFlowLabel">STEP 2 / 新しく登録する選手名 <input id="flowManagerNewAthlete" maxlength="24" placeholder="選手名を入力" autocomplete="off"></label><p class="portalHelp">※ 試用中の選手です。</p></div>
    <div id="flowManagerActorRow" class="hidden"><label class="portalFlowLabel">STEP 2 / 選手を探す <input id="flowManagerActorSearch" type="search" autocomplete="off" placeholder="選手名で検索"></label><label class="portalFlowLabel">対象の選手 <select id="flowManagerAthlete"></select></label><div id="flowManagerActorHint" class="portalFlowBanner"></div></div>
    <div id="flowManagerEventRow"><label class="portalFlowLabel">STEP 3 / 出場するイベントを選択 <select id="flowManagerEvent"></select></label><p class="portalHelp" id="flowManagerEventHint">管理画面のイベント登録から、先にイベントを作成できます。</p><section id="portalOfficialHandoffCard" class="portalRulePanel" hidden><b>正式大会へ接続する（開発者のみ）</b><p class="portalHelp">このイベントを既存EVENT BASEの正式大会へ連携します。本人・記録の正本はEVENT BASEのままです。既存大会・結果は削除しません。</p><button id="portalOfficialHandoffExecute" type="button" class="portalFlowSecondary">EVENT BASE正式大会を準備する</button><p id="portalOfficialHandoffStatus" class="portalFlowStatus" role="status" aria-live="polite"></p></section></div>
-   <div id="flowManagerEditor"><p class="portalWorkflowStepFour">STEP 4 / 種目・タイムを入力する</p><div class="portalFlowFields"><label>種目 <select id="flowManagerMetric"><option value="800">800m</option><option value="1000">1000m</option><option value="1500">1500m</option><option value="3000">3000m</option><option value="relay">駅伝</option><option value="other">その他</option></select></label><div class="flowTimeField" data-flow-time="flowManagerGoal"><div class="flowTimeHeading"><span>目標タイム</span><button type="button" class="flowTimeClear" data-flow-clear="flowManagerGoal">未設定に戻す</button></div><input type="hidden" id="flowManagerGoal" value=""><div class="flowTimeControls" role="group" aria-label="目標タイムの選択"></div><span class="flowTimeCurrent" aria-live="polite">未設定（時間・分・秒・100分の1秒を選択）</span></div><div class="flowTimeField" data-flow-time="flowManagerDeclared" id="flowManagerDeclaredWrap" hidden><div class="flowTimeHeading"><span>申告タイム</span><button type="button" class="flowTimeClear" data-flow-clear="flowManagerDeclared">未設定に戻す</button></div><input type="hidden" id="flowManagerDeclared" value=""><div class="flowTimeControls" role="group" aria-label="申告タイムの選択"></div><span class="flowTimeCurrent" aria-live="polite">未設定</span></div><div class="flowTimeField" data-flow-time="flowManagerResult"><div class="flowTimeHeading"><span>結果タイム</span><button type="button" class="flowTimeClear" data-flow-clear="flowManagerResult">未設定に戻す</button></div><input type="hidden" id="flowManagerResult" value=""><div class="flowTimeControls" role="group" aria-label="結果タイムの選択"></div><span class="flowTimeCurrent" aria-live="polite">未設定（時間・分・秒・100分の1秒を選択）</span></div></div>
+   <div id="flowManagerEditor"><p class="portalWorkflowStepFour">STEP 4 / 種目・タイムを選択する</p><div class="portalFlowFields"><label>種目 <select id="flowManagerMetric"><option value="800">800m</option><option value="1000">1000m</option><option value="1500">1500m</option><option value="3000">3000m</option><option value="relay">駅伝</option><option value="other">その他</option></select></label><div class="flowTimeField" data-flow-time="flowManagerGoal"><div class="flowTimeHeading"><span>目標タイム</span><button type="button" class="flowTimeClear" data-flow-clear="flowManagerGoal">未設定に戻す</button></div><input type="hidden" id="flowManagerGoal" value=""><div class="flowTimeControls" role="group" aria-label="目標タイムの選択"></div><span class="flowTimeCurrent" aria-live="polite">未設定（時間・分・秒・100分の1秒を選択）</span></div><div class="flowTimeField" data-flow-time="flowManagerDeclared" id="flowManagerDeclaredWrap" hidden><div class="flowTimeHeading"><span>申告タイム</span><button type="button" class="flowTimeClear" data-flow-clear="flowManagerDeclared">未設定に戻す</button></div><input type="hidden" id="flowManagerDeclared" value=""><div class="flowTimeControls" role="group" aria-label="申告タイムの選択"></div><span class="flowTimeCurrent" aria-live="polite">未設定</span></div><div class="flowTimeField" data-flow-time="flowManagerResult"><div class="flowTimeHeading"><span>結果タイム</span><button type="button" class="flowTimeClear" data-flow-clear="flowManagerResult">未設定に戻す</button></div><input type="hidden" id="flowManagerResult" value=""><div class="flowTimeControls" role="group" aria-label="結果タイムの選択"></div><span class="flowTimeCurrent" aria-live="polite">未設定（時間・分・秒・100分の1秒を選択）</span></div></div>
     <div class="portalRulePanel hidden" id="flowManagerRecordClassRow"><label>この選手の公認対象確認 <select id="flowManagerRecordClass"><option value="">確認状況を選択</option><option value="eligible">対象選手（記録は公認）</option><option value="open">オープン参加（記録は非公認）</option></select></label><p class="portalHelp">開催大会が「公認」かつ条件ありの場合、結果タイム保存時に管理者が確認します。対象学年外などはオープン参加として記録を残しますが、公認ベストには含めません。</p></div>
     <div class="portalFlowActions"><button type="button" class="portalPrimary" id="flowManagerSave">選手の出走登録を保存</button><button type="button" class="portalFlowSecondary hidden" id="flowManagerCancel">この選手の出走登録を取り消す</button></div></div>
    <p class="portalFlowStatus" id="flowManagerStatus" aria-live="polite"></p>
@@ -9228,6 +9256,22 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
   }
   document.querySelectorAll('[data-flow-time]').forEach(flowInitTimeField);
   portalGoalUpdateTimeMode();
+  function portalEventTimeDropdownMode(metric,ids){
+    const mayUseHours=metric==='relay'||metric==='other';
+    ids.forEach(id=>{
+      const field=document.querySelector('[data-flow-time="'+id+'"]');
+      if(!field)return;
+      const old=field.classList.contains('goal-allow-hours');
+      field.classList.toggle('goal-allow-hours',mayUseHours);
+      if(old&&!mayUseHours&&field.querySelector('[data-time-part="0"]')?.value)flowSetTime(id,'');
+    });
+  }
+  $('flowMetric').addEventListener('change',()=>portalEventTimeDropdownMode($('flowMetric').value,['flowGoal','flowDeclaredTime']));
+  $('flowManagerMetric').addEventListener('change',()=>portalEventTimeDropdownMode($('flowManagerMetric').value,['flowManagerGoal','flowManagerDeclared','flowManagerResult','portalRoundTime']));
+  $('flowMgrExtMetric').addEventListener('change',()=>portalEventTimeDropdownMode($('flowMgrExtMetric').value,['flowMgrExtTime']));
+  portalEventTimeDropdownMode($('flowMetric').value,['flowGoal','flowDeclaredTime']);
+  portalEventTimeDropdownMode($('flowManagerMetric').value,['flowManagerGoal','flowManagerDeclared','flowManagerResult','portalRoundTime']);
+  portalEventTimeDropdownMode($('flowMgrExtMetric').value,['flowMgrExtTime']);
 
   function portalGoalApplyHours(id,allow){
     const field=document.querySelector(`[data-flow-time="${id}"]`);
@@ -10750,7 +10794,7 @@ list.innerHTML=output.map(metric=>{
     $('flowJoin').disabled=portalOfficialPreparationRequired(e)||closed||!metric||!!r||official||!check.allowed;
     $('flowLeave').hidden=!r;$('flowLeave').disabled=closed||!r||!!flowResultsForEntry(r).length;
     $('flowJoin').textContent=(r||official)?'この種目は登録済み':portalOfficialPreparationRequired(e)?'③ 正式大会の接続待ち':flowOfficialDestination(e)?'③ Firebaseへ正式出走登録する':'③ 試用出走登録（本人参加予定は共有）';
-    $('flowSelfStatus').textContent=!metric?'種目を選択してください。':r?'この種目は登録済みです。別の種目を追加できます。':!check.allowed?check.text:'登録可能です。目標タイムを入力してください。';
+    $('flowSelfStatus').textContent=!metric?'種目を選択してください。':r?'この種目は登録済みです。別の種目を追加できます。':!check.allowed?check.text:'登録可能です。目標タイムをプルダウンで選択してください。';
     for(const id of ['flowGoal','flowDeclaredTime']){
       const field=document.querySelector(`#screen-flow-event [data-flow-time="${id}"]`);
       field?.querySelectorAll('select,button').forEach(x=>x.disabled=closed||!!r);
@@ -11104,9 +11148,31 @@ list.innerHTML=output.map(metric=>{
     if(!attendees.length){box.innerHTML='<p class="portalHelp">本人確認済みの選手がまだ取得できていません。開発者は参加者一覧の承認者を確認してください。</p>';return;}
     const rows=attendees.map(a=>{
       const saved=Object.values(portalPastEventOverview[a.uid]||{}).filter(r=>r?.subjectUid===a.uid&&r.profileId===a.profileId&&r.name===name&&r.date===day);
-      return `<div class="portalPastBatchRow" data-past-batch-uid="${esc(a.uid)}"><b>${esc(a.name)}</b><small>${saved.length?'既存記録：'+saved.map(r=>esc(portalMetricNames[r.metric]||r.metric)).join('・')+'（修正は個別画面）':'この大会の記録なし'}</small><label>新規登録する種目<select data-past-batch-metric><option value="">種目を選択</option><option value="800">800m</option><option value="1000">1000m</option><option value="1500">1500m</option><option value="3000">3000m</option><option value="relay">駅伝</option><option value="other">その他</option></select></label><label>記録タイム（新規登録のみ）<input data-past-batch-time type="text" inputmode="decimal" placeholder="例 4:12.30"></label><button type="button" data-past-batch-open="${esc(a.id)}">${saved.length?'既存記録の確認・修正':'個別入力'}</button></div>`;
+      return `<div class="portalPastBatchRow" data-past-batch-uid="${esc(a.uid)}"><b>${esc(a.name)}</b><small>${saved.length?'既存記録：'+saved.map(r=>esc(portalMetricNames[r.metric]||r.metric)).join('・')+'（修正は個別画面）':'この大会の記録なし'}</small><label>新規登録する種目<select data-past-batch-metric><option value="">種目を選択</option><option value="800">800m</option><option value="1000">1000m</option><option value="1500">1500m</option><option value="3000">3000m</option><option value="relay">駅伝</option><option value="other">その他</option></select></label>${flowTimeMarkup('pastBatchTime_'+a.uid,'記録タイム（選択式・新規登録のみ）')}<button type="button" data-past-batch-open="${esc(a.id)}">${saved.length?'既存記録の確認・修正':'個別入力'}</button></div>`;
     });
-    box.innerHTML='<p class="portalHelp">既存の承認・公開済み参加者から選択します。ここにいる全員が出走者とは限りません。実際に出場した選手のタイムだけ入力してください。</p>'+rows.join('');
+    // Keep already-selected dropdown values if a same-event roster refresh occurs.
+    const previous=new Map();
+    if(box.dataset.pastEventId===event.id)box.querySelectorAll('[data-past-batch-uid]').forEach(node=>{
+      const uid=node.dataset.pastBatchUid;
+      previous.set(uid,{metric:node.querySelector('[data-past-batch-metric]')?.value||'',time:node.querySelector('.flowTimeField input[type="hidden"]')?.value||''});
+    });
+    box.innerHTML='<p class="portalHelp">既存の承認・公開済み参加者から選択します。ここにいる全員が出走者とは限りません。実際に出場した選手の記録だけプルダウンで選択してください。</p>'+rows.join('');
+    box.dataset.pastEventId=event.id;
+    box.querySelectorAll('[data-past-batch-uid]').forEach(node=>{
+      const uid=node.dataset.pastBatchUid, field=node.querySelector('.flowTimeField');
+      if(!field)return;
+      flowInitTimeField(field); // existing centralized time-select builder, no new input writer
+      const metric=node.querySelector('[data-past-batch-metric]');
+      const applyMode=()=>{
+        const mayUseHours=metric.value==='relay'||metric.value==='other';
+        field.classList.toggle('goal-allow-hours',mayUseHours);
+        if(!mayUseHours&&field.querySelector('[data-time-part="0"]')?.value)flowSetTime(field.dataset.flowTime,'');
+      };
+      metric.addEventListener('change',applyMode);
+      const prev=previous.get(uid);
+      if(prev){metric.value=prev.metric;applyMode();if(prev.time)flowSetTime(field.dataset.flowTime,prev.time);}
+      else applyMode();
+    });
     batch.hidden=!portalPastEventOverviewReady;
   }
   async function portalPastRefreshEventOverview(){
@@ -11159,12 +11225,12 @@ list.innerHTML=output.map(metric=>{
     const name=String(event.title||''),date=portalPastEventDay(event),venue=$('flowMgrExtVenue').value.trim(),
       official=document.querySelector('input[name="flowMgrExtOfficial"]:checked')?.value==='yes';
     const entries=Array.from($('flowMgrExtEventRoster').querySelectorAll('[data-past-batch-uid]')).map(node=>({
-      node,uid:node.dataset.pastBatchUid,time:node.querySelector('[data-past-batch-time]')?.value.trim()||'',
+      node,uid:node.dataset.pastBatchUid,time:node.querySelector('.flowTimeField input[type="hidden"]')?.value.trim()||'',
       metric:node.querySelector('[data-past-batch-metric]')?.value||''
     })).filter(x=>x.time);
-    if(!entries.length){$('flowMgrExtBatchStatus').textContent='出場した選手の記録を入力してください。';return;}
+    if(!entries.length){$('flowMgrExtBatchStatus').textContent='出場した選手の記録をプルダウンで選択してください。';return;}
     if(entries.some(x=>!['800','1000','1500','3000','relay','other'].includes(x.metric))){$('flowMgrExtBatchStatus').textContent='タイムを入力した選手について、種目も選択してください。';return;}
-    if(entries.some(x=>!flowTimeGood(x.time))){$('flowMgrExtBatchStatus').textContent='タイム形式を確認してください。例：4:12.30';return;}
+    if(entries.some(x=>!flowTimeGood(x.time))){$('flowMgrExtBatchStatus').textContent='記録の分・秒・100分の1秒の選択内容を確認してください。';return;}
     if(!window.confirm(name+'（'+date+'）の入力済み'+entries.length+'人の記録を'+(official?'「公認申告」':'「非公認」')+'としてFirebaseへ登録しますか？ 既存記録は上書きしません。'))return;
     const button=$('flowMgrExtBatchSave');button.disabled=true;
     let done=0;const errors=[];
@@ -11176,7 +11242,7 @@ list.innerHTML=output.map(metric=>{
         if(prior){errors.push(target.name+'：既存記録あり');continue;}
         try{
           await gate.saveStaffPastRecord(target,{id:flowId(),name,date,metric:x.metric,time:x.time,status:'time',venue,official});
-          ++done;x.node.querySelector('[data-past-batch-time]').value='';
+          ++done;flowSetTime('pastBatchTime_'+x.uid,'');
         }catch(error){errors.push(target.name+'：'+String(error?.code||error?.message||error).slice(0,65));}
         $('flowMgrExtBatchStatus').textContent=done+'件保存済み ／ '+errors.length+'件未完了';
       }
