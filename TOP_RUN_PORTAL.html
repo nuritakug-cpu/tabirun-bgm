@@ -1,3 +1,4 @@
+<!-- 2026-10-21 Goal-save invalid RTDB key fix: encode only 21097.5 as halfMarathon at the canonical goal save boundary; decode on own goal read. Existing themes: goal selects only. Other Firebase paths and permissions unchanged. -->
 <!-- 2026-10-21 MY PAGE goal save feedback + verified Firebase readback. Existing shared Auth/RTDB only; no Rules or other feature writes. -->
 <!-- 2026-10-21 MY PAGE COMMON GOAL INDEPENDENCE + CALENDAR REGISTERED ENTRY RSVP GUARD. Physical parent: prior TOP_RUN_PORTAL.html. Existing Firebase Auth/UID/profileId/Rules/official EVENT BASE data unchanged. -->
 <!-- 2026-10-21 TIME DROPDOWN ONLY / Master fixed directive: event/past result/goal/declared time MUST use selects, never text input. Local UI correction, no Firebase / Rules change. -->
@@ -4884,16 +4885,18 @@ html #screen-competition-results .crOpenAll{font-size:14px!important;min-height:
  font-size:13px;line-height:1.6;
 }
 
-/* Matte Blaze: native selected values must be legible on the dark input surfaces. */
-html[data-portal-personal-color="matte"] #screen-goal-tools #portalGoalMetricPicker,
-html[data-portal-personal-color="matte"] #screen-goal-tools #portalGoalViewSetting .flowTimeControls select{
- background:#282326!important;color:#fff5e9!important;
- -webkit-text-fill-color:#fff5e9!important;
- border-color:#b87954!important;opacity:1!important;
+/* Common goal-only selectors: visible native values in every existing theme. */
+html #screen-goal-tools #portalGoalViewSetting #portalGoalMetricPicker,
+html #screen-goal-tools #portalGoalViewSetting .portalGoalRow .flowTimeControls select{
+ background:var(--op-bg)!important;
+ color:var(--op-fg)!important;
+ -webkit-text-fill-color:var(--op-fg)!important;
+ border-color:var(--op-line)!important;
+ opacity:1!important;font-weight:800!important;
 }
-html[data-portal-personal-color="matte"] #screen-goal-tools #portalGoalMetricPicker option,
-html[data-portal-personal-color="matte"] #screen-goal-tools #portalGoalViewSetting .flowTimeControls select option{
- background:#282326!important;color:#fff5e9!important;
+html #screen-goal-tools #portalGoalViewSetting #portalGoalMetricPicker option,
+html #screen-goal-tools #portalGoalViewSetting .portalGoalRow .flowTimeControls select option{
+ background:var(--op-bg)!important;color:var(--op-fg)!important;
 }
 </style>
 </head>
@@ -11669,8 +11672,15 @@ list.innerHTML=output.map(metric=>{
       if(!flowBaseSelfId||flowBaseSelfId==='unconnected-local-viewer')return;
       if(value?.basicProfile&&typeof value.basicProfile==='object')
         flowState.basicProfiles[flowBaseSelfId]={...value.basicProfile};
-      if(value?.defaultGoals&&typeof value.defaultGoals==='object'&&!Array.isArray(value.defaultGoals))
-        flowState.defaultGoals[flowBaseSelfId]={...value.defaultGoals};
+      if(value?.defaultGoals&&typeof value.defaultGoals==='object'&&!Array.isArray(value.defaultGoals)){
+        const restored={...value.defaultGoals};
+        // Firebase keys cannot contain '.': deserialize half-marathon goal only at this UI boundary.
+        if(Object.hasOwn(restored,'halfMarathon')){
+          restored['21097.5']=restored.halfMarathon;
+          delete restored.halfMarathon;
+        }
+        flowState.defaultGoals[flowBaseSelfId]=restored;
+      }
       // The Firebase authenticated UID is the authority for cross-device color.
       if(value?.personalColor&&typeof value.personalColor.preset==='string'){
         window.dispatchEvent(new CustomEvent('tr-portal-personal-color-remote',{detail:{preset:value.personalColor.preset}}));
@@ -12595,7 +12605,11 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
     gate.saveOwnBasicProfile=value=>gate.savePersonalField('basicProfile',value);
     gate.saveOwnGoals=async value=>{
       const uid=gate.uid,profileId=gate.profileId;
-      await gate.savePersonalField('defaultGoals',value);
+      // UI distance '21097.5' is not a valid Firebase child key. Encode at the existing writer boundary.
+      // All other metrics, Auth, profileId and the single canonical portalSelf/defaultGoals path remain unchanged.
+      const storedGoals={...value,halfMarathon:value['21097.5']||''};
+      delete storedGoals['21097.5'];
+      await gate.savePersonalField('defaultGoals',storedGoals);
       if(!uid||gate.uid!==uid||gate.profileId!==profileId||auth.currentUser?.uid!==uid)
         throw Error('保存中に本人認証が変わりました。本人情報を確認してください');
       // One explicit server read after a user-requested save; no persistent extra listener.
@@ -12604,7 +12618,7 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
         throw Error('保存後の本人profileId照合が成立しません');
       const actual=verified.defaultGoals;
       if(!actual||typeof actual!=='object'||Array.isArray(actual) ||
-        Object.keys(value).some(k=>!(k==='namedGoals'&&Array.isArray(value[k])&&value[k].length===0&&!actual[k])&&JSON.stringify(actual[k])!==JSON.stringify(value[k])))
+        Object.keys(storedGoals).some(k=>!(k==='namedGoals'&&Array.isArray(storedGoals[k])&&storedGoals[k].length===0&&!actual[k])&&JSON.stringify(actual[k])!==JSON.stringify(storedGoals[k])))
         throw Error('保存後の目標値が一致しません。別端末の更新を確認してください');
       return true;
     };
