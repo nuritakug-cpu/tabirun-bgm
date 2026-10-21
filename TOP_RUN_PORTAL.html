@@ -1,3 +1,4 @@
+<!-- 2026-10-21 MY PAGE COMMON GOAL INDEPENDENCE + CALENDAR REGISTERED ENTRY RSVP GUARD. Physical parent: prior TOP_RUN_PORTAL.html. Existing Firebase Auth/UID/profileId/Rules/official EVENT BASE data unchanged. -->
 <!-- 2026-10-21 TIME DROPDOWN ONLY / Master fixed directive: event/past result/goal/declared time MUST use selects, never text input. Local UI correction, no Firebase / Rules change. -->
 <!-- 2026-10-21 PARTICIPANT OPERATIONS: no local-only RSVP success, memberAccess verified once through canonical RTDB, state-specific NOTICE/CHAT/RSVP errors. Existing unified Firebase and official record authority retained. Not field PASS. -->
 <!-- 2026-10-21 MY PAGE / PAST RECORD visual and canonical-read UX: latest FIELD_REPAIR physical parent retained. No new Firebase app/Auth/Rules/RTDB path, no profile merge, no official-result writer or deployment. -->
@@ -6732,6 +6733,14 @@ html #screen-competition-results .crOpenAll{font-size:14px!important;min-height:
     return !!(gateway?.profileId && Object.values(gateway.officialEntries||{}).some(rows=>
       Array.isArray(rows)&&rows.some(r=>r.catalogId===eventId && r.profileId===gateway.profileId)));
   }
+  const portalRegisteredResponseWarning='出走取り消し後に行ってください。やむを得ない理由で出走見送りになった場合は管理者へご連絡ください。';
+  function portalHasOwnRaceEntry(eventId,actorId=flowSelfId()){
+    if(!eventId||!actorId)return false;
+    // Local preview is still an active entry for its owner, even when Firebase is connected.
+    // Official entries use the existing verified UID/profileId projection (no new READ route).
+    return flowState.entries.some(row=>row.eventId===eventId&&row.actorId===actorId) ||
+      (actorId===flowBaseSelfId&&!portalParticipantPreviewMode&&flowOfficiallyRegistered(eventId));
+  }
   function flowAttendanceParticipants(eventId){
     const gateway=window.__TR_PORTAL_SYNC__;
     if(gateway){
@@ -6790,13 +6799,13 @@ html #screen-competition-results .crOpenAll{font-size:14px!important;min-height:
       const pastPractice=portalPracticeIsPast(entry.date);
       action=`<div class="portalRsvpSection${pastPractice?' portalPastLocked':''}"><b class="portalRsvpTitle">練習への参加</b><p class="portalRsvpCurrent">自分の回答：<strong>${esc(answer==='join'?'参加する':answer==='decline'?'参加しない':answer==='maybe'?'未定':'未回答')}</strong></p>${pastPractice?'<p class="portalHelp">開催済みの練習は回答を変更できません。変更が必要な場合は管理者に連絡してください。</p>':''}<div class="portalRsvpOptions" role="group" aria-label="練習への参加回答">${[['join','参加する'],['decline','参加しない'],['maybe','未定']].map(([id,label])=>`<button type="button" data-practice-response="${id}" data-practice-date="${esc(entry.date)}" class="${answer===id?'chosen':''}" aria-pressed="${answer===id?'true':'false'}" ${pastPractice?'disabled aria-disabled="true" title="開催済みの練習"':''}>${label}</button>`).join('')}</div>${rosterMarkup}</div>`;
     }else{
-             const item=eventItems.find(x=>x.id===entry.eventId),locallyRecorded=!!flowEntry(entry.eventId,flowSelfId()),registered=flowOfficiallyRegistered(entry.eventId)||(!window.__TR_PORTAL_SYNC__&&locallyRecorded),rosterMarkup=portalAttendanceRosterMarkup('event',entry.eventId);
+             const item=eventItems.find(x=>x.id===entry.eventId),locallyRecorded=!!flowEntry(entry.eventId,flowSelfId()),registered=portalHasOwnRaceEntry(entry.eventId),rosterMarkup=portalAttendanceRosterMarkup('event',entry.eventId);
        const answer=scheduleEventAnswer(entry.eventId,flowSelfId()),allowRace=item?.raceEntryEnabled!==false,attendanceOpen=portalEventAttendanceOpen(item),attendanceCutoffPassed=flowIsRegistrationClosed(item);
        const state=registered?'出走予定':window.__TR_PORTAL_SYNC__&&locallyRecorded?'端末内試作の出走（共有登録ではありません）':answer==='support'?'参加する（応援・帯同）':answer==='join'?'参加する':answer==='decline'?'参加しない':answer==='maybe'?'未定':'未回答';
        const ended=flowIsEndedEvent(item||{date:entry.date||selectedDateKey});
        const raceLink=allowRace?`<button class="portalRsvpGo" type="button" data-cal-entry="${esc(entry.eventId)}">${registered?'出走内容・取消を確認':ended?'出走内容・記録を確認':'出走する（種目と目標を登録）'} <span>›</span></button>`:'';
        const answers=[['join','参加する'],['decline','参加しない'],['maybe','未定']];
-       action=`<div class="portalRsvpSection${ended?' portalPastLocked':''}"><b class="portalRsvpTitle">大会当日の予定</b><p class="portalRsvpCurrent">現在：<strong>${esc(state)}</strong></p>${registered?'<p class="portalHelp">出走登録があるため大会へ行く予定です。取り消す場合は出走内容から操作してください。</p>':''}${raceLink}${!attendanceOpen&&!registered?'<p class="portalHelp">参加受付前です。詳細確定後に管理者が受付を開始します。</p>':attendanceCutoffPassed&&!ended?'<p class="portalPastLockedNote">受付期限を過ぎたため、参加しないへの変更のみ可能です。</p>':''}${registered?'':`<div class="portalRsvpOptions portalEventResponseOptions" role="group" aria-label="大会当日の予定">${answers.map(([id,label])=>`<button type="button" data-event-response="${id}" data-event-id="${esc(entry.eventId)}" class="${answer===id?'chosen':''}" aria-pressed="${answer===id?'true':'false'}" ${ended||((!attendanceOpen||attendanceCutoffPassed)&&id!=='decline')?'disabled aria-disabled="true" title="受付期間外のため変更できません"':''}>${label}</button>`).join('')}</div><div class="portalEventSupportChoice"><p>「参加する」には応援・帯同も含みます。応援・帯同として回答する場合はこちら。</p><button type="button" data-event-response="support" data-event-id="${esc(entry.eventId)}" class="${answer==='support'?'chosen':''}" aria-pressed="${answer==='support'?'true':'false'}" ${ended||!attendanceOpen||attendanceCutoffPassed?'disabled aria-disabled="true"':''}>応援・帯同として参加する</button></div>`}${rosterMarkup}</div>`;
+       action=`<div class="portalRsvpSection${ended?' portalPastLocked':''}"><b class="portalRsvpTitle">大会当日の予定</b><p class="portalRsvpCurrent">現在：<strong>${esc(state)}</strong></p>${registered?`<p class="portalHelp" role="status">${esc(portalRegisteredResponseWarning)}</p>`:''}${raceLink}${!attendanceOpen&&!registered?'<p class="portalHelp">参加受付前です。詳細確定後に管理者が受付を開始します。</p>':attendanceCutoffPassed&&!ended?'<p class="portalPastLockedNote">受付期限を過ぎたため、参加しないへの変更のみ可能です。</p>':''}${`<div class="portalRsvpOptions portalEventResponseOptions" role="group" aria-label="大会当日の予定">${answers.map(([id,label])=>`<button type="button" data-event-response="${id}" data-event-id="${esc(entry.eventId)}" class="${answer===id?'chosen':''}" aria-pressed="${answer===id?'true':'false'}" ${!registered&&(ended||((!attendanceOpen||attendanceCutoffPassed)&&id!=='decline'))?'disabled aria-disabled="true" title="受付期間外のため変更できません"':''}>${label}</button>`).join('')}</div><div class="portalEventSupportChoice"><p>「参加する」には応援・帯同も含みます。応援・帯同として回答する場合はこちら。</p><button type="button" data-event-response="support" data-event-id="${esc(entry.eventId)}" class="${answer==='support'?'chosen':''}" aria-pressed="${answer==='support'?'true':'false'}" ${!registered&&(ended||!attendanceOpen||attendanceCutoffPassed)?'disabled aria-disabled="true"':''}>応援・帯同として参加する</button></div>`}${rosterMarkup}</div>`;
     }
     return `<article class="portalScheduleEntry ${entry.kind}"><div class="portalScheduleEntryType">${typeLabel}</div>${titleMarkup}<div class="portalScheduleEntryRows">${rows.join('')}</div>${action}</article>`;  }
   function renderScheduleDetailBody(key){
@@ -9120,8 +9129,9 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
   function flowRefreshCommonGoals(){
     const v=flowGoalsFor();portalGoalMetrics.forEach(([metric,label,id])=>flowSetTime(id,v[metric]||''));
     portalNamedGoalsDraft=Array.isArray(v.namedGoals)?v.namedGoals.map(g=>({...g})):[];flowRenderNamedGoals();
-    $('portalCommonGoalsState').textContent='本人の共通目標です。出走登録した種目の目標は登録期間中ロックされます。';
-    for(const [metric,,id] of portalGoalMetrics){const locked=flowLockedGoal(flowSelfId(),metric),field=document.querySelector(`[data-flow-time="${id}"]`);if(field){field.classList.toggle('portalPastLocked',!!locked);field.querySelectorAll('select,button').forEach(el=>el.disabled=!!locked);}}
+    $('portalCommonGoalsState').textContent='本人の共通目標を保存します。出走登録済みの目標・申告タイムは変更されません。';
+    // MY PAGE goals are editable independently from an already-submitted race entry.
+    for(const [metric,,id] of portalGoalMetrics){const field=document.querySelector(`[data-flow-time="${id}"]`);if(field){field.classList.remove('portalPastLocked');field.querySelectorAll('select,button').forEach(el=>el.disabled=false);}}
   }
   function flowCommonGoal(metric,actorId=flowSelfId()){return flowGoalsFor(actorId)[metric]||'';}
   let portalNamedGoalsDraft=[];
@@ -9154,9 +9164,7 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
     flowReadNamedGoals();
     if(portalNamedGoalsDraft.some((g,i)=>!g.name||!g.time||flowTimeIncomplete('portalNamedGoal'+i)||!flowTimeGood(g.time))){$('portalCommonGoalsState').textContent='追加した大会名・タイムを確認してください。';return;}
     goal.namedGoals=portalNamedGoalsDraft.map(g=>({kind:g.kind,name:g.name.trim().slice(0,70),time:g.time}));
-    const locked=portalGoalMetrics.map(([metric])=>flowLockedGoal(flowSelfId(),metric)).filter(Boolean);
-    const changed=locked.find(entry=>goal[entry.metric]!==entry.goal);
-    if(changed){const notice='出走登録済みの'+(portalMetricNames[changed.metric]||changed.metric)+'目標は変更できません。必要な場合は管理者へ連絡してください。';$('portalCommonGoalsState').textContent=notice;$('portalGoalQuickStatus').textContent=notice;flowRefreshCommonGoals();return;}
+    // An existing entry's goal/declaredTime is immutable here, but does not block saving MY PAGE goals.
     const actor=flowSelfId(),gateway=window.__TR_PORTAL_SYNC__;
     if(actor!==flowBaseSelfId||!gateway?.canSavePersonal?.()){
       $('portalCommonGoalsState').textContent='本人Firebaseの受信が未成立です。保存していません。';
@@ -9170,7 +9178,7 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
     finally{button.disabled=false;}
     flowState.defaultGoals[actor]=goal;
     const cached=flowPersist();
-    $('portalCommonGoalsState').textContent='目標タイムをFirebaseへ保存しました。既存の申告タイムは変更していません。'+(cached?'':'端末キャッシュ未保存。');
+    $('portalCommonGoalsState').textContent='目標タイムをFirebaseへ保存しました。出走登録済みの目標・申告タイムは変更していません。'+(cached?'':'端末キャッシュ未保存。');
     $('portalGoalQuickStatus').textContent='本人Firebaseに目標タイムを保存しました。';
     portalGoalRefreshOverview();
     showActionFeedback('目標タイムを保存しました','本人データのFirebase保存応答を確認しました。大会結果は変更していません。');
@@ -10680,7 +10688,9 @@ list.innerHTML=output.map(metric=>{
   }
   function flowGoalToCommon(actorId,metric,goal){
     const old=flowState.defaultGoals[actorId];
-    flowState.defaultGoals[actorId]={...(old&&typeof old==='object'?old:{}),[metric]:goal};
+    const current=old&&typeof old==='object'?old:{};
+    // First entry can offer an initial goal, but never overwrite an existing MY PAGE goal.
+    flowState.defaultGoals[actorId]=current[metric]?current:{...current,[metric]:goal};
     return old;
   }
   function flowEntrySuccess(title,detail){
@@ -11419,6 +11429,10 @@ list.innerHTML=output.map(metric=>{
       const eventId=eventReply.dataset.eventId,answer=eventReply.dataset.eventResponse,actorId=flowSelfId();
       const event=flowEvent(eventId);
       if(!event||event.enabled===false)return;
+      if(portalHasOwnRaceEntry(eventId,actorId)){
+        showActionFeedback('出走登録済みのため変更できません',portalRegisteredResponseWarning);
+        return;
+      }
       if(flowIsEndedEvent(event))return;
       if(answer!=='decline'&&(!portalEventAttendanceOpen(event)||flowIsRegistrationClosed(event))){
         showActionFeedback('参加受付は終了しました','受付期日を過ぎた参加希望はできません。');return;
@@ -11458,20 +11472,7 @@ list.innerHTML=output.map(metric=>{
   // Event public/delete now use the unique server route; no second local persist is triggered.
   // The local personal records flow continues to persist only on personal actions.
 
-  // Align older local registrations (saved before this repair) with their MY PAGE time.
-  // Only upcoming entries count; a completed event must not permanently lock new goals.
-  function flowReconcileRegisteredGoals(){
-    const actor=flowSelfId(),old=flowState.defaultGoals[actor];
-    const initial=old&&typeof old==='object'?old:{};
-    const next={...initial};
-    const registered=flowState.entries.filter(r=>r.actorId===actor&&r.goal&&flowEvent(r.eventId)&&!flowIsEndedEvent(flowEvent(r.eventId)))
-      .sort((a,b)=>(a.updatedAt||0)-(b.updatedAt||0));
-    for(const r of registered)next[r.metric]=r.goal;
-    if(JSON.stringify(initial)===JSON.stringify(next))return;
-    flowState.defaultGoals[actor]=next;
-    if(!flowPersist()){if(old===undefined)delete flowState.defaultGoals[actor];else flowState.defaultGoals[actor]=old;}
-  }
-  flowReconcileRegisteredGoals();
+  // Past trial entry goals never auto-overwrite the independent MY PAGE goals.
   flowUpdateRecords();flowRenderMyRaces();flowRefreshCommonGoals();
   // ---- END PORTAL EVENTS / RECORDS PRECONNECT FLOW ----
   fillCommonPlaceSelects();
