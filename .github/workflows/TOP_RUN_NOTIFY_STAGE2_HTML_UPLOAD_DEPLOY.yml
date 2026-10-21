@@ -1,0 +1,65 @@
+
+name: TOP RUN Notify Stage2 HTML carrier
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Deploy to Cloudflare? OFF = inspect only'
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: top-run-notify-manual
+  cancel-in-progress: false
+
+jobs:
+  stage2:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out existing notification staging branch
+        uses: actions/checkout@v6
+        with:
+          ref: top-run-notify-stage2-20261015
+          persist-credentials: false
+
+      - name: Restore reviewed Worker from HTML carrier and validate existing D1
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=commonjs <<'NODE'
+          const fs=require('node:fs');
+          const crypto=require('node:crypto');
+          const path='cloudflare/top-run-notify/';
+          const html=fs.readFileSync(path+'TOP_RUN_NOTIFY_STAGE2_WORKER_UPLOAD_20261021.html','utf8');
+          const match=html.match(/<script id="tr-worker-source-base64" type="text\/plain">\s*([A-Za-z0-9+/=\s]+?)\s*<\/script>/);
+          if(!match)throw new Error('The reviewed HTML carrier payload is missing');
+          const payload=Buffer.from(match[1].replace(/\s/g,''),'base64');
+          const sha=crypto.createHash('sha256').update(payload).digest('hex');
+          if(sha!=='c14ac81a2aea932b0ae2c8de8b8dbcb68622174cc5f9776bec5e994145a6e591')throw new Error('Worker SHA mismatch. Stop deploy.');
+          const source=payload.toString('utf8');
+          if(!source.includes('stage2Declarative:true')||!source.includes('web_push:8030'))throw new Error('Unexpected Worker source');
+          const cfg=JSON.parse(fs.readFileSync(path+'wrangler.jsonc','utf8'));
+          const db=cfg.d1_databases;
+          const expected=['name','main','compatibility_date','workers_dev','keep_vars','d1_databases'].sort().join(',');
+          if(Object.keys(cfg).sort().join(',')!==expected||cfg.compatibility_date!=='2026-10-15'||cfg.name!=='top-run-notify'||cfg.main!=='./worker.js'||cfg.keep_vars!==true||cfg.workers_dev!==true||!Array.isArray(db)||db.length!==1||db[0].binding!=='DB'||db[0].database_name!=='top-run-notify-db'||db[0].database_id!=='4c6b92f5-460e-4309-8fdf-539651d8b461')throw new Error('Existing Worker/D1 config does not match. Stop deploy.');
+          fs.writeFileSync(path+'worker.js',payload);
+          console.log('Checked HTML carrier, Worker SHA and unchanged D1 binding.');
+          NODE
+          node --input-type=module --check < cloudflare/top-run-notify/worker.js
+
+      - name: Check deployment without writing
+        run: cd cloudflare/top-run-notify && npx --yes wrangler@4 deploy --dry-run
+
+      - name: Deploy only after explicit publish confirmation
+        if: ${{ inputs.publish == true }}
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: cloudflare/top-run-notify
+          command: deploy
