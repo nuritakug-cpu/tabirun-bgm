@@ -1,3 +1,4 @@
+<!-- 2026-10-21 MY PAGE goal save feedback + verified Firebase readback. Existing shared Auth/RTDB only; no Rules or other feature writes. -->
 <!-- 2026-10-21 MY PAGE COMMON GOAL INDEPENDENCE + CALENDAR REGISTERED ENTRY RSVP GUARD. Physical parent: prior TOP_RUN_PORTAL.html. Existing Firebase Auth/UID/profileId/Rules/official EVENT BASE data unchanged. -->
 <!-- 2026-10-21 TIME DROPDOWN ONLY / Master fixed directive: event/past result/goal/declared time MUST use selects, never text input. Local UI correction, no Firebase / Rules change. -->
 <!-- 2026-10-21 PARTICIPANT OPERATIONS: no local-only RSVP success, memberAccess verified once through canonical RTDB, state-specific NOTICE/CHAT/RSVP errors. Existing unified Firebase and official record authority retained. Not field PASS. -->
@@ -4858,6 +4859,43 @@ html #screen-competition-results .crOpenAll{font-size:14px!important;min-height:
 #screen-flow-manager .portalPastBatchRow .flowTimeField.goal-allow-hours .flowTimeControls {grid-template-columns:repeat(4,minmax(0,1fr));}
 #screen-flow-manager .portalPastBatchRow .flowTimeField.goal-allow-hours .flowTimePart:first-child {display:flex!important;}
 </style>
+
+<style id="portal-goal-save-visible-state-20261021">
+/* One scoped status presentation shared by all personal color themes; never changes Firebase/auth. */
+#screen-goal-tools #portalCommonGoalsState{
+ display:block;visibility:visible;opacity:1;box-sizing:border-box;
+ margin:12px 0 8px;padding:12px 13px;min-height:56px;
+ border:1px solid var(--portal-theme-stroke,#a8a69c);
+ border-left:4px solid var(--portal-theme-accent,#937b28);
+ border-radius:11px;
+ background:var(--portal-theme-surface-2,#f1f0e9);
+ color:var(--portal-theme-text,#25302e);
+ font-size:15px;font-weight:800;line-height:1.55;
+ overflow-wrap:anywhere;white-space:pre-wrap;
+}
+#screen-goal-tools #portalCommonGoalsState[data-state="success"]{
+ border-left-color:var(--portal-theme-accent,#437967);
+}
+#screen-goal-tools #portalCommonGoalsState[data-state="error"]{
+ border-left-width:5px;font-weight:900;
+}
+#screen-goal-tools #portalSaveCommonGoals:disabled{opacity:.7;cursor:progress}
+#screen-goal-tools #portalGoalViewSetting>.portalToolNote{
+ font-size:13px;line-height:1.6;
+}
+
+/* Matte Blaze: native selected values must be legible on the dark input surfaces. */
+html[data-portal-personal-color="matte"] #screen-goal-tools #portalGoalMetricPicker,
+html[data-portal-personal-color="matte"] #screen-goal-tools #portalGoalViewSetting .flowTimeControls select{
+ background:#282326!important;color:#fff5e9!important;
+ -webkit-text-fill-color:#fff5e9!important;
+ border-color:#b87954!important;opacity:1!important;
+}
+html[data-portal-personal-color="matte"] #screen-goal-tools #portalGoalMetricPicker option,
+html[data-portal-personal-color="matte"] #screen-goal-tools #portalGoalViewSetting .flowTimeControls select option{
+ background:#282326!important;color:#fff5e9!important;
+}
+</style>
 </head>
 <body>
 <div id="portalFirstPaintAuthOverlay" role="status" aria-live="polite" aria-label="TOP RUN PORTAL 認証中">
@@ -5244,8 +5282,8 @@ html #screen-competition-results .crOpenAll{font-size:14px!important;min-height:
               <p id="portalGoalHandoffState" class="portalToolNote" aria-live="polite"></p>
               <div id="portalCommonGoalForm" class="portalGoalForm"></div>
               <button type="button" id="portalSaveCommonGoals" class="portalGoalSave">目標タイムを保存</button>
-              <p id="portalCommonGoalsState" class="portalFlowStatus" aria-live="polite"></p>
-              <p class="portalToolNote">この候補の目標保存は端末内のみです。大会Firebaseには同期しません。</p>
+              <p id="portalCommonGoalsState" class="portalFlowStatus" role="status" aria-live="polite" data-state="info">目標タイムを選択後、「保存」を押してください。Firebaseへの保存結果をここに表示します。</p>
+              <p class="portalToolNote">MY PAGEの共通目標は本人のFirebaseデータに保存します。出走登録済み大会の目標・申告タイムは変更しません。</p>
               <p class="portalGoalSafeNote">※すでに目標設定済みの大会（イベント）の目標タイムは変更されません。変更する場合は各イベントで再入力してください。<br>※申告タイム（大会エントリー時に目標としたタイム）は変更されません。</p>
             </section>
             <section class="portalGoalView portalToolCard portalGoalOverviewCard" id="portalGoalViewOverview" role="tabpanel" aria-labelledby="portalGoalTabOverview" hidden>
@@ -9157,31 +9195,59 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
     return goals[metric]||'';
   }
 
+  function portalGoalSaveFeedback(message,state='error'){
+    const status=$('portalCommonGoalsState');
+    status.textContent=message;
+    status.dataset.state=state;
+    const quick=$('portalGoalQuickStatus');
+    quick.textContent=message;
+    if(state==='error')showActionFeedback('目標を保存できません',message.slice(0,180));
+    else if(state==='success')showActionFeedback('目標タイムを保存しました','本人Firebaseの保存・再読込照合が成立しました。');
+  }
   $('portalSaveCommonGoals').addEventListener('click',async()=>{
-    $('portalGoalQuickStatus').textContent='';
-    if(portalGoalMetrics.some(([,label,id])=>flowTimeIncomplete(id)||!flowTimeGood($(id).value))){$('portalCommonGoalsState').textContent='分・秒を正しく選択してください。';$('portalGoalQuickStatus').textContent=$('portalCommonGoalsState').textContent;return;}
-    const goal={};portalGoalMetrics.forEach(([metric,label,id])=>goal[metric]=$(id).value.trim());
-    flowReadNamedGoals();
-    if(portalNamedGoalsDraft.some((g,i)=>!g.name||!g.time||flowTimeIncomplete('portalNamedGoal'+i)||!flowTimeGood(g.time))){$('portalCommonGoalsState').textContent='追加した大会名・タイムを確認してください。';return;}
-    goal.namedGoals=portalNamedGoalsDraft.map(g=>({kind:g.kind,name:g.name.trim().slice(0,70),time:g.time}));
-    // An existing entry's goal/declaredTime is immutable here, but does not block saving MY PAGE goals.
-    const actor=flowSelfId(),gateway=window.__TR_PORTAL_SYNC__;
-    if(actor!==flowBaseSelfId||!gateway?.canSavePersonal?.()){
-      $('portalCommonGoalsState').textContent='本人Firebaseの受信が未成立です。保存していません。';
-      $('portalGoalQuickStatus').textContent=$('portalCommonGoalsState').textContent;return;
+    const selectedMetric=$('portalGoalMetricPicker').value;
+    const metric=portalGoalMetrics.find(([code])=>code===selectedMetric);
+    if(metric&&flowTimeIncomplete(metric[2])){
+      portalGoalSaveFeedback('未保存：'+metric[1]+'の分・秒を両方選択してください。');return;
     }
-    // Do not mutate event entries or declared times when saving general goals.
+    const invalid=portalGoalMetrics.find(([,label,id])=>flowTimeIncomplete(id)||!flowTimeGood($(id).value));
+    if(invalid){
+      portalGoalSaveFeedback('未保存：'+invalid[1]+'のタイム選択を確認してください。');return;
+    }
+    const goal={};portalGoalMetrics.forEach(([code,label,id])=>goal[code]=$(id).value.trim());
+    flowReadNamedGoals();
+    if(portalNamedGoalsDraft.some((g,i)=>!g.name||!g.time||flowTimeIncomplete('portalNamedGoal'+i)||!flowTimeGood(g.time))){
+      portalGoalSaveFeedback('未保存：追加した大会名とタイムを確認してください。');return;
+    }
+    goal.namedGoals=portalNamedGoalsDraft.map(g=>({kind:g.kind,name:g.name.trim().slice(0,70),time:g.time}));
+    const actor=flowSelfId(),gateway=window.__TR_PORTAL_SYNC__;
+    if(actor!==flowBaseSelfId){
+      portalGoalSaveFeedback('未保存：他の参加者の確認画面では共通目標を保存できません。本人のMY PAGEから操作してください。');return;
+    }
+    if(!gateway?.canSavePersonal?.()){
+      const detail=String(gateway?.errors?.personal?.code||gateway?.errors?.personal?.message||gateway?.errors?.profile?.code||'').slice(0,100);
+      portalGoalSaveFeedback(!gateway?.uid||!gateway?.profileId?
+        '未保存：本人認証・profileIdが確認できません。登録済み本人情報を維持したまま、ログイン状態をご確認ください。':
+        gateway?.loaded?.personal!==true?
+        '未保存：本人の目標情報をFirebaseから受信できていません。'+(detail?'（'+detail+'）':''):
+        '未保存：Firebaseの本人確認が一致していません。別人として登録し直さず、管理者へ連絡してください。');
+      return;
+    }
     const button=$('portalSaveCommonGoals');button.disabled=true;
-    $('portalCommonGoalsState').textContent='本人の目標をFirebaseへ保存しています…';
-    try{await gateway.saveOwnGoals(goal);}
-    catch(error){$('portalCommonGoalsState').textContent='保存できません：'+String(error?.message||error).slice(0,120);$('portalGoalQuickStatus').textContent=$('portalCommonGoalsState').textContent;return;}
-    finally{button.disabled=false;}
+    portalGoalSaveFeedback('保存中：本人の目標をFirebaseへ送信しています…','info');
+    try{
+      // Existing unified Firebase Auth/RTDB and canonical portalSelf/defaultGoals writer only.
+      // The save method confirms the committed server value; no local-only success fallback.
+      await gateway.saveOwnGoals(goal);
+    }catch(error){
+      const code=String(error?.code||'').slice(0,70),message=String(error?.message||error).slice(0,175);
+      portalGoalSaveFeedback('未保存：Firebaseの保存確認が成立しませんでした。'+(code?' ['+code+']':'')+' '+message);
+      return;
+    }finally{button.disabled=false;}
     flowState.defaultGoals[actor]=goal;
     const cached=flowPersist();
-    $('portalCommonGoalsState').textContent='目標タイムをFirebaseへ保存しました。出走登録済みの目標・申告タイムは変更していません。'+(cached?'':'端末キャッシュ未保存。');
-    $('portalGoalQuickStatus').textContent='本人Firebaseに目標タイムを保存しました。';
+    portalGoalSaveFeedback('保存完了：本人Firebaseへ保存し、保存後の値を確認しました。'+(cached?'':'（端末キャッシュは未保存）'),'success');
     portalGoalRefreshOverview();
-    showActionFeedback('目標タイムを保存しました','本人データのFirebase保存応答を確認しました。大会結果は変更していません。');
     flowRefreshAll();
     if(currentScreen()?.id==='screen-competition-results')renderPortalPersonalRecord();
   });
@@ -12527,7 +12593,21 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
       gate.displayName=name;
     };
     gate.saveOwnBasicProfile=value=>gate.savePersonalField('basicProfile',value);
-    gate.saveOwnGoals=value=>gate.savePersonalField('defaultGoals',value);
+    gate.saveOwnGoals=async value=>{
+      const uid=gate.uid,profileId=gate.profileId;
+      await gate.savePersonalField('defaultGoals',value);
+      if(!uid||gate.uid!==uid||gate.profileId!==profileId||auth.currentUser?.uid!==uid)
+        throw Error('保存中に本人認証が変わりました。本人情報を確認してください');
+      // One explicit server read after a user-requested save; no persistent extra listener.
+      const verified=(await dbMod.get(dbMod.ref(db,'profiles/'+uid+'/portalSelf'))).val();
+      if(!verified||verified.profileId!==profileId)
+        throw Error('保存後の本人profileId照合が成立しません');
+      const actual=verified.defaultGoals;
+      if(!actual||typeof actual!=='object'||Array.isArray(actual) ||
+        Object.keys(value).some(k=>!(k==='namedGoals'&&Array.isArray(value[k])&&value[k].length===0&&!actual[k])&&JSON.stringify(actual[k])!==JSON.stringify(value[k])))
+        throw Error('保存後の目標値が一致しません。別端末の更新を確認してください');
+      return true;
+    };
     gate.saveOwnColor=value=>gate.savePersonalField('personalColor',value);
     // Past-event results: ONE canonical portalCommon/topRun/pastRecords/<subjectUid>/<recordId>
     // route; self READ only, staff WRITE only. No Firebase app/Auth or listeners added.
