@@ -6768,6 +6768,7 @@ html #screen-goal-tools :is(#portalGoalViewSetting,#portalGoalViewGuide,#portalG
   $('homeNextEventCard').addEventListener('click',()=>{
     const item=nextUpcomingEvent();
     if(!item || $('homeNextEventCard').disabled)return;
+    if(portalConnectedBase(item)){portalOpenLinkedBase(item);return;}
     if(item.previewOnly){if(item.raceEntryEnabled===false)openScheduleDetail(portalEventDates(item).find(d=>d>=todayDateKey())||portalEventFirstDate(item));else flowOpenEvent(item.id);return;}
     if(item.url){ const canonical=window.__TR_COMMON_PILOT_UI__?.officialTargetFor?.(item);const safe=canonical?portalOfficialSafeOpenUrl(canonical):item.url;if(!safe){openModal('大会接続','開発者の本人認証を確認できないため、大会bindingを保護して移動を停止しました。');return;}portalPrepareP76VerifiedHandoff(safe);window.location.href=safe; return; }
     openModal(item.relay?'RELAY EVENT BASE':'EVENT BASE',item.relay?'駅伝EVENT BASE':'リンク未接続');
@@ -6978,8 +6979,7 @@ html #screen-goal-tools :is(#portalGoalViewSetting,#portalGoalViewGuide,#portalG
        // A PORTAL event is the calendar authority. When its official service URL
        // is saved, enter that service from this very date detail; do not make
        // users look for another screen or confuse access with race entry status.
-       const hasConnectedBase=!!item&&!item.previewOnly&&
-         (item.type==='EVENT BASE'||item.type==='RELAY EVENT BASE')&&!!String(item.url||'').trim();
+       const hasConnectedBase=portalConnectedBase(item);
        const baseOpen=hasConnectedBase?`<button class="portalRsvpGo portalScheduleBaseOpen" type="button" data-cal-open-base="${esc(entry.eventId)}">${item.type==='RELAY EVENT BASE'?'駅伝BASEを開く':'EVENT BASEを開く'} <span>›</span></button>`:'';
        const raceLink=!hasConnectedBase&&allowRace?`<button class="portalRsvpGo" type="button" data-cal-entry="${esc(entry.eventId)}">${registered?'出走内容・取消を確認':ended?'出走内容・記録を確認':'出走する（種目と目標を登録）'} <span>›</span></button>`:'';
        const answers=[['join','参加する'],['decline','参加しない'],['maybe','未定']];
@@ -7341,7 +7341,7 @@ html #screen-goal-tools :is(#portalGoalViewSetting,#portalGoalViewGuide,#portalG
   function eventCardMarkup(item){
     const day=item.date ? item.date.slice(8,10) : '--';
     const mon=item.date ? monthNames[Number(item.date.slice(5,7))-1].slice(0,3) : 'DEV';
-    const state=isPastEvent(item)?'終了':item.previewOnly?'試用':item.relay?'準備中':item.state==='ACCESS OPEN'?'公開中':(item.state||'イベント');
+    const state=isPastEvent(item)?'終了':portalConnectedBase(item)?'接続済み':item.previewOnly?'試用':item.relay?'準備中':item.state==='ACCESS OPEN'?'公開中':(item.state||'イベント');
     const relayClass=item.relay ? ' relay' : '';
     const noLinkLabel=item.relay?'駅伝EVENT BASEを開く':(item.type==='EVENT BASE'?'EVENT BASEを開く':'詳細を開く');
     const actor=flowSelfId(),registered=!!flowEntry(item.id,actor);
@@ -7355,12 +7355,13 @@ html #screen-goal-tools :is(#portalGoalViewSetting,#portalGoalViewGuide,#portalG
     const rsvpOpen=item.previewOnly?`<button type="button" class="portalEventRsvpOpen" data-event-rsvp-date="${esc(portalEventDates(item).find(d=>d>=todayDateKey())||portalEventFirstDate(item))}">大会当日の予定を選ぶ ›</button>`:'';
     const protectedOfficialTarget=window.__TR_COMMON_PILOT_UI__?.officialTargetFor?.(item);
     const protectedEventHref=protectedOfficialTarget?portalOfficialSafeOpenUrl(protectedOfficialTarget):(item.url||'');
-    const action=item.previewOnly ? `<button class="openBtn" type="button" ${item.raceEntryEnabled===false?'data-event-rsvp-date="'+esc(portalEventDates(item).find(d=>d>=todayDateKey())||portalEventFirstDate(item))+'"':'data-flow-event="'+esc(item.id)+'"'}><span>${item.raceEntryEnabled===false||isEntryClosed?'詳細を見る':'詳細・出走登録'}</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : item.url
+    const action=portalConnectedBase(item) ? `<button type="button" class="openBtn" data-event-open-base="${esc(item.id)}"><span>${item.type==='RELAY EVENT BASE'?'駅伝BASEを開く':'EVENT BASEを開く'}</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : item.previewOnly ? `<button class="openBtn" type="button" ${item.raceEntryEnabled===false?'data-event-rsvp-date="'+esc(portalEventDates(item).find(d=>d>=todayDateKey())||portalEventFirstDate(item))+'"':'data-flow-event="'+esc(item.id)+'"'}><span>${item.raceEntryEnabled===false||isEntryClosed?'詳細を見る':'詳細・出走登録'}</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : item.url
       ? protectedEventHref?`<a class="openBtn" href="${esc(protectedEventHref)}"><span>${item.relay?'駅伝EVENT BASEを開く':'EVENT BASEを開く'}</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></a>`:`<button type="button" class="openBtn" disabled title="開発者本人の接続を確認してください">大会への接続を保護中</button>`
       : `<button class="openBtn" type="button" data-ui-event-coming="${esc(item.id)}"><span>${esc(noLinkLabel)}</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>`;
     return `<article class="event${relayClass}${isPastEvent(item)?' portalPastEvent':''}"><div class="eventTop"><div class="eventDate"><strong>${esc(day)}</strong><span>${esc(mon)}</span></div><div class="eventBody"><div class="eventState"><i></i>${esc(state)}</div><h3>${esc(item.title)}</h3><div class="eventType">${esc(item.type==='OTHER'?'通常イベント':item.type==='RELAY EVENT BASE'?'駅伝 EVENT BASE':item.type)}</div><span class="portalEventCardMetrics">${esc(portalEventDateLabel(item))}${item.raceEntryEnabled===false?' ／ 開催種目：'+esc(eventRaceMetricNames(item).join(' ／ ')||'未定'):' ／ '+esc(eventRaceMetricsText(item))}</span><span class="portalEventParticipation ${responseClass}"><span class="portalAttendancePiece">大会の予定：<b>${esc(attendanceStatus||participation)}</b></span>${item.previewOnly?`<span class="portalAttendancePiece">出走：<b>${esc(raceStatus)}</b></span>`:''}</span></div></div>${rsvpOpen}${action}</article>`;
   }
   function bindEventCardActions(box){
+    box.querySelectorAll('[data-event-open-base]').forEach(b=>b.addEventListener('click',()=>portalOpenLinkedBase(flowEvent(b.dataset.eventOpenBase))));
     box.querySelectorAll('[data-ui-event-coming]').forEach(b=>b.addEventListener('click',()=>{const event=eventItems.find(x=>x.id===b.dataset.uiEventComing);openModal(event?.relay?'RELAY EVENT BASE':'EVENT BASE',event?.relay?'駅伝EVENT BASE':'準備中');}));
     box.querySelectorAll('[data-event-rsvp-date]').forEach(b=>b.addEventListener('click',()=>openScheduleDetail(b.dataset.eventRsvpDate)));
   }
@@ -8489,17 +8490,33 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
       e.target.value='';
       return;
     }
+    // Reduce future HOME image transfers before the SAME canonical Firebase save.
+    // Existing stored images remain untouched; no cache/alternate image authority.
     const reader=new FileReader();
     reader.onload=()=>{
-      developerHomeImagePending=String(reader.result||'');
-      developerHomeImageNaturalPending={w:0,h:0};
-      developerHomeImageApplied=false;
-      if(preview){preview.style.backgroundImage=`url("${developerHomeImagePending}")`;preview.classList.add('hasImage');}
+      const source=String(reader.result||'');
       const probe=new Image();
-      probe.onload=()=>{developerHomeImageNaturalPending={w:probe.naturalWidth||0,h:probe.naturalHeight||0};renderDeveloperHomeImagePreview();};
-      probe.src=developerHomeImagePending;
-      renderDeveloperHomeImagePreview();
-      $('developerHomeImageState').textContent=`選択中：${file.name}。透過率・位置・ズーム・写真範囲・フェードを調整してHOMEへ反映できます。`;
+      probe.onload=()=>{
+        const w=probe.naturalWidth||0,h=probe.naturalHeight||0;
+        if(!w||!h){$('developerHomeImageState').textContent='画像サイズを確認できませんでした。';return;}
+        const scale=Math.min(1,1600/Math.max(w,h));
+        const targetW=Math.max(1,Math.round(w*scale)),targetH=Math.max(1,Math.round(h*scale));
+        let optimized='';
+        try{
+          const canvas=document.createElement('canvas');canvas.width=targetW;canvas.height=targetH;
+          const ctx=canvas.getContext('2d',{alpha:false});ctx.fillStyle='#ffffff';ctx.fillRect(0,0,targetW,targetH);ctx.drawImage(probe,0,0,targetW,targetH);
+          optimized=canvas.toDataURL('image/jpeg',.78);
+        }catch(_){optimized='';}
+        developerHomeImagePending=optimized&&optimized.length<source.length?optimized:source;
+        developerHomeImageNaturalPending=developerHomeImagePending===optimized?{w:targetW,h:targetH}:{w,h};
+        developerHomeImageApplied=false;
+        if(preview){preview.style.backgroundImage=`url("${developerHomeImagePending}")`;preview.classList.add('hasImage');}
+        renderDeveloperHomeImagePreview();
+        const bytes=Math.round((developerHomeImagePending.length-developerHomeImagePending.indexOf(',')-1)*.75);
+        $('developerHomeImageState').textContent=`選択中：${file.name}（転送データ約${Math.round(bytes/1024)}KB）。調整してHOMEへ反映できます。`;
+      };
+      probe.onerror=()=>{$('developerHomeImageState').textContent='画像を読み込めませんでした。';};
+      probe.src=source;
     };
     reader.onerror=()=>{$('developerHomeImageState').textContent='画像を読み込めませんでした。';};
     reader.readAsDataURL(file);
@@ -10337,10 +10354,30 @@ list.innerHTML=output.map(metric=>{
         // Never open a participant-only link under a developer UID, even in preview.
         if(portalParticipantPreviewMode||!canManage||gate?.role!=='developer'||
            !gate.roleVerified||verifiedPortalUid!==gate.uid)return '';
-        u.searchParams.set('ownerKey','TOP_RUN_PORTAL_DEVELOPER_ENTRY');
+        // P76 validates PORTAL developer status through the existing Firebase
+        // role record and ownerProof; do not force its old code-entry route.
+        if(u.pathname==='/tabirun-bgm/EVENT_BASE_EKIDEN_NEXT_P76_PORTAL_SAME_UID_ENTRY.html' &&
+           u.searchParams.get('event')==='eventbase_ekiden_next_2026_38fa5537b6' &&
+           u.searchParams.get('portal')==='1')u.searchParams.delete('ownerKey');
+        else u.searchParams.set('ownerKey','TOP_RUN_PORTAL_DEVELOPER_ENTRY');
       }
       return u.href;
     }catch(_){return '';}
+  }
+  // Match the SAME unified PORTAL Auth/profile admission for all three roles.
+  // Staff privileges must be verified; approved participants never inherit a staff role.
+  function portalCanOpenBaseAsSelf(){
+    const gate=window.__TR_PORTAL_SYNC__;
+    if(!gate||!gate.uid||!gate.profileId||gate.roleVerified!==true||
+       gate.hasOperationalAccess?.()!==true||portalParticipantPreviewMode)return false;
+    if(gate.role==='participant')return gate.memberApproved===true;
+    return ['developer','admin'].includes(gate.role)&&canManage===true&&verifiedPortalUid===gate.uid;
+  }
+  function portalConnectedBase(item){
+    if(!item||!['EVENT BASE','RELAY EVENT BASE'].includes(item.type))return false;
+    const publicLink=portalOfficialPublicLink(item.url||'');
+    return !!publicLink&&publicLink.ekidenNext===(item.type==='RELAY EVENT BASE')&&
+      !!flowOfficialDestination(item);
   }
   // A short-lived navigation hint only; never Auth authority or a local canonical profile.
   // The destination verifies both the Firebase UID and canonical profileId before admission.
@@ -10351,8 +10388,13 @@ list.innerHTML=output.map(metric=>{
          next.pathname!=='/tabirun-bgm/EVENT_BASE_EKIDEN_NEXT_P76_PORTAL_SAME_UID_ENTRY.html'||
          next.searchParams.get('event')!=='eventbase_ekiden_next_2026_38fa5537b6')return false;
       const active=window.__TR_PORTAL_SYNC__;
-      if(!active||!active.roleVerified||!active.uid||!active.profileId||
-         active.uid!==verifiedPortalUid||portalParticipantPreviewMode)return false;
+      if(!portalCanOpenBaseAsSelf()||!active||!active.uid||!active.profileId)return false;
+      const eligible=eventItems.filter(e=>e.enabled!==false&&e.type==='RELAY EVENT BASE' &&
+        portalOfficialPublicLink(e.url||'')?.id==='eventbase_ekiden_next_2026_38fa5537b6');
+      if(eligible.length===1 && /^event-[A-Za-z0-9_-]{1,80}$/.test(eligible[0].id||'')){
+        sessionStorage.setItem(portalCalendarReturnKey20261022,
+          JSON.stringify({eventId:eligible[0].id,t:Date.now()}));
+      }
       sessionStorage.setItem('toprun:eventbase:p76:verified-handoff-v1',JSON.stringify({uid:active.uid,profileId:active.profileId,eventId:'eventbase_ekiden_next_2026_38fa5537b6',issuedAt:Date.now()}));
       return true;
     }catch(_error){return false;}
@@ -10386,8 +10428,7 @@ list.innerHTML=output.map(metric=>{
       showActionFeedback('大会を開けません','PORTALに保存した大会の接続先を確認してください。');return false;
     }
     const gate=window.__TR_PORTAL_SYNC__;
-    if(!gate?.uid||!gate.roleVerified||!gate.profileId||
-       verifiedPortalUid!==gate.uid||portalParticipantPreviewMode){
+    if(!portalCanOpenBaseAsSelf()){
       showActionFeedback('本人確認が必要です','PORTALの本人認証を確認してから大会を開いてください。');return false;
     }
     const target=flowOfficialDestination(item);
@@ -14012,6 +14053,9 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
           ui?.applyPersonal(gate.personal);statusResources();
         },error=>{if(seq===generation)fail('personal',error);});
         unsubs.push(ownProfileSub);
+        // Start the existing HOME image read as soon as the verified person gate is ready,
+        // before slower optional past-event reads. This is a MOVE, not a new listener.
+        bind('homeImage','homeImage',value=>ui?.applyHomeImage(value));
         // Read-only first-load of this exact authenticated person's staff-entered history.
         // A failed permission never changes local preview or another UID's records.
         void gate.loadPastRecordsFor(uid,gate.profileId).catch(error=>{
@@ -14022,7 +14066,6 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
         bind('resources','resources',items=>ui?.applyResources(items));
         // No root READ for binary assets. Per-file READ on click only.
         // PDF ACL is checked by the real per-file upload/read. No fake __probe__ READ gate.
-        bind('homeImage','homeImage',value=>ui?.applyHomeImage(value));
         const pushVerifiedRoster=()=>{
           if(gate.role!=='developer'||!gate.loaded.practiceResponses||!gate.loaded.eventResponses)return;
           const found=new Map();
