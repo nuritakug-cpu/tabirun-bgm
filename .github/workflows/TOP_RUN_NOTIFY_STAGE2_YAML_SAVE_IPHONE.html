@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TOP RUN 通知 - Actions設定ファイル保存</title>
+<style>body{font-family:system-ui,-apple-system,sans-serif;max-width:760px;margin:auto;padding:24px 16px;background:#f7f5ec;color:#24312d;line-height:1.6}h1{font-size:1.4rem}button{display:block;width:100%;padding:16px;margin:16px 0;border:0;border-radius:12px;background:#243b33;color:white;font-size:1.1rem;font-weight:700}textarea{box-sizing:border-box;width:100%;height:240px;font-family:monospace;font-size:12px;line-height:1.5;border:1px solid #bcc5c2;border-radius:8px;padding:10px}p{margin:14px 0}.note{font-size:.9rem;color:#56645f}code{word-break:break-all}</style>
+</head><body><h1>② GitHub Actions 設定ファイル</h1>
+<p>iPhoneで <code>.yml</code> ファイルを直接保存できない場合の補助ページです。このHTML自体はGitHubへアップロードしないでください。</p>
+<button type="button" id="save">② YAMLファイルを保存する</button>
+<button type="button" id="copy">YAMLの内容をコピーする</button>
+<p id="status" role="status"></p><p class="note">既存のGitHub Actionsを更新するための設定ファイルです。Cloudflare・Firebaseへは、このページから接続しません。</p>
+<details><summary>内容を表示（バックアップ用）</summary><textarea id="source" readonly spellcheck="false">name: TOP RUN Notify Stage2 HTML carrier
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: &#x27;Deploy to Cloudflare? OFF = inspect only&#x27;
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: top-run-notify-manual
+  cancel-in-progress: false
+
+jobs:
+  stage2:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out existing notification staging branch
+        uses: actions/checkout@v6
+        with:
+          ref: top-run-notify-stage2-20261015
+          persist-credentials: false
+
+      - name: Restore reviewed Worker from HTML carrier and validate existing D1
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=commonjs &lt;&lt;&#x27;NODE&#x27;
+          const fs=require(&#x27;node:fs&#x27;);
+          const crypto=require(&#x27;node:crypto&#x27;);
+          const path=&#x27;cloudflare/top-run-notify/&#x27;;
+          const html=fs.readFileSync(path+&#x27;TOP_RUN_NOTIFY_STAGE2_WORKER_UPLOAD_20261021.html&#x27;,&#x27;utf8&#x27;);
+          const match=html.match(/&lt;script id=&quot;tr-worker-source-base64&quot; type=&quot;text\/plain&quot;&gt;\s*([A-Za-z0-9+/=\s]+?)\s*&lt;\/script&gt;/);
+          if(!match)throw new Error(&#x27;The reviewed HTML carrier payload is missing&#x27;);
+          const payload=Buffer.from(match[1].replace(/\s/g,&#x27;&#x27;),&#x27;base64&#x27;);
+          const sha=crypto.createHash(&#x27;sha256&#x27;).update(payload).digest(&#x27;hex&#x27;);
+          if(sha!==&#x27;5ee7720f554c6bab1915b88384ba94d2c9f1f8d148c05a16c153bbbf749adc80&#x27;)throw new Error(&#x27;Worker SHA mismatch. Stop deploy.&#x27;);
+          const source=payload.toString(&#x27;utf8&#x27;);
+          if(!source.includes(&#x27;stage2Declarative:true&#x27;)||!source.includes(&#x27;web_push:8030&#x27;))throw new Error(&#x27;Unexpected Worker source&#x27;);
+          const cfg=JSON.parse(fs.readFileSync(path+&#x27;wrangler.jsonc&#x27;,&#x27;utf8&#x27;));
+          const db=cfg.d1_databases;
+          const expected=[&#x27;name&#x27;,&#x27;main&#x27;,&#x27;compatibility_date&#x27;,&#x27;workers_dev&#x27;,&#x27;keep_vars&#x27;,&#x27;d1_databases&#x27;].sort().join(&#x27;,&#x27;);
+          if(Object.keys(cfg).sort().join(&#x27;,&#x27;)!==expected||cfg.compatibility_date!==&#x27;2026-10-15&#x27;||cfg.name!==&#x27;top-run-notify&#x27;||cfg.main!==&#x27;./worker.js&#x27;||cfg.keep_vars!==true||cfg.workers_dev!==true||!Array.isArray(db)||db.length!==1||db[0].binding!==&#x27;DB&#x27;||db[0].database_name!==&#x27;top-run-notify-db&#x27;||db[0].database_id!==&#x27;4c6b92f5-460e-4309-8fdf-539651d8b461&#x27;)throw new Error(&#x27;Existing Worker/D1 config does not match. Stop deploy.&#x27;);
+          fs.writeFileSync(path+&#x27;worker.js&#x27;,payload);
+          console.log(&#x27;Checked HTML carrier, Worker SHA and unchanged D1 binding.&#x27;);
+          NODE
+          node --input-type=module --check &lt; cloudflare/top-run-notify/worker.js
+
+      - name: Check deployment without writing
+        run: cd cloudflare/top-run-notify &amp;&amp; npx --yes wrangler@4 deploy --dry-run
+
+      - name: Deploy only after explicit publish confirmation
+        if: ${{ inputs.publish == true }}
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: cloudflare/top-run-notify
+          command: deploy
+</textarea></details>
+<script>
+const name="TOP_RUN_NOTIFY_STAGE2_HTML_UPLOAD_DEPLOY.yml";
+const content="name: TOP RUN Notify Stage2 HTML carrier\n\non:\n  workflow_dispatch:\n    inputs:\n      publish:\n        description: 'Deploy to Cloudflare? OFF = inspect only'\n        required: true\n        type: boolean\n        default: false\n\npermissions:\n  contents: read\n\nconcurrency:\n  group: top-run-notify-manual\n  cancel-in-progress: false\n\njobs:\n  stage2:\n    runs-on: ubuntu-latest\n    steps:\n      - name: Check out existing notification staging branch\n        uses: actions/checkout@v6\n        with:\n          ref: top-run-notify-stage2-20261015\n          persist-credentials: false\n\n      - name: Restore reviewed Worker from HTML carrier and validate existing D1\n        shell: bash\n        run: |\n          set -euo pipefail\n          node --input-type=commonjs <<'NODE'\n          const fs=require('node:fs');\n          const crypto=require('node:crypto');\n          const path='cloudflare/top-run-notify/';\n          const html=fs.readFileSync(path+'TOP_RUN_NOTIFY_STAGE2_WORKER_UPLOAD_20261021.html','utf8');\n          const match=html.match(/<script id=\"tr-worker-source-base64\" type=\"text\\/plain\">\\s*([A-Za-z0-9+/=\\s]+?)\\s*<\\/script>/);\n          if(!match)throw new Error('The reviewed HTML carrier payload is missing');\n          const payload=Buffer.from(match[1].replace(/\\s/g,''),'base64');\n          const sha=crypto.createHash('sha256').update(payload).digest('hex');\n          if(sha!=='5ee7720f554c6bab1915b88384ba94d2c9f1f8d148c05a16c153bbbf749adc80')throw new Error('Worker SHA mismatch. Stop deploy.');\n          const source=payload.toString('utf8');\n          if(!source.includes('stage2Declarative:true')||!source.includes('web_push:8030'))throw new Error('Unexpected Worker source');\n          const cfg=JSON.parse(fs.readFileSync(path+'wrangler.jsonc','utf8'));\n          const db=cfg.d1_databases;\n          const expected=['name','main','compatibility_date','workers_dev','keep_vars','d1_databases'].sort().join(',');\n          if(Object.keys(cfg).sort().join(',')!==expected||cfg.compatibility_date!=='2026-10-15'||cfg.name!=='top-run-notify'||cfg.main!=='./worker.js'||cfg.keep_vars!==true||cfg.workers_dev!==true||!Array.isArray(db)||db.length!==1||db[0].binding!=='DB'||db[0].database_name!=='top-run-notify-db'||db[0].database_id!=='4c6b92f5-460e-4309-8fdf-539651d8b461')throw new Error('Existing Worker/D1 config does not match. Stop deploy.');\n          fs.writeFileSync(path+'worker.js',payload);\n          console.log('Checked HTML carrier, Worker SHA and unchanged D1 binding.');\n          NODE\n          node --input-type=module --check < cloudflare/top-run-notify/worker.js\n\n      - name: Check deployment without writing\n        run: cd cloudflare/top-run-notify && npx --yes wrangler@4 deploy --dry-run\n\n      - name: Deploy only after explicit publish confirmation\n        if: ${{ inputs.publish == true }}\n        uses: cloudflare/wrangler-action@v4\n        with:\n          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}\n          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}\n          workingDirectory: cloudflare/top-run-notify\n          command: deploy\n";
+document.getElementById('save').addEventListener('click',()=>{const blob=new Blob([content],{type:'application/octet-stream'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();document.getElementById('status').textContent='ファイル保存が開始されました。Safariのダウンロード/ファイルアプリをご確認ください。';setTimeout(()=>URL.revokeObjectURL(url),2000)});
+document.getElementById('copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(content);document.getElementById('status').textContent='設定内容をコピーしました。';}catch{const t=document.getElementById('source');t.closest('details').open=true;t.focus();t.select();document.getElementById('status').textContent='選択範囲をコピーしてください。';}});
+</script></body></html>
