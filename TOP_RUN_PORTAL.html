@@ -6880,9 +6880,15 @@ html #screen-goal-tools :is(#portalGoalViewSetting,#portalGoalViewGuide,#portalG
        const answer=scheduleEventAnswer(entry.eventId,flowSelfId()),allowRace=item?.raceEntryEnabled!==false,attendanceOpen=portalEventAttendanceOpen(item),attendanceCutoffPassed=flowIsRegistrationClosed(item);
        const state=registered?'出走予定':window.__TR_PORTAL_SYNC__&&locallyRecorded?'端末内試作の出走（共有登録ではありません）':answer==='support'?'参加する（応援・帯同）':answer==='join'?'参加する':answer==='decline'?'参加しない':answer==='maybe'?'未定':'未回答';
        const ended=flowIsEndedEvent(item||{date:entry.date||selectedDateKey});
-       const raceLink=allowRace?`<button class="portalRsvpGo" type="button" data-cal-entry="${esc(entry.eventId)}">${registered?'出走内容・取消を確認':ended?'出走内容・記録を確認':'出走する（種目と目標を登録）'} <span>›</span></button>`:'';
+       // A PORTAL event is the calendar authority. When its official service URL
+       // is saved, enter that service from this very date detail; do not make
+       // users look for another screen or confuse access with race entry status.
+       const hasConnectedBase=!!item&&!item.previewOnly&&
+         (item.type==='EVENT BASE'||item.type==='RELAY EVENT BASE')&&!!String(item.url||'').trim();
+       const baseOpen=hasConnectedBase?`<button class="portalRsvpGo portalScheduleBaseOpen" type="button" data-cal-open-base="${esc(entry.eventId)}">${item.type==='RELAY EVENT BASE'?'駅伝BASEを開く':'EVENT BASEを開く'} <span>›</span></button>`:'';
+       const raceLink=!hasConnectedBase&&allowRace?`<button class="portalRsvpGo" type="button" data-cal-entry="${esc(entry.eventId)}">${registered?'出走内容・取消を確認':ended?'出走内容・記録を確認':'出走する（種目と目標を登録）'} <span>›</span></button>`:'';
        const answers=[['join','参加する'],['decline','参加しない'],['maybe','未定']];
-       action=`<div class="portalRsvpSection${ended?' portalPastLocked':''}"><b class="portalRsvpTitle">大会当日の予定</b><p class="portalRsvpCurrent">現在：<strong>${esc(state)}</strong></p>${registered?`<p class="portalHelp" role="status">${esc(portalRegisteredResponseWarning)}</p>`:''}${raceLink}${!attendanceOpen&&!registered?'<p class="portalHelp">参加受付前です。詳細確定後に管理者が受付を開始します。</p>':attendanceCutoffPassed&&!ended?'<p class="portalPastLockedNote">受付期限を過ぎたため、参加しないへの変更のみ可能です。</p>':''}${`<div class="portalRsvpOptions portalEventResponseOptions" role="group" aria-label="大会当日の予定">${answers.map(([id,label])=>`<button type="button" data-event-response="${id}" data-event-id="${esc(entry.eventId)}" class="${answer===id?'chosen':''}" aria-pressed="${answer===id?'true':'false'}" ${!registered&&(ended||((!attendanceOpen||attendanceCutoffPassed)&&id!=='decline'))?'disabled aria-disabled="true" title="受付期間外のため変更できません"':''}>${label}</button>`).join('')}</div><div class="portalEventSupportChoice"><p>「参加する」には応援・帯同も含みます。応援・帯同として回答する場合はこちら。</p><button type="button" data-event-response="support" data-event-id="${esc(entry.eventId)}" class="${answer==='support'?'chosen':''}" aria-pressed="${answer==='support'?'true':'false'}" ${!registered&&(ended||!attendanceOpen||attendanceCutoffPassed)?'disabled aria-disabled="true"':''}>応援・帯同として参加する</button></div>`}${rosterMarkup}</div>`;
+       action=`<div class="portalRsvpSection${ended?' portalPastLocked':''}"><b class="portalRsvpTitle">大会当日の予定</b><p class="portalRsvpCurrent">現在：<strong>${esc(state)}</strong></p>${registered?`<p class="portalHelp" role="status">${esc(portalRegisteredResponseWarning)}</p>`:''}${baseOpen}${raceLink}${!attendanceOpen&&!registered?'<p class="portalHelp">参加受付前です。詳細確定後に管理者が受付を開始します。</p>':attendanceCutoffPassed&&!ended?'<p class="portalPastLockedNote">受付期限を過ぎたため、参加しないへの変更のみ可能です。</p>':''}${`<div class="portalRsvpOptions portalEventResponseOptions" role="group" aria-label="大会当日の予定">${answers.map(([id,label])=>`<button type="button" data-event-response="${id}" data-event-id="${esc(entry.eventId)}" class="${answer===id?'chosen':''}" aria-pressed="${answer===id?'true':'false'}" ${!registered&&(ended||((!attendanceOpen||attendanceCutoffPassed)&&id!=='decline'))?'disabled aria-disabled="true" title="受付期間外のため変更できません"':''}>${label}</button>`).join('')}</div><div class="portalEventSupportChoice"><p>「参加する」には応援・帯同も含みます。応援・帯同として回答する場合はこちら。</p><button type="button" data-event-response="support" data-event-id="${esc(entry.eventId)}" class="${answer==='support'?'chosen':''}" aria-pressed="${answer==='support'?'true':'false'}" ${!registered&&(ended||!attendanceOpen||attendanceCutoffPassed)?'disabled aria-disabled="true"':''}>応援・帯同として参加する</button></div>`}${rosterMarkup}</div>`;
     }
     return `<article class="portalScheduleEntry ${entry.kind}"><div class="portalScheduleEntryType">${typeLabel}</div>${titleMarkup}<div class="portalScheduleEntryRows">${rows.join('')}</div>${action}</article>`;  }
   function renderScheduleDetailBody(key){
@@ -7614,6 +7620,7 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
   function manageRow(kicker,title,sub,id,kind,enabled=true){
     const eventForConnection=kind==='event'?eventItems.find(e=>e.id===id):null;
     const needsConnection=eventForConnection&&['EVENT BASE','RELAY EVENT BASE'].includes(eventForConnection.type)&&!String(eventForConnection.url||'').trim();
+    const hasServiceLink=eventForConnection&&['EVENT BASE','RELAY EVENT BASE'].includes(eventForConnection.type)&&!!String(eventForConnection.url||'').trim();
     return `<div class="portalManageRow v18${enabled===false?' isPrivate':''}">
       <span><small>${esc(kicker)}</small><b>${esc(title)}</b><span>${esc(sub)}</span></span>
       <div class="portalManageActions">
@@ -7622,6 +7629,7 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
         <label class="portalPublicToggle"><input type="checkbox" data-public-kind="${kind}" data-public-id="${esc(id)}" ${enabled===false?'':'checked'}><i></i><em>公開</em></label>
         <button class="portalManageCopy" type="button" data-copy-kind="${kind}" data-copy-id="${esc(id)}">コピー</button>
         ${needsConnection?`<button type="button" class="portalManageEdit" data-portal-event-connect="${esc(id)}">大会を接続</button>`:''}
+        ${hasServiceLink?`<button type="button" class="portalManageEdit" data-portal-event-open="${esc(id)}">${eventForConnection.type==='RELAY EVENT BASE'?'駅伝BASEを開く':'EVENT BASEを開く'}</button>`:''}
       </div>
     </div>`;
   }
@@ -7897,6 +7905,9 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
       editingEventId=null;copyingEventFromId=null;
       portalOpenManagementFlow('event','new',{preserve:true});
       portalShowEventConnection(selected);
+    }));
+    box.querySelectorAll('[data-portal-event-open]').forEach(button=>button.addEventListener('click',()=>{
+      portalOpenLinkedBase(flowEvent(button.dataset.portalEventOpen));
     }));
     portalApplyManageSearch('event');
   }
@@ -10271,6 +10282,30 @@ list.innerHTML=output.map(metric=>{
     window.location.assign(url);
     return true;
   }
+  // One verified navigation path for both calendar and the management list.
+  // Linking an event does not register a runner; it only opens its saved service.
+  function portalOpenLinkedBase(item){
+    const link=item&&portalOfficialPublicLink(item.url||'');
+    if(!item||!['EVENT BASE','RELAY EVENT BASE'].includes(item.type)||
+       !link||link.ekidenNext!==(item.type==='RELAY EVENT BASE')){
+      showActionFeedback('大会を開けません','PORTALに保存した大会の接続先を確認してください。');return false;
+    }
+    const gate=window.__TR_PORTAL_SYNC__;
+    if(!gate?.uid||!gate.roleVerified||!gate.profileId||
+       verifiedPortalUid!==gate.uid||portalParticipantPreviewMode){
+      showActionFeedback('本人確認が必要です','PORTALの本人認証を確認してから大会を開いてください。');return false;
+    }
+    const target=flowOfficialDestination(item);
+    const safeUrl=target?portalOfficialSafeOpenUrl(target):'';
+    if(!safeUrl){
+      showActionFeedback('大会を開けません','駅伝BASE／EVENT BASEの正規接続先を確認できません。');return false;
+    }
+    if(link.ekidenNext&&!portalPrepareP76VerifiedHandoff(safeUrl)){
+      showActionFeedback('本人引き継ぎを確認できません','同じUID・profileIdで接続できないため移動を停止しました。');return false;
+    }
+    window.location.assign(safeUrl);
+    return true;
+  }
   // PORTAL is the event schedule authority. A connected EVENT BASE is a service
   // attached AFTER the PORTAL event was created. No new event/auth/database path.
   let portalPendingConnectionEventId='';
@@ -10386,8 +10421,8 @@ list.innerHTML=output.map(metric=>{
       $('portalOfficialHandoffLinkInput').value='';
       if($('portalEventCreatedConnection'))$('portalEventCreatedConnection').hidden=true;
       portalPendingConnectionEventId='';
-      status.textContent='PORTALイベントへの大会リンクをFirebaseに保存しました。出走受付の開始・登録完了は別途確認してください。';
-      showActionFeedback('EVENT BASE接続先を保存しました','PORTALで作成したイベントに既存大会を接続しました。正式出走登録の成立は未確認です。');
+      status.textContent='PORTALイベントへの大会リンクをFirebaseに保存しました。カレンダーの開催日から「駅伝BASE／EVENT BASEを開く」を選択できます。出走登録の成立は別途確認してください。';
+      showActionFeedback('EVENT BASE接続先を保存しました','管理画面のイベント一覧、またはカレンダーの日付詳細から「駅伝BASE／EVENT BASEを開く」で進めます。');
       renderManageEvents();
       flowRefreshAll();
     }catch(error){status.textContent='大会リンクを保存できませんでした：'+String(error?.message||error).slice(0,180);}
@@ -11643,6 +11678,8 @@ list.innerHTML=output.map(metric=>{
       showActionFeedback('回答を保存できません','Firebase接続が開始していません。接続後に再度操作してください。');
       return;
     }
+    const baseButton=e.target.closest('[data-cal-open-base]');
+    if(baseButton){portalOpenLinkedBase(flowEvent(baseButton.dataset.calOpenBase));return;}
     const target=e.target.closest('[data-cal-entry]');
     if(target){const id=target.dataset.calEntry;flowOpenEvent(id);}
   });
