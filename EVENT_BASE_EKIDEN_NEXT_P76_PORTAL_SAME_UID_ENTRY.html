@@ -1,3 +1,4 @@
+<!-- P76 / 2026-10-22 admission READ guard: distinguish Firebase READ rejected/timed-out from a missing binding; no change to Auth/UID/Rules/DB/relay event. -->
 <!-- 2026-10-22 P76 PORTAL CONTEXT: accept connected catalog id from URL after verifying canonical Firebase event, Auth UID/profileId, portalRoles/memberAccess and existing binding Rules. Preserve legacy PIN entry. -->
 <!-- P76 / 2026-10-22: verified PORTAL developer/admin/approved participant shared entry. No new Firebase init or Rules applied. -->
 <!-- P76 2026-10-22: PORTAL entry authentication cover and HOME logo returns to PORTAL; original Auth/Firebase/ekiden race remains unchanged. -->
@@ -21422,6 +21423,25 @@ function monitorPortalManagedAccessP76(){
   },()=>{if(session===S.sessionGeneration&&S.ready)
       endSession('PORTAL資格を読み取れません。接続を停止しました。');});
 }
+// P76: admission-only Firebase READ guard. Do not misinterpret a rejected or
+// stalled READ as a missing binding. Never issue an alternative Auth/UID or
+// write an entry while canonical ownership remains unknown.
+async function p76AdmissionRead(path, step){
+  let timeoutId;
+  const pending=get(ref(S.db,path));
+  const maxWait=12000;
+  try{
+    return await Promise.race([pending,new Promise((_,reject)=>{
+      timeoutId=setTimeout(()=>reject(new Error(
+        'Firebaseの'+step+'に応答がありません（12秒）。本人情報を変更せず接続を停止しました。通信を確認してPORTALから開き直してください。大会番号の再入力は不要です。'
+      )),maxWait);
+    })]);
+  }finally{clearTimeout(timeoutId);}
+}
+async function p76AdmissionBindingRead(){
+  const snap=await p76AdmissionRead(`bindings/${S.eventId}/${S.uid}`,'大会接続READ');
+  return snap.exists()?snap.val():null;
+}
 async function tryPortalManagedEntryP76(){
   if(params.get('portal')!=='1'||developerRoute()||S.binding||
      S.eventId!==P32_BINDING_TARGET_EVENT_ID||!S.uid)return false;
@@ -21449,9 +21469,9 @@ async function tryPortalManagedEntryP76(){
   entryStatus('PORTALの本人資格・大会接続を確認しています…');
   try{
     const [roleSnap, eventSnap, profileSnap]=await Promise.all([
-      get(ref(S.db,`portalRoles/${S.uid}`)),
-      get(ref(S.db,`portalCommon/topRun/eventItems/${catalogId}`)),
-      get(ref(S.db,`profiles/${S.uid}`))
+      p76AdmissionRead(`portalRoles/${S.uid}`,'PORTAL役割READ'),
+      p76AdmissionRead(`portalCommon/topRun/eventItems/${catalogId}`,'イベント接続READ'),
+      p76AdmissionRead(`profiles/${S.uid}`,'本人プロフィールREAD')
     ]);
     const staffRole=roleSnap.val(),item=eventSnap.val(),profile=profileSnap.val();
     const officialUrl='https://nuritakug-cpu.github.io/tabirun-bgm/EVENT_BASE_EKIDEN_NEXT_P76_PORTAL_SAME_UID_ENTRY.html?event=eventbase_ekiden_next_2026_38fa5537b6&portal=1';
@@ -21472,14 +21492,14 @@ async function tryPortalManagedEntryP76(){
       }
       role='owner';
     }else{
-      const member=(await get(ref(S.db,`portalCommon/topRun/memberAccess/${S.uid}`))).val();
+      const member=(await p76AdmissionRead(`portalCommon/topRun/memberAccess/${S.uid}`,'参加承認READ')).val();
       if(member?.active!==true||member.profileId!==verifiedProfileId){
         S.portalManagedError='PORTALの参加者承認が確認できません。大会番号の代わりに、PORTALでの初回本人承認が必要です。';return false;
       }
       role='participant';
     }
     // Never overwrite a prior owner, manager or participant binding.
-    const existing=await ownBinding();
+    const existing=await p76AdmissionBindingRead();
     if(existing){S.portalManagedError='このUIDには既存の大会接続があります。役割を自動変更しません。';return false;}
     const b={role,displayName:clean(profile.displayName,24),boundAt:Date.now(),
       profileId:verifiedProfileId,portalManaged:true,portalCatalogId:catalogId,
@@ -21491,7 +21511,7 @@ async function tryPortalManagedEntryP76(){
       role==='manager'?'PORTAL管理者として接続しています…':'承認済み参加者として接続しています…');
     const saved=await runTransaction(ref(S.db,`bindings/${S.eventId}/${S.uid}`),before=>before===null?b:undefined,{applyLocally:false});
     if(!saved.committed){S.portalManagedError='別端末で大会接続が作成されました。既存接続を確認してから入り直してください。';return false;}
-    const confirmed=await ownBinding();
+    const confirmed=await p76AdmissionBindingRead();
     if(!confirmed||confirmed.role!==role||confirmed.profileId!==verifiedProfileId||
        confirmed.portalManaged!==true||confirmed.portalCatalogId!==catalogId||
        confirmed.portalLinkProof!==b.portalLinkProof){
@@ -21525,7 +21545,7 @@ async function boot(){
     // A valid owner binding is never deleted merely because the user returned from PORTAL.
     const ownerKey=clean(params.get("ownerKey"),100);
     entryStatus("接続情報を確認しています…");
-    const b=await ownBinding();
+    const b=await p76AdmissionBindingRead();
     const trustedOwner=!!b&&b.role==="owner"&&
       /^[0-9a-fA-F]{64}$/.test(String(b.ownerProof||""))&&
       typeof b.displayName==="string"&&!!b.displayName.trim()&&
@@ -21566,7 +21586,7 @@ async function boot(){
     let portalStaff=false;
     if(params.get('portal')==='1'){
       try{
-        const roleSnapshot=await get(ref(S.db,`portalRoles/${S.uid}`));
+        const roleSnapshot=await p76AdmissionRead(`portalRoles/${S.uid}`,'PORTAL役割READ');
         portalStaff=['developer','admin'].includes(String(roleSnapshot.val()?.role||''));
       }catch(_){/* staff role unreadable => never infer staff rights */}
     }
@@ -21593,8 +21613,13 @@ async function boot(){
   }catch(e){
     console.error("v22 boot",e);
     finishPortalAuthCoverP76();lock();
-    status(String(e?.message||e),"bad");
-    entryError(String(e?.message||e));
+    const detail=String(e?.code||e?.message||e);
+    const notice=params.get('portal')==='1'
+      ?'PORTALからの駅伝BASE接続を完了できませんでした。'+detail+' 再登録や大会番号の入力を行わず、PORTALへ戻って確認してください。'
+      :detail;
+    entryStatus(notice);
+    status(detail,"bad");
+    entryError(notice);
   }
 }
 
