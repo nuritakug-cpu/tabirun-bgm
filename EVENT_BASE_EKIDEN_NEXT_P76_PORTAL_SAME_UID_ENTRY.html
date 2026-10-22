@@ -21127,10 +21127,16 @@ function subscribeEkidenP41(){
 const EK_P75_EVENT='eventbase_ekiden_next_2026_38fa5537b6';
 function ekP75Operator(){
   const b=S.binding;
+  // The authenticated binding is read from bindings/<S.eventId>/<S.uid>.
+  // Older owner/manager bindings do not contain eventId. Preserve them, while
+  // requiring a matching eventId for a new PORTAL-managed manager binding.
+  const bindingEventMatches=b?.eventId==null
+    ? (S.role==='owner'||b?.portalManaged!==true)
+    : String(b.eventId)===S.eventId;
   return S.ready===true&&S.eventId===EK_P75_EVENT&&
     !!S.uid&&S.auth?.currentUser?.uid===S.uid&&
     (S.role==='owner'||S.role==='manager')&&b?.role===S.role&&
-    String(b?.eventId||'')===S.eventId;
+    bindingEventMatches;
 }
 async function saveEkidenRaceP75(raceId,nextRace,expectedRace){
   await assertSession();
