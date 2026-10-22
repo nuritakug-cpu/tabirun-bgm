@@ -4931,6 +4931,23 @@ html #screen-goal-tools :is(#portalGoalViewSetting,#portalGoalViewGuide,#portalG
 .portalLinkedCalendarJump button:focus-visible{outline:3px solid #f3ad1c;outline-offset:2px}
 </style>
 
+<style id="top-run-stage2-notification-css">
+/* PORTAL NOTICE-only opt-in section; no existing UI, Firebase or save-route styling changed. */
+#screen-notices .trPushSettings{margin:12px 0 15px;padding:12px 14px;border:1px solid #cbc2a7;border-radius:14px;background:#f6f3e8;color:var(--ink)}
+#screen-notices .trPushSettings summary{cursor:pointer;font-weight:950;font-size:13px;line-height:1.5;list-style-position:inside;min-height:28px}
+#screen-notices .trPushSettings summary:focus-visible,#screen-notices #trPushEnable:focus-visible{outline:3px solid #a68217;outline-offset:2px}
+#screen-notices .trPushSettings p{font-size:12px;line-height:1.6;color:#595b52;margin:8px 0}
+#screen-notices .trPushSettings label{display:block;font-weight:900;font-size:12px;margin:11px 0 5px}
+#screen-notices #trPushPairCode{display:block;box-sizing:border-box;width:100%;max-width:100%;min-height:46px;padding:10px;border:1px solid #ada899;border-radius:10px;background:#fff;color:#252b2b;font-size:16px}
+#screen-notices #trPushEnable{display:block;width:100%;min-height:47px;margin-top:12px;padding:9px 12px;border:0;border-radius:11px;background:#303936;color:#fff;font-weight:900;font-size:13px}
+#screen-notices #trPushEnable:disabled{opacity:.55;cursor:default}
+#screen-notices #trPushSendBox[hidden]{display:none!important}
+#screen-notices #trPushSendBox{margin-top:12px;padding-top:9px;border-top:1px dashed #a99c77}
+#screen-notices #trPushAdminToken{display:block;box-sizing:border-box;width:100%;max-width:100%;min-height:46px;padding:10px;border:1px solid #ada899;border-radius:10px;background:#fff;color:#252b2b;font-size:16px}
+#screen-notices #trPushSendTest{display:block;width:100%;min-height:47px;margin-top:12px;padding:9px 12px;border:0;border-radius:11px;background:#4c514e;color:#fff;font-weight:900;font-size:13px}
+#screen-notices #trPushSendTest:disabled{opacity:.55;cursor:default}
+#screen-notices #trPushState{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;font-weight:750;line-height:1.5}
+</style>
 </head>
 <body>
 <div id="portalFirstPaintAuthOverlay" role="status" aria-live="polite" aria-label="TOP RUN PORTAL 認証中">
@@ -5456,6 +5473,21 @@ html #screen-goal-tools :is(#portalGoalViewSetting,#portalGoalViewGuide,#portalG
       </div>
       <p class="portalNotiDisclaimer">Firebase未接続・模擬データのみ。表示設定と既読状態だけをこのブラウザに試験保存します。実際の投稿配信・OS通知・Web Pushではありません。役割切替はUI確認用です。</p>
     </section>
+    <!-- Pre-production transport opt-in: not an automatic NOTICE/CHAT notification. -->
+    <details class="trPushSettings" id="trPushSettings">
+      <summary>端末の通知設定（準備中）</summary>
+      <p>開発段階の通信登録です。通知の自動配信・本人別の宛先判定・未読バッジは未実装です。現行のお知らせやチャットには影響しません。</p>
+      <label for="trPushPairCode">開発用接続コード</label>
+      <input type="password" id="trPushPairCode" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="256" placeholder="開発用接続コードを入力">
+      <button type="button" id="trPushEnable" disabled>この端末で通知を許可</button>
+      <div id="trPushSendBox" hidden>
+        <label for="trPushAdminToken">開発者用の送信確認トークン</label>
+        <input type="password" id="trPushAdminToken" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="256" placeholder="管理用トークンを入力（保存しません）">
+        <button type="button" id="trPushSendTest" disabled>登録したこの端末へ通知を1件送る</button>
+        <p>これは通信の疎通確認です。正式なお知らせ・CHAT通知や未読バッジの自動配信は開始しません。</p>
+      </div>
+      <p id="trPushState" role="status" aria-live="polite">端末と通知サーバーの両方が準備できるまで通知許可を求めません。</p>
+    </details>
     <div class="portalSimpleFilter" data-list-filter="notices"><select data-filter-mode aria-label="絞り込み"><option value="all" selected>すべて</option><option value="day">日付</option><option value="month">月</option><option value="range">期間</option></select><div class="portalSimpleFilterValue"><input type="date" data-filter-day aria-label="指定日" hidden><input type="month" data-filter-month aria-label="表示する月"><div class="portalSimpleFilterRange" data-filter-range hidden><input type="date" data-filter-start aria-label="開始日"><input type="date" data-filter-end aria-label="終了日"></div></div></div>
     <div class="portalNoticeList" id="portalNoticeList"></div>
   </div>
@@ -13989,6 +14021,172 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
     }
   }
 }
+</script>
+<script id="top-run-stage2-notification-controller">
+/* Stage 2 transport only. The trusted Firebase gateway is NEVER modified.
+   The server authenticates invite-code, not UID; so there is NO personal routing,
+   no automatic NOTICE/CHAT sender, and this consent is developer-only.
+   iOS 18.4+ can use window.pushManager without a Service Worker, only AFTER
+   the server advertises and supports declarative JSON. Others use scoped SW.
+*/
+(()=>{
+ 'use strict';
+ const BASE='https://top-run-notify.nuritaku-g.workers.dev';
+ const ORIGIN='https://nuritakug-cpu.github.io';
+ const SW='./top-run-push-sw.js';
+ const section=document.getElementById('trPushSettings');
+ const button=document.getElementById('trPushEnable');
+ const state=document.getElementById('trPushState');
+ const input=document.getElementById('trPushPairCode');
+ const sendBox=document.getElementById('trPushSendBox');
+ const sendButton=document.getElementById('trPushSendTest');
+ const sendToken=document.getElementById('trPushAdminToken');
+ if(!section||!button||!state||!input||!sendBox||!sendButton||!sendToken)return;
+ const say=message=>{state.textContent=String(message).slice(0,260);};
+ const isPortalSite=()=>location.origin===ORIGIN&&location.pathname.startsWith('/tabirun-bgm/TOP_RUN_PORTAL');
+ const isiOS=()=>/iPad|iPhone|iPod/.test(navigator.userAgent)||(/Mac/.test(navigator.platform)&&navigator.maxTouchPoints>1);
+ const standalone=()=>window.matchMedia?.('(display-mode: standalone)')?.matches===true||navigator.standalone===true;
+ const developerOK=()=>{
+   const gate=window.__TR_PORTAL_SYNC__;
+   return gate?.role==='developer'&&gate.roleVerified===true&&
+     gate.hasOperationalAccess?.()===true&&typeof gate.uid==='string'&&!!gate.uid&&
+     typeof gate.profileId==='string'&&!!gate.profileId&&
+     !document.body.classList.contains('portalParticipantPreview');
+ };
+ const keyBytes=(raw)=>{
+   if(typeof raw!=='string'||!/^[A-Za-z0-9_-]{85,90}$/.test(raw))throw Error('公開鍵が不正です');
+   const s=raw.replace(/-/g,'+').replace(/_/g,'/')+'='.repeat((4-raw.length%4)%4);
+   const bytes=Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+   if(bytes.length!==65||bytes[0]!==4)throw Error('公開鍵が不正です');
+   return bytes;
+ };
+ let manager=null, readyKey=null, generation=0;
+ // In-memory only; never stored in localStorage/URL/Firebase or exposed to other users.
+ let savedTarget=null;
+ const clear=()=>{
+   manager=null;readyKey=null;button.disabled=true;
+   savedTarget=null;sendButton.disabled=true;sendBox.hidden=true;sendToken.value='';
+ };
+ async function readiness(){
+   const thisRun=++generation;
+   clear();
+   if(!section.open)return;
+   if(!developerOK()){say('現在は認証済み開発者のみ利用できます。参加者の通知登録はまだ有効にしていません。');return;}
+   if(!isPortalSite()){say('公開済みGitHub PagesのPORTALからのみ登録できます。端末に保存したHTMLでは登録しません。');return;}
+   if(isiOS()&&!standalone()){say('iPhoneではPORTALをホーム画面へ追加し、そのアイコンから起動してください。');return;}
+   if(!('Notification'in window)){say('この端末はWeb Push通知に対応していません。');return;}
+   if(Notification.permission==='denied'){say('通知が拒否されています。端末の通知設定を確認してください。');return;}
+   try{
+     // Read once when the settings panel is opened. No polling and no extra RTDB listener.
+     const response=await fetch(BASE+'/api/stage2/config',{cache:'no-store',mode:'cors'});
+     if(!response.ok)throw Error('通知サーバーの設定を取得できません');
+     const config=await response.json();
+     if(config?.ok!==true)throw Error('通知サーバーの応答を確認できません');
+     const publicKey=keyBytes(config.vapidPublicKey);
+     if(thisRun!==generation||!section.open||!developerOK())return;
+     if(isiOS()&&window.pushManager?.subscribe){
+       // Deployed Stage 2 still sends original (non-declarative) JSON as of Oct 21.
+       // Do not create orphaned subscriptions until server supports SW-less display.
+       if(config.stage2Declarative!==true){
+         say('iPhoneの受信方式は準備済みですが、通知サーバーの送信形式が未対応です。登録はまだ開始しません。');return;
+       }
+       manager=window.pushManager;
+       readyKey=publicKey;
+       say('iPhoneの通知設定が利用できます。開発用コードを入力して登録できます。');
+     }else{
+       if(!('serviceWorker'in navigator)||!('PushManager'in window)){
+         say('この端末には利用可能な通知購読方式がありません。');return;
+       }
+       const js=await fetch(SW,{method:'HEAD',cache:'no-store',redirect:'error'});
+       if(!js.ok||!/javascript|ecmascript/i.test(js.headers.get('Content-Type')||'')){
+         say('従来方式用の受信プログラムがまだ公開されていません。通知許可は要求しません。');return;
+       }
+       const registration=await navigator.serviceWorker.register(SW,{scope:'./TOP_RUN_PORTAL',updateViaCache:'none'});
+       if(thisRun!==generation||!section.open||!developerOK())return;
+       manager=registration.pushManager;
+       readyKey=publicKey;
+       say('この端末の通知設定が利用できます。開発用コードを入力して登録できます。');
+     }
+     if(manager&&readyKey)button.disabled=false;
+   }catch(e){if(thisRun===generation)say('通知の準備を確認できません：'+String(e?.message||'通信エラー').slice(0,105));}
+ }
+ section.addEventListener('toggle',readiness);
+ window.addEventListener('tr-portal-identity-ready',()=>{if(section.open)void readiness();});
+ button.addEventListener('click',async()=>{
+   if(button.disabled||!manager||!readyKey||!developerOK()||!isPortalSite()){
+     say('本人の開発者認証と通知サーバーの準備が必要です。');return;
+   }
+   const code=input.value.trim();
+   if(!code){say('開発用接続コードを入力してください。');return;}
+   if(Notification.permission==='denied'){say('通知は拒否されています。');return;}
+   const currentManager=manager,currentKey=readyKey;
+   const currentGeneration=generation;
+   const initialGate=window.__TR_PORTAL_SYNC__;
+   const initialUid=initialGate.uid,initialProfileId=initialGate.profileId;
+   button.disabled=true;
+   try{
+     // WebKit: subscribe DIRECTLY from the user's click; no preceding awaited
+     // Notification.requestPermission() or getSubscription() step.
+     const subscription=await currentManager.subscribe({userVisibleOnly:true,applicationServerKey:currentKey});
+     if(Notification.permission!=='granted')throw Error('通知が許可されませんでした');
+     if(currentGeneration!==generation||!section.open||!developerOK()||
+        window.__TR_PORTAL_SYNC__?.uid!==initialUid||
+        window.__TR_PORTAL_SYNC__?.profileId!==initialProfileId)
+       throw Error('操作中に開発者の本人認証が変更されました。登録は行いません');
+     const saved=await fetch(BASE+'/api/stage2/subscribe',{
+       method:'POST',mode:'cors',cache:'no-store',
+       headers:{'Content-Type':'application/json','X-TR-Push-Invite':code},
+       body:JSON.stringify({subscription:subscription.toJSON()})
+     });
+     const ack=await saved.json().catch(()=>({}));
+     if(!saved.ok||ack?.ok!==true)throw Error(saved.status===401?'開発用コードが違います':'購読情報を保存できません');
+     if(currentGeneration!==generation||!developerOK()||
+        window.__TR_PORTAL_SYNC__?.uid!==initialUid||window.__TR_PORTAL_SYNC__?.profileId!==initialProfileId){
+       say('保存応答を受けましたが、途中で本人認証が変わったため、この端末の登録成立は未確認です。');return;
+     }
+     if(typeof ack.id!=='string'||!/^[0-9a-f]{64}$/.test(ack.id))throw Error('受信先IDを確認できません。送信を行いません');
+     savedTarget={id:ack.id,uid:initialUid,profileId:initialProfileId,generation:currentGeneration};
+     sendBox.hidden=false;
+     sendButton.disabled=false;
+     say('この端末の通知登録が保存されました。続けて、この端末へ1件だけ送信できます。正式なお知らせ通知は未実装です。');
+   }catch(e){say('登録できません：'+String(e?.message||'通信エラー').slice(0,130));}
+   finally{input.value='';button.disabled=!(developerOK()&&!!manager&&section.open);}
+ });
+ sendButton.addEventListener('click',async()=>{
+   const target=savedTarget;
+   const gate=window.__TR_PORTAL_SYNC__;
+   if(sendButton.disabled||!target||!developerOK()||!isPortalSite()||!section.open||
+      target.generation!==generation||gate?.uid!==target.uid||gate?.profileId!==target.profileId){
+     say('この端末の受信先登録と開発者権限を再確認してください。');return;
+   }
+   const token=sendToken.value.trim();
+   if(!token){say('開発者用の送信確認トークンを入力してください。');return;}
+   sendButton.disabled=true;
+   try{
+     // Explicitly target the subscription ID returned for THIS device; never send to last-in-DB.
+     const response=await fetch(BASE+'/api/stage2/send-test',{
+       method:'POST',mode:'cors',cache:'no-store',
+       headers:{'Content-Type':'application/json','X-TR-Push-Admin':token},
+       body:JSON.stringify({id:target.id})
+     });
+     const ack=await response.json().catch(()=>({}));
+     if(!response.ok||ack.ok!==true||ack.acceptedByPushService!==true)
+       throw Error(response.status===401?'管理用トークンが違います':
+          response.status===404?'受信先が見つかりません。再登録してください':
+          response.status===503?'通知サーバーの設定が不足しています':
+          '送信先が受け付けませんでした（HTTP '+response.status+'）');
+     if(!developerOK()||window.__TR_PORTAL_SYNC__?.uid!==target.uid||
+        window.__TR_PORTAL_SYNC__?.profileId!==target.profileId){
+       say('送信先から受付応答がありましたが、途中で認証状態が変わりました。端末受信は未確認です。');return;
+     }
+     say('通知配信サービスが1件を受け付けました。iPhoneに通知が表示されたか確認してください。端末への到達はこの応答だけでは保証されません。');
+   }catch(e){say('送信できません：'+String(e?.message||'通信エラー').slice(0,125));}
+   finally{
+     sendToken.value='';
+     sendButton.disabled=!(savedTarget===target&&target.generation===generation&&developerOK()&&section.open);
+   }
+ });
+})();
 </script>
 </body>
 </html>
