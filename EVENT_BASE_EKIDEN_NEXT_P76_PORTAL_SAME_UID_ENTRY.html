@@ -1,3 +1,4 @@
+<!-- P76 PORTAL ROUNDTRIP GUARD / 2026-10-22: guaranteed same-tab PORTAL return from auth pending/failure; hide misleading legacy PIN in portal=1 only, leave direct entry intact. No Firebase/Auth/Rules/UID/DB changes. -->
 <!-- P76 / 2026-10-22 admission READ guard: distinguish Firebase READ rejected/timed-out from a missing binding; no change to Auth/UID/Rules/DB/relay event. -->
 <!-- 2026-10-22 P76 PORTAL CONTEXT: accept connected catalog id from URL after verifying canonical Firebase event, Auth UID/profileId, portalRoles/memberAccess and existing binding Rules. Preserve legacy PIN entry. -->
 <!-- P76 / 2026-10-22: verified PORTAL developer/admin/approved participant shared entry. No new Firebase init or Rules applied. -->
@@ -8606,14 +8607,26 @@ html.ekP76PortalAuthenticating #ekP76PortalAuthOverlay{display:flex!important}
 body.ekP76PortalReturnEnabled header.top .logo{cursor:pointer;touch-action:manipulation}
 body.ekP76PortalReturnEnabled header.top .logo:focus-visible{outline:3px solid #ffd400;outline-offset:3px}
 @media(prefers-reduced-motion:reduce){#ekP76PortalAuthOverlay .indicator{animation:none}}
+/* Portal navigation recovery: remain able to return even when Firebase is slow or unavailable. */
+#ekP76PortalAuthOverlay .ekP76ReturnBtn,#ekP76PortalEntryReturn{
+  display:block;box-sizing:border-box;width:100%;max-width:360px;min-height:48px;
+  margin:18px auto 0;padding:10px 14px;border:1px solid #e1c354;
+  border-radius:12px;background:#ffd400;color:#111;font:inherit;font-size:15px;font-weight:900;
+  text-decoration:none;text-align:center;touch-action:manipulation;
+}
+#ekP76PortalEntryReturn{margin:12px auto 18px;}
+#ekP76PortalEntryReturn[hidden]{display:none!important;}
+html[data-ek-p76-portal-entry="1"] #regularEntryV31,
+html[data-ek-p76-portal-entry="1"] #developerEntryV31{display:none!important;}
 </style>
-<script>if(new URLSearchParams(location.search).get('portal')==='1'){document.documentElement.classList.add('ekP76PortalAuthenticating');document.documentElement.setAttribute('data-ek-p76-portal-entry','1');}</script>
+<script>if(new URLSearchParams(location.search).get('portal')==='1'){document.documentElement.classList.add('ekP76PortalAuthenticating');document.documentElement.setAttribute('data-ek-p76-portal-entry','1');document.addEventListener('DOMContentLoaded',()=>{const a=document.getElementById('ekP76PortalEntryReturn');if(a)a.hidden=false;});}</script>
 </head>
 <body class="accessLocked105">
-<div id="ekP76PortalAuthOverlay" role="status" aria-live="polite" aria-label="本人認証中"><div class="pane"><div class="indicator" aria-hidden="true"></div><strong>本人認証中</strong><span>PORTALから本人情報を引き継いでいます。<br>確認後に駅伝BASEを表示します。</span></div></div>
+<div id="ekP76PortalAuthOverlay" role="status" aria-live="polite" aria-label="本人認証中"><div class="pane"><div class="indicator" aria-hidden="true"></div><strong>本人認証中</strong><span>PORTALから本人情報を引き継いでいます。<br>確認後に駅伝BASEを表示します。</span><a class="ekP76ReturnBtn" href="https://nuritakug-cpu.github.io/tabirun-bgm/TOP_RUN_PORTAL.html">PORTALへ戻る</a></div></div>
 
 <div class="entryGate105" id="entryGate105" role="dialog" aria-modal="true" aria-label="大会共有へ接続">
   <div class="entryGateCard105">
+    <a id="ekP76PortalEntryReturn" href="https://nuritakug-cpu.github.io/tabirun-bgm/TOP_RUN_PORTAL.html" hidden>PORTALへ戻る</a>
     <div class="entryGateHead105">
       <div class="kicker">TOP RUN AGUI / EVENT BASE</div>
       <h1 id="entryGateTitle120">EVENT BASEへ参加</h1>
@@ -20628,7 +20641,7 @@ async function selectExistingPortalAuthP76(){
   });
   await Promise.all(candidates.map(x=>typeof x.auth.authStateReady==='function'?x.auth.authStateReady():Promise.resolve()));
   const existing=candidates.filter(x=>!!x.auth.currentUser?.uid);
-  if(!existing.length)throw new Error("PORTALの既存本人ログインがありません。PORTALで本人認証後に同じブラウザから開いてください。新しいUIDは発行しません。");
+  if(!existing.length)throw new Error("この画面にはPORTALの本人ログインが引き継がれていません。ブラウザとホーム画面アプリは別のログイン状態になることがあります。PORTALへ戻ってください。新しい本人は登録しません。");
   let verifiedHandoff=null;
   try{
     const raw=sessionStorage.getItem('toprun:eventbase:p76:verified-handoff-v1');
