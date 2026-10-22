@@ -21358,15 +21358,22 @@ async function activate(){
   const session=++S.sessionGeneration;
   S.ready=false;lock();
   S.bindingStamp=stamp(S.binding);
+  window.__roundtripDiag?.("P76: activate binding監視開始");
   monitorBinding();
-  if(S.role==="owner"&&!S.accessCodes)await ensureAccessCodes();
+  if(S.role==="owner"&&!S.accessCodes){window.__roundtripDiag?.("P76: 管理番号確認開始");await ensureAccessCodes();window.__roundtripDiag?.("P76: 管理番号確認完了");}
+  window.__roundtripDiag?.("P76: 大会データREAD開始");
   const snap=await get(rootRef());
+  window.__roundtripDiag?.("P76: 大会データREAD完了");
   if(session!==S.sessionGeneration)return;
+  window.__roundtripDiag?.("P76: binding再確認開始");
   const b=await ownBinding();
+  window.__roundtripDiag?.("P76: binding再確認完了");
   if(session!==S.sessionGeneration)return;
   if(stamp(b)!==S.bindingStamp){endSession("接続権限が変更されました。入り直してください。");return}
   let activatedRoot=snap.exists()?snap.val():{};
+  window.__roundtripDiag?.("P76: 共通プロフィール確認開始");
   await ensureCommonProfileV60(activatedRoot);
+  window.__roundtripDiag?.("P76: 共通プロフィール確認完了");
   S.ready=true;expose();
   monitorProfileV60();
   monitorPortalManagedAccessP76();
@@ -21376,6 +21383,7 @@ async function activate(){
     await set(childRef('safety/state'),'open');
     activatedRoot={...activatedRoot,safety:{...asObj(activatedRoot?.safety),state:'open'}};
   }
+  window.__roundtripDiag?.("P76: HOME反映開始");
   applyRoot(activatedRoot);
   subscribeRoot("activate");
   monitorConnection();
@@ -21384,6 +21392,7 @@ async function activate(){
     document.querySelectorAll(".navBtn").forEach(b=>b.classList.toggle("on",b.dataset.tab==="home"));
   }catch{}
   expose();unlock();
+  window.__roundtripDiag?.("P76: HOME解放完了");
   // P41: start the isolated EKIDEN listener only after the existing EVENT BASE login/HOME path is complete.
   setTimeout(()=>{if(S.ready)subscribeEkidenP41()},120);
 }
@@ -21601,10 +21610,14 @@ async function boot(){
       typeof b.displayName==="string"&&!!b.displayName.trim()&&
       Number.isFinite(Number(b.boundAt))&&Number(b.boundAt)>0;
     if(trustedOwner){
-      if(b.portalManaged===true && !await portalManagedRoleStillApprovedP76(b)){
+      window.__roundtripDiag?.("P76: 開発者資格再確認開始");
+      const ownerApproved= b.portalManaged!==true || await portalManagedRoleStillApprovedP76(b);
+      window.__roundtripDiag?.("P76: 開発者資格再確認完了",ownerApproved?"許可":"拒否");
+      if(!ownerApproved){
         showEntry('PORTALの開発者資格を確認できません。PORTALへ戻って本人権限を確認してください。');return;
       }
       S.binding=b;S.role="owner";S.displayName=clean(b.displayName,24);
+      window.__roundtripDiag?.("P76: 開発者HOME起動開始");
       await activate(); // activate revalidates the same server binding before HOME
       return;
     }
