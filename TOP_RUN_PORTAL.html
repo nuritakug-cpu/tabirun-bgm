@@ -1,4 +1,5 @@
-<!-- 2026-10-22 PWA IDENTITY CONTINUITY RELEASE CANDIDATE. PHYSICAL PARENT: TOP_RUN_PORTAL.html (Stage2 integrated, 1505514 bytes).
+<!-- 2026-10-22 ROLE-FIRST ONBOARDING AND FOLDED FIREBASE STATUS CANDIDATE. PHYSICAL PARENT: TOP_RUN_PORTAL.html SHA256=5316761037c638b9c0a476075a504d4f1021e02aa37055abf9f2b78873fc4823. UI-only; no Auth/Firebase/Rules/data changes.
+<!-- PREVIOUS: 2026-10-22 PWA IDENTITY CONTINUITY RELEASE CANDIDATE. PHYSICAL PARENT: TOP_RUN_PORTAL.html (Stage2 integrated, 1505514 bytes).
 TARGET: allow explicit recovery of an authenticated but truly missing canonical profile at the SAME UID.
 Existing profiles / role / Firebase authorization / public production / official results are not changed.
 Actual Firebase Rules and PWA operation have NOT been tested. NOT PUBLISHED. -->
@@ -5535,7 +5536,10 @@ html #screen-goal-tools :is(#portalGoalViewSetting,#portalGoalViewGuide,#portalG
   </div>
   <div class="portalScreenBody">
     <div class="portalRoleBadge"><i></i><span id="portalRoleLabel">MANAGEMENT</span></div>
-    <div id="commonPilotState" class="portalManageState" role="status" aria-live="polite" hidden></div>
+    <details id="portalConnectionDetails" class="portalConnectionDetails">
+      <summary>接続の詳細を確認</summary>
+      <div id="commonPilotState" class="portalManageState" role="status" aria-live="polite" hidden></div>
+    </details>
 
 
     <div class="portalManageChoiceHead" id="portalManagementChoicesTitle">
@@ -12288,6 +12292,26 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
   #portalHandoffIssued small{display:block;margin-top:10px;font-size:12px;color:#e6db9a;letter-spacing:0}
   #portalHandoffStatus{font-size:13px;margin-top:12px;line-height:1.65;white-space:pre-wrap}
   .portalParticipantGateCard .portalHandoffSecondary{background:transparent;color:#fff;border-color:#a9a58a}
+  /* Identity-entry navigation only. Firebase/roles/authorization remain unchanged. */
+  #portalParticipantIdentityGate .portalParticipantGateCard{scroll-behavior:smooth}
+  #portalParticipantIdentityGate.portalGateInFlow .portalParticipantSplash{display:none}
+  #portalParticipantRoleStep[hidden],#portalDeveloperCodeGroup[hidden],#portalParticipantScrollHint[hidden]{display:none!important}
+  #portalParticipantRoleStep{margin-top:8px}
+  #portalParticipantRoleStep .portalRoleStepLabel,#portalNewParticipantForm .portalRoleStepLabel{font-size:12px;font-weight:950;letter-spacing:.08em;color:#e4ca58;margin:8px 0 12px}
+  #portalParticipantRoleStep .portalRoleChoices{display:grid;gap:9px}
+  #portalParticipantRoleStep .portalRoleOption{margin:0;text-align:left;background:#404945;border:2px solid #737d74;color:#fff;border-radius:12px;min-height:66px;padding:11px 13px;display:flex;flex-direction:column;gap:4px}
+  #portalParticipantRoleStep .portalRoleOption b{font-size:17px;line-height:1.2}
+  #portalParticipantRoleStep .portalRoleOption span{font-size:12px;color:#e4e5d6;line-height:1.4}
+  #portalParticipantRoleStep .portalRoleOption[aria-pressed="true"]{background:#4c4b2e;border-color:#ebce43;box-shadow:inset 0 0 0 1px #ebce43}
+  #portalParticipantRoleNext{margin-top:12px!important}
+  #portalParticipantRoleNext:disabled{opacity:.42;cursor:not-allowed}
+  .portalParticipantGateCard .portalRoleStepHelp{font-size:12px;margin:8px 0 2px;color:#f0e6b9}
+  .portalParticipantGateCard .portalRoleChangeButton{min-height:40px;padding:8px 12px;margin:5px 0 12px;font-size:13px}
+  .portalParticipantGateCard .portalRegistrationRoleMessage{background:rgba(255,255,255,.09);border-left:3px solid #e4ca58;border-radius:6px;padding:10px 12px;font-size:13px}
+  #portalParticipantScrollHint{position:sticky;bottom:-26px;z-index:2;margin:8px -10px -16px;padding:10px;text-align:center;background:linear-gradient(0deg,#303735 66%,rgba(48,55,53,.91));color:#f4dc68;font-size:13px;font-weight:950;pointer-events:none}
+  #portalConnectionDetails{margin:4px 0 14px;padding:0;color:var(--muted);font-size:12px}
+  #portalConnectionDetails>summary{cursor:pointer;display:list-item;padding:5px 0;font-size:12px;text-decoration:underline;text-underline-offset:3px}
+  #portalConnectionDetails:not([open]) #commonPilotState{display:none!important}
 </style>
 <div id="portalParticipantIdentityGate" role="dialog" aria-modal="true" aria-labelledby="portalParticipantLoginTitle" aria-describedby="portalParticipantLoginMessage">
   <section class="portalParticipantGateCard">
@@ -12304,14 +12328,30 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
     <button id="portalExistingParticipantStart" type="button" hidden>登録済みの方：元の本人に戻る</button>
     <button id="portalNewParticipantStart" type="button" hidden>このアイコンで利用登録する（既存利用者も可）</button>
     <button id="portalParticipantEntryBack" class="portalHandoffSecondary" type="button" hidden>登録状況の選択へ戻る</button>
+    <section id="portalParticipantRoleStep" class="portalParticipantRoleStep" aria-label="利用区分を選ぶ" hidden>
+      <p class="portalRoleStepLabel">STEP 1 / ご利用区分</p>
+      <div class="portalRoleChoices" role="group" aria-label="今回の利用区分">
+        <button type="button" class="portalRoleOption" data-portal-entry-role="participant" aria-pressed="false"><b>参加者・保護者</b><span>大会・予定・マイページの利用</span></button>
+        <button type="button" class="portalRoleOption" data-portal-entry-role="admin" aria-pressed="false"><b>管理者</b><span>運営者の本人確認と権限承認が必要</span></button>
+        <button type="button" class="portalRoleOption" data-portal-entry-role="developer" aria-pressed="false"><b>開発者</b><span>既存の開発者認証コードで確認</span></button>
+      </div>
+      <button id="portalParticipantRoleNext" type="button" disabled>次へ →</button>
+      <button id="portalRoleChoiceBackButton" type="button" class="portalHandoffSecondary portalRoleChangeButton">← 登録方法へ戻る</button>
+      <p id="portalRoleStepHelp" class="portalRoleStepHelp">区分を一つ選ぶと「次へ」が押せます。</p>
+    </section>
     <form id="portalNewParticipantForm" autocomplete="off" hidden>
+      <p id="portalRegistrationStep" class="portalRoleStepLabel">STEP 2 / 本人情報の登録</p>
+      <button type="button" id="portalRoleChangeButton" class="portalHandoffSecondary portalRoleChangeButton">← 利用区分を変更</button>
+      <p id="portalRegistrationRoleMessage" class="portalRegistrationRoleMessage"></p>
       <label for="portalNewParticipantName" style="display:block;margin-top:15px;font-size:14px;font-weight:900">表示名（1〜24文字）</label>
       <input id="portalNewParticipantName" maxlength="24" autocomplete="nickname" required style="display:block;width:100%;min-height:49px;margin-top:7px;padding:10px;border-radius:10px;border:1px solid #bbb;background:white;color:#222;font-size:16px">
-      <p style="font-size:12px;line-height:1.65">以前にEVENT BASEを利用した方も登録可能です。既存の大会記録は変更せず、必要に応じて運営が本人を対面確認して後から紐付けます。現在の本人UIDにプロフィールがなければ、そのUIDを保護して利用します。</p>
-      <label style="display:flex;align-items:start;gap:9px;font-size:12px;line-height:1.6"><input id="portalNewParticipantConsent" type="checkbox" required style="width:19px;height:19px;flex:none;margin-top:2px">このアイコンでの本人登録と、過去記録を自動的に結合しないことに同意します。</label>
+      <p style="font-size:12px;line-height:1.65">以前の大会記録はそのまま残ります。本人確認後、運営が必要な情報を紐付けます。</p>
+      <label style="display:flex;align-items:start;gap:9px;font-size:12px;line-height:1.6"><input id="portalNewParticipantConsent" type="checkbox" required style="width:19px;height:19px;flex:none;margin-top:2px">過去の記録を消さず、自動で紐付けないことを確認しました。</label>
+      <div id="portalDeveloperCodeGroup" hidden>
       <label for="portalRecoverDeveloperCode" style="display:block;margin-top:16px;font-size:14px;font-weight:850">開発者だけ：既存の開発者認証コード（任意）</label>
       <input id="portalRecoverDeveloperCode" type="password" maxlength="256" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="開発者以外は空欄" style="display:block;width:100%;min-height:49px;margin-top:7px;padding:10px;border-radius:10px;border:1px solid #bbb;background:white;color:#222;font-size:16px">
-      <p style="font-size:12px;line-height:1.65">開発者権限はFirebase側の既存認証を通った場合だけ有効になります。管理者は既存開発者による権限付与が必要です。</p>
+      <p style="font-size:12px;line-height:1.65">開発者権限は既存認証コードとFirebase側の検証を通った場合だけ有効になります。</p>
+      </div>
       <button id="portalNewParticipantSubmit" type="submit">このアイコンで本人登録する</button>
       <p id="portalNewParticipantState" role="status" aria-live="polite" style="font-size:12px;white-space:pre-wrap"></p>
     </form>
@@ -12329,6 +12369,7 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
       <p>以前のEVENT BASE登録と、このホーム画面アプリの本人ログインは異なる場合があります。元の本人情報がそのまま使用できれば再登録は不要です。</p>
       <p>使用できる本人プロフィールがない場合は、このアイコン内で新しい利用登録を行えます。過去の記録は保護され、運営が対面確認して後から対応付けます。認証コードは他人へ共有しないでください。</p>
     </details>
+    <div id="portalParticipantScrollHint" aria-hidden="true" hidden>↓ 下にも続きがあります</div>
   </section>
 </div>
 <script id="portalParticipantIdentityEntryLogic">
@@ -12348,6 +12389,61 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
   const newSubmit=document.getElementById('portalNewParticipantSubmit');
   const newState=document.getElementById('portalNewParticipantState');
   const developerCodeInput=document.getElementById('portalRecoverDeveloperCode');
+  const developerCodeGroup=document.getElementById('portalDeveloperCodeGroup');
+  const roleStep=document.getElementById('portalParticipantRoleStep');
+  const roleNext=document.getElementById('portalParticipantRoleNext');
+  const roleOptions=[...roleStep.querySelectorAll('[data-portal-entry-role]')];
+  const roleChange=document.getElementById('portalRoleChangeButton');
+  const roleChoiceBack=document.getElementById('portalRoleChoiceBackButton');
+  const roleMessage=document.getElementById('portalRegistrationRoleMessage');
+  const scrollHint=document.getElementById('portalParticipantScrollHint');
+  const gateCard=panel.querySelector('.portalParticipantGateCard');
+  let selectedEntryRole='';
+  const scrollToEntryStart=()=>{
+    try{gateCard.scrollTo({top:0,behavior:'instant'});}catch(_){gateCard.scrollTop=0;}
+    updateScrollHint();
+  };
+  const updateScrollHint=()=>{
+    if(panel.hidden||!gateCard||!scrollHint)return;
+    scrollHint.hidden=gateCard.scrollHeight-gateCard.scrollTop-gateCard.clientHeight<35;
+  };
+  gateCard?.addEventListener('scroll',updateScrollHint,{passive:true});
+  const showRoleStep=()=>{
+    selectedEntryRole='';
+    for(const opt of roleOptions)opt.setAttribute('aria-pressed','false');
+    roleNext.disabled=true;
+    roleStep.hidden=false;newForm.hidden=true;entryBack.hidden=true;retry.hidden=true;
+    panel.classList.add('portalGateInFlow');
+    heading.textContent='利用区分を選んでください';
+    message.textContent='まず利用区分を選び、「次へ」で本人情報を登録します。';
+    helper.textContent='区分の選択だけでは権限は付与されません。運営の本人確認または正規認証が必要です。';
+    scrollToEntryStart();
+    requestAnimationFrame(updateScrollHint);
+  };
+  for(const option of roleOptions)option.addEventListener('click',()=>{
+    selectedEntryRole=option.dataset.portalEntryRole||'';
+    for(const opt of roleOptions)opt.setAttribute('aria-pressed',opt===option?'true':'false');
+    roleNext.disabled=!['participant','admin','developer'].includes(selectedEntryRole);
+    requestAnimationFrame(updateScrollHint);
+  });
+  roleNext.addEventListener('click',()=>{
+    if(!['participant','admin','developer'].includes(selectedEntryRole))return;
+    roleStep.hidden=true;newForm.hidden=false;
+    newState.textContent='';newConsent.checked=false;
+    developerCodeInput.value='';
+    developerCodeGroup.hidden=selectedEntryRole!=='developer';
+    heading.textContent='本人情報を登録';
+    message.textContent='STEP 2 / お名前などを入力してください。';
+    const names={participant:'参加者・保護者',admin:'管理者',developer:'開発者'};
+    roleMessage.textContent='利用区分：'+names[selectedEntryRole]+'。'+(
+      selectedEntryRole==='developer'?'開発者認証コードを入力し、Firebaseで本人と権限を確認します。':
+      selectedEntryRole==='admin'?'この登録だけで管理者権限は付与されません。開発者による確認と承認が必要です。':
+      '承認が必要な場合は、運営による本人確認を受けてください。');
+    helper.textContent='';
+    scrollToEntryStart();
+    requestAnimationFrame(updateScrollHint);
+  });
+  roleChange.addEventListener('click',showRoleStep);
   const sourceButton=document.getElementById('portalHandoffOpen');
   const issueButton=document.getElementById('portalHandoffIssueButton');
   const issueBox=document.getElementById('portalHandoffIssued');
@@ -12369,21 +12465,25 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
   let zeroUidChoice=false,orphanRecoveryAllowed=false;
   const showEntryChoice=()=>{
     if(!(zeroUidChoice||orphanRecoveryAllowed)||resolved)return;
-    panel.hidden=false;
+    panel.hidden=false;panel.classList.add('portalGateInFlow');
+    roleStep.hidden=true;selectedEntryRole='';retry.hidden=false;
     heading.textContent='このアイコンで本人利用を開始';
     message.textContent=orphanRecoveryAllowed?'現在のUIDには本人プロフィールがありません。UIDを消さずに、このUIDで登録することができます。':'このアイコン内に本人認証がありません。既存利用者も、運営の本人確認を前提として登録できます。';
     helper.textContent='元の登録情報・正式記録は保護し、本人確認後に必要なものだけ対応付けます。';
     newForm.hidden=true;newStart.hidden=false;existingStart.hidden=false;entryBack.hidden=true;
     codeForm.hidden=true;issueBox.hidden=true;issueButton.hidden=true;cancel.hidden=true;
     handoffState.hidden=true;
+    scrollToEntryStart();requestAnimationFrame(updateScrollHint);
   };
+  roleChoiceBack.addEventListener('click',showEntryChoice);
   existingStart.addEventListener('click',()=>{
     if(existingStart.hidden||!(zeroUidChoice||orphanRecoveryAllowed))return;
-    existingStart.hidden=true;newStart.hidden=true;newForm.hidden=true;entryBack.hidden=false;
+    existingStart.hidden=true;newStart.hidden=true;newForm.hidden=true;roleStep.hidden=true;entryBack.hidden=false;
+    panel.classList.add('portalGateInFlow');
     heading.textContent='登録済みの本人情報へ戻る';
     message.textContent='元の端末やブラウザに本人ログインが残っていれば、そこで以前のMY PAGEを開けます。引継ぎコードをお持ちの場合だけ下に入力してください。';
     helper.textContent='引継ぎが使えない場合は、登録状況へ戻り、このアイコンで本人登録を選べます。過去記録は保持します。';
-    openTarget();
+    openTarget();scrollToEntryStart();requestAnimationFrame(updateScrollHint);
   });
   entryBack.addEventListener('click',showEntryChoice);
   // A new Auth identity is never created by page load or a failed handoff.
@@ -12392,20 +12492,20 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
     if(newStart.hidden||!(zeroUidChoice||orphanRecoveryAllowed))return;
     newStart.hidden=true;existingStart.hidden=true;entryBack.hidden=false;
     codeForm.hidden=true;issueBox.hidden=true;issueButton.hidden=true;cancel.hidden=true;
-    handoffState.hidden=true;newForm.hidden=false;newState.textContent='';newConsent.checked=false;
-    heading.textContent='このアイコンで利用登録';
-    message.textContent=orphanRecoveryAllowed?'現在の認証UIDを保持したまま、未登録のプロフィールだけを作成します。':'このアイコンで利用する本人として登録します。過去の大会記録は変更されません。';
-    helper.textContent='開発者は既存の開発者認証コードを入力できます。管理者・参加者は本人確認と権限付与が必要です。';
+    handoffState.hidden=true;newState.textContent='';newConsent.checked=false;
+    showRoleStep();
   });
   newForm.addEventListener('submit',async event=>{
     event.preventDefault();
     // A form already opened before an Auth change must not create a second UID.
     if(newForm.hidden||!(zeroUidChoice||orphanRecoveryAllowed)||!newConsent.checked)return;
+    if(!['participant','admin','developer'].includes(selectedEntryRole))return;
+    if(selectedEntryRole==='developer'&&!developerCodeInput.value.trim()){newState.textContent='既存の開発者認証コードを入力してください。';return;}
     const name=newName.value.trim();
     if(!name||name.length>24||/[\x00-\x1f]/.test(name)){newState.textContent='表示名は1〜24文字で入力してください。';return;}
     const reuseUnboundUid=orphanRecoveryAllowed;
     if(!window.confirm('このアイコンで本人登録しますか？過去大会の正式記録は変更・自動結合しません。開発者・管理者権限は別途正規認証が必要です。'))return;
-    const developerCode=String(developerCodeInput?.value||'');
+    const developerCode=selectedEntryRole==='developer'?String(developerCodeInput?.value||''):'';
     if(developerCodeInput)developerCodeInput.value='';
     const gate=window.__TR_PORTAL_SYNC__;
     if(typeof gate?.registerNewParticipant!=='function'){newState.textContent='Firebase本人登録の準備ができていません。';return;}
@@ -12418,7 +12518,7 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
         await gate.claimExistingDeveloper(developerCode);
         newState.textContent='開発者権限がFirebaseで確認されました。管理画面へ進みます。';
       }else{
-        newState.textContent='本人プロフィールを保存しました。管理者・参加者の承認が必要な場合は運営に確認してください。現在のUID末尾：'+String(gate.uid||'').slice(-6);
+        newState.textContent='本人プロフィールを保存しました。'+(selectedEntryRole==='admin'?'管理者として利用するには、開発者の本人確認と権限承認が必要です。':'参加資格の承認が必要な場合は、運営に本人確認を依頼してください。')+' 現在のUID末尾：'+String(gate.uid||'').slice(-6);
       }
     }catch(error){
       newState.textContent='登録できません：'+String(error?.code||error?.message||error).slice(0,180)+'\n同じ端末で再試行できます。既存アカウントを削除しないでください。';
@@ -12476,7 +12576,7 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
     message.textContent=String(body||'ログイン状態を確認できませんでした。').slice(0,300);
     helper.textContent='既存の登録を消したり、新しい本人アカウントを作り直したりしないでください。';
     retry.hidden=false;
-    existingStart.hidden=true;entryBack.hidden=true;newStart.hidden=true;newForm.hidden=true;
+    existingStart.hidden=true;entryBack.hidden=true;newStart.hidden=true;newForm.hidden=true;roleStep.hidden=true;
     openTarget();
   };
   const readDone=()=>{
@@ -12498,7 +12598,7 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
       }
       portalLimitedScreenState=null;
     }
-    resolved=true;zeroUidChoice=false;orphanRecoveryAllowed=false;panel.hidden=true;issueButton.hidden=true;issueBox.hidden=true;
+    resolved=true;zeroUidChoice=false;orphanRecoveryAllowed=false;panel.hidden=true;panel.classList.remove('portalGateInFlow');roleStep.hidden=true;issueButton.hidden=true;issueBox.hidden=true;
     existingStart.hidden=true;entryBack.hidden=true;newStart.hidden=true;newForm.hidden=true;
     window.__TR_PORTAL_VIEW_ONLY__=false;document.body.classList.remove('portalLimitedView');
     document.getElementById('portalLimitedNotice')?.remove();
@@ -12594,7 +12694,7 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
   const entryError=adapter?.applyEntryError;
   if(typeof entryError==='function')adapter.applyEntryError=function(msg){const out=entryError.apply(this,arguments);failed(msg);return out;};
   window.__TR_PARTICIPANT_ENTRY__={readDone,noSession,noProfile,failed,identityAudit,invalidate,
-    identityPresent:()=>{zeroUidChoice=false;orphanRecoveryAllowed=false;existingStart.hidden=true;newStart.hidden=true;newForm.hidden=true;entryBack.hidden=true;},
+    identityPresent:()=>{zeroUidChoice=false;orphanRecoveryAllowed=false;existingStart.hidden=true;newStart.hidden=true;newForm.hidden=true;roleStep.hidden=true;entryBack.hidden=true;},
     isResolved:()=>resolved};
   // Do not show a permanent spinner when the network stalls; no Firebase write is issued.
   setTimeout(()=>{
