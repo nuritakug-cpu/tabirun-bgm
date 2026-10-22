@@ -5008,7 +5008,6 @@ html #screen-goal-tools :is(#portalGoalViewSetting,#portalGoalViewGuide,#portalG
         <button type="button" data-agenda-mode="calendar" aria-pressed="true">カレンダー</button>
         <button type="button" data-agenda-mode="list" aria-pressed="false">一覧</button>
       </div>
-      <div id="portalLinkedCalendarHome" class="portalLinkedCalendarJump" hidden aria-label="接続済み大会の開催日"></div>
       <div id="homeCalendarGridPanel">
       <div class="portalHomeCalNav" aria-label="月移動">
         <button type="button" id="homePrevMonth">← 9月</button>
@@ -5385,7 +5384,6 @@ html #screen-goal-tools :is(#portalGoalViewSetting,#portalGoalViewGuide,#portalG
         <button type="button" data-agenda-mode="calendar" aria-pressed="true">カレンダー</button>
         <button type="button" data-agenda-mode="list" aria-pressed="false">一覧</button>
       </div>
-      <div id="portalLinkedCalendarFull" class="portalLinkedCalendarJump" hidden aria-label="接続済み大会の開催日"></div>
       <div id="fullCalendarGridPanel">
       <div class="portalFullMonthNav">
         <button type="button" id="fullPrevMonth">← 9月</button>
@@ -6676,8 +6674,8 @@ html #screen-goal-tools :is(#portalGoalViewSetting,#portalGoalViewGuide,#portalG
     const item=portalLinkedCalendarItems().find(x=>x.id===btn.dataset.calendarJumpEvent);
     if(item)portalCalendarJumpToEvent(item,true);
   });
-  function renderHomeCalendar(){portalRestoreLinkedCalendarMonth();setMonthLabels('home',homeCalendarCursor);buildMonth($('homeCalendarDays'),homeCalendarCursor,false);renderPortalLinkedCalendarJumps();renderPortalAgendaLists();renderMonthlyTrainingMenu();}
-  function renderFullCalendar(){portalRestoreLinkedCalendarMonth();setMonthLabels('full',fullCalendarCursor);buildMonth($('fullCalendarDays'),fullCalendarCursor,true);renderPortalLinkedCalendarJumps();renderPortalAgendaLists();}
+  function renderHomeCalendar(){portalRestoreLinkedCalendarMonth();setMonthLabels('home',homeCalendarCursor);buildMonth($('homeCalendarDays'),homeCalendarCursor,false);renderPortalAgendaLists();renderMonthlyTrainingMenu();}
+  function renderFullCalendar(){portalRestoreLinkedCalendarMonth();setMonthLabels('full',fullCalendarCursor);buildMonth($('fullCalendarDays'),fullCalendarCursor,true);renderPortalAgendaLists();}
   $('homePrevMonth').addEventListener('click',()=>{ homeCalendarCursor=shiftMonth(homeCalendarCursor,-1); renderHomeCalendar(); });
   $('homeNextMonth').addEventListener('click',()=>{ homeCalendarCursor=shiftMonth(homeCalendarCursor,1); renderHomeCalendar(); });
   $('fullPrevMonth').addEventListener('click',()=>{ fullCalendarCursor=shiftMonth(fullCalendarCursor,-1); renderFullCalendar(); });
@@ -6846,12 +6844,11 @@ html #screen-goal-tools :is(#portalGoalViewSetting,#portalGoalViewGuide,#portalG
   function saveScheduleEventAnswer(eventId,actorId,answer,managerOverride=false){
     const item=eventItems.find(e=>e.id===eventId);
     if(!item||flowIsEndedEvent(item))return false;
-    if(!['join','support','decline','maybe'].includes(answer))return false;
-    // A withdrawal (decline) must remain possible after registration closes.
-    if(answer!=='decline'&&(!portalEventAttendanceOpen(item)||flowIsRegistrationClosed(item)))return false;
-    // Cannot mark a runner absent or just supporting while an entry exists.
+    if(!['','join','support','decline','maybe'].includes(answer))return false;
+    // The PORTAL calendar answer describes the DAY'S plan, not race entry.
+    // Race-entry cutoff / 受付前 does not lock a previously answered person into "decline".
+    // Only the preview entry's owner can undo the entry via its existing cancellation path.
     if(flowEntry(eventId,actorId)&&answer!=='join')return false;
-    if(answer==='join'&&!flowEntry(eventId,actorId)&&!portalEventAttendanceOpen(eventItems.find(e=>e.id===eventId)))return false;
     const old=flowState.eventResponses.slice();
     flowSetAttendanceInState(eventId,actorId,answer);
     if(!flowPersist()){flowState.eventResponses=old;return false;}
@@ -6863,16 +6860,10 @@ html #screen-goal-tools :is(#portalGoalViewSetting,#portalGoalViewGuide,#portalG
       Array.isArray(rows)&&rows.some(r=>r.catalogId===eventId && r.profileId===gateway.profileId)));
   }
   const portalRegisteredResponseWarning='出走取り消し後に行ってください。やむを得ない理由で出走見送りになった場合は管理者へご連絡ください。';
-  // Keep UI and click-time conditions identical. Previously a closed event
-  // allowed 'decline' but prohibited correcting it to 'join' or 'maybe'.
+  // A calendar attendance response is distinct from race registration.
+  // Its own deadline is the end of the event, NOT the race entry deadline.
   function portalEventCanRespond(item, answer, actorId=flowSelfId()){
     if(!item||item.enabled===false||flowIsEndedEvent(item)||portalHasOwnRaceEntry(item.id,actorId))return false;
-    const previous=scheduleEventAnswer(item.id,actorId);
-    if(!portalEventAttendanceOpen(item)||flowIsRegistrationClosed(item)){
-      // Repair a previously accepted 'decline' without fabricating 'unanswered'
-      // (current Rules validate join/decline/maybe/support, not empty/deletion).
-      return previous==='decline'&&answer==='maybe';
-    }
     return ['join','decline','maybe','support'].includes(answer);
   }
   function portalHasOwnRaceEntry(eventId,actorId=flowSelfId()){
@@ -6952,7 +6943,7 @@ html #screen-goal-tools :is(#portalGoalViewSetting,#portalGoalViewGuide,#portalG
        const baseOpen=hasConnectedBase?`<button class="portalRsvpGo portalScheduleBaseOpen" type="button" data-cal-open-base="${esc(entry.eventId)}">${item.type==='RELAY EVENT BASE'?'駅伝BASEを開く':'EVENT BASEを開く'} <span>›</span></button>`:'';
        const raceLink=!hasConnectedBase&&allowRace?`<button class="portalRsvpGo" type="button" data-cal-entry="${esc(entry.eventId)}">${registered?'出走内容・取消を確認':ended?'出走内容・記録を確認':'出走する（種目と目標を登録）'} <span>›</span></button>`:'';
        const answers=[['join','参加する'],['decline','参加しない'],['maybe','未定']];
-       action=`<div class="portalRsvpSection${ended?' portalPastLocked':''}"><b class="portalRsvpTitle">大会当日の予定</b><p class="portalRsvpCurrent">現在：<strong>${esc(state)}</strong></p>${registered?`<p class="portalHelp" role="status">${esc(portalRegisteredResponseWarning)}</p>`:''}${baseOpen}${raceLink}${!attendanceOpen&&!registered?'<p class="portalHelp">参加受付前のため参加回答は変更できません。既に「参加しない」を保存した場合だけ「未定」へ訂正できます。</p>':attendanceCutoffPassed&&!ended?'<p class="portalPastLockedNote">受付期日を過ぎています。既存の「参加しない」は「未定」に訂正できます。</p>':''}${`<div class="portalRsvpOptions portalEventResponseOptions" role="group" aria-label="大会当日の予定">${answers.map(([id,label])=>`<button type="button" data-event-response="${id}" data-event-id="${esc(entry.eventId)}" class="${answer===id?'chosen':''}" aria-pressed="${answer===id?'true':'false'}" ${!portalEventCanRespond(item,id)?'disabled aria-disabled="true" title="現在は変更できません"':''}>${label}</button>`).join('')}</div><div class="portalEventSupportChoice"><p>「参加する」には応援・帯同も含みます。応援・帯同として回答する場合はこちら。</p><button type="button" data-event-response="support" data-event-id="${esc(entry.eventId)}" class="${answer==='support'?'chosen':''}" aria-pressed="${answer==='support'?'true':'false'}" ${!portalEventCanRespond(item,'support')?'disabled aria-disabled="true"':''}>応援・帯同として参加する</button></div>`}${rosterMarkup}</div>`;
+       action=`${baseOpen}<div class="portalRsvpSection${ended?' portalPastLocked':''}"><b class="portalRsvpTitle">大会当日の予定</b><p class="portalRsvpCurrent">現在：<strong>${esc(state)}</strong></p>${registered?`<p class="portalHelp" role="status">${esc(portalRegisteredResponseWarning)}</p>`:''}${raceLink}${!attendanceOpen&&!registered?'<p class="portalHelp">大会当日の予定は回答できます。出走登録の受付状態とは別です。</p>':attendanceCutoffPassed&&!ended?'<p class="portalHelp">出走登録の期日とは別に、当日の参加予定は変更できます。</p>':''}${`<div class="portalRsvpOptions portalEventResponseOptions" role="group" aria-label="大会当日の予定">${answers.map(([id,label])=>`<button type="button" data-event-response="${id}" data-event-id="${esc(entry.eventId)}" class="${answer===id?'chosen':''}" aria-pressed="${answer===id?'true':'false'}" ${!portalEventCanRespond(item,id)?'disabled aria-disabled="true" title="現在は変更できません"':''}>${label}</button>`).join('')}</div><div class="portalEventSupportChoice"><p>「参加する」には応援・帯同も含みます。応援・帯同として回答する場合はこちら。</p><button type="button" data-event-response="support" data-event-id="${esc(entry.eventId)}" class="${answer==='support'?'chosen':''}" aria-pressed="${answer==='support'?'true':'false'}" ${!portalEventCanRespond(item,'support')?'disabled aria-disabled="true"':''}>応援・帯同として参加する</button></div>`}${rosterMarkup}</div>`;
     }
     return `<article class="portalScheduleEntry ${entry.kind}"><div class="portalScheduleEntryType">${typeLabel}</div>${titleMarkup}<div class="portalScheduleEntryRows">${rows.join('')}</div>${action}</article>`;  }
   function renderScheduleDetailBody(key){
@@ -10712,9 +10703,12 @@ list.innerHTML=output.map(metric=>{
     }
     const all=roster.map(person=>{
       const entries=flowEntries(e.id,person.id);
-      const explicit=gateway
-        ?(remote.find(r=>r?.profileId===person.id)?.answer||'')
-        :(flowState.eventResponses.find(r=>r.eventId===e.id&&r.actorId===person.id)?.answer||'');
+      const shared=remote.find(r=>r?.profileId===person.id);
+      const local=flowState.eventResponses.find(r=>r.eventId===e.id&&r.actorId===person.id)?.answer||'';
+      const explicit=shared?String(shared.answer||''):local;
+      // Shared answers are read-only here for other members. Do not overwrite
+      // the participant's Firebase answer using a preview/local-only writer.
+      const remoteAnswer=!!shared;
       const joined=entries.length>0||explicit==='join'||explicit==='support';
       const issues=[];
       if(!explicit&&!entries.length)issues.push('大会当日の予定が未回答');
@@ -10722,7 +10716,7 @@ list.innerHTML=output.map(metric=>{
       if(e.raceEntryEnabled!==false&&explicit==='join'&&!entries.length)issues.push('出走・応援の区分未確認');
       if(e.raceEntryEnabled!==false&&e.requiresDeclaredTime===true&&entries.some(r=>!r.declaredTime))issues.push('申告タイム未入力');
       const profile=flowBasicProfile(person.id);
-      return {...person,entries,explicit,joined,issues,profile};
+      return {...person,entries,explicit,joined,issues,profile,remoteAnswer};
     });
     // A local blank viewer is not a confirmed member; omit only when no profile, entry or reply exists.
     const people=all.filter(p=>p.id!==flowBaseSelfId||p.entries.length||p.explicit||Object.keys(p.profile).length);
@@ -10823,7 +10817,7 @@ list.innerHTML=output.map(metric=>{
     const filter=$('portalAuditFilter').value;
     const shown=people.filter(p=>filter==='needs'?p.issues.length:filter==='join'?p.joined:filter==='registered'?p.entries.length:true);
     list.innerHTML=shown.length?shown.map(p=>{
-      const replyOptions=[['','未回答'],['join','出走する'],['support','会場へ行く（応援・帯同）'],['decline','会場へ行かない'],['maybe','未定']];
+      const replyOptions=[['','未回答'],['join','参加する'],['support','会場へ行く（応援・帯同）'],['decline','会場へ行かない'],['maybe','未定']];
       const entryMarkup=e.raceEntryEnabled===false?'<div class="portalAuditMetric"><div><strong>参加確認のみ</strong></div></div>':p.entries.length?p.entries.map(r=>{
         const date=e.metricDates?.[r.metric]||e.date||'';
         const times=flowResultsForEntry(r).map(x=>flowResultLabel(x)).join('／');
@@ -10831,7 +10825,7 @@ list.innerHTML=output.map(metric=>{
       }).join(''):'<div class="portalAuditMetric"><div><strong>出走登録なし</strong></div></div>';
       const profileBits=[p.profile.grade?(p.profile.grade==='other'?'その他':p.profile.grade+'年'):'',p.profile.gender==='male'?'男子':p.profile.gender==='female'?'女子':'',p.profile.bib?'No.'+p.profile.bib:''].filter(Boolean);
       const issue=p.issues.length?`<small class="portalAuditIssue">${esc(p.issues.join(' ／ '))}</small>`:'';
-      return `<article class="portalAuditCard ${p.issues.length?'needs':''}"><div class="portalAuditCardHead"><div><b>${esc(p.name)}</b><small>${esc(profileBits.join(' ／ ')||'基本プロフィール未設定')}</small></div><span class="portalAuditFlag">${p.issues.length?'対応が必要':'項目OK'}</span></div><label class="portalAuditAttendance">参加回答 <select data-audit-attendance="${esc(p.id)}" aria-label="${esc(p.name)} の参加回答">${replyOptions.map(([value,label])=>`<option value="${value}" ${p.explicit===value?'selected':''} ${value==='join'&&!p.entries.length?'disabled':''}>${label}</option>`).join('')}</select></label>${issue}<div class="portalAuditEntries">${entryMarkup}</div>${e.raceEntryEnabled!==false?`<div class="portalAuditCardFoot"><button type="button" class="portalAuditMiniBtn" data-audit-edit="${p.entries.length?'edit':'missing'}" data-audit-actor="${esc(p.id)}">${p.entries.length?'出走内容を確認':'既存画面で出走登録 ＋'}</button>${p.entries.length&&eventSelectableMetrics(e).some(m=>!flowEntry(e.id,p.id,m))?`<button type="button" class="portalAuditMiniBtn" data-audit-edit="missing" data-audit-actor="${esc(p.id)}">種目を追加 ＋</button>`:''}</div>`:''}</article>`;
+      return `<article class="portalAuditCard ${p.issues.length?'needs':''}"><div class="portalAuditCardHead"><div><b>${esc(p.name)}</b><small>${esc(profileBits.join(' ／ ')||'基本プロフィール未設定')}</small></div><span class="portalAuditFlag">${p.issues.length?'対応が必要':'項目OK'}</span></div><label class="portalAuditAttendance">参加回答 ${p.remoteAnswer?`<span class="portalAuditAnswerReadOnly" aria-label="Firebase共有の本人回答">${esc(replyOptions.find(([value])=>value===p.explicit)?.[1]||'未回答')} （本人の共有回答・閲覧のみ）</span>`:`<select data-audit-attendance="${esc(p.id)}" aria-label="${esc(p.name)} の端末内試用回答">${replyOptions.map(([value,label])=>`<option value="${value}" ${p.explicit===value?'selected':''}>${label}</option>`).join('')}</select>`}</label>${issue}<div class="portalAuditEntries">${entryMarkup}</div>${e.raceEntryEnabled!==false?`<div class="portalAuditCardFoot"><button type="button" class="portalAuditMiniBtn" data-audit-edit="${p.entries.length?'edit':'missing'}" data-audit-actor="${esc(p.id)}">${p.entries.length?'出走内容を確認':'既存画面で出走登録 ＋'}</button>${p.entries.length&&eventSelectableMetrics(e).some(m=>!flowEntry(e.id,p.id,m))?`<button type="button" class="portalAuditMiniBtn" data-audit-edit="missing" data-audit-actor="${esc(p.id)}">種目を追加 ＋</button>`:''}</div>`:''}</article>`;
     }).join(''):'<div class="portalEmpty">該当する試作選手はいません。</div>';
     portalRenderCanonicalAudit(e);
   }
@@ -10857,12 +10851,11 @@ list.innerHTML=output.map(metric=>{
   $('portalAuditRows').addEventListener('change',e=>{
     const field=e.target.closest('[data-audit-attendance]');if(!field||!canManage||portalParticipantPreviewMode)return;
     const actor=field.dataset.auditAttendance,answer=field.value;
-    if(!answer){flowRenderAudit();return;}
     if(!saveScheduleEventAnswer(flowManagerEventId,actor,answer,true)){
       $('portalAuditStatus').textContent='大会当日の予定を保存できませんでした。出走登録がある場合は、まず出走の取消が必要です。';flowRenderAudit();return;
     }
-    $('portalAuditStatus').textContent='大会当日の予定は端末内プレビューへ保存されました（Firebase未送信）。';
-    flowRefreshAll();flowRenderAudit();showActionFeedback('プレビューを更新しました','本人以外の参加回答はFirebaseへ送信していません。');
+    $('portalAuditStatus').textContent='端末内の試用回答を更新しました（Firebaseの本人回答は変更していません）。';
+    flowRefreshAll();flowRenderAudit();showActionFeedback('試用回答を更新しました','正式な本人回答は本人のカレンダーから変更してください。');
   });
   function portalAuditExportRows(){
     const {event:e,people}=portalAuditSnapshot();if(!e)return {e,people,rows:[]};
@@ -11716,7 +11709,7 @@ list.innerHTML=output.map(metric=>{
       }
       if(!portalEventCanRespond(event,answer,actorId)){
         showActionFeedback('現在は回答を変更できません',
-          !portalEventAttendanceOpen(event)?'参加受付前です。誤って保存された「参加しない」は「未定」で訂正できます。':
+          !event||flowIsEndedEvent(event)?'開催済みの大会は変更できません。':
           '出走登録・開催日・受付期間の状態を確認してください。');return;
       }
       const gateway=window.__TR_PORTAL_SYNC__;
@@ -13127,19 +13120,24 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
       const event=gate.eventItems?.[eventId];
       if(!event||event.enabled===false)throw Error('有効な共有イベントがありません');
       const localToday=()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');};
-      const closed=source=>{
-        const cutoff=/^\d{4}-\d{2}-\d{2}$/.test(source.entryDeadline||'')?source.entryDeadline:source.date;
-        const last=Array.isArray(source.dates)&&source.dates.length?source.dates.filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x)).sort().at(-1)||source.date:source.date;
-        return !!((/^\d{4}-\d{2}-\d{2}$/.test(last||'')&&last<localToday())||(/^\d{4}-\d{2}-\d{2}$/.test(cutoff||'')&&cutoff<localToday()));
+      // Event calendar response remains editable even when race entry is not open.
+      // Reject only concluded events; canonical race registration uses its own guard.
+      const ended=source=>{
+        const valid=s=>/^\d{4}-\d{2}-\d{2}$/.test(String(s||''));
+        const dates=Array.isArray(source?.dates)?source.dates.filter(valid):[];
+        const last=dates.length?dates.sort().at(-1):source?.date;
+        return valid(last)&&last<localToday();
       };
-      const positiveAllowed=source=>source?.attendanceOpen!==false&&source?.registration!=='受付前'&&!closed(source);
-      if(answer!=='decline'&&!positiveAllowed(event))throw Error('受付締切後・受付停止中の参加希望は保存できません');
-      if(/^\d{4}-\d{2}-\d{2}$/.test(event.date||'')&&event.date<localToday())throw Error('開催済みの大会は参加回答を変更できません');
+      if(ended(event))throw Error('開催済みの大会は参加回答を変更できません');
+      // Preserve the previously approved rule: an officially registered runner
+      // must cancel the registration before changing the calendar response.
+      const officialLocked=()=>Object.values(gate.officialEntries||{}).some(rows=>
+        Array.isArray(rows)&&rows.some(r=>r?.catalogId===eventId&&r?.profileId===gate.profileId));
+      if(officialLocked())throw Error('正式出走登録済みです。出走取消後に回答を変更してください');
       const result=await run('eventResponses/'+eventId+'/'+gate.uid,current=>{
         const liveEvent=gate.eventItems?.[eventId];
         if(auth.currentUser?.uid!==gate.uid||!liveEvent||liveEvent.enabled===false)return;
-        if(answer!=='decline'&&!positiveAllowed(liveEvent))return;
-        if(/^\d{4}-\d{2}-\d{2}$/.test(liveEvent.date||'')&&liveEvent.date<localToday())return;
+        if(ended(liveEvent)||officialLocked())return;
         if(current?.profileId && current.profileId!==gate.profileId)return;
         if(current?.answer===answer)return;
         const next={answer,profileId:gate.profileId,name:gate.displayName||'参加者',updatedAt:dbMod.serverTimestamp()};

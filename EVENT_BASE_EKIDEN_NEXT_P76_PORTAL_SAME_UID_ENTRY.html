@@ -20661,6 +20661,7 @@ async function selectExistingPortalAuthP76(){
   if(verifiedHandoff && String(profile.profileId)!==verifiedHandoff.profileId)
     throw new Error("PORTALのprofileIdとEVENT BASEの本人正本が一致しません。別人登録を防ぐため接続を停止しました。");
   S.app=selected.app;S.auth=selected.auth;S.db=getDatabase(selected.app);S.uid=uid;
+  S.displayName=clean(profile.displayName,24); // display hint only; canonical profiles remains unchanged
 }
 function eventIdFromUrl(){
   const e=clean(params.get("event"),80);
@@ -20839,7 +20840,8 @@ async function join(role,displayName,code){
   }catch(e){
     console.warn("join failed",e);
     endSession("大会への接続を完了できませんでした。");
-    entryError(role==="manager"?"管理番号を確認できませんでした。":"参加番号を確認できませんでした。");
+    const detail=String(e?.code||e?.message||'不明').slice(0,140);
+    entryError((role==='manager'?'管理番号':'参加番号')+'で接続できませんでした。番号がこの駅伝大会用か確認してください。 Firebase応答: '+detail);
   }finally{S.authBusy=false}
 }
 function stable(v){try{return JSON.stringify(v??null)}catch{return ""}}
@@ -21407,9 +21409,28 @@ async function boot(){
       await activate();
       return;
     }
-    showEntry();
-    const sourceBinding=await readBindingHandoffSourceP32();
-    if(sourceBinding)showBindingHandoffP32(sourceBinding);
+    // PORTAL role and tournament binding are distinct authorities.
+    // Display the exact requirement rather than silently promoting a PORTAL admin,
+    // issuing another UID, or leaving the viewer on an unexplained number screen.
+    let portalStaff=false;
+    if(params.get('portal')==='1'){
+      try{
+        const roleSnapshot=await get(ref(S.db,`portalRoles/${S.uid}`));
+        portalStaff=['developer','admin'].includes(String(roleSnapshot.val()?.role||''));
+      }catch(_){/* staff role unreadable => never infer staff rights */}
+    }
+    showEntry(portalStaff
+      ? 'PORTALで本人認証済みです。駅伝BASE側の管理者接続はまだありません。初回のみ、この大会の管理番号（6桁）と表示名を入力してください。PORTALの管理者承認だけで大会の管理番号を省略することはできません。'
+      : 'PORTALで本人認証済みです。駅伝BASEにまだ接続されていません。初回はこの大会の管理番号または参加番号で接続してください。');
+    const nameInput=$('entryGateDisplayName114');
+    if(nameInput&&!nameInput.value&&S.displayName)nameInput.value=clean(S.displayName,24);
+    // The current production Rules permit the legacy source-event handoff only
+    // for eventbase_ekiden_dev_20261006, not NEXT. Do not offer a dead one-tap
+    // button that always returns PERMISSION_DENIED for the P76 NEXT event.
+    if(S.eventId==='eventbase_ekiden_dev_20261006'){
+      const sourceBinding=await readBindingHandoffSourceP32();
+      if(sourceBinding)showBindingHandoffP32(sourceBinding);
+    }
   }catch(e){
     console.error("v22 boot",e);
     finishPortalAuthCoverP76();lock();
