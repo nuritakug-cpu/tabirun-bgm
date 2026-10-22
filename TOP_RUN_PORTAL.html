@@ -1,3 +1,4 @@
+<!-- 2026-10-22 P76 PORTAL CATALOG NAV: pass only the connected event catalog id as a lookup key; Firebase UID/profileId/role still reverified in P76. No new save/Auth/Rules. -->
 <!-- 2026-10-22 EVENT ENTRY LINK VISIBILITY: show real connected service entry on HOME/events/calendar; for missing link, staff goes to the existing authenticated connection editor, participant sees explicit pending. No auto-link, new Auth/DB/Rules, or results changes. -->
 <!-- 2026-10-22 ROLE-FIRST ONBOARDING AND FOLDED FIREBASE STATUS CANDIDATE. PHYSICAL PARENT: TOP_RUN_PORTAL.html SHA256=5316761037c638b9c0a476075a504d4f1021e02aa37055abf9f2b78873fc4823. UI-only; no Auth/Firebase/Rules/data changes.
 <!-- PREVIOUS: 2026-10-22 PWA IDENTITY CONTINUITY RELEASE CANDIDATE. PHYSICAL PARENT: TOP_RUN_PORTAL.html (Stage2 integrated, 1505514 bytes).
@@ -6777,7 +6778,7 @@ html #screen-goal-tools :is(#portalGoalViewSetting,#portalGoalViewGuide,#portalG
     if(!item || $('homeNextEventCard').disabled)return;
     if(portalConnectedBase(item)){portalOpenLinkedBase(item);return;}
     if(item.previewOnly){if(item.raceEntryEnabled===false)openScheduleDetail(portalEventDates(item).find(d=>d>=todayDateKey())||portalEventFirstDate(item));else flowOpenEvent(item.id);return;}
-    if(item.url){ const canonical=window.__TR_COMMON_PILOT_UI__?.officialTargetFor?.(item);const safe=canonical?portalOfficialSafeOpenUrl(canonical):item.url;if(!safe){openModal('大会接続','開発者の本人認証を確認できないため、大会bindingを保護して移動を停止しました。');return;}portalPrepareP76VerifiedHandoff(safe);window.location.href=safe; return; }
+    if(item.url){ const canonical=window.__TR_COMMON_PILOT_UI__?.officialTargetFor?.(item);const safe=canonical?portalOfficialSafeOpenUrl(canonical,item):item.url;if(!safe){openModal('大会接続','開発者の本人認証を確認できないため、大会bindingを保護して移動を停止しました。');return;}portalPrepareP76VerifiedHandoff(safe);window.location.href=safe; return; }
     openModal(item.relay?'RELAY EVENT BASE':'EVENT BASE',item.relay?'駅伝EVENT BASE':'リンク未接続');
   });
 
@@ -10350,7 +10351,7 @@ list.innerHTML=output.map(metric=>{
   // opens a participant URL. Verified PORTAL developers must use its developer
   // entry form; the ownerKey below is a NON-SECRET route marker and does not
   // grant owner rights. The separate 32-character code is still required.
-  function portalOfficialSafeOpenUrl(target){
+  function portalOfficialSafeOpenUrl(target,selectedEvent=null){
     if(!target?.openUrl)return '';
     try{
       const u=new URL(target.openUrl,location.href);
@@ -10369,6 +10370,20 @@ list.innerHTML=output.map(metric=>{
            u.searchParams.get('event')==='eventbase_ekiden_next_2026_38fa5537b6' &&
            u.searchParams.get('portal')==='1')u.searchParams.delete('ownerKey');
         else u.searchParams.set('ownerKey','TOP_RUN_PORTAL_DEVELOPER_ENTRY');
+      }
+      // Provide only a catalog lookup key. P76 re-checks the canonical Firebase
+      // event item, UID, profileId and staff/member approval before any binding.
+      // No auth material, ownerKey or participant PIN is placed in the URL.
+      if(u.pathname==='/tabirun-bgm/EVENT_BASE_EKIDEN_NEXT_P76_PORTAL_SAME_UID_ENTRY.html' &&
+         u.searchParams.get('event')==='eventbase_ekiden_next_2026_38fa5537b6' &&
+         u.searchParams.get('portal')==='1'){
+        const connected=eventItems.filter(e=>e.enabled!==false&&
+          /^event-[A-Za-z0-9_-]{1,80}$/.test(String(e.id||''))&&
+          e.type==='RELAY EVENT BASE'&&
+          portalOfficialPublicLink(e.url||'')?.id==='eventbase_ekiden_next_2026_38fa5537b6');
+        const explicitlySelected=selectedEvent&&connected.find(e=>e.id===selectedEvent.id);
+        if(explicitlySelected)u.searchParams.set('portalEvent',explicitlySelected.id);
+        else if(connected.length===1)u.searchParams.set('portalEvent',connected[0].id);
       }
       return u.href;
     }catch(_){return '';}
@@ -10419,9 +10434,17 @@ list.innerHTML=output.map(metric=>{
       const input=$('portalEventConnectionUrl');
       if(input&&!input.value)input.value=
         'https://nuritakug-cpu.github.io/tabirun-bgm/EVENT_BASE_EKIDEN_NEXT_P76_PORTAL_SAME_UID_ENTRY.html?event=eventbase_ekiden_next_2026_38fa5537b6&portal=1';
-      $('portalEventConnectionStatus').textContent=
-        '駅伝BASE NEXTの既存URLを候補として入力しました。このPORTALイベントと同じ大会か確認してから「対応する大会に接続する」で保存してください。自動保存はしません。';
+      $('portalEventConnectionStatus').textContent=portalNeedsOfficialLinkRepair(item)
+        ?'接続先が駅伝BASEと一致しません。現在：'+String(item.url||'').slice(0,200)+'。候補のP76が同じ大会か確認し、保存してください。自動更新しません。'
+        :'駅伝BASE NEXTの既存URLを候補として入力しました。このPORTALイベントと同じ大会か確認してから「対応する大会に接続する」で保存してください。自動保存はしません。';
     }
+  }
+  function portalNeedsOfficialLinkRepair(item){
+    if(!item||!['EVENT BASE','RELAY EVENT BASE'].includes(item.type)||
+       !String(item.url||'').trim())return false;
+    const publicLink=portalOfficialPublicLink(item.url||'');
+    // Never replace an already matching, canonical tournament link.
+    return !publicLink||publicLink.ekidenNext!==(item.type==='RELAY EVENT BASE');
   }
   function portalConnectedBase(item){
     if(!item||!['EVENT BASE','RELAY EVENT BASE'].includes(item.type))return false;
@@ -10462,7 +10485,7 @@ list.innerHTML=output.map(metric=>{
       }
       return false;
     }
-    const url=portalOfficialSafeOpenUrl(target);
+    const url=portalOfficialSafeOpenUrl(target,e);
     if(!url){if(statusId&&$(statusId))$(statusId).textContent='正式大会の接続先URLを検証できません。';return true;}
     if(statusId&&$(statusId))$(statusId).textContent='正式な出走登録・結果はEVENT BASEで管理します。開発者は大会の認証コードを再確認してください。';
     portalPrepareP76VerifiedHandoff(url);
@@ -10482,7 +10505,7 @@ list.innerHTML=output.map(metric=>{
       showActionFeedback('本人確認が必要です','PORTALの本人認証を確認してから大会を開いてください。');return false;
     }
     const target=flowOfficialDestination(item);
-    const safeUrl=target?portalOfficialSafeOpenUrl(target):'';
+    const safeUrl=target?portalOfficialSafeOpenUrl(target,item):'';
     if(!safeUrl){
       showActionFeedback('大会を開けません','駅伝BASE／EVENT BASEの正規接続先を確認できません。');return false;
     }
@@ -10498,7 +10521,8 @@ list.innerHTML=output.map(metric=>{
   let portalPendingConnectionEventId='';
   function portalShowEventConnection(event){
     const e=eventItems.find(x=>x.id===event?.id),card=$('portalEventCreatedConnection');
-    if(!card||!e||!['EVENT BASE','RELAY EVENT BASE'].includes(e.type)||String(e.url||'').trim()){
+    if(!card||!e||!['EVENT BASE','RELAY EVENT BASE'].includes(e.type)||
+       (String(e.url||'').trim()&&!portalNeedsOfficialLinkRepair(e))){
       if(card)card.hidden=true;
       return;
     }
@@ -10508,7 +10532,9 @@ list.innerHTML=output.map(metric=>{
       ?'種別：駅伝BASE。駅伝BASE P76の正規大会URLのみを接続できます。'
       :'種別：EVENT BASE。通常EVENT BASEの正規大会URLのみを接続できます。';
     $('portalEventConnectionUrl').value='';
-    $('portalEventConnectionStatus').textContent='PORTAL側のイベントは保存済みです。接続先の大会URLを確認してから登録してください。';
+    $('portalEventConnectionStatus').textContent=portalNeedsOfficialLinkRepair(e)
+      ?'現在の接続先はイベント種別と一致しないか、旧URLです。既存の大会・正式結果を変更せず、このPORTALイベントの接続URLだけを確認して修正できます。旧接続先：'+String(e.url||'').slice(0,220)
+      :'PORTAL側のイベントは保存済みです。接続先の大会URLを確認してから登録してください。';
     card.hidden=false;
     card.scrollIntoView({behavior:'smooth',block:'start'});
   }
@@ -10592,14 +10618,22 @@ list.innerHTML=output.map(metric=>{
     if(!['EVENT BASE','RELAY EVENT BASE'].includes(e.type)||incoming.ekidenNext!==(e.type==='RELAY EVENT BASE')){
       status.textContent='PORTALで選択した種別とリンク先が違います。イベントの種別を確認してください。';return;
     }
-    if(!gate.canWrite?.('eventItems')||!gate.eventItems?.[e.id]||
-       !/^event-[A-Za-z0-9_-]{1,80}$/.test(e.id)||String(e.url||'').trim()){
-      status.textContent='イベントのFirebase保存・本人権限を確認してください。既存リンクは上書きしません。';return;
+    const previouslySaved=gate.eventItems?.[e.id];
+    const oldUrl=String(e.url||'').trim();
+    const correcting=!!oldUrl&&portalNeedsOfficialLinkRepair(e);
+    if(!gate.canWrite?.('eventItems')||!previouslySaved||
+       !/^event-[A-Za-z0-9_-]{1,80}$/.test(e.id)||
+       String(previouslySaved.url||'').trim()!==oldUrl||
+       (oldUrl&&!correcting)){
+      status.textContent='Firebase上の大会情報と現在の接続先を確認してください。正しい既存リンク・変更中のデータは上書きしません。';return;
     }
     if(eventItems.some(other=>other.id!==e.id&&flowOfficialDestination(other)?.id===incoming.id)){
       status.textContent='同じEVENT BASE大会が別のPORTALイベントへ接続済みです。重複を確認してください。';return;
     }
-    if(!window.confirm('「'+String(e.title||'イベント')+'」に既存のEVENT BASE大会をリンクしますか？\n\n'+incoming.url+'\n\n本人・選手カード・正式結果は変更せず、PORTALイベントの接続先URLだけを保存します。'))return;
+    const prompt=correcting
+      ?'「'+String(e.title||'イベント')+'」の誤った大会接続先を修正しますか？\n\n【現在のURL】\n'+oldUrl+'\n\n【変更後のURL】\n'+incoming.url+'\n\n同じ大会であることを確認してください。PORTALイベントのURLだけを変更し、本人・選手・正式結果は変更しません。'
+      :'「'+String(e.title||'イベント')+'」に既存のEVENT BASE大会をリンクしますか？\n\n'+incoming.url+'\n\n本人・選手カード・正式結果は変更せず、PORTALイベントの接続先URLだけを保存します。';
+    if(!window.confirm(prompt))return;
     portalOfficialHandoffBusy=true;btn.disabled=true;status.textContent='正式大会リンクをFirebaseへ保存しています…';
     try{
       const nextEvent={...e,url:incoming.url};

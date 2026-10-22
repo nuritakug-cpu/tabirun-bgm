@@ -1,3 +1,4 @@
+<!-- 2026-10-22 P76 PORTAL CONTEXT: accept connected catalog id from URL after verifying canonical Firebase event, Auth UID/profileId, portalRoles/memberAccess and existing binding Rules. Preserve legacy PIN entry. -->
 <!-- P76 / 2026-10-22: verified PORTAL developer/admin/approved participant shared entry. No new Firebase init or Rules applied. -->
 <!-- P76 2026-10-22: PORTAL entry authentication cover and HOME logo returns to PORTAL; original Auth/Firebase/ekiden race remains unchanged. -->
 <!-- P76 SAME-UID HARDENING: consume short-lived PORTAL handoff hint only after verifying same authenticated UID and canonical profileId; do not issue new UID. Direct non-PORTAL entrance unchanged. -->
@@ -21419,16 +21420,28 @@ function monitorPortalManagedAccessP76(){
 }
 async function tryPortalManagedEntryP76(){
   if(params.get('portal')!=='1'||developerRoute()||S.binding||
-     S.eventId!==P32_BINDING_TARGET_EVENT_ID||!S.uid||!S.portalVerifiedHandoff)return false;
+     S.eventId!==P32_BINDING_TARGET_EVENT_ID||!S.uid)return false;
+  // The same authenticated Firebase UID/profileId is the authority. The URL
+  // catalog ID is just a selector and grants NO role; every access and
+  // binding WRITE is revalidated against server-controlled RTDB Rules.
   const ctx=S.portalVerifiedHandoff;
-  if(ctx.uid!==S.uid||ctx.eventId!==S.eventId)return false;
+  if(ctx && (ctx.uid!==S.uid||ctx.eventId!==S.eventId))return false;
   let catalogId='';
+  let rememberedId='';
   try{
     const hint=JSON.parse(sessionStorage.getItem('toprun:eventbase:calendar-return-v1')||'null');
     if(hint&&Number.isFinite(hint.t)&&Date.now()-hint.t>=0&&Date.now()-hint.t<=120000&&
-       /^event-[A-Za-z0-9_-]{1,80}$/.test(String(hint.eventId||'')))catalogId=hint.eventId;
+       /^event-[A-Za-z0-9_-]{1,80}$/.test(String(hint.eventId||'')))rememberedId=hint.eventId;
   }catch(_error){}
-  if(!catalogId){S.portalManagedError='PORTALに保存した大会イベントとの接続を確認できません。カレンダーから開き直してください。';return false;}
+  const linkedId=String(params.get('portalEvent')||'');
+  if(linkedId && !/^event-[A-Za-z0-9_-]{1,80}$/.test(linkedId)){
+    S.portalManagedError='PORTALイベントIDの形式を確認できません。';return false;
+  }
+  if(linkedId && rememberedId && linkedId!==rememberedId){
+    S.portalManagedError='PORTALの大会選択が一致しません。別大会へ接続せず停止しました。';return false;
+  }
+  catalogId=linkedId||rememberedId;
+  if(!catalogId){S.portalManagedError='PORTALの大会イベントIDが届いていません。カレンダーから対象大会を選んでください。';return false;}
   entryStatus('PORTALの本人資格・大会接続を確認しています…');
   try{
     const [roleSnap, eventSnap, profileSnap]=await Promise.all([
@@ -21438,10 +21451,12 @@ async function tryPortalManagedEntryP76(){
     ]);
     const staffRole=roleSnap.val(),item=eventSnap.val(),profile=profileSnap.val();
     const officialUrl='https://nuritakug-cpu.github.io/tabirun-bgm/EVENT_BASE_EKIDEN_NEXT_P76_PORTAL_SAME_UID_ENTRY.html?event=eventbase_ekiden_next_2026_38fa5537b6&portal=1';
-    if(profile?.profileId!==ctx.profileId||!String(profile?.displayName||'').trim()||
+    if(!profile?.profileId||!String(profile?.displayName||'').trim()||
+       (ctx && profile.profileId!==ctx.profileId)||
        !item||item.enabled!==true||item.type!=='RELAY EVENT BASE'||item.url!==officialUrl){
       S.portalManagedError='本人情報、イベント種別または保存済み駅伝リンクが一致しません。PORTAL管理画面を確認してください。';return false;
     }
+    const verifiedProfileId=profile.profileId;
     let role='';
     if(staffRole?.role==='admin'&&String(staffRole.grantedByUid||'').trim())role='manager';
     else if(staffRole?.role==='developer'){
@@ -21454,7 +21469,7 @@ async function tryPortalManagedEntryP76(){
       role='owner';
     }else{
       const member=(await get(ref(S.db,`portalCommon/topRun/memberAccess/${S.uid}`))).val();
-      if(member?.active!==true||member.profileId!==ctx.profileId){
+      if(member?.active!==true||member.profileId!==verifiedProfileId){
         S.portalManagedError='PORTALの参加者承認が確認できません。大会番号の代わりに、PORTALでの初回本人承認が必要です。';return false;
       }
       role='participant';
@@ -21463,7 +21478,7 @@ async function tryPortalManagedEntryP76(){
     const existing=await ownBinding();
     if(existing){S.portalManagedError='このUIDには既存の大会接続があります。役割を自動変更しません。';return false;}
     const b={role,displayName:clean(profile.displayName,24),boundAt:Date.now(),
-      profileId:ctx.profileId,portalManaged:true,portalCatalogId:catalogId,
+      profileId:verifiedProfileId,portalManaged:true,portalCatalogId:catalogId,
       portalLinkProof:role==='owner'?'verified-portal-developer-v1':
         role==='manager'?'verified-portal-admin-v1':'approved-member-entry-v1'};
     if(role==='owner')b.ownerProof=staffRole.ownerProof; // Existing Rules revalidate the hash.
@@ -21473,7 +21488,7 @@ async function tryPortalManagedEntryP76(){
     const saved=await runTransaction(ref(S.db,`bindings/${S.eventId}/${S.uid}`),before=>before===null?b:undefined,{applyLocally:false});
     if(!saved.committed){S.portalManagedError='別端末で大会接続が作成されました。既存接続を確認してから入り直してください。';return false;}
     const confirmed=await ownBinding();
-    if(!confirmed||confirmed.role!==role||confirmed.profileId!==ctx.profileId||
+    if(!confirmed||confirmed.role!==role||confirmed.profileId!==verifiedProfileId||
        confirmed.portalManaged!==true||confirmed.portalCatalogId!==catalogId||
        confirmed.portalLinkProof!==b.portalLinkProof){
       S.portalManagedError='大会接続の保存後の照合に失敗しました。操作を停止しました。';return false;
@@ -21552,13 +21567,17 @@ async function boot(){
       }catch(_){/* staff role unreadable => never infer staff rights */}
     }
     showEntry(portalStaff
-      ? 'PORTAL管理者の本人認証はできましたが、駅伝BASEへの管理者接続を確立できていません。PORTALの大会開催日から開き直すか、従来の6桁管理番号で接続してください。'
-      : 'PORTAL本人の大会接続を確認できません。PORTALのカレンダーから入り直してください。既存の大会番号入力は従来入口として利用できます。');
+      ? 'PORTALの本人権限は確認できましたが、駅伝BASEの大会接続は未完了です。画面下部に原因が表示されている場合は、先にその内容を確認してください。'
+      : 'PORTAL本人の大会接続を確認できません。接続先大会・承認状態を確認してください。');
     const nameInput=$('entryGateDisplayName114');
     if(nameInput&&!nameInput.value&&S.displayName)nameInput.value=clean(S.displayName,24);
     if(S.portalManagedError){
+      // Show the real blocking reason ABOVE the old six-digit fields instead
+      // of silently dropping PORTAL users into a misleading legacy form.
+      const lead=$('entryGateLead120');
+      if(lead)lead.textContent='PORTALからの大会接続は未完了です：'+S.portalManagedError;
       entryError(S.portalManagedError);
-      entryStatus('PORTAL経由の接続が未完了です。番号を再入力する前に表示された原因を確認してください。');
+      entryStatus('PORTALの本人資格と大会接続を確認してください。従来の大会番号を求める案内ではありません。');
     }
     // The current production Rules permit the legacy source-event handoff only
     // for eventbase_ekiden_dev_20261006, not NEXT. Do not offer a dead one-tap
