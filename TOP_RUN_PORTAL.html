@@ -14330,6 +14330,55 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
    manager=null;readyKey=null;button.disabled=true;
    savedTarget=null;sendButton.disabled=true;sendBox.hidden=true;sendToken.value='';
  };
+ // Restore only an actual PushManager subscription owned by this PWA origin.
+ // The server's subscription ID is SHA-256(endpoint), not a persisted credential.
+ // This is a developer-only transport test, NOT server-side UID authorization.
+ async function restoreCurrentDevice(runId, uid, profileId){
+   if(!manager||typeof manager.getSubscription!=='function'||
+      Notification.permission!=='granted')return false;
+   let subscription;
+   try{subscription=await manager.getSubscription();}
+   catch(_){say('端末の購読を読み戻せません。必要な場合だけ接続コードで再登録してください。');return false;}
+   if(runId!==generation||!section.open||!developerOK()||
+      window.__TR_PORTAL_SYNC__?.uid!==uid||
+      window.__TR_PORTAL_SYNC__?.profileId!==profileId)return false;
+   if(!subscription){
+     say('この端末に有効な通知購読がありません。開発用接続コードで登録できます。');
+     return false;
+   }
+   // If the browser exposes the subscribing VAPID key, reject a mismatched key.
+   const subscribedKey=subscription.options?.applicationServerKey;
+   if(subscribedKey){
+     let bytes;
+     try{bytes=new Uint8Array(subscribedKey);}
+     catch(_){return false;}
+     if(bytes.length!==readyKey.length||
+        !bytes.every((value,index)=>value===readyKey[index])){
+       say('端末の通知鍵が現在のサーバーと一致しません。再登録が必要です。');
+       return false;
+     }
+   }
+   if(typeof subscription.endpoint!=='string'||
+      !subscription.endpoint.startsWith('https://')||
+      typeof crypto==='undefined'||!crypto.subtle){
+     say('端末の通知先を安全に確認できません。必要な場合だけ再登録してください。');
+     return false;
+   }
+   let id;
+   try{
+     const hash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(subscription.endpoint));
+     id=Array.from(new Uint8Array(hash),b=>b.toString(16).padStart(2,'0')).join('');
+   }catch(_){say('端末の通知先を確認できません。再登録が必要です。');return false;}
+   if(runId!==generation||!section.open||!developerOK()||
+      window.__TR_PORTAL_SYNC__?.uid!==uid||
+      window.__TR_PORTAL_SYNC__?.profileId!==profileId)return false;
+   if(!/^[0-9a-f]{64}$/.test(id))return false;
+   savedTarget={id,uid,profileId,generation:runId};
+   sendBox.hidden=false;
+   sendButton.disabled=false;
+   say('この端末の通知購読を読み戻しました。接続コードの再入力は不要です。送信確認トークンだけ入力してください。サーバー側の登録有無は送信時に確認します。');
+   return true;
+ }
  async function readiness(){
    const thisRun=++generation;
    clear();
@@ -14370,7 +14419,11 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
        readyKey=publicKey;
        say('この端末の通知設定が利用できます。開発用コードを入力して登録できます。');
      }
-     if(manager&&readyKey)button.disabled=false;
+     if(manager&&readyKey){
+       button.disabled=false;
+       const gate=window.__TR_PORTAL_SYNC__;
+       await restoreCurrentDevice(thisRun,gate.uid,gate.profileId);
+     }
    }catch(e){if(thisRun===generation)say('通知の準備を確認できません：'+String(e?.message||'通信エラー').slice(0,105));}
  }
  section.addEventListener('toggle',readiness);
