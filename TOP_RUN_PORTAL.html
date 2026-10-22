@@ -10509,6 +10509,7 @@ function portalLapRelayEligibleEvents(){
   // Linking an event does not register a runner; it only opens its saved service.
   let portalEkidenOpening=false;
   async function portalOpenLinkedBase(item){
+    window.__roundtripDiag?.("PORTAL: 入場操作開始");
     if(portalEkidenOpening)return false;
     const link=item&&portalOfficialPublicLink(item.url||'');
     if(!item||!['EVENT BASE','RELAY EVENT BASE'].includes(item.type)||
@@ -10538,15 +10539,20 @@ function portalLapRelayEligibleEvents(){
       portalEkidenOpening=true;
       try{
         showActionFeedback('駅伝BASEへ接続中','PORTALの本人情報と入場許可を確認しています…');
+        window.__roundtripDiag?.("PORTAL: 認証・権限・binding確認中");
         await gate.prepareEkidenEntry(item.id);
+        window.__roundtripDiag?.("PORTAL: 入場確認完了");
+        window.__roundtripDiag?.("PORTAL: 本人引継ぎ確認中");
         if(!portalPrepareP76VerifiedHandoff(safeUrl))
           throw Error('同じUID・profileIdで接続できないため移動を停止しました');
       }catch(error){
+        window.__roundtripDiag?.('PORTAL: 接続停止',error);
         showActionFeedback('駅伝BASEを開けません',String(error?.message||error).slice(0,210));
         return false;
       }finally{portalEkidenOpening=false;}
     }
     try{sessionStorage.setItem(portalCalendarReturnKey20261022,JSON.stringify({eventId:item.id,t:Date.now()}));}catch(_){}
+    window.__roundtripDiag?.("PORTAL: P76へ移動",new URL(safeUrl).pathname.split("/").pop());
     window.location.assign(safeUrl);
     return true;
   }
@@ -14604,6 +14610,17 @@ try{
      sendButton.disabled=!(savedTarget===target&&target.generation===generation&&developerOK()&&section.open);
    }
  });
+})();
+</script>
+<script id="roundtrip-readonly-diagnostic-20261023">
+(function(){
+const records=[];const started=Date.now();let stage='初期化';let box=null;
+function display(){if(!box)return;const pre=box.querySelector('pre');if(pre)pre.textContent='段階: '+stage+' / 経過 '+Math.round((Date.now()-started)/1000)+'秒\n'+records.slice(-15).join('\n')}
+function mount(){if(box||!document.body)return;box=document.createElement('section');box.id='roundtripReadonlyDiagnostic';box.style.cssText='position:fixed;z-index:2147483646;left:8px;right:8px;bottom:8px;max-height:38vh;overflow:auto;background:#101820;color:#fff;border:2px solid #ffd400;border-radius:12px;padding:9px;font:12px/1.5 system-ui,sans-serif;box-shadow:0 5px 20px #0009';const h=document.createElement('div');h.style.cssText='display:flex;justify-content:space-between;align-items:center';const title=document.createElement('strong');title.textContent='接続診断（表示専用）';const copy=document.createElement('button');copy.textContent='コピー';copy.type='button';copy.style.cssText='padding:5px 9px;border-radius:7px';copy.onclick=()=>{const t=records.join('\n');if(navigator.clipboard?.writeText)navigator.clipboard.writeText(t).catch(()=>prompt('診断記録',t));else prompt('診断記録',t)};h.append(title,copy);const pre=document.createElement('pre');pre.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.45 monospace;margin:6px 0 0';box.append(h,pre);document.body.appendChild(box);display()}
+window.__roundtripDiag=function(label,value){stage=String(label||'不明');const message=String(value?.code||value?.message||value||'').slice(0,180).replace(/AIza[0-9A-Za-z_-]+/g,'[hidden]');records.push(new Date().toLocaleTimeString('ja-JP',{hour12:false})+' '+stage+(message?' : '+message:''));if(records.length>30)records.shift();mount();display()};
+document.addEventListener('DOMContentLoaded',mount,{once:true});if(document.readyState!=='loading')mount();
+window.addEventListener('error',e=>window.__roundtripDiag('JS ERROR',e.message));window.addEventListener('unhandledrejection',e=>window.__roundtripDiag('PROMISE ERROR',e.reason));
+window.__roundtripDiag('起動','standalone='+Boolean(window.matchMedia?.('(display-mode: standalone)').matches));setInterval(display,1000);
 })();
 </script>
 </body>

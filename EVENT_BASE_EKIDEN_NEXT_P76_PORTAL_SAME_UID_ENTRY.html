@@ -20647,6 +20647,7 @@ async function ensureAuth(){
   S.uid=u.uid;
 }
 async function selectExistingPortalAuthP76(){
+  window.__roundtripDiag?.("P76: 既存認証の復元開始");
   // ONLY for ?portal=1. The PORTAL uses the already persisted Firebase app
   // identities eventbase-rebuild and eventbase-rebuild-v22. Firebase Auth
   // sessions are keyed by the app name. Selecting v22 unconditionally can
@@ -21476,10 +21477,12 @@ async function p76AdmissionRead(path, step){
   }finally{clearTimeout(timeoutId);}
 }
 async function p76AdmissionBindingRead(){
+  window.__roundtripDiag?.("P76: binding READ開始");
   const snap=await p76AdmissionRead(`bindings/${S.eventId}/${S.uid}`,'大会接続READ');
   return snap.exists()?snap.val():null;
 }
 async function tryPortalManagedEntryP76(){
+  window.__roundtripDiag?.("P76: PORTAL権限照合開始");
   if(params.get('portal')!=='1'||developerRoute()||S.binding||
      S.eventId!==P32_BINDING_TARGET_EVENT_ID||!S.uid)return false;
   // The same authenticated Firebase UID/profileId is the authority. The URL
@@ -21591,8 +21594,8 @@ async function boot(){
     // P61: trust a verified same-UID/same-event binding, not the ownerKey URL string.
     // A valid owner binding is never deleted merely because the user returned from PORTAL.
     const ownerKey=clean(params.get("ownerKey"),100);
-    entryStatus("接続情報を確認しています…");
-    const b=await p76AdmissionBindingRead();
+    window.__roundtripDiag?.("P76: 接続情報確認中"); entryStatus("接続情報を確認しています…");
+    const b=await p76AdmissionBindingRead(); window.__roundtripDiag?.("P76: binding READ完了",b?"bindingあり":"bindingなし");
     const trustedOwner=!!b&&b.role==="owner"&&
       /^[0-9a-fA-F]{64}$/.test(String(b.ownerProof||""))&&
       typeof b.displayName==="string"&&!!b.displayName.trim()&&
@@ -21658,7 +21661,7 @@ async function boot(){
       if(sourceBinding)showBindingHandoffP32(sourceBinding);
     }
   }catch(e){
-    console.error("v22 boot",e);
+    window.__roundtripDiag?.("P76: 起動失敗",e);console.error("v22 boot",e);
     finishPortalAuthCoverP76();lock();
     const detail=String(e?.code||e?.message||e);
     const notice=params.get('portal')==='1'
@@ -25231,5 +25234,16 @@ DEVICE STATUS: static/self-check only until participant iPhone/Firebase E2E.
 -->
 <!-- P31 ROLE-INDEPENDENT RUNNER CANDIDATE FIX: owner/manager/participant bindings are people; edit authority remains developer-only. -->
 <!-- P32 EXISTING ROLE HANDOFF: one-tap same-UID manager/participant handoff from eventbase_mu4ujce3_xxx1 to eventbase_ekiden_dev_20261006; never automatic; owner excluded. -->
+<script id="roundtrip-readonly-diagnostic-20261023">
+(function(){
+const records=[];const started=Date.now();let stage='初期化';let box=null;
+function display(){if(!box)return;const pre=box.querySelector('pre');if(pre)pre.textContent='段階: '+stage+' / 経過 '+Math.round((Date.now()-started)/1000)+'秒\n'+records.slice(-15).join('\n')}
+function mount(){if(box||!document.body)return;box=document.createElement('section');box.id='roundtripReadonlyDiagnostic';box.style.cssText='position:fixed;z-index:2147483646;left:8px;right:8px;bottom:8px;max-height:38vh;overflow:auto;background:#101820;color:#fff;border:2px solid #ffd400;border-radius:12px;padding:9px;font:12px/1.5 system-ui,sans-serif;box-shadow:0 5px 20px #0009';const h=document.createElement('div');h.style.cssText='display:flex;justify-content:space-between;align-items:center';const title=document.createElement('strong');title.textContent='接続診断（表示専用）';const copy=document.createElement('button');copy.textContent='コピー';copy.type='button';copy.style.cssText='padding:5px 9px;border-radius:7px';copy.onclick=()=>{const t=records.join('\n');if(navigator.clipboard?.writeText)navigator.clipboard.writeText(t).catch(()=>prompt('診断記録',t));else prompt('診断記録',t)};h.append(title,copy);const pre=document.createElement('pre');pre.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.45 monospace;margin:6px 0 0';box.append(h,pre);document.body.appendChild(box);display()}
+window.__roundtripDiag=function(label,value){stage=String(label||'不明');const message=String(value?.code||value?.message||value||'').slice(0,180).replace(/AIza[0-9A-Za-z_-]+/g,'[hidden]');records.push(new Date().toLocaleTimeString('ja-JP',{hour12:false})+' '+stage+(message?' : '+message:''));if(records.length>30)records.shift();mount();display()};
+document.addEventListener('DOMContentLoaded',mount,{once:true});if(document.readyState!=='loading')mount();
+window.addEventListener('error',e=>window.__roundtripDiag('JS ERROR',e.message));window.addEventListener('unhandledrejection',e=>window.__roundtripDiag('PROMISE ERROR',e.reason));
+window.__roundtripDiag('起動','standalone='+Boolean(window.matchMedia?.('(display-mode: standalone)').matches));setInterval(display,1000);
+})();
+</script>
 </body>
 </html>
