@@ -1,3 +1,4 @@
+<!-- P76 2026-10-22: PORTAL entry authentication cover and HOME logo returns to PORTAL; original Auth/Firebase/ekiden race remains unchanged. -->
 <!-- P76 SAME-UID HARDENING: consume short-lived PORTAL handoff hint only after verifying same authenticated UID and canonical profileId; do not issue new UID. Direct non-PORTAL entrance unchanged. -->
 <!-- P76 PORTAL SAME-UID CONNECTION / 2026-10-21
 PHYSICAL_PARENT: EVENT_BASE_EKIDEN_NEXT_P47_PARENT_TASUKI_OWNER_MANAGER_P75_CANDIDATE_20261021.html
@@ -8587,8 +8588,22 @@ body:not(.ekP4RaceDayOpen) #ekP26RaceDayLiveBtn{display:none!important}
   #ek15LiveOverlay #ek15RestoreDock #ek15LiveCategoryBar.ekp27-collapsed .ekP27CatToggle.compact{font-size:8px!important;padding:0 2px!important}
 }
 </style>
+<style id="ekiden-p76-portal-boot-20261022">
+html.ekP76PortalAuthenticating #ekP76PortalAuthOverlay{display:flex!important}
+#ekP76PortalAuthOverlay{display:none;position:fixed;inset:0;z-index:2147483645;align-items:center;justify-content:center;padding:24px;background:#0b1118;color:#fff;text-align:center}
+#ekP76PortalAuthOverlay .pane{width:min(380px,100%);padding:30px 20px;border:1px solid #46606c;border-radius:20px;background:#17212b;box-shadow:0 20px 70px #0008}
+#ekP76PortalAuthOverlay .indicator{margin:auto auto 14px;width:35px;height:35px;border:4px solid #556979;border-top-color:#ffd400;border-radius:50%;animation:ekP76BootSpin 1s linear infinite}
+#ekP76PortalAuthOverlay strong{display:block;font-size:20px;margin-bottom:8px}
+#ekP76PortalAuthOverlay span{display:block;font-size:13px;line-height:1.7;color:#e1e6e9}
+@keyframes ekP76BootSpin{to{transform:rotate(360deg)}}
+body.ekP76PortalReturnEnabled header.top .logo{cursor:pointer;touch-action:manipulation}
+body.ekP76PortalReturnEnabled header.top .logo:focus-visible{outline:3px solid #ffd400;outline-offset:3px}
+@media(prefers-reduced-motion:reduce){#ekP76PortalAuthOverlay .indicator{animation:none}}
+</style>
+<script>if(new URLSearchParams(location.search).get('portal')==='1')document.documentElement.classList.add('ekP76PortalAuthenticating');</script>
 </head>
 <body class="accessLocked105">
+<div id="ekP76PortalAuthOverlay" role="status" aria-live="polite" aria-label="本人認証中"><div class="pane"><div class="indicator" aria-hidden="true"></div><strong>本人認証中</strong><span>PORTALから本人情報を引き継いでいます。<br>確認後に駅伝BASEを表示します。</span></div></div>
 
 <div class="entryGate105" id="entryGate105" role="dialog" aria-modal="true" aria-label="大会共有へ接続">
   <div class="entryGateCard105">
@@ -20525,9 +20540,10 @@ function entryError(m=""){
   const e=$("entryGateError105");if(e){e.textContent=m;e.classList.toggle("hidden",!m)}
 }
 function lock(){document.body.classList.add("accessLocked105");$("entryGate105")?.setAttribute("aria-hidden","false")}
-function unlock(){document.body.classList.remove("accessLocked105");$("entryGate105")?.setAttribute("aria-hidden","true")}
+function finishPortalAuthCoverP76(){document.documentElement.classList.remove('ekP76PortalAuthenticating')}
+function unlock(){finishPortalAuthCoverP76();document.body.classList.remove("accessLocked105");$("entryGate105")?.setAttribute("aria-hidden","true")}
 function showEntry(m="大会リンクを確認しました。初回のみ番号を入力してください。"){
-  lock();entryStatus(m);entryError("");
+  finishPortalAuthCoverP76();lock();entryStatus(m);entryError("");
 }
 function clearBindingHandoffP32(){
   $("bindingHandoffP32")?.remove();
@@ -21333,7 +21349,22 @@ async function unlink(){
   await remove(ref(S.db,`bindings/${S.eventId}/${S.uid}`));
   location.reload();
 }
+// PORTAL-sourced tournament: its HOME logo returns to the PORTAL main entry.
+// Do not copy or delete Firebase identity; same-origin navigation uses existing Auth.
+function bindPortalHomeLogoP76(){
+  if(new URLSearchParams(location.search).get('portal')!=='1')return;
+  const logo=document.querySelector('header.top .brand .logo');
+  if(!logo||logo.dataset.portalBound==='1')return;
+  logo.dataset.portalBound='1';logo.tabIndex=0;
+  logo.setAttribute('role','button');logo.setAttribute('aria-label','TOP RUN PORTALへ戻る');
+  logo.setAttribute('title','TOP RUN PORTALへ戻る');
+  document.body.classList.add('ekP76PortalReturnEnabled');
+  const go=()=>{window.location.assign('https://nuritakug-cpu.github.io/tabirun-bgm/TOP_RUN_PORTAL.html');};
+  logo.addEventListener('click',go);
+  logo.addEventListener('keydown',ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();go();}});
+}
 async function boot(){
+  bindPortalHomeLogoP76();
   lock();
   try{
     S.eventId=eventIdFromUrl();
@@ -21381,7 +21412,7 @@ async function boot(){
     if(sourceBinding)showBindingHandoffP32(sourceBinding);
   }catch(e){
     console.error("v22 boot",e);
-    lock();
+    finishPortalAuthCoverP76();lock();
     status(String(e?.message||e),"bad");
     entryError(String(e?.message||e));
   }
