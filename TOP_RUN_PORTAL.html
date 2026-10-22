@@ -1,3 +1,4 @@
+<!-- P76 ROUTE FIX 2026-10-22: linked EKIDEN nav uses canonical PORTAL eventItems URL without requiring an already-readable official race registration; prepare same-UID binding before nav; ordinary EVENT BASE untouched. -->
 <!-- P76 PORTAL PREPARE-BEFORE-NAV: verified same-UID tournament binding is checked/create-only in the EXISTING PORTAL Firebase gateway before navigation; requires integrated Rules; does not claim deployment. -->
 <!-- 2026-10-22 P76 PORTAL CATALOG NAV: pass only the connected event catalog id as a lookup key; Firebase UID/profileId/role still reverified in P76. No new save/Auth/Rules. -->
 <!-- 2026-10-22 EVENT ENTRY LINK VISIBILITY: show real connected service entry on HOME/events/calendar; for missing link, staff goes to the existing authenticated connection editor, participant sees explicit pending. No auto-link, new Auth/DB/Rules, or results changes. -->
@@ -10453,8 +10454,11 @@ function portalLapRelayEligibleEvents(){
   function portalConnectedBase(item){
     if(!item||!['EVENT BASE','RELAY EVENT BASE'].includes(item.type))return false;
     const publicLink=portalOfficialPublicLink(item.url||'');
-    return !!publicLink&&publicLink.ekidenNext===(item.type==='RELAY EVENT BASE')&&
-      !!flowOfficialDestination(item);
+    if(!publicLink||publicLink.ekidenNext!==(item.type==='RELAY EVENT BASE'))return false;
+    // EKIDEN is a linked PORTAL service, not a preexisting official race
+    // registration. Requiring officialTargetFor here deadlocks first-time entry.
+    if(publicLink.ekidenNext)return /^event-[A-Za-z0-9_-]{1,80}$/.test(item.id||'');
+    return !!flowOfficialDestination(item); // ordinary EVENT BASE is untouched
   }
   // A short-lived navigation hint only; never Auth authority or a local canonical profile.
   // The destination verifies both the Firebase UID and canonical profileId before admission.
@@ -10472,7 +10476,7 @@ function portalLapRelayEligibleEvents(){
         sessionStorage.setItem(portalCalendarReturnKey20261022,
           JSON.stringify({eventId:eligible[0].id,t:Date.now()}));
       }
-      sessionStorage.setItem('toprun:eventbase:p76:verified-handoff-v1',JSON.stringify({uid:active.uid,profileId:active.profileId,eventId:'eventbase_ekiden_next_2026_38fa5537b6',issuedAt:Date.now()}));
+      sessionStorage.setItem('toprun:eventbase:p76:verified-handoff-v1',JSON.stringify({uid:active.uid,profileId:active.profileId,role:active.role,eventId:'eventbase_ekiden_next_2026_38fa5537b6',issuedAt:Date.now()}));
       return true;
     }catch(_error){return false;}
   }
@@ -10481,6 +10485,10 @@ function portalLapRelayEligibleEvents(){
     if(anchor)portalPrepareP76VerifiedHandoff(anchor.href);
   },true);
   function flowOpenCanonicalEvent(e,statusId){
+    // Opening a connected EKIDEN service must not depend on an official
+    // runner-entry projection which is only readable AFTER admission.
+    if(e?.type==='RELAY EVENT BASE'&&portalConnectedBase(e))
+      return portalOpenLinkedBase(e);
     const target=flowOfficialDestination(e);
     if(!target){
       if(portalOfficialPreparationRequired(e)){
@@ -10512,7 +10520,17 @@ function portalLapRelayEligibleEvents(){
       showActionFeedback('本人確認が必要です','PORTALの本人認証を確認してから大会を開いてください。');return false;
     }
     const target=flowOfficialDestination(item);
-    const safeUrl=target?portalOfficialSafeOpenUrl(target,item):'';
+    let safeUrl='';
+    if(link.ekidenNext && /^event-[A-Za-z0-9_-]{1,80}$/.test(String(item.id||''))){
+      // Use the canonical URL from PORTAL's saved catalogue. Identity,
+      // role, and binding authority are revalidated BEFORE navigation below.
+      const u=new URL(link.url);
+      u.searchParams.set('portalEvent',item.id);
+      u.searchParams.set('portal','1');
+      // Separate this revision from a previously cached P76 document on iOS.
+      u.searchParams.set('entryBuild','20261022-PORTAL-ROUNDTRIP-1');
+      safeUrl=u.href;
+    }else safeUrl=target?portalOfficialSafeOpenUrl(target,item):'';
     if(!safeUrl){
       showActionFeedback('大会を開けません','駅伝BASE／EVENT BASEの正規接続先を確認できません。');return false;
     }
@@ -13030,8 +13048,7 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
       const profile=(await dbMod.get(dbMod.ref(db,'profiles/'+uid))).val();
       if(!profile||profile.profileId!==profileId||!String(profile.displayName||'').trim())
         throw Error('PORTALと駅伝BASEで本人情報が一致しません');
-      // Participants use memberAccess as their authority. Do not make an
-      // unrelated staff-only READ a prerequisite for ordinary entrants.
+      // Ordinary members must never require the staff-only portalRoles READ.
       const staff=gate.role==='developer'||gate.role==='admin'
         ?(await dbMod.get(dbMod.ref(db,'portalRoles/'+uid))).val():null;
       let role='',linkProof='',ownerProof='';

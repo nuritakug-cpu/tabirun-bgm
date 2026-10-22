@@ -8619,7 +8619,25 @@ body.ekP76PortalReturnEnabled header.top .logo:focus-visible{outline:3px solid #
 html[data-ek-p76-portal-entry="1"] #regularEntryV31,
 html[data-ek-p76-portal-entry="1"] #developerEntryV31{display:none!important;}
 </style>
-<script>if(new URLSearchParams(location.search).get('portal')==='1'){document.documentElement.classList.add('ekP76PortalAuthenticating');document.documentElement.setAttribute('data-ek-p76-portal-entry','1');document.addEventListener('DOMContentLoaded',()=>{const a=document.getElementById('ekP76PortalEntryReturn');if(a)a.hidden=false;});}</script>
+<script>(function(){
+  const q=new URLSearchParams(location.search);
+  // Some historic PORTAL links omitted portal=1. Correct ONLY a direct
+  // same-origin PORTAL -> NEXT navigation, never an independently opened event.
+  if(q.get('portal')!=='1' && q.get('event')==='eventbase_ekiden_next_2026_38fa5537b6' && !q.has('ownerKey')){
+    try{
+      const from=new URL(document.referrer);
+      if(from.origin===location.origin && from.pathname==='/tabirun-bgm/TOP_RUN_PORTAL.html'){
+        const u=new URL(location.href);u.searchParams.set('portal','1');
+        history.replaceState(history.state,'',u.href);q.set('portal','1');
+      }
+    }catch(_error){}
+  }
+  if(q.get('portal')==='1'){
+    document.documentElement.classList.add('ekP76PortalAuthenticating');
+    document.documentElement.setAttribute('data-ek-p76-portal-entry','1');
+    document.addEventListener('DOMContentLoaded',()=>{const a=document.getElementById('ekP76PortalEntryReturn');if(a)a.hidden=false;});
+  }
+})();</script>
 </head>
 <body class="accessLocked105">
 <div id="ekP76PortalAuthOverlay" role="status" aria-live="polite" aria-label="本人認証中"><div class="pane"><div class="indicator" aria-hidden="true"></div><strong>本人認証中</strong><span>PORTALから本人情報を引き継いでいます。<br>確認後に駅伝BASEを表示します。</span><a class="ekP76ReturnBtn" href="https://nuritakug-cpu.github.io/tabirun-bgm/TOP_RUN_PORTAL.html">PORTALへ戻る</a></div></div>
@@ -21487,12 +21505,19 @@ async function tryPortalManagedEntryP76(){
   if(!catalogId){S.portalManagedError='PORTALの大会イベントIDが届いていません。カレンダーから対象大会を選んでください。';return false;}
   entryStatus('PORTALの本人資格・大会接続を確認しています…');
   try{
-    const [roleSnap, eventSnap, profileSnap]=await Promise.all([
-      p76AdmissionRead(`portalRoles/${S.uid}`,'PORTAL役割READ'),
+    const [eventSnap, profileSnap]=await Promise.all([
       p76AdmissionRead(`portalCommon/topRun/eventItems/${catalogId}`,'イベント接続READ'),
       p76AdmissionRead(`profiles/${S.uid}`,'本人プロフィールREAD')
     ]);
-    const staffRole=roleSnap.val(),item=eventSnap.val(),profile=profileSnap.val();
+    // portalRoles is a protected staff node. PERMISSION_DENIED is normal for
+    // an approved participant; memberAccess is that participant's authority.
+    let staffRole=null;
+    try{staffRole=(await p76AdmissionRead(`portalRoles/${S.uid}`,'PORTAL役割READ')).val();}
+    catch(error){
+      if(!/permission[-_ ]denied/i.test(String(error?.code||error?.message||error)))throw error;
+      if(ctx?.role==='developer'||ctx?.role==='admin')throw error;
+    }
+    const item=eventSnap.val(),profile=profileSnap.val();
     const officialUrl='https://nuritakug-cpu.github.io/tabirun-bgm/EVENT_BASE_EKIDEN_NEXT_P76_PORTAL_SAME_UID_ENTRY.html?event=eventbase_ekiden_next_2026_38fa5537b6&portal=1';
     if(!profile?.profileId||!String(profile?.displayName||'').trim()||
        (ctx && profile.profileId!==ctx.profileId)||
@@ -21516,6 +21541,9 @@ async function tryPortalManagedEntryP76(){
         S.portalManagedError='PORTALの参加者承認が確認できません。大会番号の代わりに、PORTALでの初回本人承認が必要です。';return false;
       }
       role='participant';
+    }
+    if(ctx?.role && ({owner:'developer',manager:'admin',participant:'participant'})[role]!==ctx.role){
+      S.portalManagedError='PORTALで確認した利用区分と駅伝BASEの権限が一致しません。';return false;
     }
     // Never overwrite a prior owner, manager or participant binding.
     const existing=await p76AdmissionBindingRead();
