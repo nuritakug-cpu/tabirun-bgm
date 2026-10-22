@@ -1,3 +1,7 @@
+<!-- 2026-10-22 PWA IDENTITY CONTINUITY RELEASE CANDIDATE. PHYSICAL PARENT: TOP_RUN_PORTAL.html (Stage2 integrated, 1505514 bytes).
+TARGET: allow explicit recovery of an authenticated but truly missing canonical profile at the SAME UID.
+Existing profiles / role / Firebase authorization / public production / official results are not changed.
+Actual Firebase Rules and PWA operation have NOT been tested. NOT PUBLISHED. -->
 <!-- PORTAL 2026-10-22: connected calendar event date visibility and symmetric RSVP correction; existing Firebase/identity unchanged. -->
 <!-- 2026-10-22 PORTAL-FIRST EVENT CREATION: save eventItems as PORTAL canonical schedule, then offer typed EVENT BASE / EKIDEN link action using existing gateway.saveEvent; no independent event/UID/RTDB/Rules changes. NOT DEPLOYED. -->
 <!-- P76 same-origin VERIFIED HANDOFF: ephemeral 2-min UID/profileId navigation hint only; Firebase Auth and canonical profile are authoritative. No Rules/path changes. -->
@@ -12298,14 +12302,17 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
     <p id="portalExistingIdentityAudit" hidden role="status" aria-live="polite" style="white-space:pre-line;font-size:12px;line-height:1.7;padding:12px;border:1px solid #a9a58a;border-radius:9px;background:#242c29;color:#ffffff"></p>
     <button id="portalParticipantLoginRetry" type="button" hidden>この端末のログインを再確認</button>
     <button id="portalExistingParticipantStart" type="button" hidden>登録済みの方：元の本人に戻る</button>
-    <button id="portalNewParticipantStart" type="button" hidden>初めて利用する方：新規登録</button>
+    <button id="portalNewParticipantStart" type="button" hidden>このアイコンで利用登録する（既存利用者も可）</button>
     <button id="portalParticipantEntryBack" class="portalHandoffSecondary" type="button" hidden>登録状況の選択へ戻る</button>
     <form id="portalNewParticipantForm" autocomplete="off" hidden>
       <label for="portalNewParticipantName" style="display:block;margin-top:15px;font-size:14px;font-weight:900">表示名（1〜24文字）</label>
       <input id="portalNewParticipantName" maxlength="24" autocomplete="nickname" required style="display:block;width:100%;min-height:49px;margin-top:7px;padding:10px;border-radius:10px;border:1px solid #bbb;background:white;color:#222;font-size:16px">
-      <p style="font-size:12px;line-height:1.65">初めて登録する方だけが利用してください。過去のEVENT BASE登録・大会結果を持つ方は、同じ本人の復帰を選んでください。</p>
-      <label style="display:flex;align-items:start;gap:9px;font-size:12px;line-height:1.6"><input id="portalNewParticipantConsent" type="checkbox" required style="width:19px;height:19px;flex:none;margin-top:2px">既存の本人登録がないことを確認しました。新しい本人UIDで登録します。</label>
-      <button id="portalNewParticipantSubmit" type="submit">新しい本人として登録する</button>
+      <p style="font-size:12px;line-height:1.65">以前にEVENT BASEを利用した方も登録可能です。既存の大会記録は変更せず、必要に応じて運営が本人を対面確認して後から紐付けます。現在の本人UIDにプロフィールがなければ、そのUIDを保護して利用します。</p>
+      <label style="display:flex;align-items:start;gap:9px;font-size:12px;line-height:1.6"><input id="portalNewParticipantConsent" type="checkbox" required style="width:19px;height:19px;flex:none;margin-top:2px">このアイコンでの本人登録と、過去記録を自動的に結合しないことに同意します。</label>
+      <label for="portalRecoverDeveloperCode" style="display:block;margin-top:16px;font-size:14px;font-weight:850">開発者だけ：既存の開発者認証コード（任意）</label>
+      <input id="portalRecoverDeveloperCode" type="password" maxlength="256" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="開発者以外は空欄" style="display:block;width:100%;min-height:49px;margin-top:7px;padding:10px;border-radius:10px;border:1px solid #bbb;background:white;color:#222;font-size:16px">
+      <p style="font-size:12px;line-height:1.65">開発者権限はFirebase側の既存認証を通った場合だけ有効になります。管理者は既存開発者による権限付与が必要です。</p>
+      <button id="portalNewParticipantSubmit" type="submit">このアイコンで本人登録する</button>
       <p id="portalNewParticipantState" role="status" aria-live="polite" style="font-size:12px;white-space:pre-wrap"></p>
     </form>
     <div id="portalHandoffStatus" role="status" aria-live="polite" hidden></div>
@@ -12319,8 +12326,8 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
     <button id="portalHandoffCancel" class="portalHandoffSecondary" type="button" hidden>マイページに戻る</button>
     <details id="portalParticipantHelpDetails"><summary>ホーム画面への追加・ログインについて</summary>
       <p>iPhoneはSafariの共有メニューから「ホーム画面に追加」、AndroidはChromeのメニューから「ホーム画面に追加」または「アプリをインストール」を選んでください。</p>
-      <p>すでにEVENT BASEなどで登録した方は、本人情報を新規登録し直さないでください。ホーム画面アプリとSafari・Chromeではログイン情報が別になることがあります。</p>
-      <p>以前の登録と同じ本人に接続できない場合は、管理者に本人引継ぎを依頼してください。認証コードを他人と共有しないでください。</p>
+      <p>以前のEVENT BASE登録と、このホーム画面アプリの本人ログインは異なる場合があります。元の本人情報がそのまま使用できれば再登録は不要です。</p>
+      <p>使用できる本人プロフィールがない場合は、このアイコン内で新しい利用登録を行えます。過去の記録は保護され、運営が対面確認して後から対応付けます。認証コードは他人へ共有しないでください。</p>
     </details>
   </section>
 </div>
@@ -12340,6 +12347,7 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
   const newConsent=document.getElementById('portalNewParticipantConsent');
   const newSubmit=document.getElementById('portalNewParticipantSubmit');
   const newState=document.getElementById('portalNewParticipantState');
+  const developerCodeInput=document.getElementById('portalRecoverDeveloperCode');
   const sourceButton=document.getElementById('portalHandoffOpen');
   const issueButton=document.getElementById('portalHandoffIssueButton');
   const issueBox=document.getElementById('portalHandoffIssued');
@@ -12356,52 +12364,62 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
   const adapter=window.__TR_COMMON_PILOT_UI__;
   if(new URLSearchParams(location.search).get('commonPilot')==='1'){panel.hidden=true;return;}
   retry.addEventListener('click',()=>location.reload());
-  // Zero-UID entry only. Existing sessions always restore automatically through
-  // the established unified auth/profile/role listeners without this chooser.
-  let zeroUidChoice=false;
+  // No new Auth identity is created by load. This chooser is for either NO UID
+  // or an existing authenticated UID with a confirmed-null canonical profile.
+  let zeroUidChoice=false,orphanRecoveryAllowed=false;
   const showEntryChoice=()=>{
-    if(!zeroUidChoice||resolved)return;
+    if(!(zeroUidChoice||orphanRecoveryAllowed)||resolved)return;
     panel.hidden=false;
-    heading.textContent='登録状況を選んでください';
-    message.textContent='この起動環境では以前の本人UIDを確認できませんでした。既に登録した方は新規登録せず、元の本人情報に戻ってください。';
-    helper.textContent='Safariとホーム画面アプリではログイン情報が異なる場合があります。';
+    heading.textContent='このアイコンで本人利用を開始';
+    message.textContent=orphanRecoveryAllowed?'現在のUIDには本人プロフィールがありません。UIDを消さずに、このUIDで登録することができます。':'このアイコン内に本人認証がありません。既存利用者も、運営の本人確認を前提として登録できます。';
+    helper.textContent='元の登録情報・正式記録は保護し、本人確認後に必要なものだけ対応付けます。';
     newForm.hidden=true;newStart.hidden=false;existingStart.hidden=false;entryBack.hidden=true;
     codeForm.hidden=true;issueBox.hidden=true;issueButton.hidden=true;cancel.hidden=true;
     handoffState.hidden=true;
   };
   existingStart.addEventListener('click',()=>{
-    if(existingStart.hidden||!zeroUidChoice)return;
+    if(existingStart.hidden||!(zeroUidChoice||orphanRecoveryAllowed))return;
     existingStart.hidden=true;newStart.hidden=true;newForm.hidden=true;entryBack.hidden=false;
     heading.textContent='登録済みの本人情報へ戻る';
     message.textContent='元の端末やブラウザに本人ログインが残っていれば、そこで以前のMY PAGEを開けます。引継ぎコードをお持ちの場合だけ下に入力してください。';
-    helper.textContent='引継ぎができない場合は新規登録をせず、管理者に元の本人情報の確認を依頼してください。';
+    helper.textContent='引継ぎが使えない場合は、登録状況へ戻り、このアイコンで本人登録を選べます。過去記録は保持します。';
     openTarget();
   });
   entryBack.addEventListener('click',showEntryChoice);
   // A new Auth identity is never created by page load or a failed handoff.
   // Only a fresh, explicit user confirmation can request enrollment.
   newStart.addEventListener('click',()=>{
-    if(newStart.hidden||!zeroUidChoice)return;
+    if(newStart.hidden||!(zeroUidChoice||orphanRecoveryAllowed))return;
     newStart.hidden=true;existingStart.hidden=true;entryBack.hidden=false;
     codeForm.hidden=true;issueBox.hidden=true;issueButton.hidden=true;cancel.hidden=true;
     handoffState.hidden=true;newForm.hidden=false;newState.textContent='';newConsent.checked=false;
-    heading.textContent='初めて利用する方の登録';
-    message.textContent='過去のEVENT BASE登録や大会記録がない方だけ、新しい本人を登録できます。';
-    helper.textContent='既に登録している方は登録状況の選択へ戻ってください。';
+    heading.textContent='このアイコンで利用登録';
+    message.textContent=orphanRecoveryAllowed?'現在の認証UIDを保持したまま、未登録のプロフィールだけを作成します。':'このアイコンで利用する本人として登録します。過去の大会記録は変更されません。';
+    helper.textContent='開発者は既存の開発者認証コードを入力できます。管理者・参加者は本人確認と権限付与が必要です。';
   });
   newForm.addEventListener('submit',async event=>{
     event.preventDefault();
     // A form already opened before an Auth change must not create a second UID.
-    if(newForm.hidden||!zeroUidChoice||!newConsent.checked)return;
+    if(newForm.hidden||!(zeroUidChoice||orphanRecoveryAllowed)||!newConsent.checked)return;
     const name=newName.value.trim();
     if(!name||name.length>24||/[\x00-\x1f]/.test(name)){newState.textContent='表示名は1〜24文字で入力してください。';return;}
-    if(!window.confirm('初回登録ですか？既存の登録情報・大会記録は自動では引き継がれません。新しい本人として登録しますか？'))return;
+    const reuseUnboundUid=orphanRecoveryAllowed;
+    if(!window.confirm('このアイコンで本人登録しますか？過去大会の正式記録は変更・自動結合しません。開発者・管理者権限は別途正規認証が必要です。'))return;
+    const developerCode=String(developerCodeInput?.value||'');
+    if(developerCodeInput)developerCodeInput.value='';
     const gate=window.__TR_PORTAL_SYNC__;
     if(typeof gate?.registerNewParticipant!=='function'){newState.textContent='Firebase本人登録の準備ができていません。';return;}
     newSubmit.disabled=true;newState.textContent='本人情報をFirebaseに登録しています…';
     try{
-      await gate.registerNewParticipant(name);
-      newState.textContent='本人登録を受け付けました。保存済みのUIDとプロフィールを確認しています。';
+      await gate.registerNewParticipant(name,{reuseUnboundUid});
+      newState.textContent='本人プロフィールを保存しました。権限の確認中です。';
+      if(developerCode){
+        if(typeof gate.claimExistingDeveloper!=='function')throw Error('開発者の認証処理を開始できません');
+        await gate.claimExistingDeveloper(developerCode);
+        newState.textContent='開発者権限がFirebaseで確認されました。管理画面へ進みます。';
+      }else{
+        newState.textContent='本人プロフィールを保存しました。管理者・参加者の承認が必要な場合は運営に確認してください。現在のUID末尾：'+String(gate.uid||'').slice(-6);
+      }
     }catch(error){
       newState.textContent='登録できません：'+String(error?.code||error?.message||error).slice(0,180)+'\n同じ端末で再試行できます。既存アカウントを削除しないでください。';
     }finally{newSubmit.disabled=false;}
@@ -12480,7 +12498,7 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
       }
       portalLimitedScreenState=null;
     }
-    resolved=true;zeroUidChoice=false;panel.hidden=true;issueButton.hidden=true;issueBox.hidden=true;
+    resolved=true;zeroUidChoice=false;orphanRecoveryAllowed=false;panel.hidden=true;issueButton.hidden=true;issueBox.hidden=true;
     existingStart.hidden=true;entryBack.hidden=true;newStart.hidden=true;newForm.hidden=true;
     window.__TR_PORTAL_VIEW_ONLY__=false;document.body.classList.remove('portalLimitedView');
     document.getElementById('portalLimitedNotice')?.remove();
@@ -12534,16 +12552,22 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
     }
   };
   const noSession=()=>{
-    zeroUidChoice=true;
+    orphanRecoveryAllowed=false;zeroUidChoice=true;
     showSafeHome();
     retry.hidden=false;
     showEntryChoice();
   };
-  const noProfile=()=>{
+  const noProfile=(confirmedAbsent=false)=>{
     zeroUidChoice=false;
-    newStart.hidden=true;newForm.hidden=true;existingStart.hidden=true;entryBack.hidden=true;
-    showSafeHome();warn('本人プロフィールが見つかりません',
-    'Firebaseのログイン状態はありますが、対応するprofileIdを確認できませんでした。別人として再登録せず、管理者へ確認してください。');
+    showSafeHome();
+    orphanRecoveryAllowed=confirmedAbsent===true;
+    if(orphanRecoveryAllowed){
+      retry.hidden=false;showEntryChoice();
+    }else{
+      newStart.hidden=true;newForm.hidden=true;existingStart.hidden=true;entryBack.hidden=true;
+      warn('本人プロフィールを確認できません',
+      '保存内容に不一致があります。既存データは変更しません。運営に確認してください。');
+    }
   };
   // Developer identity audit is READ-ONLY and only shown after missing-profile failure.
   // UID suffixes reveal neither full UID, profileId, auth tokens nor handoff codes.
@@ -12556,7 +12580,7 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
   // A previously verified UI must become private again if auth or its role changes.
   const invalidate=(msg)=>{
     if(!resolved)return;
-    resolved=false;entered=false;zeroUidChoice=false;
+    resolved=false;entered=false;zeroUidChoice=false;orphanRecoveryAllowed=false;
     showSafeHome();
     // Do not restore the previous person's private navigation after switching UIDs.
     if(portalLimitedScreenState){
@@ -12570,7 +12594,7 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
   const entryError=adapter?.applyEntryError;
   if(typeof entryError==='function')adapter.applyEntryError=function(msg){const out=entryError.apply(this,arguments);failed(msg);return out;};
   window.__TR_PARTICIPANT_ENTRY__={readDone,noSession,noProfile,failed,identityAudit,invalidate,
-    identityPresent:()=>{zeroUidChoice=false;existingStart.hidden=true;newStart.hidden=true;newForm.hidden=true;entryBack.hidden=true;},
+    identityPresent:()=>{zeroUidChoice=false;orphanRecoveryAllowed=false;existingStart.hidden=true;newStart.hidden=true;newForm.hidden=true;entryBack.hidden=true;},
     isResolved:()=>resolved};
   // Do not show a permanent spinner when the network stalls; no Firebase write is issued.
   setTimeout(()=>{
@@ -13634,21 +13658,31 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
     };
     let handoffExpected=null;
     let enrolling=false,ownIncompleteEnrollmentUid='';
-    gate.registerNewParticipant=async rawName=>{
+    gate.registerNewParticipant=async (rawName,{reuseUnboundUid=false}={})=>{
       const name=String(rawName||'').trim();
       if(!name||name.length>24||/[\x00-\x1f]/.test(name))throw Error('表示名は1〜24文字で入力してください');
       if(enrolling)throw Error('登録中です');
       const existingAuthA=authA.currentUser?.uid||'',existingAuthB=authB.currentUser?.uid||'';
-      // Existing people must never be changed into new people merely because
-      // their profile or staff role cannot be read from this start context.
       const resuming=!!ownIncompleteEnrollmentUid&&auth.currentUser?.uid===ownIncompleteEnrollmentUid;
-      if(!resuming&&(existingAuthA||existingAuthB))throw Error('既存本人UIDがあります。新規発行せず本人引継ぎ・ログインを確認してください');
-      if(resuming && (existingAuthA&&existingAuthA!==ownIncompleteEnrollmentUid || existingAuthB&&existingAuthB!==ownIncompleteEnrollmentUid))
-        throw Error('別の既存本人UIDが検出されました。登録を停止しました');
+      const current=auth.currentUser;
+      const recovering=!!reuseUnboundUid&&!resuming&&!!current?.uid&&current.isAnonymous===true;
+      // Reuse only an explicitly authorized, profileless anonymous Auth UID.
+      // Other Auth apps containing a different UID block the operation.
+      if(recovering){
+        if((existingAuthA&&existingAuthA!==current.uid)||(existingAuthB&&existingAuthB!==current.uid))
+          throw Error('別の認証UIDが残っています。重複登録を防ぐため停止します');
+        const snapshot=await dbMod.get(dbMod.ref(db,'profiles/'+current.uid));
+        if(auth.currentUser?.uid!==current.uid||snapshot.val()!==null)
+          throw Error('既存プロフィールが存在するため、上書きせず停止します');
+        ownIncompleteEnrollmentUid=current.uid;
+      }else if(!resuming&&(existingAuthA||existingAuthB))
+        throw Error('既存UIDがあります。既存の本人プロフィールを確認してください');
+      if(resuming&&((existingAuthA&&existingAuthA!==ownIncompleteEnrollmentUid)||(existingAuthB&&existingAuthB!==ownIncompleteEnrollmentUid)))
+        throw Error('別の既存UIDが検出されたため登録を停止します');
       enrolling=true;
       try{
         // Only the submit handler with explicit confirmation calls this route.
-        if(!resuming){
+        if(!resuming&&!recovering){
           const result=await authMod.signInAnonymously(auth);
           ownIncompleteEnrollmentUid=result.user.uid;
         }
@@ -13698,7 +13732,7 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
         if(typeof p?.profileId!=='string'||!p.profileId){
           status('profiles/<uid>/profileIdが取得できません');
           ui?.applyEntryError('本人profileIdが取得できません');
-          window.__TR_PARTICIPANT_ENTRY__?.noProfile();
+          window.__TR_PARTICIPANT_ENTRY__?.noProfile(p===null);
           // Observe both persisted Auth contexts without attempting to sign in or write.
           // The normal selector above has already completed; do not re-read profiles.
           const mask=user=>user?.uid?('末尾'+String(user.uid).slice(-4)):'ログインなし';
