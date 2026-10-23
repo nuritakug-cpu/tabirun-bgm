@@ -5767,8 +5767,12 @@ html #screen-goal-tools :is(#portalGoalViewSetting,#portalGoalViewGuide,#portalG
             <div class="portalFormRow" style="margin-top:12px"><label>その他の出走条件・特記事項（時間数値の自由入力不可）</label><textarea id="portalEventRuleFreeText" rows="3" placeholder="上記にない条件、例外や補足"></textarea></div>
           </div>
         </section>
-        <input id="manageEventUrl" type="hidden" value="">
-        <p class="portalHelp" id="portalEventCreationOrderNote">まずPORTALにイベントを作成・保存します。「EVENT BASEを使用」「駅伝EVENT BASEを使用」を選んだ場合は、保存後に専用の接続画面へ進みます。通常イベントはPORTAL内で完結します。</p>
+        <div class="portalFormRow" id="manageEventUrlRow">
+          <label for="manageEventUrl">EVENT BASE／駅伝BASEのリンク先URL</label>
+          <input id="manageEventUrl" type="url" inputmode="url" autocomplete="off" placeholder="https://nuritakug-cpu.github.io/tabirun-bgm/…">
+          <p class="portalHelp">「EVENT BASEを使用」「駅伝EVENT BASEを使用」の場合に設定します。既存大会のURLを貼り付け、イベントを保存すると接続先を変更できます。開発者・管理者・参加者で共通のURLです。認証番号やownerKeyは貼り付けないでください。</p>
+        </div>
+        <p class="portalHelp" id="portalEventCreationOrderNote">EVENT BASE／駅伝BASEは上のリンク先URLを指定して保存できます。既存イベントは「修正・削除」からリンク先だけを変更できます。通常イベントはPORTAL内で完結します。</p>
         <button class="portalPrimary" type="button" id="manageEventAdd">PORTALにイベントを保存</button>
         <div class="portalManageState" id="manageEventState" role="status" aria-live="polite"></div>
         <section class="portalRulePanel" id="portalEventCreatedConnection" hidden aria-label="保存済みイベントへのEVENT BASE接続">
@@ -8202,7 +8206,7 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
   });
   $('manageEventAdd').addEventListener('click',async()=>{
     if(!canManage)return;
-    const date=$('manageEventDate').value,dates=portalReadEventDates(),title=$('manageEventTitle').value.trim(),entryDeadline=$('manageEventEntryDeadline').value; let place=placeValue('manageEventPlace','manageEventCustomPlace'); const startTime=portalEventTimeGet(),type=$('manageEventType').value;let url=editingEventId?String(eventItems.find(x=>x.id===editingEventId)?.url||''):'';
+    const date=$('manageEventDate').value,dates=portalReadEventDates(),title=$('manageEventTitle').value.trim(),entryDeadline=$('manageEventEntryDeadline').value; let place=placeValue('manageEventPlace','manageEventCustomPlace'); const startTime=portalEventTimeGet(),type=$('manageEventType').value;let url=['EVENT BASE','RELAY EVENT BASE'].includes(type)?String($('manageEventUrl').value||'').trim():(editingEventId?String(eventItems.find(x=>x.id===editingEventId)?.url||''):'');
     // On paste, a canonical EVENT BASE link is the whole connection setting.
     // Never persist ownerKey, PIN, admin secrets or foreign query parameters.
     if(url){
@@ -8211,6 +8215,13 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
       const publicEventLink=portalOfficialPublicLink(url);
       if(publicEventLink)url=publicEventLink.url;
     }
+    if(['EVENT BASE','RELAY EVENT BASE'].includes(type)&&url){
+      const target=portalOfficialPublicLink(url);
+      if(!target||target.ekidenNext!==(type==='RELAY EVENT BASE')){
+        $('manageEventState').textContent='リンク先が大会種別と一致しません。EVENT BASE／駅伝BASEの正規大会URLを指定してください。';return;
+      }
+      url=target.url;
+    }
     const existingEdit=editingEventId?eventItems.find(x=>x.id===editingEventId):null;
     if(url){
       try{const parsed=new URL(url);if(parsed.protocol!=='https:'||!parsed.hostname)throw new Error('bad url');}
@@ -8218,6 +8229,13 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
     }
     if(!title){$('manageEventState').textContent='イベント名を入力してください。';return;}
     if(!date){$('manageEventState').textContent='開催日を指定してください。';return;}
+    if(existingEdit&&url&&existingEdit.url){
+      const before=portalOfficialPublicLink(existingEdit.url);
+      const after=portalOfficialPublicLink(url);
+      if(before&&after&&before.id!==after.id){
+        $('manageEventState').textContent='別の大会IDへの付け替えはできません。同じ大会の最新版URLを指定してください。';return;
+      }
+    }
     if(existingEdit && !date && existingEdit.date){$('manageEventState').textContent='日付を入力してください。';return;}
     if(url){
       const linked=portalOfficialPublicLink(url);
@@ -10699,6 +10717,8 @@ function portalLapRelayEligibleEvents(){
     }catch(error){status.textContent='大会リンクを保存できませんでした：'+String(error?.message||error).slice(0,180);}
     finally{portalOfficialHandoffBusy=false;portalOfficialHandoffRefresh();}
   }
+  // Visible official destination editor; the existing eventItems Firebase writer remains canonical.
+  $('manageEventType')?.addEventListener('change',()=>{const row=$('manageEventUrlRow');if(row)row.hidden=!['EVENT BASE','RELAY EVENT BASE'].includes($('manageEventType').value);});
   $('portalOfficialHandoffLinkInput')?.addEventListener('input',portalOfficialHandoffRefresh);
   $('portalOfficialHandoffExecute').addEventListener('click',portalOfficialHandoffCreate);
   // Reload preview event shells into the EXISTING eventItems catalogue; never create another event registry.
