@@ -849,6 +849,15 @@ html,body{max-width:100%;overflow-x:hidden}
 .portalActionToast.show{opacity:1;transform:translate(-50%,0)}
 .portalActionToast strong{display:block;font-size:13px;font-weight:1000;line-height:1.25}
 .portalActionToast span{display:block;margin-top:3px;color:#d7dbd8;font-size:10px;font-weight:800;line-height:1.4}
+/* 2026-10-23 Production icon entry: visible diagnostic ONLY on failed EKIDEN handoff. */
+#portalEkidenEntryFailure[hidden]{display:none!important}
+#portalEkidenEntryFailure{position:fixed;inset:0;z-index:2147483100;display:flex;align-items:center;justify-content:center;box-sizing:border-box;overflow-y:auto;padding:calc(18px + env(safe-area-inset-top)) 16px calc(18px + env(safe-area-inset-bottom));background:rgba(14,24,26,.83);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px)}
+#portalEkidenEntryFailure .portalEkidenFailureCard{box-sizing:border-box;width:min(520px,100%);max-height:86dvh;overflow-y:auto;padding:22px 18px;border:2px solid #cbac4c;border-radius:19px;background:#f9f7f0;color:#222b29;box-shadow:0 20px 70px #0008}
+#portalEkidenEntryFailure .portalEkidenFailureCard>small{display:block;color:#7a611d;font-weight:950;font-size:11px;letter-spacing:.08em}
+#portalEkidenEntryFailure .portalEkidenFailureCard>h3{margin:8px 0 12px;font-size:21px;line-height:1.35}
+#portalEkidenEntryFailure #portalEkidenEntryFailureDetail{display:block;margin:0 0 10px;padding:13px;border:1px solid #d5c693;border-radius:11px;background:#fffcf2;color:#282e2d;font-size:14px;line-height:1.65;font-weight:850;white-space:pre-wrap;overflow-wrap:anywhere}
+#portalEkidenEntryFailure .portalEkidenFailureCard>p{margin:9px 0;font-size:12px;line-height:1.55;color:#49524e}
+#portalEkidenEntryFailureClose{display:block;width:100%;min-height:50px;margin-top:18px;border:0;border-radius:12px;background:#303937;color:#fff;font-weight:950;font-size:15px}
 </style>
 
 
@@ -5992,6 +6001,17 @@ html[data-portal-personal-color="winter"] #screen-notification-settings #trStage
   <span id="portalActionToastDetail" hidden>このHTML内に反映しました。Firebase未保存です。</span>
 </div>
 
+<!-- The existing PWA /TOP_RUN_PORTAL.html is the only entry; this screen is shown solely on EKIDEN entry failure. -->
+<div id="portalEkidenEntryFailure" hidden role="alertdialog" aria-modal="true" aria-labelledby="portalEkidenEntryFailureTitle" aria-describedby="portalEkidenEntryFailureDetail">
+  <div class="portalEkidenFailureCard">
+    <small>EKIDEN BASE / 入場確認</small>
+    <h3 id="portalEkidenEntryFailureTitle">駅伝BASEを開けません</h3>
+    <div id="portalEkidenEntryFailureDetail"></div>
+    <p>本人の再登録や大会番号の再入力は不要です。表示された内容を管理者へ伝えてください。</p>
+    <button id="portalEkidenEntryFailureClose" type="button">閉じる</button>
+  </div>
+</div>
+
 <div class="modal hidden" id="modal">
   <div class="modalCard">
     <small id="modalKicker">TOP RUN PORTAL</small>
@@ -10590,6 +10610,18 @@ function portalLapRelayEligibleEvents(){
   }
   // One verified navigation path for both calendar and the management list.
   // Linking an event does not register a runner; it only opens its saved service.
+  function portalShowEkidenEntryFailure(reason,stage){
+    const box=$('portalEkidenEntryFailure');
+    const detail=$('portalEkidenEntryFailureDetail');
+    const close=$('portalEkidenEntryFailureClose');
+    if(!box||!detail||!close)return;
+    const safeStage=String(stage||'接続の準備').slice(0,90);
+    const safeReason=String(reason||'原因を取得できませんでした').slice(0,350);
+    detail.textContent='停止段階：'+safeStage+'\n\nエラー内容：'+safeReason;
+    box.hidden=false;
+    close.onclick=()=>{box.hidden=true;};
+    close.focus();
+  }
   let portalEkidenOpening=false;
   async function portalOpenLinkedBase(item){
     window.__roundtripDiag?.("PORTAL: 入場操作開始");
@@ -10623,14 +10655,18 @@ function portalLapRelayEligibleEvents(){
       try{
         showActionFeedback('駅伝BASEへ接続中','PORTALの本人情報と入場許可を確認しています…');
         window.__roundtripDiag?.("PORTAL: 認証・権限・binding確認中");
+        if(gate)gate.ekidenEntryStage='PORTAL本人認証・大会接続の確認';
         await gate.prepareEkidenEntry(item.id);
         window.__roundtripDiag?.("PORTAL: 入場確認完了");
+        if(gate)gate.ekidenEntryStage='本人情報の引継ぎ確認';
         window.__roundtripDiag?.("PORTAL: 本人引継ぎ確認中");
         if(!portalPrepareP76VerifiedHandoff(safeUrl))
           throw Error('同じUID・profileIdで接続できないため移動を停止しました');
       }catch(error){
         window.__roundtripDiag?.('PORTAL: 接続停止',error);
-        showActionFeedback('駅伝BASEを開けません',String(error?.message||error).slice(0,210));
+        const message=String(error?.message||error).slice(0,350);
+        showActionFeedback('駅伝BASEを開けません',message.slice(0,210));
+        portalShowEkidenEntryFailure(message,gate?.ekidenEntryStage||'PORTALからの入場確認');
         return false;
       }finally{portalEkidenOpening=false;}
     }
@@ -13142,19 +13178,23 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
     const EKIDEN_PORTAL_EVENT_ID='eventbase_ekiden_next_2026_38fa5537b6';
     // The saved PORTAL eventItems URL is the only navigation destination; no fixed HTML revision.
     gate.prepareEkidenEntry=async(catalogId)=>{
+      gate.ekidenEntryStage='PORTAL本人と大会情報の確認';
       const uid=String(gate.uid||''),profileId=String(gate.profileId||'');
       if(!uid||!profileId||auth.currentUser?.uid!==uid||gate.roleVerified!==true||
          gate.hasOperationalAccess()!==true||!gate.loaded.eventItems)
         throw Error('PORTALの本人確認と大会情報の受信が完了していません');
       if(!/^event-[A-Za-z0-9_-]{1,80}$/.test(String(catalogId||'')))
         throw Error('接続先の大会が特定できません');
+      gate.ekidenEntryStage='大会情報・正規リンクのFirebase読込';
       const event=(await dbMod.get(ref('eventItems/'+catalogId))).val();
       if(!event||event.enabled!==true||event.type!=='RELAY EVENT BASE'||!portalOfficialPublicLink(event.url||'')?.ekidenNext)
         throw Error('PORTALの保存済み駅伝大会と接続先が一致しません');
+      gate.ekidenEntryStage='本人プロフィールのFirebase照合';
       const profile=(await dbMod.get(dbMod.ref(db,'profiles/'+uid))).val();
       if(!profile||profile.profileId!==profileId||!String(profile.displayName||'').trim())
         throw Error('PORTALと駅伝BASEで本人情報が一致しません');
       // Ordinary members must never require the staff-only portalRoles READ.
+      gate.ekidenEntryStage='PORTAL権限の照合';
       const staff=gate.role==='developer'||gate.role==='admin'
         ?(await dbMod.get(dbMod.ref(db,'portalRoles/'+uid))).val():null;
       let role='',linkProof='',ownerProof='';
@@ -13163,6 +13203,7 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
       }else if(gate.role==='admin'&&staff?.role==='admin'&&typeof staff.grantedByUid==='string'&&staff.grantedByUid){
         role='manager';linkProof='verified-portal-admin-v1';
       }else if(gate.role==='participant'){
+        gate.ekidenEntryStage='参加者承認のFirebase読込';
         const member=(await dbMod.get(ref('memberAccess/'+uid))).val();
         if(gate.memberApproved!==true||member?.active!==true||member.profileId!==profileId)
           throw Error('PORTALの参加者承認を確認できません');
@@ -13172,6 +13213,7 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
       if(auth.currentUser?.uid!==uid||gate.uid!==uid||gate.profileId!==profileId||
          gate.roleVerified!==true||gate.hasOperationalAccess()!==true)
         throw Error('移動中に本人・権限が変わりました');
+      gate.ekidenEntryStage='既存の駅伝BASE接続情報確認';
       const dest=dbMod.ref(db,'bindings/'+EKIDEN_PORTAL_EVENT_ID+'/'+uid);
       const previous=(await dbMod.get(dest)).val();
       if(previous){
@@ -13188,6 +13230,7 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
       if(role==='owner')binding.ownerProof=ownerProof;
       if(role==='manager')binding.eventId=EKIDEN_PORTAL_EVENT_ID;
       let saved;
+      gate.ekidenEntryStage='初回の駅伝BASE接続情報のFirebase保存';
       try{
         saved=await dbMod.runTransaction(dest,before=>before===null?binding:undefined,{applyLocally:false});
       }catch(error){
@@ -13195,6 +13238,7 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
           throw Error('駅伝BASEの番号なし入場をFirebaseが許可していません。本人登録や大会番号の再入力は不要です');
         throw error;
       }
+      gate.ekidenEntryStage='駅伝BASE接続の保存結果確認';
       const confirmed=(await dbMod.get(dest)).val();
       if(!confirmed||confirmed.role!==role||confirmed.profileId!==profileId||
          confirmed.portalManaged!==true||confirmed.portalLinkProof!==linkProof||
