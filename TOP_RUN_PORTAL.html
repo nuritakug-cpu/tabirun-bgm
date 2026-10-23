@@ -14850,11 +14850,26 @@ setInterval(display,1000);
      const key=keyBytes(cfg.vapidPublicKey);
      if(run!==epoch||!box.open||!eligible())return;
      if(isIOS()&&window.pushManager?.subscribe){
+       // Preserve the already-successful iPhone declarative Push path unchanged.
        manager=window.pushManager;
-     }else if('serviceWorker'in navigator){
-       // Never register a second SW. Stage2 already checks that scoped SW is available.
-       const reg=await navigator.serviceWorker.getRegistration('./TOP_RUN_PORTAL');
-       if(!reg?.pushManager)throw Error('従来ブラウザ用の通知受信プログラムは未登録です');
+     }else if('serviceWorker'in navigator&&'PushManager'in window){
+       // Android/other SW browsers: first-time approved members have never
+       // used the developer-only Stage2 registration. Install/reuse the SAME
+       // scoped receiver as Stage2. No second worker or Firebase connection.
+       const swPath='./top-run-push-sw.js';
+       const swUrl=new URL(swPath,location.href).href;
+       let reg=await navigator.serviceWorker.getRegistration('./TOP_RUN_PORTAL');
+       if(reg?.active?.scriptURL&&reg.active.scriptURL!==swUrl)
+         throw Error('別の受信プログラムが登録されています。既存設定を変更せず停止しました');
+       if(!reg?.pushManager){
+         const head=await fetch(swPath,{method:'HEAD',cache:'no-store',redirect:'error'});
+         if(!head.ok||!/javascript|ecmascript/i.test(head.headers.get('Content-Type')||''))
+           throw Error('Android用通知受信プログラムが未公開です');
+         reg=await navigator.serviceWorker.register(swPath,{scope:'./TOP_RUN_PORTAL',updateViaCache:'none'});
+       }
+       if(!reg?.pushManager)throw Error('Androidの通知受信プログラムを開始できません');
+       // A newly installed SW must be active before subscribe() can succeed.
+       if(!reg.active)await navigator.serviceWorker.ready;
        manager=reg.pushManager;
      }else throw Error('この端末は通知購読に対応していません');
      publicKey=key;
