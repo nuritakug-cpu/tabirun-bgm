@@ -1,0 +1,91 @@
+name: TOP RUN Android Push Receiver Install
+
+on:
+  workflow_dispatch:
+    inputs:
+      install:
+        description: 'Install the Android notification receiver on main'
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: top-run-android-receiver-install
+  cancel-in-progress: false
+
+jobs:
+  install:
+    if: github.ref == 'refs/heads/main' && inputs.install == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out production branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: true
+
+      - name: Restore reviewed Android receiver and publish only that file
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYCODE'
+          import base64, hashlib, pathlib
+          payload = """
+          LyogVE9QIFJVTiBQT1JUQUwgLSBBbmRyb2lkL2Rlc2t0b3Agbm90aWZpY2F0aW9uIHJlY2VpdmVyLgogICBPbmUgZXhpc3Rp
+          bmctb3JpZ2luLCBuYXJyb3dseS1zY29wZWQgU2VydmljZSBXb3JrZXI7IG5vIEZpcmViYXNlIG9yIHNlY3JldHMuCiAgIElu
+          c3RhbGxlZCBPTkxZIGZyb20gVE9QX1JVTl9QT1JUQUwgU3RhZ2UzIG5vdGlmaWNhdGlvbiBzZXR0aW5ncywgYWZ0ZXIgaWRl
+          bnRpdHkgZWxpZ2liaWxpdHkuCiovCid1c2Ugc3RyaWN0JzsKY29uc3QgUE9SVEFMPSdodHRwczovL251cml0YWt1Zy1jcHUu
+          Z2l0aHViLmlvL3RhYmlydW4tYmdtL1RPUF9SVU5fUE9SVEFMLmh0bWwnOwpjb25zdCBQT1JUQUxfVVJMPW5ldyBVUkwoUE9S
+          VEFMKTsKZnVuY3Rpb24gYWxsb3dlZFBhZ2UocmF3KXsKICB0cnl7CiAgICBjb25zdCB1cmw9bmV3IFVSTCh0eXBlb2YgcmF3
+          PT09J3N0cmluZyc/cmF3OlBPUlRBTCxQT1JUQUwpOwogICAgaWYodXJsLm9yaWdpbiE9PVBPUlRBTF9VUkwub3JpZ2lufHx1
+          cmwucGF0aG5hbWUhPT1QT1JUQUxfVVJMLnBhdGhuYW1lKXJldHVybiBQT1JUQUw7CiAgICBjb25zdCB0YXJnZXQ9dXJsLnNl
+          YXJjaFBhcmFtcy5nZXQoJ3B1c2hUbycpOwogICAgcmV0dXJuIHRhcmdldD09PSdjaGF0J3x8dGFyZ2V0PT09J25vdGljZXMn
+          P1BPUlRBTCsnP3B1c2hUbz0nK3RhcmdldDpQT1JUQUw7CiAgfWNhdGNoe3JldHVybiBQT1JUQUw7fQp9CnNlbGYuYWRkRXZl
+          bnRMaXN0ZW5lcigncHVzaCcsZXZlbnQ9PnsKICBldmVudC53YWl0VW50aWwoKGFzeW5jKCk9PnsKICAgIGxldCB2YWx1ZT17
+          fTsKICAgIHRyeXt2YWx1ZT1ldmVudC5kYXRhPy5qc29uKCl8fHt9O31jYXRjaHsvKiBJbnZhbGlkIHBheWxvYWQ6IHVzZSBn
+          ZW5lcmljIG5vdGlmaWNhdGlvbi4gKi99CiAgICBjb25zdCBuPXZhbHVlPy5ub3RpZmljYXRpb24mJnR5cGVvZiB2YWx1ZS5u
+          b3RpZmljYXRpb249PT0nb2JqZWN0Jz92YWx1ZS5ub3RpZmljYXRpb246dmFsdWU7CiAgICBjb25zdCB0aXRsZT10eXBlb2Yg
+          bj8udGl0bGU9PT0nc3RyaW5nJz9uLnRpdGxlLnNsaWNlKDAsODApOidUT1AgUlVOJzsKICAgIGNvbnN0IGJvZHk9dHlwZW9m
+          IG4/LmJvZHk9PT0nc3RyaW5nJz9uLmJvZHkuc2xpY2UoMCwyMjApOifmlrDjgZfjgYTpgJrnn6XjgYzjgYLjgorjgb7jgZnj
+          gIInOwogICAgY29uc3QgbmF2aWdhdGU9YWxsb3dlZFBhZ2Uobj8ubmF2aWdhdGUpOwogICAgYXdhaXQgc2VsZi5yZWdpc3Ry
+          YXRpb24uc2hvd05vdGlmaWNhdGlvbih0aXRsZSx7CiAgICAgIGJvZHksbGFuZzonamEnLGRpcjonYXV0bycsdGFnOnR5cGVv
+          ZiBuPy50YWc9PT0nc3RyaW5nJz9uLnRhZy5zbGljZSgwLDcwKTondG9wLXJ1bi1tZXNzYWdlJywKICAgICAgZGF0YTp7dXJs
+          Om5hdmlnYXRlfSxzaWxlbnQ6bj8uc2lsZW50PT09dHJ1ZQogICAgfSk7CiAgfSkoKSk7Cn0pOwpzZWxmLmFkZEV2ZW50TGlz
+          dGVuZXIoJ25vdGlmaWNhdGlvbmNsaWNrJyxldmVudD0+ewogIGV2ZW50Lm5vdGlmaWNhdGlvbi5jbG9zZSgpOwogIGV2ZW50
+          LndhaXRVbnRpbCgoYXN5bmMoKT0+ewogICAgY29uc3QgdGFyZ2V0PWFsbG93ZWRQYWdlKGV2ZW50Lm5vdGlmaWNhdGlvbj8u
+          ZGF0YT8udXJsKTsKICAgIGNvbnN0IHdpbmRvd3M9YXdhaXQgY2xpZW50cy5tYXRjaEFsbCh7dHlwZTond2luZG93JyxpbmNs
+          dWRlVW5jb250cm9sbGVkOnRydWV9KTsKICAgIGNvbnN0IGN1cnJlbnQ9d2luZG93cy5maW5kKHc9PnsKICAgICAgdHJ5e2Nv
+          bnN0IHVybD1uZXcgVVJMKHcudXJsKTtyZXR1cm4gdXJsLm9yaWdpbj09PVBPUlRBTF9VUkwub3JpZ2luJiZ1cmwucGF0aG5h
+          bWU9PT1QT1JUQUxfVVJMLnBhdGhuYW1lO30KICAgICAgY2F0Y2h7cmV0dXJuIGZhbHNlO30KICAgIH0pOwogICAgaWYoY3Vy
+          cmVudCl7CiAgICAgIHRyeXsKICAgICAgICAvLyBOYXZpZ2F0ZSB0aHJvdWdoIHRoZSBleGlzdGluZyBwb3J0YWwgYXV0aG9y
+          aXphdGlvbiBmbG93OyB0aGUgcHVzaFRvCiAgICAgICAgLy8gcGFyYW0gb3BlbnMgY2hhdC9ub3RpY2VzIG9ubHkgYWZ0ZXIg
+          dGhlIGV4aXN0aW5nIGlkZW50aXR5IGdhdGUgcGFzc2VzLgogICAgICAgIGNvbnN0IHBhZ2U9YXdhaXQgY3VycmVudC5uYXZp
+          Z2F0ZSh0YXJnZXQpOwogICAgICAgIGF3YWl0IChwYWdlfHxjdXJyZW50KS5mb2N1cygpOwogICAgICAgIHJldHVybjsKICAg
+          ICAgfWNhdGNoey8qIE9wZW4gYSBuZXcgcG9ydGFsIHdpbmRvdyBpZiB0aGUgcHJldmlvdXMgb25lIGJlY2FtZSB1bmF2YWls
+          YWJsZS4gKi99CiAgICB9CiAgICBhd2FpdCBjbGllbnRzLm9wZW5XaW5kb3codGFyZ2V0KTsKICB9KSgpKTsKfSk7Cg==
+          """
+          script = base64.b64decode(''.join(payload.split()), validate=True)
+          expected = "f9361be5d09a0d16f695a45d823c84927521623675caf64f222c2677a9ee4713"
+          if hashlib.sha256(script).hexdigest() != expected:
+              raise SystemExit('Android push receiver source integrity check failed')
+          if b"addEventListener('push'" not in script or b"notificationclick" not in script:
+              raise SystemExit('Android notification receiver is incomplete')
+          dest = pathlib.Path('top-run-push-sw.js')
+          if dest.exists() and dest.read_bytes() != script:
+              raise SystemExit('Another receiver file already exists. Refusing to overwrite it.')
+          dest.write_bytes(script)
+          print('Approved Android receiver created; existing files untouched.')
+          PYCODE
+          node --check top-run-push-sw.js
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- top-run-push-sw.js
+          if git diff --cached --quiet; then
+            echo 'Receiver is already in the repository. Nothing to change.'
+          else
+            git commit -m 'Add Android TOP RUN notification receiver'
+            git push origin HEAD:main
+          fi
