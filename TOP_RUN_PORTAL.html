@@ -14644,13 +14644,60 @@ try{
 </script>
 <script id="roundtrip-readonly-diagnostic-20261023">
 (function(){
-const records=[];const started=Date.now();let stage='初期化';let box=null;
-function display(){if(!box)return;const pre=box.querySelector('pre');if(pre)pre.textContent='段階: '+stage+' / 経過 '+Math.round((Date.now()-started)/1000)+'秒\n'+records.slice(-15).join('\n')}
-function mount(){if(box||!document.body)return;box=document.createElement('section');box.id='roundtripReadonlyDiagnostic';box.style.cssText='position:fixed;z-index:2147483646;left:8px;right:8px;bottom:8px;max-height:38vh;overflow:auto;background:#101820;color:#fff;border:2px solid #ffd400;border-radius:12px;padding:9px;font:12px/1.5 system-ui,sans-serif;box-shadow:0 5px 20px #0009';const h=document.createElement('div');h.style.cssText='display:flex;justify-content:space-between;align-items:center';const title=document.createElement('strong');title.textContent='接続診断（表示専用）';const copy=document.createElement('button');copy.textContent='コピー';copy.type='button';copy.style.cssText='padding:5px 9px;border-radius:7px';copy.onclick=()=>{const t=records.join('\n');if(navigator.clipboard?.writeText)navigator.clipboard.writeText(t).catch(()=>prompt('診断記録',t));else prompt('診断記録',t)};h.append(title,copy);const pre=document.createElement('pre');pre.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.45 monospace;margin:6px 0 0';box.append(h,pre);document.body.appendChild(box);display()}
-window.__roundtripDiag=function(label,value){stage=String(label||'不明');const message=String(value?.code||value?.message||value||'').slice(0,180).replace(/AIza[0-9A-Za-z_-]+/g,'[hidden]');records.push(new Date().toLocaleTimeString('ja-JP',{hour12:false})+' '+stage+(message?' : '+message:''));if(records.length>30)records.shift();mount();display()};
-document.addEventListener('DOMContentLoaded',mount,{once:true});if(document.readyState!=='loading')mount();
-window.addEventListener('error',e=>window.__roundtripDiag('JS ERROR',e.message));window.addEventListener('unhandledrejection',e=>window.__roundtripDiag('PROMISE ERROR',e.reason));
-window.__roundtripDiag('起動','standalone='+Boolean(window.matchMedia?.('(display-mode: standalone)').matches));setInterval(display,1000);
+'use strict';
+const records=[];
+const started=Date.now();
+let stage='初期化';
+let box=null;
+function display(){
+  if(!box)return;
+  const pre=box.querySelector('pre');
+  if(pre)pre.textContent='段階: '+stage+' / 経過 '+Math.round((Date.now()-started)/1000)+'秒\n'+records.slice(-15).join('\n');
+}
+function mount(){
+  if(box)return;
+  const screen=document.getElementById('screen-management');
+  if(!screen)return;
+  // The diagnostic is available through the existing authorized management screen only.
+  const anchor=screen.querySelector('#portalConnectionDetails');
+  if(!anchor)return;
+  box=document.createElement('details');
+  box.id='roundtripReadonlyDiagnostic';
+  box.style.cssText='box-sizing:border-box;max-width:100%;margin:12px 0 16px;background:#101820;color:#fff;border:1px solid #c49f22;border-radius:12px;padding:10px;font:12px/1.5 system-ui,sans-serif;';
+  const summary=document.createElement('summary');
+  summary.textContent='接続診断ログ（必要なときに開く）';
+  summary.style.cssText='cursor:pointer;font-weight:900;user-select:none;padding:3px 0';
+  const toolbar=document.createElement('div');
+  toolbar.style.cssText='display:flex;justify-content:flex-end;padding:8px 0 2px';
+  const copy=document.createElement('button');
+  copy.textContent='ログをコピー';
+  copy.type='button';
+  copy.style.cssText='padding:7px 10px;border-radius:7px;background:#fff;color:#101820;border:0;font-size:12px;font-weight:700;';
+  copy.onclick=()=>{
+    const t=records.join('\n');
+    if(navigator.clipboard?.writeText)navigator.clipboard.writeText(t).catch(()=>prompt('診断記録',t));
+    else prompt('診断記録',t);
+  };
+  toolbar.appendChild(copy);
+  const pre=document.createElement('pre');
+  pre.style.cssText='max-height:38vh;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.45 monospace;margin:7px 0 0';
+  box.append(summary,toolbar,pre);
+  anchor.insertAdjacentElement('afterend',box);
+  display();
+}
+window.__roundtripDiag=function(label,value){
+  stage=String(label||'不明');
+  const message=String(value?.code||value?.message||value||'').slice(0,180).replace(/AIza[0-9A-Za-z_-]+/g,'[hidden]');
+  records.push(new Date().toLocaleTimeString('ja-JP',{hour12:false})+' '+stage+(message?' : '+message:''));
+  if(records.length>30)records.shift();
+  mount();display();
+};
+document.addEventListener('DOMContentLoaded',mount,{once:true});
+if(document.readyState!=='loading')mount();
+window.addEventListener('error',e=>window.__roundtripDiag('JS ERROR',e.message));
+window.addEventListener('unhandledrejection',e=>window.__roundtripDiag('PROMISE ERROR',e.reason));
+window.__roundtripDiag('起動','standalone='+Boolean(window.matchMedia?.('(display-mode: standalone)').matches));
+setInterval(display,1000);
 })();
 </script>
 </body>
