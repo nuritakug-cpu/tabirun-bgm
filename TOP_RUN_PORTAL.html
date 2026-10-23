@@ -10572,7 +10572,7 @@ function portalLapRelayEligibleEvents(){
     portalPendingConnectionEventId=e.id;
     $('portalEventConnectionHeading').textContent='保存済み：「'+String(e.title||'イベント')+'」';
     $('portalEventConnectionGuidance').textContent=e.type==='RELAY EVENT BASE'
-      ?'種別：駅伝BASE。駅伝BASE P76の正規大会URLのみを接続できます。'
+      ?'種別：駅伝BASE。駅伝BASEの登録対象大会URLを接続できます。'
       :'種別：EVENT BASE。通常EVENT BASEの正規大会URLのみを接続できます。';
     $('portalEventConnectionUrl').value='';
     $('portalEventConnectionStatus').textContent=portalNeedsOfficialLinkRepair(e)
@@ -10606,6 +10606,8 @@ function portalLapRelayEligibleEvents(){
       return {id,url:u.origin+u.pathname+'?event='+encodeURIComponent(id)+'&portal=1',ekidenNext};
     }catch(_){return null;}
   }
+  // Share the existing canonical URL parser with the module entry flow.
+  window.__TR_PORTAL_OFFICIAL_PUBLIC_LINK__=portalOfficialPublicLink;
   function portalOfficialHandoffRefresh(){
     const card=$('portalOfficialHandoffCard'),btn=$('portalOfficialHandoffExecute');
     if(!card||!btn)return;
@@ -12880,6 +12882,8 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
 </script>
 
 <script type="module" id="top-run-portal-unified-firebase-20261016">
+// Classic scripts and ES modules have separate lexical scopes. Use the same parser.
+const portalOfficialPublicLink=(raw)=>window.__TR_PORTAL_OFFICIAL_PUBLIC_LINK__?.(raw)||null;
 // DISTRIBUTION PREPARATION. Uses existing Firebase/Auth UID and portalCommon/topRun.
 // No signIn; no new identity/profile database; no writes to events/<eventId> or results.
 if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
