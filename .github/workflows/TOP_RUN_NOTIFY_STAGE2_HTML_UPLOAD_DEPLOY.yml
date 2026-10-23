@@ -39,7 +39,7 @@ jobs:
           if(!match)throw new Error('The reviewed HTML carrier payload is missing');
           const payload=Buffer.from(match[1].replace(/\s/g,''),'base64');
           const sha=crypto.createHash('sha256').update(payload).digest('hex');
-          if(sha!=='f9cb69a9bc75a33cb175684a0fe640c49898eef7df20e7237992d199b68eecb7')throw new Error('Worker SHA mismatch. Stop deploy.');
+          if(sha!=='9aeaafd694e30f221e4bd31eaddba80ba462c4ab2bc8a4a0e6f39c3b56f38dfb')throw new Error('Worker SHA mismatch. Stop deploy.');
           const source=payload.toString('utf8');
           if(!source.includes('stage2Declarative:true')||!source.includes('web_push:8030'))throw new Error('Unexpected Worker source');
           const cfg=JSON.parse(fs.readFileSync(path+'wrangler.jsonc','utf8'));
@@ -72,4 +72,4 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: cloudflare/top-run-notify
-          command: deploy
+          command: deploy --var STAGE3_ENABLED:true
