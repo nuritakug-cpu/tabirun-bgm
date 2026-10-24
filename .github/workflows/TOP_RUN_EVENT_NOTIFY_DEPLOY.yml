@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       publish:
-        description: "Deploy to the existing Cloudflare Worker? OFF = build/validate only"
+        description: "Deploy existing Cloudflare Worker? OFF = validation only"
         type: boolean
         required: true
         default: false
@@ -16,42 +16,53 @@ jobs:
   event-notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out approved notification staging branch (not main)
+      - name: Check out existing notification staging branch
         uses: actions/checkout@v4
         with:
           ref: top-run-notify-stage2-20261015
           persist-credentials: false
-      - name: Rebuild the reviewed Stage3 Worker with event-notify route
+      - name: Extract and verify source from the single HTML carrier
         shell: bash
         run: |
           set -euo pipefail
+          python3 - <<'PYCODE'
+          from pathlib import Path
+          import base64, hashlib, re
+          root=Path('cloudflare/top-run-notify')
+          html=(root/'TOP_RUN_EVENT_NOTIFY_SOURCE_CARRIER.html').read_text(encoding='utf-8')
+          parts=[
+            ('tr-event-notify-extension-base64','top_run_event_notify_worker_extension.js','66f78411f0f55d40994fc1a5c062607bd96c097298ddcef7ae997f3d63fa1389'),
+            ('tr-event-notify-builder-base64','build_event_notify_worker.py','290df930a39b0b1699fcc18cb487fad6ddb1c75e4ce892a727cce3284181ec79'),
+          ]
+          for marker, filename, expected_sha in parts:
+              matched=re.search(r'<script id="'+re.escape(marker)+r'" type="text/plain">\s*([A-Za-z0-9+/=\s]+?)\s*</script>',html)
+              if not matched: raise SystemExit('Missing HTML carrier payload: '+marker)
+              content=base64.b64decode(''.join(matched.group(1).split()),validate=True)
+              actual=hashlib.sha256(content).hexdigest()
+              if actual!=expected_sha: raise SystemExit('SHA256 mismatch: '+filename)
+              (root/filename).write_bytes(content)
+              print('Verified', filename, actual)
+          PYCODE
           python3 cloudflare/top-run-notify/build_event_notify_worker.py cloudflare/top-run-notify
           node --input-type=module --check < cloudflare/top-run-notify/worker.js
-          python3 - <<'PY'
+          python3 - <<'PYCODE'
           from pathlib import Path
-          w=Path('cloudflare/top-run-notify/worker.js').read_text()
-          for marker in (
-              "'/api/stage3/notify'",
-              "'/api/stage3/event-notify'",
-              "'/api/stage3/register'",
-              "'/api/stage3/revoke'",
-              "FIREBASE_READONLY_SERVICE_ACCOUNT_JSON",
-          ):
-              if marker not in w: raise SystemExit(f'Missing existing/required route: {marker}')
-          print('Both existing and event notification routes confirmed.')
-          PY
-      - name: Configure Node.js
+          worker=Path('cloudflare/top-run-notify/worker.js').read_text(encoding='utf-8')
+          for expected in ["'/api/stage3/notify'","'/api/stage3/event-notify'","'/api/stage3/register'","'/api/stage3/revoke'",'FIREBASE_READONLY_SERVICE_ACCOUNT_JSON']:
+              if expected not in worker: raise SystemExit('Missing route or feature '+expected)
+          print('Existing Stage3 endpoints retained, event route added')
+          PYCODE
+      - name: Use Node.js 22
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install existing Stage3 dependencies
+      - name: Install the existing Stage3 dependencies
         run: |
           cd cloudflare/top-run-notify
-          npm install --no-save --ignore-scripts --no-audit --no-fund \
-            @block65/webcrypto-web-push@2.0.0 uint8array-extras@1.5.0 wrangler@4
-      - name: Validate Cloudflare worker without deployment
+          npm install --no-save --ignore-scripts --no-audit --no-fund @block65/webcrypto-web-push@2.0.0 uint8array-extras@1.5.0 wrangler@4
+      - name: Validate without deploying
         run: cd cloudflare/top-run-notify && npx wrangler@4 deploy --dry-run
-      - name: Deploy only with publish explicitly enabled
+      - name: Deploy only after explicit publish confirmation
         if: ${{ inputs.publish == true }}
         uses: cloudflare/wrangler-action@v4
         with:
