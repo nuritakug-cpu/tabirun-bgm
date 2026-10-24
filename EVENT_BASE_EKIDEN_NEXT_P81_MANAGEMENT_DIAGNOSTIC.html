@@ -1,10 +1,4 @@
-<!-- EKIDEN NEXT P84 / 2026-10-24: previous EKIDEN attendees source correction
-PARENT: 2026-10-24 P82 owner+notice+roster repair, packaged as P81 for the existing PORTAL link.
-CAUSE: previous registrant picker only queried older regular EVENT BASE and current NEXT bindings; it never read the completed prior relay event eventbase_ekiden_dev_20261006.
-CHANGE: one-shot read of prior relay event's canonical eventEkiden/<oldId>/state/profiles and events/<oldId>/players through the EXISTING authenticated EventBaseConnectionAPI gateway. No new Auth/init/listener, Rules or source writes. Prior runners without verified UID/profileId stay unlinked; never auto-claim by name. Surface read errors; don't silently represent denial as zero participants.
-EXCLUDED: no edit to prior event, actual Firebase/Rules, current NEXT race records, MY PAGE, notice or chat.
-DEVICE/FIREBASE STATUS: static + simulated checks only; old-event READ result and iPhone usage must be verified against live permissions.
--->
+<!-- 2026-10-24 event completion ACK + failed-write LIVE preservation continuing uploaded P82 real HTML. No Auth/UID/Rules/notification/race changes; NOT DEPLOYED. -->
 <!-- EKIDEN NEXT P82 / 2026-10-24: PORTAL owner AUTH UI and previous runner candidate repair
 PHYSICAL PARENT: EVENT_BASE_EKIDEN_NEXT_P81_MANAGEMENT_DIAGNOSTIC.html (local real HTML).
 Fix verified owner UI without ownerKey URL, notice-save permission and registered historical candidate list; no separate Firebase/auth/Rules or writes added.
@@ -19132,9 +19126,42 @@ function reopenCurrentEventDay73(){
   const day=realEventDay87();if(!day)return toast('本日は開催日ではありません');
   const s=eventDaySession73(day.date);s.endedAt=null;s.locationsDeletedAt=null;persist();renderSharingDayState73();toast('本日の位置共有を再開できる状態に戻しました');
 }
-function completeWholeEvent73(){
+// 2026-10-24: Only the existing canonical completeLiveEvent() can commit formal closure.
+// Stop local sharing immediately, but never claim or persist successful closure before Firebase ACK.
+let completeWholeEventPending20261024=false;
+async function completeWholeEvent73(){
+  if(completeWholeEventPending20261024)return;
   if(!confirm('イベントを終了し、全開催日の位置共有データを完全削除しますか？'))return;
-  stopLiveShare();shareDeleteAll79();data.eventCompletedAt=Date.now();data.dailyLocations={};Object.keys(data.daySessions||{}).forEach(k=>{data.daySessions[k].endedAt=data.daySessions[k].endedAt||Date.now();data.daySessions[k].locationsDeletedAt=Date.now()});persist();renderSharingDayState73();renderHome();syncLiveShareUI();toast('イベントを終了し、位置情報だけを削除しました。選手登録・大会情報は保持しています');
+  completeWholeEventPending20261024=true;
+  const button=$('completeWholeEventBtn73');if(button)button.disabled=true;
+  try{
+    const complete=window.EventBaseConnectionAPI?.completeLiveEvent;
+    if(!window.__EVENTBASE_REBUILD_CORE__||typeof complete!=='function')throw Error('正式終了のFirebase接続がありません');
+    // Preserve the local LIVE session if the server rejects completion. The
+    // canonical API atomically deletes LIVE and closes safety upon Firebase ACK.
+    // This avoids stopping a runner's tracking merely because manager Rules deny.
+    await complete();
+    stopLiveShare();
+    const endedAt=Date.now();
+    data.eventCompletedAt=endedAt;data.dailyLocations={};
+    Object.keys(data.daySessions||{}).forEach(k=>{
+      data.daySessions[k].endedAt=data.daySessions[k].endedAt||endedAt;
+      data.daySessions[k].locationsDeletedAt=endedAt;
+    });
+    // Local UI snapshot only; persist() would redundantly write unrelated fields after closure.
+    save(ACTIVE_DATA_KEY100,data);
+    renderSharingDayState73();renderHome();syncLiveShareUI();
+    toast('Firebaseで正式終了を確認しました。位置情報を削除し、選手・大会情報は保持しました');
+  }catch(error){
+    console.warn('Formal event completion not committed',error);
+    const detail=String(error?.code||error?.message||error);
+    toast(/permission[_-]denied/i.test(detail)?
+      '正式終了は未完了です。Firebase Rulesで終了操作が拒否されました。大会データと位置共有は保持しています。':
+      '正式終了は未完了です：'+detail.slice(0,120));
+  }finally{
+    completeWholeEventPending20261024=false;
+    if(button)button.disabled=false;
+  }
 }
 $('endCurrentEventDayBtn73').onclick=endCurrentEventDay73;
 $('reopenCurrentEventDayBtn73').onclick=reopenCurrentEventDay73;
@@ -21762,36 +21789,12 @@ async function readEventRegistrantsReadOnlyP6(eventId){
     profiles:profiles&&typeof profiles==='object'?profiles:{}
   };
 }
-// P84: previous relay roster is an existing, independent event's CANONICAL state.
-// Read once using this gateway's already authenticated S.db, never add a second Firebase app.
-async function readPreviousRelayRunnersReadOnlyP84(eventId){
-  eventId=clean(eventId,80);
-  if(eventId!=='eventbase_ekiden_dev_20261006')throw new Error('前回駅伝の参照先が一致しません');
-  if(!S.db||!S.auth?.currentUser||!S.ready)throw new Error('駅伝BASEの本人認証と大会接続を確認できません');
-  if(S.role!=='owner')throw new Error('過去出走名簿の取込は開発者のみ可能です');
-  // Separate GETs on the original canonical records; there is NO write or live subscription.
-  const result={relay:[],players:[],errors:[]};
-  try{
-    const snap=await get(ref(S.db,`eventEkiden/${eventId}/state/profiles`));
-    const value=snap.exists()?snap.val():[];
-    result.relay=Array.isArray(value)?value.filter(v=>v&&typeof v==='object'):
-      (value&&typeof value==='object'?Object.entries(value).map(([id,v])=>v&&typeof v==='object'?{id,...v}:null).filter(Boolean):[]);
-  }catch(e){result.errors.push('前回駅伝出走名簿: '+String(e?.code||e?.message||e))}
-  try{
-    const snap=await get(ref(S.db,`events/${eventId}/players`));
-    const value=snap.exists()?snap.val():{};
-    result.players=Array.isArray(value)?value.filter(v=>v&&typeof v==='object'):
-      (value&&typeof value==='object'?Object.entries(value).map(([id,v])=>v&&typeof v==='object'?{id,...v}:null).filter(Boolean):[]);
-  }catch(e){result.errors.push('前回大会出走カード: '+String(e?.code||e?.message||e))}
-  return result;
-}
 window.EventBaseConnectionAPI={
   join,ownerFromUrl,syncFromUI,saveMaininfoV80,saveProgressFromUI,saveHomeHeroDataP41,saveTimingRecords,deleteTimingRecord,publishEkidenEntriesP30,claimEkidenEntryP30,developerResetTestResults,developerDeleteEventPlayer,verify,unlink,sendChat,clearChat,setManagerColors,updateDisplayName,setLiveLocationPolicy,setLive,removeLiveSelf,clearLive,completeLiveEvent,setEmergencyStop,saveExtraResources,saveExtraDocumentFile,getExtraDocumentFile,deleteExtraDocumentFile,saveDocumentFile,getDocumentFile,deleteDocumentFile,
   getState:()=>({...S}),
   saveEkidenStateP41,saveEkidenRaceP75,
   readEventPlayersReadOnlyP5,
-  readEventRegistrantsReadOnlyP6,
-  readPreviousRelayRunnersReadOnlyP84
+  readEventRegistrantsReadOnlyP6
 };
 
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")verify("visible")});
@@ -23592,12 +23595,6 @@ if(!TEST)return;
 const $=id=>document.getElementById(id);
 const EKP5_SOURCE_EVENT_ID=String(qp.get('ekidenSourceEvent')||'eventbase_mu4ujce3_xxx1').trim();
 const EKP5_SOURCE_LABEL='既存EVENT BASE';
-const EKP84_PREV_EKIDEN_ID='eventbase_ekiden_dev_20261006';
-// READ-ONLY presentation cache, NOT part of the mutable current race state 's'.
-let ekP84PreviousRunners=[],ekP84PreviousReadAt=0,ekP84PreviousReadError='',ekP84PreviousLoaded=false;
-function ekP84PastRunnerKey(sourceEventId,origin,id){return 'history:'+sourceEventId+':'+origin+':'+id}
-function ekP84ValidHistoricUid(v){return typeof v==='string'&&v.length>=12&&/^[A-Za-z0-9_-]+$/.test(v)}
-
 /* B33: EKIDEN TEST UI owns its toast helper. The main EVENT BASE toast is scoped inside another IIFE. */
 const toastNowV22=m=>{const t=$('toast');if(!t)return;t.textContent=String(m||'');t.classList.remove('hidden');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.add('hidden'),2800)};
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
@@ -24596,52 +24593,6 @@ async function ekP5LoadSourcePlayers(force=false){
     return {ok:false,error:String(e?.message||e)};
   }
 }
-// Read the actual completed previous EKIDEN, not only the older regular EVENT BASE.
-// This is a GET on already-approved canonical paths; no copied athlete database is written.
-async function ekP84LoadPreviousRunners(force=false){
-  if(!force&&ekP84PreviousLoaded&&Date.now()-ekP84PreviousReadAt<15*60*1000)
-    return {ok:!ekP84PreviousReadError,count:ekP84PreviousRunners.length,cached:true,error:ekP84PreviousReadError};
-  const api=window.EventBaseConnectionAPI?.readPreviousRelayRunnersReadOnlyP84;
-  if(typeof api!=='function')return {ok:false,error:'前回駅伝名簿の読込経路がありません',count:0};
-  try{
-    const raw=await api(EKP84_PREV_EKIDEN_ID),found=[],seen=new Set();
-    // NOTE: source runner's display name does NOT prove the user's identity.
-    for(const [origin,rows] of [['relay',raw.relay],['players',raw.players]]){
-      for(const [idx,p] of (Array.isArray(rows)?rows:[]).entries()){
-        const srcId=String(p?.id||p?.runnerId||'').trim();
-        const name=String(p?.name||p?.displayName||'').trim();
-        if(!srcId||!name)continue; // never invent an identity or display demo data
-        const uid=String(origin==='relay'?(p.sourceRegistrationUid||p.subjectUid||''):(p.subjectUid||'')).trim();
-        // An organizer/creator UID is not evidence that the organizer is this runner.
-        const realUid=ekP84ValidHistoricUid(uid)?uid:'';
-        const key=ekP84PastRunnerKey(EKP84_PREV_EKIDEN_ID,origin,srcId);
-        if(seen.has(key))continue;
-        seen.add(key);
-        found.push({key,uid:realUid,displayName:name,role:'previousEkidenRunner',
-          sourceEventId:EKP84_PREV_EKIDEN_ID,sourceRunnerId:srcId,sourceOrigin:origin,
-          affiliation:String(p.affiliation||''),grade:String(p.grade||''),bib:String(p.bib||p.raceNo||''),
-          sourceProfileId:String(p.globalProfileId||p.profileId||'')});
-      }
-    }
-    // Prefer a single entry only when the SAME verified UID identifies them. Names alone never merge.
-    const selected=[],byUid=new Map();
-    for(const p of found){
-      if(p.uid&&byUid.has(p.uid))continue;
-      if(p.uid)byUid.set(p.uid,true);
-      selected.push(p);
-    }
-    const errors=(raw.errors||[]).filter(Boolean);
-    // Keep latest successfully read portion, but expose partial-READ failures prominently.
-    ekP84PreviousRunners=selected;
-    ekP84PreviousReadAt=Date.now();ekP84PreviousLoaded=true;
-    ekP84PreviousReadError=errors.join('／');
-    return {ok:!errors.length,count:selected.length,partial:!!errors.length,error:ekP84PreviousReadError};
-  }catch(e){
-    ekP84PreviousReadError=String(e?.code||e?.message||e);
-    ekP84PreviousReadAt=Date.now();ekP84PreviousLoaded=false;
-    return {ok:false,error:ekP84PreviousReadError,count:ekP84PreviousRunners.length};
-  }
-}
 function ekP6CachedSourceRegistrants(){return Array.isArray(s.sourceEventRegistrantsP6)?s.sourceEventRegistrantsP6:[]}
 function ekP31AcceptedRegistrantRole(role){return ['owner','manager','participant','member'].includes(String(role||''))}
 function ekP31RegistrantRoleLabel(role){role=String(role||'');return role==='owner'?'開発者':role==='manager'?'管理者':(role==='participant'||role==='member')?'参加者':'登録者'}
@@ -24676,36 +24627,25 @@ function ekP6SourcePlayerUids(){return new Set(ekP1BasePlayers().map(p=>String(p
 // Previously-registered runners are also eligible in section ② if their canonical
 // player card still has a real subjectUid. Never infer identity from the name.
 function ekP82RegistrantCandidates(){
-  const byUid=new Map(),extras=[];
+  const byUid=new Map();
   for(const r of ekP6CachedSourceRegistrants()){
-    const uid=String(r?.uid||'');if(uid)byUid.set(uid,{...r,key:uid});
+    const uid=String(r?.uid||'');if(uid)byUid.set(uid,r);
   }
   for(const p of ekP1BasePlayers()){
     const uid=String(p?.subjectUid||'');if(!uid||byUid.has(uid))continue;
-    byUid.set(uid,{key:uid,uid,displayName:String(p.name||p.displayName||'名前未設定'),role:'pastRunner',sourceEventId:String(s.sourceEventIdP5||EKP5_SOURCE_EVENT_ID),sourcePlayerId:String(p.id||'')});
+    byUid.set(uid,{uid,displayName:String(p.name||p.displayName||'名前未設定'),role:'pastRunner',sourceEventId:String(s.sourceEventIdP5||EKP5_SOURCE_EVENT_ID),sourcePlayerId:String(p.id||'')});
   }
-  for(const r of ekP84PreviousRunners){
-    if(r.uid){
-      if(!byUid.has(r.uid))byUid.set(r.uid,{...r,key:r.uid});
-    }else extras.push(r); // previous event's runner ID, no fake UID or name-based merging
-  }
-  return [...byUid.values(),...extras];
+  return [...byUid.values()];
 }
 function ekP6RegisteredNoRace(){
   const runnerUids=new Set((s.profiles||[]).map(p=>String(p.sourceRegistrationUid||p.candidateUid||p.subjectUid||'')).filter(Boolean));
   const seen=new Set();
   return ekP82RegistrantCandidates().filter(r=>{
-    const uid=String(r.uid||''),key=String(r.key||uid);
-    if(!key||seen.has(key)||(uid&&runnerUids.has(uid)))return false;
-    if(r.sourceRunnerId&&(s.profiles||[]).some(p=>
-      String(p.sourceHistoryEventIdP84||'')===String(r.sourceEventId||'')&&
-      String(p.sourceHistoryRunnerIdP84||'')===String(r.sourceRunnerId||'')&&
-      String(p.sourceHistoryOriginP84||'')===String(r.sourceOrigin||'')))return false;
-    seen.add(key);return true;
+    const uid=String(r.uid||'');if(!uid||seen.has(uid)||runnerUids.has(uid))return false;seen.add(uid);return true;
   }).sort((a,b)=>String(a.displayName||'').localeCompare(String(b.displayName||''),'ja'));
 }
-function ekP6RegistrantOptions(){return ekP6RegisteredNoRace().map(r=>`<option value="${esc(String(r.key||r.uid||''))}">${esc(r.displayName||'名前未設定')}｜${esc(r.role==='previousEkidenRunner'?'前回駅伝出走':r.role==='pastRunner'?'過去出走':ekP31RegistrantRoleLabel(r.role))}${r.uid?'':'（本人未紐付け）'}</option>`).join('')}
-function ekP6FindRegistrant(key){return ekP82RegistrantCandidates().find(r=>String(r.key||r.uid||'')===String(key||''))||null}
+function ekP6RegistrantOptions(){return ekP6RegisteredNoRace().map(r=>`<option value="${esc(r.uid)}">${esc(r.displayName||'名前未設定')}｜${esc(r.role==='pastRunner'?'過去出走':ekP31RegistrantRoleLabel(r.role))}</option>`).join('')}
+function ekP6FindRegistrant(uid){return ekP82RegistrantCandidates().find(r=>String(r.uid||'')===String(uid||''))||null}
 function ekP6Creator(){const st=ekCoreState();return {uid:String(st.uid||''),name:String(st.displayName||st.binding?.displayName||'開発者'),role:'owner'}}
 function ekP6RunnerIdentityLabel(p){
   if(String(p?.globalProfileId||''))return '<span class="ekP6Identity linked">本人/profileId 紐付け済み</span>';
@@ -24780,11 +24720,9 @@ function ekP1RenderStation(statusText=''){
   const sourceCount=ekP1BasePlayers().length,registeredNoRace=ekP6RegisteredNoRace(),updated=s.sourcePlayersUpdatedAtP5?new Date(s.sourcePlayersUpdatedAtP5).toLocaleString('ja-JP'):'',regUpdated=s.sourceRegistrantsUpdatedAtP6?new Date(s.sourceRegistrantsUpdatedAtP6).toLocaleString('ja-JP'):'';
   const catOptions=cats.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
   const staleRegistrants=!!s.sourceRegistrantsUpdatedAtP6&&Date.now()-Number(s.sourceRegistrantsUpdatedAtP6)>15*60*1000;
-  const pastStatus=ekP84PreviousReadError?`前回駅伝名簿のREAD失敗：${ekP84PreviousReadError}`:(!ekP84PreviousLoaded?'前回駅伝名簿：未読込':`前回駅伝名簿：${ekP84PreviousRunners.length}人読込`);
-
   $('ek15AdminRoot').innerHTML=adminTop('出走メンバー','',1)+ek15StepNav(1)+`<div class="ek15AdminNote">出走メンバーは、①EVENT BASE出走登録済み、②EVENT BASE登録済み・出走未登録、③運営側の新規登録、の3経路です。既存大会は読み取りのみで変更しません。駅伝下書きは今後の修正版でも同じ保存キーを維持します。</div>
   <section class="ek15TeamSection"><div class="ekP6PathTitle"><b>① EVENT BASE出走登録済みから追加</b><span>${sourceCount}人参照可能${updated?`<br>最終読込 ${esc(updated)}`:''}</span></div><div class="ekP1AddGrid"><select id="ekP1BasePlayer"><option value="">出走登録済み選手を選択</option>${ekP1BaseOptions()}</select><select id="ekP1BaseCategory"><option value="">出走カテゴリ</option>${catOptions}</select></div><button class="ekP1Action" onclick="ekP1AddBasePlayer()">選択した選手を駅伝出走へ追加</button></section>
-  <section class="ek15TeamSection"><div class="ekP6PathTitle"><b>② EVENT BASE登録者・前回駅伝出走者から追加</b><span>${registeredNoRace.length}人選択可能${regUpdated?`<br>${staleRegistrants?'前回取得（再確認が必要）':'最終読込'} ${esc(regUpdated)}`:''}</span></div><div class="ek15TeamSectionHelp">EVENT BASE登録済みの本人UID、または過去の出走カードに残る本人UIDを候補に含めます。今回の駅伝へ追加済みの人は除外します。前回駅伝の正式な出走名簿も読み取りで参照します。本人UIDが残っていない選手は「本人未紐付け」で追加します。名前だけでは本人へ自動紐付けしません。${ekP84PreviousReadError?`<br><b style="color:#ffb39e">${esc(pastStatus)}</b>`:`<br>${esc(pastStatus)}`}</div><div class="ekP1AddGrid"><select id="ekP6Registrant"><option value="">登録済み参加者を選択</option>${ekP6RegistrantOptions()}</select><select id="ekP6RegistrantCategory"><option value="">出走カテゴリ</option>${catOptions}</select></div><button class="ekP1Action" onclick="ekP6AddRegisteredNoRace()">登録済み参加者を駅伝出走へ追加</button></section>
+  <section class="ek15TeamSection"><div class="ekP6PathTitle"><b>② EVENT BASE登録者・過去出走者から追加</b><span>${registeredNoRace.length}人選択可能${regUpdated?`<br>${staleRegistrants?'前回取得（再確認が必要）':'最終読込'} ${esc(regUpdated)}`:''}</span></div><div class="ek15TeamSectionHelp">EVENT BASE登録済みの本人UID、または過去の出走カードに残る本人UIDを候補に含めます。今回の駅伝へ追加済みの人は除外します。過去に出走した選手も選択できます。名前だけでは本人へ自動紐付けしません。</div><div class="ekP1AddGrid"><select id="ekP6Registrant"><option value="">登録済み参加者を選択</option>${ekP6RegistrantOptions()}</select><select id="ekP6RegistrantCategory"><option value="">出走カテゴリ</option>${catOptions}</select></div><button class="ekP1Action" onclick="ekP6AddRegisteredNoRace()">登録済み参加者を駅伝出走へ追加</button></section>
   <section class="ek15TeamSection"><div class="ekP6PathTitle"><b>③ 新規登録（運営側先行登録）</b><span>本人未紐付けで作成</span></div><div class="ek15TeamSectionHelp">まだEVENT BASEに登録していない人も先に駅伝出走へ登録できます。後から本人へ「この登録はあなたですか？」と確認し、本人が承認した時だけprofileIdへ紐付ける前提で保持します。</div><div class="ekP6ManualGrid">
   <div class="ekP7CommonField ekP7CommonFull"><label>選手名</label><input id="ekP6NewName" maxlength="30" placeholder="選手名（必須）"></div>
   <div class="ekP7CommonField"><label>所属</label><select id="ekP7NewAffiliation" onchange="ekP7SyncNewAffiliation()"><option value="">未設定</option><option value="TOP RUN AGUI">TOP RUN AGUI</option><option value="阿久比中学校">阿久比中学校</option><option value="__other__">その他</option></select><input class="ekP7Other hidden" id="ekP7NewAffiliationOther" maxlength="60" placeholder="所属名を入力"></div>
@@ -24798,25 +24736,11 @@ function ekP1RenderStation(statusText=''){
 }
 window.ek15ShowStationPlayers=async()=>{
   if(!ek15HasOverviewB36R()){toastNowV22('先に① 駅伝概要を保存してください');return ek15AdminView('overview')}
-  const needsPlayers=!ekP5CachedSourcePlayers().length||Date.now()-Number(s.sourcePlayersUpdatedAtP5||0)>=15*60*1000,
-    needsRegs=Number(s.sourceRegistrantsPolicyP31)!==1||!ekP6CachedSourceRegistrants().length||Date.now()-Number(s.sourceRegistrantsUpdatedAtP6||0)>=15*60*1000,
-    needsPrev=!ekP84PreviousLoaded||Date.now()-ekP84PreviousReadAt>=15*60*1000;
-  ekP1RenderStation(needsPlayers||needsRegs||needsPrev?'EVENT BASEと前回駅伝の名簿を読み込んでいます…':'');
-  if(needsPlayers||needsRegs||needsPrev){
-    const [p,r,h]=await Promise.all([ekP5LoadSourcePlayers(false),ekP6LoadSourceRegistrants(false),ekP84LoadPreviousRunners(false)]);
-    const msg=[p.ok?`通常大会出走 ${p.count}人`:`通常大会出走 READ失敗：${p.error||'権限確認'}`,
-      r.ok?`参加登録 ${r.count}人`:`参加登録 READ失敗：${r.error||'権限確認'}`,
-      h.ok?`前回駅伝 ${h.count}人`:`前回駅伝 READ失敗：${h.error||'権限確認'}`].join('｜');
-    ekP1RenderStation(msg);
-  }
+  const needsPlayers=!ekP5CachedSourcePlayers().length||Date.now()-Number(s.sourcePlayersUpdatedAtP5||0)>=15*60*1000,needsRegs=Number(s.sourceRegistrantsPolicyP31)!==1||!ekP6CachedSourceRegistrants().length||Date.now()-Number(s.sourceRegistrantsUpdatedAtP6||0)>=15*60*1000;
+  ekP1RenderStation(needsPlayers||needsRegs?'EVENT BASE登録情報を読み込んでいます…':'');
+  if(needsPlayers||needsRegs){const [p,r]=await Promise.all([ekP5LoadSourcePlayers(false),ekP6LoadSourceRegistrants(false)]);const msg=[p.ok?`出走登録 ${p.count}人`:`出走登録読込失敗：${p.error||'権限確認'}`,r.ok?`参加登録 ${r.count}人`:`参加登録読込失敗：${r.error||'権限確認'}`].join('｜');ekP1RenderStation(msg)}
 };
-window.ekP6RefreshSourcePeople=async()=>{
-  ekP1RenderStation('通常大会と前回駅伝の名簿を再読込しています…');
-  const [p,r,h]=await Promise.all([ekP5LoadSourcePlayers(true),ekP6LoadSourceRegistrants(true),ekP84LoadPreviousRunners(true)]);
-  ekP1RenderStation([p.ok?`通常大会出走 ${p.count}人`:`通常大会READ失敗：${p.error||''}`,
-    r.ok?`参加登録 ${r.count}人`:`参加登録READ失敗：${r.error||''}`,
-    h.ok?`前回駅伝 ${h.count}人`:`前回駅伝READ失敗：${h.error||''}`].join('｜'));
-};
+window.ekP6RefreshSourcePeople=async()=>{ekP1RenderStation('EVENT BASE登録情報を再読込しています…');const [p,r]=await Promise.all([ekP5LoadSourcePlayers(true),ekP6LoadSourceRegistrants(true)]);ekP1RenderStation([p.ok?`出走登録 ${p.count}人`:`出走登録失敗：${p.error||''}`,r.ok?`参加登録 ${r.count}人`:`参加登録失敗：${r.error||''}`].join('｜'))};
 window.ekP1AddBasePlayer=()=>{
   const pid=$('ekP1BasePlayer')?.value||'',catId=$('ekP1BaseCategory')?.value||'',bp=ekP1FindBasePlayer(pid),cat=ek15CategoryById(catId);if(!bp)return toastNowV22('出走登録済み選手を選択してください');if(!cat)return toastNowV22('出走カテゴリを選択してください');
   const gp=String(bp.profileId||''),candidateUid=String(bp.subjectUid||'');if(ekP6RunnerDuplicate({globalProfileId:gp,sourcePlayerId:String(bp.id||''),candidateUid}))return toastNowV22('この選手は追加済みです');const creator=ekP6Creator(),id='EP_'+Date.now().toString(36),linked=!!gp;
@@ -24824,34 +24748,9 @@ window.ekP1AddBasePlayer=()=>{
   s.profiles.push(pr);ekP1Audit('② 出走メンバー','既存出走から追加',pr.name,'',`${cat.name}｜${linked?'profileId '+gp:'本人確認待ち'}`);save();ekP1RenderStation();renderSchedule()
 };
 window.ekP6AddRegisteredNoRace=()=>{
-  const choice=$('ekP6Registrant')?.value||'',catId=$('ekP6RegistrantCategory')?.value||'',reg=ekP6FindRegistrant(choice),cat=ek15CategoryById(catId);
-  if(!reg)return toastNowV22('登録済み候補を選択してください');
-  if(!cat)return toastNowV22('出走カテゴリを選択してください');
-  const uid=String(reg.uid||''),previous=reg.role==='previousEkidenRunner';
-  if(ekP6RunnerDuplicate({sourceRegistrationUid:uid}))return toastNowV22('この登録者は追加済みです');
-  if(previous&&reg.sourceRunnerId&&(s.profiles||[]).some(p=>
-    String(p.sourceHistoryEventIdP84||'')===String(reg.sourceEventId||'')&&
-    String(p.sourceHistoryRunnerIdP84||'')===String(reg.sourceRunnerId||'')&&
-    String(p.sourceHistoryOriginP84||'')===String(reg.sourceOrigin||'')))return toastNowV22('この前回出走者は追加済みです');
-  const creator=ekP6Creator(),id='EP_'+Date.now().toString(36),name=String(reg.displayName||'').trim()||'名称未設定',
-    st=ekCoreState(),selfUid=String(st.uid||''),selfProfileId=uid&&uid===selfUid?String(st.commonProfile?.profileId||''):'';
-  // Prior race's name or synthetic PROFILE_ ID is NEVER used to auto-claim a new profile.
-  const linked=!!selfProfileId,pr={id,name,
-    affiliation:previous?String(reg.affiliation||''):'',grade:previous?String(reg.grade||''):'',
-    bib:previous?String(reg.bib||''):'',targetTime:'',target3000:null,settingTimes:[],
-    globalProfileId:selfProfileId,categoryId:catId,sourceRegistrationUid:uid,
-    sourceRegistrationEventId:String(reg.sourceEventId||EKP5_SOURCE_EVENT_ID),
-    candidateUid:linked?'':uid,identityState:linked?'linked':uid?'candidate':'unlinked',
-    subjectUid:linked?uid:'',ownerUid:linked?uid:creator.uid,
-    createdByUid:creator.uid,createdByRole:creator.role,createdByName:creator.name,claimState:linked?'claimed':'pending',
-    ...(previous?{sourceHistoryEventIdP84:String(reg.sourceEventId||''),
-      sourceHistoryRunnerIdP84:String(reg.sourceRunnerId||''),
-      sourceHistoryOriginP84:String(reg.sourceOrigin||'')}:{}),
-  };
-  s.profiles.push(pr);
-  ekP1Audit('② 出走メンバー','登録済み・前回出走から追加',pr.name,'',
-    `${cat.name}｜${linked?'本人/profileId 紐付け済み':previous?'前回駅伝（本人未紐付け／確認待ち）':ekP31RegistrantRoleLabel(reg.role)+'｜本人確認待ち'}`);
-  save();ekP1RenderStation();renderSchedule();toastNowV22(name+'を出走候補へ追加しました');
+  const uid=$('ekP6Registrant')?.value||'',catId=$('ekP6RegistrantCategory')?.value||'',reg=ekP6FindRegistrant(uid),cat=ek15CategoryById(catId);if(!reg)return toastNowV22('登録済み候補を選択してください');if(!cat)return toastNowV22('出走カテゴリを選択してください');if(ekP6RunnerDuplicate({sourceRegistrationUid:uid}))return toastNowV22('この登録者は追加済みです');const creator=ekP6Creator(),id='EP_'+Date.now().toString(36),name=String(reg.displayName||'').trim()||'名称未設定',st=ekCoreState(),selfUid=String(st.uid||''),selfProfileId=uid===selfUid?String(st.commonProfile?.profileId||''):'';
+  const linked=!!selfProfileId,pr={id,name,affiliation:'',grade:'',bib:'',targetTime:'',target3000:null,settingTimes:[],globalProfileId:selfProfileId,categoryId:catId,sourceRegistrationUid:String(uid),sourceRegistrationEventId:String(reg.sourceEventId||EKP5_SOURCE_EVENT_ID),candidateUid:linked?'':String(uid),identityState:linked?'linked':'candidate',subjectUid:linked?String(uid):'',ownerUid:linked?String(uid):creator.uid,createdByUid:creator.uid,createdByRole:creator.role,createdByName:creator.name,claimState:linked?'claimed':'pending'};
+  s.profiles.push(pr);ekP1Audit('② 出走メンバー','登録済み・出走未登録から追加',pr.name,'',`${cat.name}｜${linked?'本人/profileId 紐付け済み':(reg.role==='pastRunner'?'過去出走':ekP31RegistrantRoleLabel(reg.role))+'｜本人確認待ち'}`);save();ekP1RenderStation();renderSchedule()
 };
 window.ekP6AddManualRunner=()=>{
   const name=String($('ekP6NewName')?.value||'').trim(),affSel=String($('ekP7NewAffiliation')?.value||''),affiliation=affSel==='__other__'?String($('ekP7NewAffiliationOther')?.value||'').trim():affSel,grade=String($('ekP7NewGrade')?.value||''),bib=String($('ekP6NewBib')?.value||'').trim(),target=ekP7ReadNewTarget(),catId=String($('ekP6NewCategory')?.value||''),cat=ek15CategoryById(catId);if(!name)return toastNowV22('選手名を入力してください');if(!cat)return toastNowV22('出走カテゴリを選択してください');if(target===null)return toastNowV22('目標タイムの「分」と「秒」を選択してください');const targetSec=target?secInput(target):null;const creator=ekP6Creator(),id='EP_'+Date.now().toString(36);

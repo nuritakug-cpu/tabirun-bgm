@@ -1,3 +1,4 @@
+<!-- 2026-10-24 EVENT COMMS integration ownerProof/UI safeguard continuing V91: existing unified Firebase/Auth; explicit event selection; common NOTICE/CHAT and Stage3 untouched. NOT DEPLOYED; Rules/Push E2E unverified. -->
 <!-- V91 2026-10-24 INTEGRATION REVIEW: V90 latest parent + published TOP_RUN_PORTAL.html notification preferences under MY PAGE and Stage3 device enrollment, same Auth/gateway, no production overwrite. -->
 <!-- PORTAL V90 2026-10-24: developer verified participant record selector uses existing UID/profileId roster, staff past record gateway only. Local preview segregated under separate details. No Firebase writes/init, production unchanged. -->
 <!-- PORTAL V86 2026-10-24: staff practice record DELETE with UID guard; no auto cascade; regular event three choices; practice secondary hierarchy; race-only graph default plus comparable practice overlay; record count corrected; no Firebase new init/path. REVIEW ONLY -->
@@ -5166,6 +5167,31 @@ html #screen-competition-results #crSecondaryPbGrid .crPbCard em{font-size:10px!
 #screen-notification-settings .trPushStage3 button{padding:9px 10px;background:#1a6b70;color:#fff;border:1px solid #81d3c7;border-radius:10px;min-height:42px;font-size:13px;font-weight:800}
 #screen-notification-settings .trPushStage3 button:disabled{background:#1d4852;color:#d8eaec;-webkit-text-fill-color:#d8eaec;opacity:.7}
 </style>
+
+<style id="top-run-eventbase-comms-scope-20261024">
+.trEventCommsScope{border:1px solid #c4bc9c;border-radius:14px;background:#f9f4e5;margin:12px 0;padding:12px;color:#303630}
+.trEventCommsScope label{display:block;font-size:12px;font-weight:950;margin-bottom:6px}
+.trEventCommsScope select{width:100%;max-width:100%;min-height:47px;border:1px solid #aaa38f;border-radius:10px;padding:9px;background:#fff;color:#1d292b;font-size:16px}
+.trEventCommsScope p,.trEventCommsHint{font-size:11px;line-height:1.55;overflow-wrap:anywhere;margin:8px 0 4px;color:#615948}
+.trEventCommsPanel{margin:10px 0 30px;min-width:0}
+.trEventCommsPanel[hidden]{display:none!important}
+.trEventCommsEditor{margin:15px 0;padding:13px;border:1px solid #c7b86d;border-radius:13px;background:#fffbf0;color:#252b2b}
+.trEventCommsEditor[hidden]{display:none!important}
+.trEventCommsEditor label{display:block;margin:10px 0;font-size:12px;font-weight:850}
+.trEventCommsEditor :is(input,textarea),.trEventCommsChatForm textarea{box-sizing:border-box;width:100%;min-width:0;max-width:100%;font-size:16px;border:1px solid #ccc2a3;border-radius:10px;background:white;color:#162b2a;padding:11px;resize:vertical}
+.trEventCommsActionRow{display:flex;gap:8px;flex-wrap:wrap}
+.trEventCommsActionRow button,.trEventCommsChatForm button,.trEventCommsPanel button.trEventNoticeAction{border:1px solid #b9a14e;border-radius:10px;padding:10px;background:#ebd078;color:#322708;font-size:13px;font-weight:900;min-height:42px}
+.trEventCommsActionRow button:last-child{background:#eee9dc;border-color:#d0cbbf}
+.trEventCommsPanel button:disabled{opacity:.55}
+.trEventCommsPanel .trEventNoticeActions{display:flex;gap:8px;justify-content:flex-end;margin-top:9px}
+.trEventCommsChatForm{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin:12px 0 7px;align-items:center}
+.trEventCommsChatForm textarea{min-height:50px;max-height:100px}
+#trEventChatMessages{display:flex;flex-direction:column;gap:8px;max-width:100%;min-width:0}
+#trEventChatMessages .msg{max-width:86%}
+#trEventChatMessages .msg.mine{align-self:flex-end}
+body.trEventCommsActive #screen-notices [data-list-filter="notices"],body.trEventCommsActive #portalNoticeList,body.trEventCommsActive #screen-chat [data-list-filter="chat"],body.trEventCommsActive #portalChatThread,body.trEventCommsActive #screen-chat>.chatMain>.chatComposer{display:none!important}
+#trEventChatPanel .trEventCommsHint{color:#605d50}
+</style>
 </head>
 <body>
 <div id="portalFirstPaintAuthOverlay" role="status" aria-live="polite" aria-label="TOP RUN PORTAL 認証中">
@@ -5727,6 +5753,23 @@ html #screen-competition-results #crSecondaryPbGrid .crPbCard em{font-size:10px!
     </section>
     <!-- Pre-production transport opt-in: not an automatic NOTICE/CHAT notification. -->
 
+
+    <section class="trEventCommsScope" aria-label="お知らせの配信先">
+      <label for="trEventNoticesScope">STEP 1｜お知らせの対象を選択</label>
+      <select id="trEventNoticesScope"><option value="">PORTAL共通のお知らせ</option></select>
+      <p id="trEventCommsNoticeStatus" role="status" aria-live="polite"></p>
+    </section>
+    <section id="trEventNoticesPanel" class="trEventCommsPanel" hidden>
+      <p class="trEventCommsHint">連携大会の正式なお知らせです。EVENT BASEと同じ大会データを表示します。OSプッシュ送信との連動は未確認です。</p>
+      <div id="trEventNoticeList" class="portalNoticeList"></div>
+      <form id="trEventNoticeEditor" class="trEventCommsEditor" hidden>
+        <h3 id="trEventNoticeEditorTitle">STEP 2｜大会のお知らせを新規作成</h3>
+        <label>タイトル<input id="trEventNoticeTitle" maxlength="120" required></label>
+        <label>内容<textarea id="trEventNoticeBody" maxlength="3000" rows="4"></textarea></label>
+        <div class="trEventCommsActionRow"><button type="submit" id="trEventNoticeSave">大会へ保存</button><button type="button" id="trEventNoticeCancel">入力クリア</button></div>
+        <p id="trEventNoticeSaveState" role="status" aria-live="polite"></p>
+      </form>
+    </section>
     <div class="portalSimpleFilter" data-list-filter="notices"><select data-filter-mode aria-label="絞り込み"><option value="all" selected>すべて</option><option value="day">日付</option><option value="month">月</option><option value="range">期間</option></select><div class="portalSimpleFilterValue"><input type="date" data-filter-day aria-label="指定日" hidden><input type="month" data-filter-month aria-label="表示する月"><div class="portalSimpleFilterRange" data-filter-range hidden><input type="date" data-filter-start aria-label="開始日"><input type="date" data-filter-end aria-label="終了日"></div></div></div>
     <div class="portalNoticeList" id="portalNoticeList"></div>
   </div>
@@ -5751,6 +5794,21 @@ html #screen-competition-results #crSecondaryPbGrid .crPbCard em{font-size:10px!
     <span class="portalHeadSpacer"></span>
   </div>
   <main class="chatMain">
+
+    <section class="trEventCommsScope" aria-label="CHATの会話先">
+      <label for="trEventChatScope">STEP 1｜CHATの接続先を選択</label>
+      <select id="trEventChatScope"><option value="">PORTAL共通CHAT</option></select>
+      <p id="trEventCommsChatStatus" role="status" aria-live="polite"></p>
+    </section>
+    <section id="trEventChatPanel" class="trEventCommsPanel" hidden>
+      <p class="trEventCommsHint">EVENT BASEと同じ大会CHATです。PORTAL共通CHATとは別の会話です。OSプッシュ送信との連動は未確認です。</p>
+      <div id="trEventChatMessages" class="chatList" role="log" aria-live="polite"></div>
+      <form id="trEventChatForm" class="trEventCommsChatForm">
+        <textarea id="trEventChatText" rows="2" maxlength="1000" placeholder="この大会にメッセージを送信"></textarea>
+        <button id="trEventChatSend" type="submit">送信</button>
+      </form>
+      <p id="trEventChatSaveState" role="status" aria-live="polite"></p>
+    </section>
     <div class="portalSimpleFilter" data-list-filter="chat"><select data-filter-mode aria-label="絞り込み"><option value="all" selected>すべて</option><option value="day">日付</option><option value="month">月</option><option value="range">期間</option></select><div class="portalSimpleFilterValue"><input type="date" data-filter-day aria-label="指定日" hidden><input type="month" data-filter-month aria-label="表示する月"><div class="portalSimpleFilterRange" data-filter-range hidden><input type="date" data-filter-start aria-label="開始日"><input type="date" data-filter-end aria-label="終了日"></div></div></div>
     <div class="chatList" id="portalChatThread"></div>
     <div class="chatComposer">
@@ -5849,6 +5907,7 @@ html #screen-competition-results #crSecondaryPbGrid .crPbCard em{font-size:10px!
   <h3>お知らせは何をしますか？</h3>
   <button type="button" class="portalWorkflowChoice" data-workflow-open="notice:new"><span><b>＋ 新規作成</b><small>新しいお知らせを登録する</small></span><strong>›</strong></button>
   <button type="button" class="portalWorkflowChoice" data-workflow-open="notice:list"><span><b>✎ 修正・削除</b><small>登録済みのお知らせを一覧から探して選ぶ</small></span><strong>›</strong></button>
+  <button type="button" class="portalWorkflowChoice" id="trEventNoticeMgmtOpen"><span><b>大会別のお知らせ</b><small>連携大会を選択して新規・修正・削除</small></span><strong>›</strong></button>
   
 </section>
 <div class="portalWorkflowArea" data-mw-area="form">
@@ -13637,11 +13696,171 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
     const root='portalCommon/topRun';
     const ref=(path)=>dbMod.ref(db,root+'/'+path);
     let unsubs=[],ownSubs=[],officialSubs=[],ownSignature='',officialSignature='',generation=0;
+
+    // 2026-10-24: EVENT BASE communication scopes live inside the EXISTING unified
+    // Firebase/Auth gateway. One explicitly selected connected event at a time.
+    // PORTAL common notices/chat remain on portalCommon/topRun, untouched.
+    let eventCommsStops=[],eventCommsEpoch=0;
+    const eventCommsEmpty=()=>({eventId:'',catalogId:'',name:'',role:'',notices:{},chat:{},noticeLoaded:false,chatLoaded:false,noticeError:'',chatError:'',status:'',canManage:false});
+    gate.eventCommsState=eventCommsEmpty();
+    const eventCommsPaint=()=>window.__TR_EVENT_COMMS_UI__?.render?.(gate.eventCommsState);
+    const eventCommsStop=(reason='')=>{
+      ++eventCommsEpoch;
+      eventCommsStops.splice(0).forEach(stop=>{try{stop();}catch(_){}});
+      gate.eventCommsState=eventCommsEmpty();
+      gate.eventCommsState.status=reason;
+      eventCommsPaint();
+    };
+    gate.eventCommsCatalog=()=>{
+      if(!gate.hasOperationalAccess()||gate.loaded.eventItems!==true)return [];
+      return Object.entries(gate.eventItems||{}).flatMap(([catalogId,v])=>{
+        if(v?.enabled!==true||!['EVENT BASE','RELAY EVENT BASE'].includes(v?.type))return [];
+        const linked=window.__TR_PORTAL_OFFICIAL_PUBLIC_LINK__?.(v.url||'');
+        if(!linked||!linked.id||linked.ekidenNext!==(v.type==='RELAY EVENT BASE'))return [];
+        return [{id:linked.id,catalogId,name:String(v.title||'連携大会').slice(0,120)}];
+      }).slice(0,30);
+    };
+    gate.selectEventComms=async(rawEventId)=>{
+      const id=String(rawEventId||'');
+      eventCommsStop();
+      if(!id)return;
+      if(!gate.hasOperationalAccess()||auth.currentUser?.uid!==gate.uid)throw Error('本人認証とPORTAL参加承認が必要です');
+      const option=gate.eventCommsCatalog().find(x=>x.id===id);
+      if(!option)throw Error('PORTALに登録済みの連携大会が見つかりません');
+      const epoch=eventCommsEpoch,seq=generation,uid=gate.uid,pid=gate.profileId;
+      const valid=()=>epoch===eventCommsEpoch&&seq===generation&&auth.currentUser?.uid===uid&&gate.uid===uid&&gate.profileId===pid&&gate.hasOperationalAccess();
+      Object.assign(gate.eventCommsState,{eventId:id,catalogId:option.catalogId,name:option.name,status:'大会への本人接続と権限を確認中'});
+      eventCommsPaint();
+      try{
+        // READ the existing binding only; never mint a UID, create a binding, or silently repair it.
+        const binding=(await dbMod.get(dbMod.ref(db,'bindings/'+id+'/'+uid))).val();
+        if(!valid())return;
+        // Direct developer owner bindings predate PORTAL and legitimately have no
+        // binding.profileId. They instead carry a canonical 64-hex ownerProof.
+        // Verify that proof against the same authenticated PORTAL developer role;
+        // do not manufacture a profileId or weaken manager/participant matching.
+        const expectedRole=gate.role==='developer'?'owner':gate.role==='admin'?'manager':'participant';
+        if(!binding||!['owner','manager','participant'].includes(binding.role)||!pid||
+           (binding.portalCatalogId&&binding.portalCatalogId!==option.catalogId))
+          throw Error('この大会の本人接続を確認できません。駅伝BASEの接続を確認してください');
+        if(binding.role!==expectedRole)throw Error('PORTALと大会の権限が一致しません');
+        if(expectedRole==='owner'){
+          // portalRoles/<uid> is already part of the same canonical PORTAL
+          // identity gate and is protected by the existing Firebase Rules.
+          const role=(await dbMod.get(dbMod.ref(db,'portalRoles/'+uid))).val();
+          if(!valid())return;
+          if(role?.role!=='developer'||!(/^[a-f0-9]{64}$/i.test(String(binding.ownerProof||'')))||
+             role.ownerProof!==binding.ownerProof||
+             (binding.profileId&&binding.profileId!==pid))
+            throw Error('既存の開発者認証と大会ownerProofが一致しません');
+        }else if(binding.profileId!==pid){
+          throw Error('大会の同一UID・profileIdを確認できません');
+        }
+        gate.eventCommsState.role=binding.role;
+        gate.eventCommsState.canManage=['owner','manager'].includes(binding.role);
+        gate.eventCommsState.status='大会NOTICE・CHATを受信中';
+        eventCommsPaint();
+        const noticeRef=dbMod.ref(db,'events/'+id+'/notices');
+        const chatRef=dbMod.query(dbMod.ref(db,'events/'+id+'/chat'),dbMod.orderByChild('ts'),dbMod.limitToLast(100));
+        const onNotices=dbMod.onValue(noticeRef,snap=>{
+          if(!valid())return;
+          gate.eventCommsState.notices=snap.val()||{};
+          gate.eventCommsState.noticeLoaded=true;
+          gate.eventCommsState.noticeError='';eventCommsPaint();
+        },error=>{
+          if(!valid())return;
+          gate.eventCommsState.notices={};gate.eventCommsState.noticeLoaded=false;
+          gate.eventCommsState.noticeError=String(error?.code||error?.message||error).slice(0,110);eventCommsPaint();
+        });
+        if(!valid()){onNotices();return;}
+        eventCommsStops.push(onNotices);
+        const onChat=dbMod.onValue(chatRef,snap=>{
+          if(!valid())return;
+          gate.eventCommsState.chat=snap.val()||{};
+          gate.eventCommsState.chatLoaded=true;gate.eventCommsState.chatError='';eventCommsPaint();
+        },error=>{
+          if(!valid())return;
+          gate.eventCommsState.chat={};gate.eventCommsState.chatLoaded=false;
+          gate.eventCommsState.chatError=String(error?.code||error?.message||error).slice(0,110);eventCommsPaint();
+        });
+        if(!valid()){onChat();return;}
+        eventCommsStops.push(onChat);
+      }catch(error){
+        if(valid()){
+          eventCommsStops.splice(0).forEach(stop=>{try{stop();}catch(_){}});
+          gate.eventCommsState.status=String(error?.message||error);
+          gate.eventCommsState.noticeError=gate.eventCommsState.status;
+          gate.eventCommsState.chatError=gate.eventCommsState.status;
+          eventCommsPaint();
+        }
+        throw error;
+      }
+    };
+    const eventCommsCheck=async({notice=false}={})=>{
+      const state=gate.eventCommsState,uid=gate.uid,pid=gate.profileId,seq=generation,epoch=eventCommsEpoch;
+      if(!state.eventId||!gate.hasOperationalAccess()||auth.currentUser?.uid!==uid||!pid||
+         (notice?!state.canManage||!state.noticeLoaded:!state.chatLoaded))
+        throw Error('大会の本人・権限・受信状況が確認できません');
+      // Emergency LIVE stop is NOT formal completion; only eventCompletedAt stops communication.
+      const safety=(await dbMod.get(dbMod.ref(db,'events/'+state.eventId+'/safety/eventCompletedAt'))).val();
+      if(Number(safety)>0)throw Error('正式終了済みの大会です。新しい投稿はできません');
+      if(seq!==generation||epoch!==eventCommsEpoch||gate.uid!==uid||gate.profileId!==pid||!gate.hasOperationalAccess()||
+         auth.currentUser?.uid!==uid||state!==gate.eventCommsState)throw Error('保存中に本人または大会が切り替わりました');
+      return {state,uid,pid};
+    };
+    gate.eventCommsSaveNotice=async({id='',title='',body=''})=>{
+      const {state,uid}=await eventCommsCheck({notice:true});
+      const heading=String(title||'').trim().slice(0,120),text=String(body||'').trim().slice(0,3000);
+      if(!heading)throw Error('お知らせのタイトルを入力してください');
+      if(id&&!/^[A-Za-z0-9_-]{1,90}$/.test(id))throw Error('編集対象IDが不正です');
+      const key=id||('notice_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,9));
+      const previous=id?state.notices[key]:null;
+      if(id&&!previous)throw Error('編集元のお知らせがありません。再読込してください');
+      let conflict=false;
+      const dest=dbMod.ref(db,'events/'+state.eventId+'/notices/'+key);
+      const result=await dbMod.runTransaction(dest,current=>{
+        if(state!==gate.eventCommsState||auth.currentUser?.uid!==uid)return;
+        if(id&&(!current||Number(current.updatedAt||current.createdAt||0)!==Number(previous.updatedAt||previous.createdAt||0))){conflict=true;return;}
+        if(!id&&current){conflict=true;return;}
+        const now=Date.now();
+        return {...(current||{}),id:key,title:heading,body:text,createdAt:Number(current?.createdAt)||now,updatedAt:now,updatedBy:uid};
+      },{applyLocally:false});
+      if(!result.committed)throw Error(conflict?'別端末で更新されています。再読込してから編集してください':'大会のお知らせを保存できませんでした');
+      const actual=(await dbMod.get(dest)).val();
+      if(!actual||actual.title!==heading||actual.body!==text)throw Error('保存後のお知らせ照合が成立しません');
+      // Stage3 is currently scoped to PORTAL common nodes. Do not falsely notify an event ID.
+      return actual;
+    };
+    gate.eventCommsDeleteNotice=async id=>{
+      const {state,uid}=await eventCommsCheck({notice:true});
+      if(!/^[A-Za-z0-9_-]{1,90}$/.test(id)||!state.notices[id])throw Error('削除対象が見つかりません');
+      const old=state.notices[id],dest=dbMod.ref(db,'events/'+state.eventId+'/notices/'+id);
+      const result=await dbMod.runTransaction(dest,current=>{
+        if(state!==gate.eventCommsState||auth.currentUser?.uid!==uid)return;
+        if(!current||Number(current.updatedAt||current.createdAt||0)!==Number(old.updatedAt||old.createdAt||0))return;
+        return null;
+      },{applyLocally:false});
+      if(!result.committed||(await dbMod.get(dest)).exists())throw Error('削除が確定しません。別端末の変更をご確認ください');
+      return true;
+    };
+    gate.eventCommsSendChat=async value=>{
+      const {state,uid}=await eventCommsCheck();
+      const text=String(value||'').trim().slice(0,1000);if(!text)throw Error('メッセージを入力してください');
+      const id='c_'+Date.now()+'_'+Math.random().toString(36).slice(2,9);
+      const record={id,senderUid:uid,name:String(gate.displayName||'参加者').slice(0,24),staff:state.canManage,text,ts:Date.now()};
+      const dest=dbMod.ref(db,'events/'+state.eventId+'/chat/'+id);
+      await dbMod.set(dest,record);
+      const checked=(await dbMod.get(dest)).val();
+      if(!checked||checked.senderUid!==uid||checked.text!==text)throw Error('CHAT送信後の保存照合が成立しません');
+      return checked;
+    };
+
     const reset=()=>{
       // If the trusted identity changes or staff authorization is revoked,
       // immediately re-lock cached private screens before clearing data.
       if(window.__TR_PARTICIPANT_ENTRY__?.isResolved?.())
         window.__TR_PARTICIPANT_ENTRY__.invalidate('本人または管理権限が変更されました。既存の本人で再確認してください。');
+      eventCommsStop('本人の接続を確認してください');
       generation++;
       unsubs.splice(0).concat(ownSubs.splice(0),officialSubs.splice(0)).forEach(stop=>{try{stop();}catch(_){}});ownSignature='';officialSignature='';
       gate.ready=false;gate.uid='';gate.profileId='';gate.role='unverified';gate.roleVerified=false;gate.memberApproved=false;gate.firstEventOwnerBinding='not-applicable';
@@ -15038,6 +15257,8 @@ try{
           bind('athleteSelections','athleteSelections',value=>ui?.applySharedAthleteSelections(value));
         }
         bind('eventItems','eventItems',items=>{
+          window.__TR_EVENT_COMMS_UI__?.catalog?.(gate.eventCommsCatalog());
+          if(gate.eventCommsState.eventId&&!gate.eventCommsCatalog().some(x=>x.id===gate.eventCommsState.eventId))eventCommsStop('大会リンクまたは参加権限が変更されました');
           ui?.applyEvents(items);
           gate.watchOfficialResults();
           if(!['developer','admin'].includes(gate.role))gate.watchOwnDate(ui?.currentDetailDate?.());
@@ -15603,6 +15824,104 @@ setInterval(display,1000);
  register.addEventListener('click',()=>void runAction('register'));
  status.addEventListener('click',()=>void runAction('status'));
  revoke.addEventListener('click',()=>void runAction('revoke'));
+})();
+</script>
+
+<script id="top-run-eventbase-comms-ui-20261024">
+(()=>{
+ 'use strict';
+ const $=id=>document.getElementById(id);
+ const noticeSel=$('trEventNoticesScope'),chatSel=$('trEventChatScope');
+ const notices=$('trEventNoticeList'),chat=$('trEventChatMessages');
+ const editor=$('trEventNoticeEditor'),title=$('trEventNoticeTitle'),body=$('trEventNoticeBody');
+ const ns=$('trEventCommsNoticeStatus'),cs=$('trEventCommsChatStatus');
+ let currentId='',editingId='',latest=null,knownCatalog=[],pending=false;
+ const safe=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const portal=()=>window.__TR_PORTAL_SYNC__;
+ function clearEditor(){editingId='';editor.reset();$('trEventNoticeEditorTitle').textContent='STEP 2｜大会のお知らせを新規作成';$('trEventNoticeSaveState').textContent='';}
+ function scopeUI(id){
+   // Never carry an edited notice ID/draft across different canonical events.
+   if(currentId!==id){clearEditor();latest=null;}
+   currentId=id;
+   [noticeSel,chatSel].forEach(s=>{if([...s.options].some(o=>o.value===id))s.value=id;else s.value='';});
+   document.body.classList.toggle('trEventCommsActive',!!id);
+   $('trEventNoticesPanel').hidden=!id;$('trEventChatPanel').hidden=!id;
+   if(!id){ns.textContent='';cs.textContent='';}
+ }
+ function makeOptions(){
+   for(const el of [noticeSel,chatSel]){
+     const v=el.value;
+     el.replaceChildren(new Option(el===noticeSel?'PORTAL共通のお知らせ':'PORTAL共通CHAT',''));
+     for(const item of knownCatalog)el.add(new Option('大会｜'+item.name,item.id));
+     el.value=[...el.options].some(o=>o.value===v)?v:'';
+   }
+   if(currentId&&!knownCatalog.some(x=>x.id===currentId))scopeUI('');
+ }
+ const fmtTime=n=>{const v=Number(n);return Number.isFinite(v)&&v>0?new Date(v).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'}):'';};
+ function render(state){
+   // Set the selected scope first; scopeUI clears stale drafts on change.
+   // Assign the incoming snapshot AFTER clearing to keep its edit/delete actions live.
+   if(!state?.eventId){latest=null;if(currentId)scopeUI('');return;}
+   if(currentId!==state.eventId)scopeUI(state.eventId);
+   latest=state;
+   ns.textContent=state.noticeError?'大会お知らせREAD不可：'+state.noticeError:state.noticeLoaded?'大会のお知らせを受信しました':state.status||'読み込み中';
+   cs.textContent=state.chatError?'大会CHAT READ不可：'+state.chatError:state.chatLoaded?'大会CHATを受信しました':state.status||'読み込み中';
+   const rows=Object.entries(state.notices||{}).map(([key,n])=>({...n,id:key})).sort((a,b)=>Number(b.updatedAt||b.createdAt||0)-Number(a.updatedAt||a.createdAt||0));
+   notices.innerHTML=!state.noticeLoaded?'<div class="portalEmpty">大会のお知らせを受信中です。権限エラーは上に表示します。</div>':
+     (rows.map(n=>`<article class="portalNoticeItem"><small>${safe(fmtTime(n.updatedAt||n.createdAt))}</small><b>${safe(n.title||'お知らせ')}</b><p>${safe(n.body||'')}</p>${state.canManage?`<div class="trEventNoticeActions"><button type="button" class="trEventNoticeAction" data-event-edit="${safe(n.id)}">修正</button><button type="button" class="trEventNoticeAction" data-event-delete="${safe(n.id)}">削除</button></div>`:''}</article>`).join('')||'<div class="portalEmpty">この大会のお知らせはまだありません。</div>');
+   editor.hidden=!(state.canManage&&state.noticeLoaded);
+   const msg=Object.entries(state.chat||{}).map(([key,v])=>({...v,id:key})).sort((a,b)=>Number(a.ts||0)-Number(b.ts||0));
+   chat.innerHTML=!state.chatLoaded?'<div class="portalEmpty">大会CHATを受信中です。権限エラーは上に表示します。</div>':
+     (msg.map(m=>`<div class="msg ${m.staff?'staff ':''}${m.senderUid===portal()?.uid?'mine ':''}"><div class="msgHead"><span>${safe(m.name||'参加者')}</span><span>${safe(fmtTime(m.ts))}</span></div><p>${safe(m.text||'')}</p></div>`).join('')||'<div class="portalEmpty">この大会のCHATはまだありません。</div>');
+   $('trEventChatSend').disabled=!state.chatLoaded||pending;
+   $('trEventNoticeSave').disabled=!state.canManage||!state.noticeLoaded||pending;
+ }
+ async function choose(id){
+   if(pending)return;
+   scopeUI(id);
+   if(!id){try{await portal()?.selectEventComms?.('');}catch(_){}return;}
+   ns.textContent='大会の本人接続を確認中';cs.textContent='大会の本人接続を確認中';
+   try{await portal()?.selectEventComms?.(id);}catch(e){const reason=String(e?.message||e);ns.textContent='大会接続不可：'+reason;cs.textContent='大会接続不可：'+reason;}
+ }
+ for(const el of [noticeSel,chatSel])el.addEventListener('change',()=>void choose(el.value));
+ $('trEventNoticeMgmtOpen')?.addEventListener('click',()=>{
+    // Management STEP 1 is explicit tournament selection, never an implicit write target.
+    document.querySelector('[data-bottom-target="notices"]')?.click();
+    if(!currentId){ns.textContent='最初に、この操作の対象となる大会を選択してください。PORTAL共通のお知らせは別です。';}
+    noticeSel.scrollIntoView({block:'start'});
+    noticeSel.focus({preventScroll:true});
+  });
+ notices.addEventListener('click',async e=>{
+   const edit=e.target.closest('[data-event-edit]'),del=e.target.closest('[data-event-delete]');
+   if(edit){const rec=latest?.notices?.[edit.dataset.eventEdit];if(!rec)return;editingId=edit.dataset.eventEdit;title.value=rec.title||'';body.value=rec.body||'';$('trEventNoticeEditorTitle').textContent='STEP 2｜大会のお知らせを修正';editor.scrollIntoView({block:'nearest'});}
+   if(del){const key=del.dataset.eventDelete,rec=latest?.notices?.[key];if(!rec||!confirm('「'+String(rec.title||'お知らせ')+'」を削除しますか？'))return;
+     if(pending)return;pending=true;del.disabled=true;
+     try{await portal().eventCommsDeleteNotice(key);$('trEventNoticeSaveState').textContent='大会のお知らせをFirebaseから削除しました。';if(editingId===key)clearEditor();}
+     catch(err){$('trEventNoticeSaveState').textContent='削除できません：'+String(err?.message||err);}
+     finally{pending=false;del.disabled=false;}
+   }
+ });
+ $('trEventNoticeCancel').addEventListener('click',clearEditor);
+ editor.addEventListener('submit',async event=>{
+   event.preventDefault();if(pending)return;
+   pending=true;const b=$('trEventNoticeSave');b.disabled=true;
+   $('trEventNoticeSaveState').textContent='大会Firebaseへ保存しています…';
+   try{await portal().eventCommsSaveNotice({id:editingId,title:title.value,body:body.value});clearEditor();$('trEventNoticeSaveState').textContent='Firebase保存と読戻しを確認しました。';}
+   catch(err){$('trEventNoticeSaveState').textContent='未保存：'+String(err?.message||err);}
+   finally{pending=false;b.disabled=false;}
+ });
+ $('trEventChatForm').addEventListener('submit',async event=>{
+   event.preventDefault();if(pending)return;
+   const field=$('trEventChatText'),text=field.value.trim();if(!text)return;
+   pending=true;$('trEventChatSend').disabled=true;
+   $('trEventChatSaveState').textContent='大会Firebaseへ送信しています…';
+   try{await portal().eventCommsSendChat(text);field.value='';$('trEventChatSaveState').textContent='Firebase保存と読戻しを確認しました。';}
+   catch(err){$('trEventChatSaveState').textContent='送信未成立：'+String(err?.message||err);}
+   finally{pending=false;$('trEventChatSend').disabled=!latest?.chatLoaded;}
+ });
+ window.__TR_EVENT_COMMS_UI__={catalog(items){knownCatalog=Array.isArray(items)?items:[];makeOptions();},render};
+ // If an identity switch occurs, the unified gateway explicitly clears current event scope.
+ window.addEventListener('tr-portal-identity-ready',()=>{if(!portal()?.hasOperationalAccess?.()){knownCatalog=[];makeOptions();scopeUI('');}});
 })();
 </script>
 </body>
