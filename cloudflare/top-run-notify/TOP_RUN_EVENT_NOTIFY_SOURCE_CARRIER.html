@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ja">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#253330"><title>TOP RUN｜iPhone通知統合ファイル</title>
+<style>
+:root{color-scheme:light}
+*{box-sizing:border-box}body{margin:0;background:#f0eee8;color:#253330;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif;line-height:1.65}
+main{max-width:720px;margin:auto;padding:22px 18px 50px}header{background:#293b39;color:white;padding:26px 18px}header>div{max-width:720px;margin:auto}
+h1{font-size:23px;line-height:1.35;margin:8px 0}p,li{font-size:15px}small{font-size:12px;color:#646d69}
+.panel{border:1px solid #d6d4ca;border-radius:18px;background:#fff;padding:16px;margin:17px 0;box-shadow:0 3px 14px #0000000c}
+.step{display:inline-block;background:#cbb05a;color:#22200f;font-weight:900;padding:4px 9px;border-radius:999px;font-size:13px}
+code{background:#f0eee8;padding:2px 5px;border-radius:5px;overflow-wrap:anywhere}.action{width:100%;border:0;border-radius:13px;min-height:52px;background:#293b39;color:white;font-size:16px;font-weight:900}
+textarea{width:100%;height:170px;font-size:13px;line-height:1.5;border:1px solid #bfc6c3;border-radius:12px;padding:12px;background:#f7f8f5;color:#253330;resize:vertical}
+a{color:#185b64;font-weight:800}.caution{border-left:5px solid #b5873d;background:#fff8e8;padding:12px 14px}#copy-status{font-weight:800;color:#275a50;min-height:30px}
+</style></head>
+<body><header><div><div style="color:#e4ce83;font-weight:800;font-size:12px;letter-spacing:.09em">TOP RUN NOTIFICATIONS</div><h1>iPhone用・通知サーバー統合ファイル</h1><p style="margin:0;opacity:.9">JS／Pythonを別々にダウンロードする必要はありません。以下のHTML 1ファイルに両方の元データを格納しました。</p></div></header>
+<main>
+<div class="panel"><span class="step">1</span><h2>このHTMLを1つだけGitHubにアップロード</h2>
+<p>リポジトリ <b>nuritakug-cpu/tabirun-bgm</b> のブランチを <code>top-run-notify-stage2-20261015</code> にして、次のフォルダへこのファイルをアップロードします。</p>
+<p><code>cloudflare/top-run-notify/</code></p>
+<p>ファイル名は <code>TOP_RUN_EVENT_NOTIFY_SOURCE_CARRIER.html</code> のまま変更しません。</p></div>
+<div class="panel"><span class="step">2</span><h2>GitHub Actions設定をコピー</h2>
+<p>ブランチを <code>main</code> に戻し、GitHubで <code>.github/workflows/TOP_RUN_EVENT_NOTIFY_DEPLOY.yml</code> を作成または編集して、下の内容を丸ごと貼り付けます。</p>
+<button class="action" type="button" id="copy-workflow">GitHub Actionsの内容を全文コピー</button><p id="copy-status" role="status"></p>
+<textarea id="workflow-text" readonly aria-label="GitHub Actions 全文">name: TOP RUN Event Notify deployment
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: &quot;Deploy existing Cloudflare Worker? OFF = validation only&quot;
+        type: boolean
+        required: true
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: top-run-notify-manual
+  cancel-in-progress: false
+jobs:
+  event-notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out existing notification staging branch
+        uses: actions/checkout@v4
+        with:
+          ref: top-run-notify-stage2-20261015
+          persist-credentials: false
+      - name: Extract and verify source from the single HTML carrier
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - &lt;&lt;&#x27;PYCODE&#x27;
+          from pathlib import Path
+          import base64, hashlib, re
+          root=Path(&#x27;cloudflare/top-run-notify&#x27;)
+          html=(root/&#x27;TOP_RUN_EVENT_NOTIFY_SOURCE_CARRIER.html&#x27;).read_text(encoding=&#x27;utf-8&#x27;)
+          parts=[
+            (&#x27;tr-event-notify-extension-base64&#x27;,&#x27;top_run_event_notify_worker_extension.js&#x27;,&#x27;66f78411f0f55d40994fc1a5c062607bd96c097298ddcef7ae997f3d63fa1389&#x27;),
+            (&#x27;tr-event-notify-builder-base64&#x27;,&#x27;build_event_notify_worker.py&#x27;,&#x27;290df930a39b0b1699fcc18cb487fad6ddb1c75e4ce892a727cce3284181ec79&#x27;),
+          ]
+          for marker, filename, expected_sha in parts:
+              matched=re.search(r&#x27;&lt;script id=&quot;&#x27;+re.escape(marker)+r&#x27;&quot; type=&quot;text/plain&quot;&gt;\s*([A-Za-z0-9+/=\s]+?)\s*&lt;/script&gt;&#x27;,html)
+              if not matched: raise SystemExit(&#x27;Missing HTML carrier payload: &#x27;+marker)
+              content=base64.b64decode(&#x27;&#x27;.join(matched.group(1).split()),validate=True)
+              actual=hashlib.sha256(content).hexdigest()
+              if actual!=expected_sha: raise SystemExit(&#x27;SHA256 mismatch: &#x27;+filename)
+              (root/filename).write_bytes(content)
+              print(&#x27;Verified&#x27;, filename, actual)
+          PYCODE
+          python3 cloudflare/top-run-notify/build_event_notify_worker.py cloudflare/top-run-notify
+          node --input-type=module --check &lt; cloudflare/top-run-notify/worker.js
+          python3 - &lt;&lt;&#x27;PYCODE&#x27;
+          from pathlib import Path
+          worker=Path(&#x27;cloudflare/top-run-notify/worker.js&#x27;).read_text(encoding=&#x27;utf-8&#x27;)
+          for expected in [&quot;&#x27;/api/stage3/notify&#x27;&quot;,&quot;&#x27;/api/stage3/event-notify&#x27;&quot;,&quot;&#x27;/api/stage3/register&#x27;&quot;,&quot;&#x27;/api/stage3/revoke&#x27;&quot;,&#x27;FIREBASE_READONLY_SERVICE_ACCOUNT_JSON&#x27;]:
+              if expected not in worker: raise SystemExit(&#x27;Missing route or feature &#x27;+expected)
+          print(&#x27;Existing Stage3 endpoints retained, event route added&#x27;)
+          PYCODE
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: &#x27;22&#x27;
+      - name: Install the existing Stage3 dependencies
+        run: |
+          cd cloudflare/top-run-notify
+          npm install --no-save --ignore-scripts --no-audit --no-fund @block65/webcrypto-web-push@2.0.0 uint8array-extras@1.5.0 wrangler@4
+      - name: Validate without deploying
+        run: cd cloudflare/top-run-notify &amp;&amp; npx wrangler@4 deploy --dry-run
+      - name: Deploy only after explicit publish confirmation
+        if: ${{ inputs.publish == true }}
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: cloudflare/top-run-notify
+          command: deploy --var STAGE3_ENABLED:true
+</textarea>
+<p><small>iPhoneのファイル表示でコピー用ボタンが動かない場合は、このHTMLをSafariで開くか、コード欄を長押ししてコピーしてください。</small></p></div>
+<div class="panel"><span class="step">3</span><h2>事前検査だけ実行</h2>
+<p>GitHubの「Actions」から <b>TOP RUN Event Notify deployment</b> を選び、「Run workflow」の <code>publish</code> を <b>OFF</b> にして実行してください。</p>
+<p class="caution"><b>OFFの間は通知サーバーを公開しません。</b> 本番更新には別途Firebaseサーバー側の権限確認が必要です。</p></div>
+<div class="panel"><h2>封入内容</h2><p>2つのプログラムは改変検知用SHA-256付きで封入しています。GitHub Actionsが自動展開するため、iPhoneから .js／.py を操作する必要はありません。</p>
+<p><small>追加処理 JS：66f78411f0f55d40994fc1a5c062607bd96c097298ddcef7ae997f3d63fa1389<br>統合処理 Python：290df930a39b0b1699fcc18cb487fad6ddb1c75e4ce892a727cce3284181ec79</small></p></div>
+</main>
+<script id="tr-event-notify-extension-base64" type="text/plain">LyogRVZFTlQgQkFTRSAtPiBleGlzdGluZyBUT1AgUlVOIFN0YWdlMyBXb3JrZXIgZXZlbnQtbm90aWZ5IGhhbmRsZXIuCiAqIEludGVncmF0ZSBpbnRvIHRoZSBleGlzdGluZyBXb3JrZXIgbW9kdWxlLCB1c2luZyBpdHMgc3RhZ2UzVmVyaWZ5VG9rZW4sCiAqIHN0YWdlM1BlcnNvbiwgc3RhZ2UzUmVhZCwgc3RhZ2UzRW5zdXJlRGIsIHNlbmRXZWJQdXNoLCBzdWJzY3JpcHRpb25Gcm9tLAogKiBqc29uLCBwYXJzZUpzb24sIEFMTE9XRURfT1JJR0lOLCBQT1JUQUxfVVJMLCBURSwgYW5kIGVudi5EQi4KICogTm8gZXh0cmEgRmlyZWJhc2UgbG9naW4sIFVJRCwgZGF0YSB3cml0ZXIsIG9yIHB1c2ggZGF0YWJhc2UuCiAqIFNlcnZlci1vbmx5IEZpcmViYXNlIHJlYWQgY3JlZGVudGlhbHMgTVVTVCBiZSBjb25maWd1cmVkIGFzIGEgV29ya2VyIHNlY3JldC4KICovCmNvbnN0IEVWRU5UX0FETUlOX1NDT1BFPSdodHRwczovL3d3dy5nb29nbGVhcGlzLmNvbS9hdXRoL2ZpcmViYXNlLmRhdGFiYXNlIGh0dHBzOi8vd3d3Lmdvb2dsZWFwaXMuY29tL2F1dGgvdXNlcmluZm8uZW1haWwnOwpsZXQgZXZlbnRBZG1pbkFjY2Vzc0NhY2hlPW51bGw7CmZ1bmN0aW9uIGV2ZW50RW5jb2RlVXJsKGJ5dGVzKXtyZXR1cm4gYnRvYShTdHJpbmcuZnJvbUNoYXJDb2RlKC4uLmJ5dGVzKSkucmVwbGFjZSgvXCsvZywnLScpLnJlcGxhY2UoL1wvL2csJ18nKS5yZXBsYWNlKC89L2csJycpO30KYXN5bmMgZnVuY3Rpb24gZXZlbnRBZG1pblRva2VuKGVudil7CiAgaWYoZXZlbnRBZG1pbkFjY2Vzc0NhY2hlJiZEYXRlLm5vdygpKzEyMDAwMDxldmVudEFkbWluQWNjZXNzQ2FjaGUuZXhwaXJ5KXJldHVybiBldmVudEFkbWluQWNjZXNzQ2FjaGUudmFsdWU7CiAgY29uc3Qgc2VjcmV0PVN0cmluZyhlbnYuRklSRUJBU0VfUkVBRE9OTFlfU0VSVklDRV9BQ0NPVU5UX0pTT058fCcnKTsKICBpZighc2VjcmV0KXRocm93IEVycm9yKCdSZWFkLW9ubHkgRmlyZWJhc2Ugc2VydmljZSBhY2NvdW50IGhhcyBub3QgYmVlbiBjb25maWd1cmVkJyk7CiAgbGV0IGtleUluZm87dHJ5e2tleUluZm89SlNPTi5wYXJzZShzZWNyZXQpO31jYXRjaHt0aHJvdyBFcnJvcignSW52YWxpZCByZWFkLW9ubHkgRmlyZWJhc2UgYWNjb3VudCBmb3JtYXQnKTt9CiAgaWYoa2V5SW5mby5wcm9qZWN0X2lkIT09J2V2ZW50LWJhc2UtcmVidWlsZCd8fHR5cGVvZiBrZXlJbmZvLmNsaWVudF9lbWFpbCE9PSdzdHJpbmcnfHwKICAgICB0eXBlb2Yga2V5SW5mby5wcml2YXRlX2tleSE9PSdzdHJpbmcnfHwha2V5SW5mby5wcml2YXRlX2tleS5pbmNsdWRlcygnQkVHSU4gUFJJVkFURSBLRVknKSl0aHJvdyBFcnJvcignV3JvbmcgRmlyZWJhc2UgcHJvamVjdCcpOwogIGNvbnN0IGtleUJ5dGVzPVVpbnQ4QXJyYXkuZnJvbShhdG9iKGtleUluZm8ucHJpdmF0ZV9rZXkucmVwbGFjZSgvLS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tfC0tLS0tRU5EIFBSSVZBVEUgS0VZLS0tLS18XHMvZywnJykpLGM9PmMuY2hhckNvZGVBdCgwKSk7CiAgY29uc3QgcHJpdmF0ZUtleT1hd2FpdCBjcnlwdG8uc3VidGxlLmltcG9ydEtleSgncGtjczgnLGtleUJ5dGVzLHtuYW1lOidSU0FTU0EtUEtDUzEtdjFfNScsaGFzaDonU0hBLTI1Nid9LGZhbHNlLFsnc2lnbiddKTsKICBjb25zdCBub3c9TWF0aC5mbG9vcihEYXRlLm5vdygpLzEwMDApOwogIGNvbnN0IGhlYWRlcj1ldmVudEVuY29kZVVybChURS5lbmNvZGUoSlNPTi5zdHJpbmdpZnkoe2FsZzonUlMyNTYnLHR5cDonSldUJ30pKSk7CiAgY29uc3QgY2xhaW1zPWV2ZW50RW5jb2RlVXJsKFRFLmVuY29kZShKU09OLnN0cmluZ2lmeSh7aXNzOmtleUluZm8uY2xpZW50X2VtYWlsLHNjb3BlOkVWRU5UX0FETUlOX1NDT1BFLAogICAgYXVkOidodHRwczovL29hdXRoMi5nb29nbGVhcGlzLmNvbS90b2tlbicsaWF0Om5vdyxleHA6bm93KzM2MDB9KSkpOwogIGNvbnN0IGlucHV0PWhlYWRlcisnLicrY2xhaW1zOwogIGNvbnN0IHNpZ25hdHVyZT1ldmVudEVuY29kZVVybChuZXcgVWludDhBcnJheShhd2FpdCBjcnlwdG8uc3VidGxlLnNpZ24oJ1JTQVNTQS1QS0NTMS12MV81Jyxwcml2YXRlS2V5LFRFLmVuY29kZShpbnB1dCkpKSk7CiAgY29uc3QgcmVzcG9uc2U9YXdhaXQgZmV0Y2goJ2h0dHBzOi8vb2F1dGgyLmdvb2dsZWFwaXMuY29tL3Rva2VuJyx7bWV0aG9kOidQT1NUJyxyZWRpcmVjdDonbWFudWFsJywKICAgIGhlYWRlcnM6eydDb250ZW50LVR5cGUnOidhcHBsaWNhdGlvbi94LXd3dy1mb3JtLXVybGVuY29kZWQnfSwKICAgIGJvZHk6bmV3IFVSTFNlYXJjaFBhcmFtcyh7Z3JhbnRfdHlwZTondXJuOmlldGY6cGFyYW1zOm9hdXRoOmdyYW50LXR5cGU6and0LWJlYXJlcicsYXNzZXJ0aW9uOmlucHV0KycuJytzaWduYXR1cmV9KX0pOwogIGlmKCFyZXNwb25zZS5vayl0aHJvdyBFcnJvcignRmlyZWJhc2UgcmVhZC1vbmx5IGFjY2VzcyBkZW5pZWQnKTsKICBjb25zdCBhY2Nlc3M9YXdhaXQgcmVzcG9uc2UuanNvbigpOwogIGlmKHR5cGVvZiBhY2Nlc3MuYWNjZXNzX3Rva2VuIT09J3N0cmluZyd8fCFOdW1iZXIuaXNGaW5pdGUoTnVtYmVyKGFjY2Vzcy5leHBpcmVzX2luKSkpdGhyb3cgRXJyb3IoJ0ludmFsaWQgRmlyZWJhc2UgYWNjZXNzIHJlc3BvbnNlJyk7CiAgZXZlbnRBZG1pbkFjY2Vzc0NhY2hlPXt2YWx1ZTphY2Nlc3MuYWNjZXNzX3Rva2VuLGV4cGlyeTpEYXRlLm5vdygpK01hdGgubWluKE51bWJlcihhY2Nlc3MuZXhwaXJlc19pbiksMzYwMCkqMTAwMH07CiAgcmV0dXJuIGV2ZW50QWRtaW5BY2Nlc3NDYWNoZS52YWx1ZTsKfQphc3luYyBmdW5jdGlvbiBldmVudEFkbWluUmVhZChwYXRoLHRva2VuKXsKICBpZighL15bLUEtWmEtejAtOV8vXSskLy50ZXN0KHBhdGgpfHxwYXRoLmluY2x1ZGVzKCcuLicpKXRocm93IEVycm9yKCdJbnZhbGlkIEZpcmViYXNlIHJlYWQgcGF0aCcpOwogIC8vIEdvb2dsZSBPQXV0aDIgYWNjZXNzX3Rva2VuIGlzIHNlcnZlci1vbmx5LiBOZXZlciBwdXQgaXQgaW4gY2xpZW50IFVSTHMgb3IgbG9ncy4KICBjb25zdCB1cmw9U1RBR0UzX0RCKycvJytwYXRoKycuanNvbj9hY2Nlc3NfdG9rZW49JytlbmNvZGVVUklDb21wb25lbnQodG9rZW4pOwogIGNvbnN0IHJlc3BvbnNlPWF3YWl0IGZldGNoKHVybCx7bWV0aG9kOidHRVQnLHJlZGlyZWN0OidtYW51YWwnLGNhY2hlOiduby1zdG9yZSd9KTsKICBpZighcmVzcG9uc2Uub2spdGhyb3cgRXJyb3IoJ0ZpcmViYXNlIGNhbm9uaWNhbCBSRUFEIHVuYXZhaWxhYmxlJyk7CiAgcmV0dXJuIGF3YWl0IHJlc3BvbnNlLmpzb24oKTsKfQpmdW5jdGlvbiBldmVudEF1dGhvcml6ZWRCaW5kaW5nKGJpbmRpbmcscGVyc29uLHJvbGVQcm9vZil7CiAgaWYoIWJpbmRpbmd8fCFbJ293bmVyJywnbWFuYWdlcicsJ3BhcnRpY2lwYW50J10uaW5jbHVkZXMoYmluZGluZy5yb2xlKSlyZXR1cm4gZmFsc2U7CiAgaWYoYmluZGluZy5yb2xlPT09J293bmVyJylyZXR1cm4gcGVyc29uLnJvbGU9PT0nZGV2ZWxvcGVyJyYmCiAgICAvXlthLWYwLTldezY0fSQvaS50ZXN0KFN0cmluZyhiaW5kaW5nLm93bmVyUHJvb2Z8fCcnKSkmJmJpbmRpbmcub3duZXJQcm9vZj09PXJvbGVQcm9vZjsKICByZXR1cm4gYmluZGluZy5wcm9maWxlSWQ9PT1wZXJzb24ucHJvZmlsZUlkJiYKICAgIChiaW5kaW5nLnJvbGU9PT0nbWFuYWdlcic/cGVyc29uLnJvbGU9PT0nYWRtaW4nOnBlcnNvbi5yb2xlPT09J3BhcnRpY2lwYW50Jyk7Cn0KYXN5bmMgZnVuY3Rpb24gc3RhZ2UzRXZlbnROb3RpZnkocmVxdWVzdCxlbnYscGVyc29uLGF1dGgsYyl7CiAgaWYoIWVudi5WQVBJRF9QUklWQVRFX0tFWXx8IWVudi5WQVBJRF9QVUJMSUNfS0VZfHwhZW52LlZBUElEX1NVQkpFQ1QpCiAgICByZXR1cm4ganNvbih7b2s6ZmFsc2UsZXJyb3I6J1B1c2ggc2VuZGVyIG5vdCBjb25maWd1cmVkJ30sNTAzLGMpOwogIGlmKCFlbnYuRklSRUJBU0VfUkVBRE9OTFlfU0VSVklDRV9BQ0NPVU5UX0pTT04pCiAgICByZXR1cm4ganNvbih7b2s6ZmFsc2UsZXJyb3I6J1JlYWQtb25seSBGaXJlYmFzZSByZWNpcGllbnQgdmVyaWZpY2F0aW9uIG5vdCBjb25maWd1cmVkJ30sNTAzLGMpOwogIGxldCBkYXRhO3RyeXtkYXRhPWF3YWl0IHBhcnNlSnNvbihyZXF1ZXN0KTt9Y2F0Y2h7cmV0dXJuIGpzb24oe29rOmZhbHNlLGVycm9yOidJbnZhbGlkIEpTT04nfSw0MDAsYyk7fQogIGNvbnN0IHtraW5kLGlkLGV2ZW50SWR9PWRhdGF8fHt9OwogIGlmKCFbJ2NoYXQnLCdub3RpY2UnXS5pbmNsdWRlcyhraW5kKXx8IS9eZXZlbnRiYXNlX1thLXowLTlfXXs4LDc1fSQvaS50ZXN0KFN0cmluZyhldmVudElkfHwnJykpfHwKICAgICAhL15bQS1aYS16MC05Xy1dezEsMTAwfSQvLnRlc3QoU3RyaW5nKGlkfHwnJykpKXJldHVybiBqc29uKHtvazpmYWxzZSxlcnJvcjonSW52YWxpZCBldmVudCBJRCd9LDQwMCxjKTsKICBpZihraW5kPT09J25vdGljZScmJiFbJ2RldmVsb3BlcicsJ2FkbWluJ10uaW5jbHVkZXMocGVyc29uLnJvbGUpKXJldHVybiBqc29uKHtvazpmYWxzZSxlcnJvcjonU3RhZmYgcmVxdWlyZWQnfSw0MDMsYyk7CiAgbGV0IGJpbmRpbmcsb3duZXJSb2xlLHJlY29yZCxzYWZldHk7CiAgdHJ5ewogICAgW2JpbmRpbmcscmVjb3JkLHNhZmV0eV09YXdhaXQgUHJvbWlzZS5hbGwoWwogICAgICBzdGFnZTNSZWFkKCdiaW5kaW5ncy8nK2V2ZW50SWQrJy8nK2F1dGgudWlkLGF1dGgudG9rZW4pLAogICAgICBzdGFnZTNSZWFkKCdldmVudHMvJytldmVudElkKycvJysoa2luZD09PSdjaGF0Jz8nY2hhdC8nOidub3RpY2VzLycpK2lkLGF1dGgudG9rZW4pLAogICAgICBzdGFnZTNSZWFkKCdldmVudHMvJytldmVudElkKycvc2FmZXR5L2V2ZW50Q29tcGxldGVkQXQnLGF1dGgudG9rZW4pCiAgICBdKTsKICAgIGlmKHBlcnNvbi5yb2xlPT09J2RldmVsb3Blcicpb3duZXJSb2xlPWF3YWl0IHN0YWdlM1JlYWQoJ3BvcnRhbFJvbGVzLycrYXV0aC51aWQsYXV0aC50b2tlbik7CiAgfWNhdGNoe3JldHVybiBqc29uKHtvazpmYWxzZSxlcnJvcjonQ2Fub25pY2FsIGV2ZW50IGlzIG5vdCByZWFkYWJsZSd9LDQwMyxjKTt9CiAgaWYoTnVtYmVyKHNhZmV0eSk+MHx8IWV2ZW50QXV0aG9yaXplZEJpbmRpbmcoYmluZGluZyxwZXJzb24sb3duZXJSb2xlPy5vd25lclByb29mKSkKICAgIHJldHVybiBqc29uKHtvazpmYWxzZSxlcnJvcjonRXZlbnQgYXV0aG9yaXR5IHJlamVjdGVkJ30sNDAzLGMpOwogIGNvbnN0IG5vdz1EYXRlLm5vdygpLHN0YW1wPU51bWJlcihraW5kPT09J2NoYXQnP3JlY29yZD8udHM6KHJlY29yZD8uY3JlYXRlZEF0fHxyZWNvcmQ/LnVwZGF0ZWRBdCkpOwogIGNvbnN0IGF1dGhvcj1raW5kPT09J2NoYXQnP3JlY29yZD8uc2VuZGVyVWlkOihyZWNvcmQ/LnVwZGF0ZWRCeXx8cmVjb3JkPy51cGRhdGVkQnlVaWR8fHJlY29yZD8uY3JlYXRlZEJ5VWlkKTsKICBpZighcmVjb3JkfHwhTnVtYmVyLmlzRmluaXRlKHN0YW1wKXx8c3RhbXA+bm93KzMwMDAwfHxub3ctc3RhbXA+NjAwMDAwfHxhdXRob3IhPT1hdXRoLnVpZCkKICAgIHJldHVybiBqc29uKHtvazpmYWxzZSxlcnJvcjonQ2Fub25pY2FsIHBvc3QgZGlkIG5vdCBtYXRjaCB0aGUgYXV0aG9yJ30sNDAzLGMpOwogIC8vIEZ1bGwgY3VycmVudCByZWNpcGllbnQgdmVyaWZpY2F0aW9uIGlzIG1hbmRhdG9yeTogbm8gc3RhbGUgcm9zdGVyIGNhY2hlLAogIC8vIGNsaWVudC1wcm92aWRlZCBkZXZpY2UgbGlzdCwgb3IgYnJvYWRjYXN0IGFjcm9zcyB1bnJlbGF0ZWQgdG91cm5hbWVudHMuCiAgbGV0IGFkbWluLGJpbmRpbmdzOwogIHRyeXthZG1pbj1hd2FpdCBldmVudEFkbWluVG9rZW4oZW52KTtiaW5kaW5ncz1hd2FpdCBldmVudEFkbWluUmVhZCgnYmluZGluZ3MvJytldmVudElkLGFkbWluKTt9CiAgY2F0Y2h7cmV0dXJuIGpzb24oe29rOmZhbHNlLGVycm9yOidBdXRob3JpdGF0aXZlIHJlY2lwaWVudCBSRUFEIHVuYXZhaWxhYmxlJ30sNTAzLGMpO30KICBpZighYmluZGluZ3N8fHR5cGVvZiBiaW5kaW5ncyE9PSdvYmplY3QnKXJldHVybiBqc29uKHtvazpmYWxzZSxlcnJvcjonTm8gYXV0aG9yaXRhdGl2ZSBldmVudCByb3N0ZXInfSw1MDMsYyk7CiAgYXdhaXQgc3RhZ2UzRW5zdXJlRGIoZW52LkRCKTsKICBhd2FpdCBlbnYuREIucHJlcGFyZShgQ1JFQVRFIFRBQkxFIElGIE5PVCBFWElTVFMgc3RhZ2UzX3NlbnRfZXZlbnRzIChpZCBURVhUIFBSSU1BUlkgS0VZLCBzZW50X2F0IElOVEVHRVIgTk9UIE5VTEwpYCkucnVuKCk7CiAgY29uc3QgdW5pcXVlPSdldmVudDonK2V2ZW50SWQrJzonK2tpbmQrJzonK2lkOwogIGNvbnN0IGluc2VydGVkPWF3YWl0IGVudi5EQi5wcmVwYXJlKCdJTlNFUlQgT1IgSUdOT1JFIElOVE8gc3RhZ2UzX3NlbnRfZXZlbnRzKGlkLHNlbnRfYXQpIFZBTFVFUyAoPzEsPzIpJykKICAgIC5iaW5kKHVuaXF1ZSxub3cpLnJ1bigpOwogIGlmKChpbnNlcnRlZD8ubWV0YT8uY2hhbmdlcz8/MCk9PT0wKXJldHVybiBqc29uKHtvazp0cnVlLGFscmVhZHlQcm9jZXNzZWQ6dHJ1ZSxhY2NlcHRlZEJ5UHVzaFNlcnZpY2U6MH0sMjAwLGMpOwogIGxldCBhY2NlcHRlZD0wLGF0dGVtcHRlZD0wLGludmFsaWQ9MDsKICB0cnl7CiAgICBjb25zdCByb3dzPWF3YWl0IGVudi5EQi5wcmVwYXJlKGBTRUxFQ1QgaWQsdWlkLHByb2ZpbGVfaWQscmF3IEZST00gc3RhZ2UzX2RldmljZXMKICAgICAgIFdIRVJFIHVpZCAhPSA/MSBBTkQgdXBkYXRlZF9hdCA+ID8yIEFORCBgKyhraW5kPT09J2NoYXQnPydjaGF0X2VuYWJsZWQ9MSc6J25vdGljZV9lbmFibGVkPTEnKSsKICAgICAgICcgT1JERVIgQlkgdXBkYXRlZF9hdCBERVNDIExJTUlUIDIwMCcpLmJpbmQoYXV0aC51aWQsbm93LTE4MCo4NjQwMDAwMCkuYWxsKCk7CiAgICBjb25zdCBkZXZpY2VzPXJvd3M/LnJlc3VsdHN8fFtdOwogICAgY29uc3QgdmVyaWZpZWQ9bmV3IE1hcCgpOwogICAgZm9yKGNvbnN0IGRldmljZSBvZiBkZXZpY2VzKXsKICAgICAgY29uc3QgdWlkPVN0cmluZyhkZXZpY2UudWlkfHwnJykscGlkPVN0cmluZyhkZXZpY2UucHJvZmlsZV9pZHx8JycpOwogICAgICBpZighL15bLUEtWmEtejAtOV9dezEsMTI4fSQvLnRlc3QodWlkKXx8IXBpZHx8IWJpbmRpbmdzW3VpZF0pY29udGludWU7CiAgICAgIGlmKCF2ZXJpZmllZC5oYXModWlkKSl2ZXJpZmllZC5zZXQodWlkLChhc3luYygpPT57CiAgICAgICAgdHJ5ewogICAgICAgICAgY29uc3QgYj1iaW5kaW5nc1t1aWRdOwogICAgICAgICAgY29uc3QgcHJvZmlsZUlkPWF3YWl0IGV2ZW50QWRtaW5SZWFkKCdwcm9maWxlcy8nK3VpZCsnL3Byb2ZpbGVJZCcsYWRtaW4pOwogICAgICAgICAgaWYocHJvZmlsZUlkIT09cGlkKXJldHVybiBmYWxzZTsKICAgICAgICAgIGlmKGIucm9sZT09PSdwYXJ0aWNpcGFudCcpewogICAgICAgICAgICBjb25zdCBhY2Nlc3M9YXdhaXQgZXZlbnRBZG1pblJlYWQoJ3BvcnRhbENvbW1vbi90b3BSdW4vbWVtYmVyQWNjZXNzLycrdWlkLGFkbWluKTsKICAgICAgICAgICAgcmV0dXJuIGIucHJvZmlsZUlkPT09cGlkJiZhY2Nlc3M/LmFjdGl2ZT09PXRydWUmJmFjY2Vzcz8ucHJvZmlsZUlkPT09cGlkOwogICAgICAgICAgfQogICAgICAgICAgY29uc3Qgcm9sZT1hd2FpdCBldmVudEFkbWluUmVhZCgncG9ydGFsUm9sZXMvJyt1aWQsYWRtaW4pOwogICAgICAgICAgaWYoYi5yb2xlPT09J21hbmFnZXInKXJldHVybiBiLnByb2ZpbGVJZD09PXBpZCYmcm9sZT8ucm9sZT09PSdhZG1pbic7CiAgICAgICAgICBpZihiLnJvbGU9PT0nb3duZXInKXsKICAgICAgICAgICAgY29uc3QgcHJvb2Y9YXdhaXQgZXZlbnRBZG1pblJlYWQoJ2RldmVsb3BlckF1dGgvY3JlZGVudGlhbEhhc2gnLGFkbWluKTsKICAgICAgICAgICAgcmV0dXJuIHJvbGU/LnJvbGU9PT0nZGV2ZWxvcGVyJyYmYi5vd25lclByb29mPT09cHJvb2YmJnJvbGU/Lm93bmVyUHJvb2Y9PT1wcm9vZjsKICAgICAgICAgIH0KICAgICAgICAgIHJldHVybiBmYWxzZTsKICAgICAgICB9Y2F0Y2h7cmV0dXJuIGZhbHNlO30KICAgICAgfSkoKSk7CiAgICAgIGlmKCEoYXdhaXQgdmVyaWZpZWQuZ2V0KHVpZCkpKWNvbnRpbnVlOwogICAgICBhdHRlbXB0ZWQrKzsKICAgICAgdHJ5ewogICAgICAgIGNvbnN0IHN1Yj1zdWJzY3JpcHRpb25Gcm9tKEpTT04ucGFyc2UoZGV2aWNlLnJhdykpOwogICAgICAgIGNvbnN0IHBheWxvYWQ9e3dlYl9wdXNoOjgwMzAsbm90aWZpY2F0aW9uOnt0aXRsZTonVE9QIFJVTicsbGFuZzonamEnLGRpcjonYXV0bycsCiAgICAgICAgICBib2R5OmtpbmQ9PT0nY2hhdCc/J+Wkp+S8mkNIQVTjgavmlrDnnYDjg6Hjg4Pjgrvjg7zjgrjjgYzjgYLjgorjgb7jgZnjgIInOiflpKfkvJrjga7jgYrnn6XjgonjgZvjgYzlsYrjgY3jgb7jgZfjgZ/jgIInLAogICAgICAgICAgbmF2aWdhdGU6UE9SVEFMX1VSTCsnP3B1c2hUbz1ldmVudC0nKyhraW5kPT09J2NoYXQnPydjaGF0Jzonbm90aWNlcycpKycmZXZlbnRJZD0nK2VuY29kZVVSSUNvbXBvbmVudChldmVudElkKSwKICAgICAgICAgIHRhZzondG9wLXJ1bi1ldmVudC0nK2V2ZW50SWQrJy0nK2tpbmQsIHNpbGVudDpmYWxzZX19OwogICAgICAgIGNvbnN0IHJlc3BvbnNlPWF3YWl0IHNlbmRXZWJQdXNoKHN1YixlbnYsZmV0Y2gscGF5bG9hZCk7CiAgICAgICAgaWYocmVzcG9uc2Uuc3RhdHVzPT09MjAxfHxyZXNwb25zZS5zdGF0dXM9PT0yMDIpYWNjZXB0ZWQrKzsKICAgICAgICBlbHNlIGlmKHJlc3BvbnNlLnN0YXR1cz09PTQwNHx8cmVzcG9uc2Uuc3RhdHVzPT09NDEwKXsKICAgICAgICAgIGludmFsaWQrKzthd2FpdCBlbnYuREIucHJlcGFyZSgnREVMRVRFIEZST00gc3RhZ2UzX2RldmljZXMgV0hFUkUgaWQ9PzEnKS5iaW5kKGRldmljZS5pZCkucnVuKCk7CiAgICAgICAgfQogICAgICB9Y2F0Y2h7LyogUGVyLWRldmljZSBmYWlsdXJlIGRvZXMgbm90IG1vZGlmeSBjYW5vbmljYWwgcG9zdHMuICovfQogICAgfQogIH1jYXRjaChlcnJvcil7CiAgICBpZighYWNjZXB0ZWQpYXdhaXQgZW52LkRCLnByZXBhcmUoJ0RFTEVURSBGUk9NIHN0YWdlM19zZW50X2V2ZW50cyBXSEVSRSBpZD0/MScpLmJpbmQodW5pcXVlKS5ydW4oKTsKICAgIHJldHVybiBqc29uKHtvazpmYWxzZSxlcnJvcjonUmVjaXBpZW50IGRpc3BhdGNoIGZhaWxlZCd9LDUwMixjKTsKICB9CiAgaWYoIWFjY2VwdGVkJiZhdHRlbXB0ZWQpYXdhaXQgZW52LkRCLnByZXBhcmUoJ0RFTEVURSBGUk9NIHN0YWdlM19zZW50X2V2ZW50cyBXSEVSRSBpZD0/MScpLmJpbmQodW5pcXVlKS5ydW4oKTsKICByZXR1cm4ganNvbih7b2s6YWNjZXB0ZWQ+MHx8YXR0ZW1wdGVkPT09MCxhY2NlcHRlZEJ5UHVzaFNlcnZpY2U6YWNjZXB0ZWQsYXR0ZW1wdGVkRGV2aWNlczphdHRlbXB0ZWQsCiAgICBzdGFsZVJlbW92ZWQ6aW52YWxpZCxkZWxpdmVyZWRUb0RldmljZTondW52ZXJpZmllZCd9LGFjY2VwdGVkPjB8fGF0dGVtcHRlZD09PTA/MjAwOjUwMixjKTsKfQo=</script>
+<script id="tr-event-notify-builder-base64" type="text/plain">IyEvdXNyL2Jpbi9lbnYgcHl0aG9uMwoiIiJCdWlsZCB0aGUgKmV4aXN0aW5nKiBTdGFnZTMgQ2xvdWRmbGFyZSBXb3JrZXIgKyBldmVudC1zcGVjaWZpYyByb3V0ZS4KClJ1biBpbiB0aGUgZXhpc3RpbmcgdG9wLXJ1bi1ub3RpZnkgc3RhZ2luZyBicmFuY2g7IGl0IGNvbnN1bWVzIHRoZSByZXZpZXdlZApiYXNlNjQgV29ya2VyIGNhcnJpZXIuIERvZXMgbm90IGRlcGxveSBvciBtb2RpZnkgQ2xvdWRmbGFyZS9GaXJlYmFzZSBpdHNlbGYuCiIiIgppbXBvcnQgYmFzZTY0LGhhc2hsaWIscmUsc3lzCmZyb20gcGF0aGxpYiBpbXBvcnQgUGF0aApST09UPVBhdGgoc3lzLmFyZ3ZbMV0gaWYgbGVuKHN5cy5hcmd2KT4xIGVsc2UgJy4nKQpDQVJSSUVSPVJPT1QvJ1RPUF9SVU5fTk9USUZZX1NUQUdFMl9XT1JLRVJfVVBMT0FEXzIwMjYxMDIxLmh0bWwnCkVYVD1QYXRoKF9fZmlsZV9fKS5wYXJlbnQvJ3RvcF9ydW5fZXZlbnRfbm90aWZ5X3dvcmtlcl9leHRlbnNpb24uanMnCiMgSW4gQ0kgY29weSB0aGUgZXh0ZW5zaW9uIG5leHQgdG8gdGhpcyBzY3JpcHQgb3IgcGFzcyBwYXRoIGFzIGFyZ3ZbMl0KaWYgbGVuKHN5cy5hcmd2KT4yOiBFWFQ9UGF0aChzeXMuYXJndlsyXSkKaHRtbD1DQVJSSUVSLnJlYWRfdGV4dChlbmNvZGluZz0ndXRmLTgnKQptPXJlLnNlYXJjaChyJzxzY3JpcHQgaWQ9InRyLXdvcmtlci1zb3VyY2UtYmFzZTY0IiB0eXBlPSJ0ZXh0L3BsYWluIj5ccyooW0EtWmEtejAtOSsvPVxzXSs/KVxzKjwvc2NyaXB0PicsaHRtbCkKaWYgbm90IG06cmFpc2UgU3lzdGVtRXhpdCgnTWlzc2luZyByZXZpZXdlZCBTdGFnZTMgd29ya2VyIGNhcnJpZXInKQpvcmlnaW5hbD1iYXNlNjQuYjY0ZGVjb2RlKCcnLmpvaW4obS5ncm91cCgxKS5zcGxpdCgpKSx2YWxpZGF0ZT1UcnVlKQpjaGVja3N1bT1oYXNobGliLnNoYTI1NihvcmlnaW5hbCkuaGV4ZGlnZXN0KCkKRVhQRUNURUQ9JzlhZWFhZmQ2OTRlMzBmMjIxZTRiZDMxZWFkZGJhODBiYTQ2MmM0YWIyYmM4YTRhMGU2ZjM5YzNiNTZmMzhkZmInCmlmIGNoZWNrc3VtIT1FWFBFQ1RFRDpyYWlzZSBTeXN0ZW1FeGl0KCdVbmV4cGVjdGVkIFN0YWdlMyBwYXJlbnQgU0hBMjU2LiBEbyBub3Qgb3ZlcndyaXRlIHVua25vd24gV29ya2VyLicpCnNvdXJjZT1vcmlnaW5hbC5kZWNvZGUoJ3V0Zi04JykKYWRkb249RVhULnJlYWRfdGV4dChlbmNvZGluZz0ndXRmLTgnKQpzdGFydD0nYXN5bmMgZnVuY3Rpb24gc3RhZ2UzSGFuZGxlKHJlcXVlc3QsZW52LHBhdGgsYyl7Jwphc3NlcnQgc291cmNlLmNvdW50KHN0YXJ0KT09MQpzb3VyY2U9c291cmNlLnJlcGxhY2Uoc3RhcnQsYWRkb24rJ1xuXG4nK3N0YXJ0LDEpCnJvdXRlPSJpZihyZXF1ZXN0Lm1ldGhvZD09PSdQT1NUJyYmcGF0aD09PScvYXBpL3N0YWdlMy9ub3RpZnknKXJldHVybiBzdGFnZTNOb3RpZnkocmVxdWVzdCxlbnYscGVyc29uLGF1dGgsYyk7Igphc3NlcnQgc291cmNlLmNvdW50KHJvdXRlKT09MQpzb3VyY2U9c291cmNlLnJlcGxhY2Uocm91dGUsCiAgImlmKHJlcXVlc3QubWV0aG9kPT09J1BPU1QnJiZwYXRoPT09Jy9hcGkvc3RhZ2UzL2V2ZW50LW5vdGlmeScpcmV0dXJuIHN0YWdlM0V2ZW50Tm90aWZ5KHJlcXVlc3QsZW52LHBlcnNvbixhdXRoLGMpO1xuICAiK3JvdXRlLDEpCiMgTmV2ZXIgYnJvYWRlbiBDT1JTLCBpZGVudGl0eSBnYXRlLCBwcmlvciBVUkwgcGF0aHMsIGRldmljZSB0YWJsZXMgb3IgVkFQSUQgc2VuZGVyLgphc3NlcnQgc291cmNlLmNvdW50KCInL2FwaS9zdGFnZTMvZXZlbnQtbm90aWZ5JyIpPT0xCmFzc2VydCAiYXN5bmMgZnVuY3Rpb24gc3RhZ2UzVmVyaWZ5VG9rZW4ocmVxdWVzdCkiIGluIHNvdXJjZQphc3NlcnQgIkNSRUFURSBUQUJMRSBJRiBOT1QgRVhJU1RTIHN0YWdlM19kZXZpY2VzIiBpbiBzb3VyY2UKYXNzZXJ0ICJzdGFnZTNGb3JtYWxQYXlsb2FkKGtpbmQpIiBpbiBzb3VyY2UKb3V0PVJPT1QvJ3dvcmtlci5qcycKb3V0LndyaXRlX3RleHQoc291cmNlLGVuY29kaW5nPSd1dGYtOCcpCnByaW50KCdCdWlsdCBTdGFnZTMgKyBFVkVOVCBCQVNFIFdvcmtlcjonLG91dCwnYnl0ZXMnLG91dC5zdGF0KCkuc3Rfc2l6ZSwnU0hBMjU2JyxoYXNobGliLnNoYTI1NihvdXQucmVhZF9ieXRlcygpKS5oZXhkaWdlc3QoKSkK</script>
+<script>
+(function(){
+  var btn=document.getElementById('copy-workflow');
+  var t=document.getElementById('workflow-text');
+  var status=document.getElementById('copy-status');
+  btn.addEventListener('click',async function(){
+    var ok=false;
+    try{ if(navigator.clipboard && window.isSecureContext){await navigator.clipboard.writeText(t.value);ok=true;} }catch(e){}
+    if(!ok){try{t.focus();t.select();t.setSelectionRange(0,t.value.length);ok=!!document.execCommand('copy');}catch(e){}}
+    status.textContent=ok?'コピーしました。GitHubのファイル作成画面へ貼り付けてください。':'自動コピーが使えません。下の欄を長押し→すべて選択→コピーしてください。';
+  });
+})();</script></body></html>
