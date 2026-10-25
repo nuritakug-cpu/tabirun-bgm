@@ -15934,55 +15934,100 @@ setInterval(display,1000);
 })();
 </script>
 <script id="top-run-app-badge-clear-20261025">
-/* One device/one server badge counter. Does not alter Firebase, Auth or read status.
-   The SW handles Android; on iPhone Declarative Web Push can update OS badges without SW.
-   Clear the local badge immediately, then securely reset only this subscription in D1. */
+/* Badge reset: retain existing local clear, but verify server acknowledgement.
+   Formal recipients use the existing verified PORTAL Firebase token; test-only
+   subscriptions retain the existing per-subscription endpoint fallback.
+   No new Firebase connection, Auth, listener, or canonical data writer. */
 (()=>{
   'use strict';
   const BASE='https://top-run-notify.nuritaku-g.workers.dev';
   const ORIGIN='https://nuritakug-cpu.github.io';
+  if(location.origin!==ORIGIN||location.pathname!=='/tabirun-bgm/TOP_RUN_PORTAL.html')return;
   const clearBadge=()=>{
     if(typeof navigator.clearAppBadge!=='function')return;
     try{Promise.resolve(navigator.clearAppBadge()).catch(()=>{});}catch{}
   };
-  let active=null;
-  let lastSuccess=0;
-  async function clearOnServer(){
-    if(location.origin!==ORIGIN||location.pathname!=='/tabirun-bgm/TOP_RUN_PORTAL.html')return;
-    if(active)return active;
-    // Duplicate callbacks within 1.5 seconds need not re-issue an idempotent reset.
-    if(Date.now()-lastSuccess<1500)return;
-    active=(async()=>{
+  let authenticating=null, legacyResetting=null;
+  let lastAck=0;
+  const gate=()=>window.__TR_PORTAL_SYNC__;
+  const usableIdentity=()=>{
+    const g=gate();
+    return !!(g?.uid&&g?.profileId&&g?.roleVerified===true&&
+      g?.hasOperationalAccess?.()===true&&typeof g?.stage3NotificationToken==='function');
+  };
+  // An authenticated reset clears the D1 counters for registered devices of
+  // this SAME verified UID/profileId. Read state remains owned by Firebase.
+  async function resetAuthenticated(){
+    if(!usableIdentity()||Date.now()-lastAck<1500)return false;
+    if(authenticating)return authenticating;
+    const g=gate(),uid=g.uid,pid=g.profileId;
+    authenticating=(async()=>{
+      const identity=await g.stage3NotificationToken();
+      if(!usableIdentity()||gate().uid!==uid||gate().profileId!==pid||
+         identity.uid!==uid||identity.profileId!==pid)return false;
+      const res=await fetch(BASE+'/api/stage3/badge-clear',{
+        method:'POST',mode:'cors',cache:'no-store',
+        headers:{'Authorization':'Bearer '+identity.token,'Content-Type':'application/json'},
+        body:JSON.stringify({profileId:pid})
+      });
+      const ack=await res.json().catch(()=>null);
+      if(!res.ok||ack?.ok!==true||ack.cleared!==true||Number(ack.registeredDevices)<=0)return false;
+      if(!usableIdentity()||gate().uid!==uid||gate().profileId!==pid)return false;
+      lastAck=Date.now();
+      clearBadge();
+      return true;
+    })().catch(()=>false).finally(()=>{authenticating=null;});
+    return authenticating;
+  }
+  async function resetLegacy(){
+    // Legacy test endpoint is retained for developer-only Stage2 registrations.
+    // Do not let this path overwrite a successful signed Stage3 result.
+    if(Date.now()-lastAck<1500||legacyResetting)return legacyResetting||false;
+    legacyResetting=(async()=>{
       let sub=null;
       if(window.pushManager?.getSubscription){
-        try{sub=await window.pushManager.getSubscription();}catch(_){/* SW fallback */}
+        try{sub=await window.pushManager.getSubscription();}catch(_){}
       }
       if(!sub&&navigator.serviceWorker?.getRegistration){
-        const reg=await navigator.serviceWorker.getRegistration('./TOP_RUN_PORTAL');
-        if(reg?.pushManager?.getSubscription)sub=await reg.pushManager.getSubscription();
+        try{
+          const reg=await navigator.serviceWorker.getRegistration('./TOP_RUN_PORTAL');
+          if(reg?.pushManager?.getSubscription)sub=await reg.pushManager.getSubscription();
+        }catch(_){}
       }
-      if(!sub)return;
+      if(!sub)return false;
       const info=typeof sub.toJSON==='function'?sub.toJSON():sub;
-      if(!info?.endpoint||!info?.keys?.p256dh||!info?.keys?.auth)return;
+      if(!info?.endpoint||!info?.keys?.p256dh||!info?.keys?.auth)return false;
       const res=await fetch(BASE+'/api/stage2/badge-clear',{
         method:'POST',mode:'cors',cache:'no-store',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({subscription:info})
       });
-      if(res.ok){
-        const ack=await res.json().catch(()=>null);
-        if(ack?.ok===true){lastSuccess=Date.now();clearBadge();}
-      }
-    })().catch(()=>{}).finally(()=>{active=null;});
-    return active;
+      const ack=await res.json().catch(()=>null);
+      if(!res.ok||ack?.ok!==true||ack.cleared!==true)return false;
+      lastAck=Date.now();
+      clearBadge();
+      return true;
+    })().catch(()=>false).finally(()=>{legacyResetting=null;});
+    return legacyResetting;
   }
-  function opened(){clearBadge();void clearOnServer();}
+  function opened(){
+    // Preserve the already-working immediate iPhone icon clear behavior.
+    clearBadge();
+    if(usableIdentity())void resetAuthenticated().then(ok=>{if(!ok)void resetLegacy();});
+    else void resetLegacy();
+  }
   opened();
   document.addEventListener('visibilitychange',()=>{
     if(document.visibilityState==='visible')opened();
   });
-  // Retry a previously failed reset when internet service returns, no polling.
+  window.addEventListener('pageshow',()=>{if(document.visibilityState==='visible')opened();});
+  window.addEventListener('focus',()=>{if(document.visibilityState==='visible')opened();});
   window.addEventListener('online',()=>{if(document.visibilityState==='visible')opened();});
+  // Startup commonly occurs BEFORE the existing canonical Firebase identity is
+  // authorized. Retry once it is verified, without polling or extra RTDB reads.
+  window.addEventListener('tr-portal-authorized',()=>{
+    if(document.visibilityState==='visible')void resetAuthenticated().then(ok=>{if(!ok)void resetLegacy();});
+  });
 })();
 </script>
 </body>
