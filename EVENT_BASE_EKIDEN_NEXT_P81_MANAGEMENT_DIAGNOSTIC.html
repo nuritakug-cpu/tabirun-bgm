@@ -1,3 +1,4 @@
+<!-- P90 2026-10-25 HISTORIC EKIDEN RECORD READ CONSISTENCY: use official historical Firebase result whenever readable; treat local P47 saved state as clearly labeled backup, never as confirmed official; preserve explicit source IDs for existing-registrant status. No Auth/UID/profileId/Rules/storage/Push/new subscription/write-path changes. Static candidate only; historical Rules/Firebase real access remains unverified. -->
 <!-- P88 2026-10-25 READ-ONLY HISTORIC RECORD CACHE RECOVERY: for recorded 2026-10-06 runners, prefer authorized Firebase read, fallback to exactly matched P47 same-origin old-event device state when historical READ denied; no Rules/Auth/new database/writes/UID changes. -->
 <!-- 2026-10-25 P87 HISTORICAL EKIDEN RECORD HOLDERS / OLD EVENT eventbase_ekiden_dev_20261006 / read-only timingRecords + recorded race legs / existing Firebase Auth reused / no new subscriber or write paths; NOT DEPLOYED. -->
 <!-- 2026-10-25 P86 / DEVELOPER ADDED CARDS: source tournament players + legacy athletesV125 read-only, current canonical root cards prioritized, no new Firebase init/Rules/writes; visible build marker. -->
@@ -24964,7 +24965,10 @@ function ekP87BuildRecordedRows(data){
     const name=String(p.name||'').trim();if(!name)return;
     const identity=String(p.globalProfileId||p.profileId||p.subjectUid||p.playerId||p.runnerId||'').trim();
     const key=identity?`id:${identity}`:`record:${p.recordKey}`;
+    // Keep identifiers from the historic record for ID-only duplicate indication.
+    // Never use a matching name to establish the present-event profile identity.
     const entry={key,name,affiliation:String(p.affiliation||''),grade:String(p.grade||''),
+      globalProfileId:String(p.globalProfileId||p.profileId||''),subjectUid:String(p.subjectUid||''),
       record:String(p.record||''),team:String(p.team||''),leg:Number(p.leg)||0,source:String(p.source||'')};
     if(byIdentity.has(key)){
       const prev=out[byIdentity.get(key)];
@@ -25020,7 +25024,7 @@ function ekP87BuildRecordedRows(data){
   return out.sort((a,b)=>a.name.localeCompare(b.name,'ja'));
 }
 function ekP87RecordRosterHtml(){
-  return `<section id="ekP87Roster" class="ek15TeamSection"><div class="ekP84Header"><b style="font-size:16px;color:#ffe04d">過去の駅伝記録がある選手 <small style="font-size:10px">P88</small></b><span id="ekP87Count">読込前</span></div>
+  return `<section id="ekP87Roster" class="ek15TeamSection"><div class="ekP84Header"><b style="font-size:16px;color:#ffe04d">過去の駅伝記録がある選手 <small style="font-size:10px">P90</small></b><span id="ekP87Count">読込前</span></div>
   <div class="ek15TeamSectionHelp">2026年10月6日の駅伝BASE本番記録に、区間タイムまたは保存済みのレース記録がある選手だけを表示します。通常EVENT BASEの参加者名簿ではありません。過去記録は変更せず、今回の出走登録は別に行います。</div>
   <input id="ekP87Search" type="search" autocomplete="off" placeholder="記録のある選手を検索" aria-label="過去駅伝の記録者を検索" style="box-sizing:border-box;width:100%;min-height:45px;border:1px solid #657079;border-radius:11px;background:#0e1215;color:#fff;font-size:15px;padding:10px 12px;margin-bottom:9px">
   <div id="ekP87Message" style="font-size:11px;color:#ddd;padding:8px 0" role="status">過去の駅伝記録を読み込んでいます…</div>
@@ -25033,7 +25037,7 @@ function ekP87RenderList(){
   const q=String($('ekP87Search')?.value||'').normalize('NFKC').toLocaleLowerCase('ja').trim();
   const rows=ekP87State.rows.filter(p=>!q||[p.name,p.affiliation,p.team,p.record].join(' ').normalize('NFKC').toLocaleLowerCase('ja').includes(q));
   if(counter)counter.textContent=ekP87State.loadedAt?`${ekP87State.rows.length}人`:'読込中';
-  msg.textContent=ekP87State.error?ekP87State.error:ekP87State.pending?'過去駅伝記録を読み込んでいます…':
+  msg.textContent=ekP87State.error?ekP87State.error:ekP87State.pending?(ekP87State.source==='device'?'端末保存の記録を暫定表示中。Firebaseの正式記録を照合しています…':'過去駅伝のFirebase記録を読み込んでいます…'):
     !ekP87State.loadedAt?'記録読込待機中':
     ekP87State.rows.length?(ekP87State.source==='device'?`${ekP87State.rows.length}人を端末の過去駅伝保存データから表示しています。過去大会のFirebase正式記録は未照合です。`: `${ekP87State.rows.length}人の駅伝記録を確認しました${ekP87State.partial?'（一部の記録経路は参照できません）':''}`):
     '該当する駅伝の記録者は取得できませんでした。大会ID・記録保存状況・読み取り権限を確認してください。';
@@ -25086,43 +25090,47 @@ function ekP88ReadHistoricalDeviceCopy(){
 async function ekP87LoadRecords(force=false){
   if(ekP87State.pending)return ekP87State.pending;
   if(!force&&ekP87State.loadedAt&&Date.now()-ekP87State.loadedAt<15*60*1000){ekP87RenderList();return}
-  // Instantly show P47 recorded runners from existing device storage if present.
-  // The button '再読込' explicitly requests the official server afterwards.
-  if(!force){
-    const copy=ekP88ReadHistoricalDeviceCopy();
-    const rows=copy.data?ekP87BuildRecordedRows(copy.data):[];
-    if(rows.length){
-      ekP87State.rows=rows;ekP87State.loadedAt=Date.now();
-      ekP87State.partial=true;ekP87State.source='device';ekP87State.error='';
-      ekP87RenderList();return;
-    }
-  }
   const api=window.EventBaseConnectionAPI?.readEkidenRecordedPeopleP87;
-  if(typeof api!=='function'){ekP87State.error='過去駅伝記録の読み取り経路を確認できません';ekP87RenderList();return}
-  ekP87State.error='';ekP87State.pending=(async()=>{
+  // P90: local state may help populate the list immediately, but it must NEVER
+  // suppress the authorized official historical read. Show it as unverified.
+  const cache=ekP88ReadHistoricalDeviceCopy();
+  const cacheRows=cache.data?ekP87BuildRecordedRows(cache.data):[];
+  ekP87State.error='';ekP87State.loadedAt=0;
+  if(cacheRows.length){
+    ekP87State.rows=cacheRows;ekP87State.source='device';ekP87State.partial=true;
+  }else{
+    ekP87State.rows=[];ekP87State.source='';ekP87State.partial=false;
+  }
+  if(typeof api!=='function'){
+    ekP87State.loadedAt=Date.now();
+    if(!cacheRows.length)ekP87State.error='過去駅伝記録のFirebase読み取り経路を確認できません';else console.warn('[P90 historical roster] Firebase read API missing; using unverified device backup only');
+    ekP87RenderList();return;
+  }
+  ekP87State.pending=(async()=>{
     let onlineError='';
     try{
       const raw=await api(EKP87_HISTORIC_ID),rows=ekP87BuildRecordedRows(raw);
       if(rows.length){
         ekP87State.rows=rows;ekP87State.loadedAt=Date.now();
-        ekP87State.partial=!!raw.failed?.length;ekP87State.source='firebase';
+        ekP87State.partial=!!raw.failed?.length;ekP87State.source='firebase';ekP87State.error='';
         return;
       }
-      onlineError=raw.failed?.length?'一部の過去大会データの読み込みが拒否されました':'Firebaseに記録者を確認できませんでした';
-    }catch(e){onlineError=String(e?.message||e)}
-    // The read may fail because the current NEXT UID is not authorized for the
-    // historical race. Do not change/reissue UID or bypass the old event Rules.
-    const cache=ekP88ReadHistoricalDeviceCopy();
-    if(cache.data){
-      const rows=ekP87BuildRecordedRows(cache.data);
-      if(rows.length){
-        ekP87State.rows=rows;ekP87State.loadedAt=Date.now();
-        ekP87State.partial=true;ekP87State.source='device';
-        ekP87State.error='';return;
-      }
+      onlineError=raw.failed?.length
+        ?`過去大会の記録データを一部参照できません（${raw.failed.length}経路が失敗）`
+        :'Firebaseから対象の記録者を取得できませんでした';
+    }catch(e){
+      // A denied READ is a permission state, not evidence that records vanished.
+      const code=String(e?.code||'');
+      onlineError=code?`${String(e?.message||e)}［${code}］`:String(e?.message||e);
     }
-    ekP87State.rows=[];ekP87State.source='';
-    ekP87State.error=`過去大会の記録を取得できません。${onlineError}。${cache.reason}。現在のUIDには過去大会のREAD権限がない可能性があります。`;
+    if(cacheRows.length){
+      ekP87State.rows=cacheRows;ekP87State.loadedAt=Date.now();
+      ekP87State.partial=true;ekP87State.source='device';ekP87State.error='';
+      console.warn('[P90 historical roster] official read unconfirmed; existing same-origin device backup only:',onlineError);
+      return;
+    }
+    ekP87State.rows=[];ekP87State.source='';ekP87State.loadedAt=Date.now();
+    ekP87State.error=`過去駅伝の記録を取得できません。${onlineError}。${cache.reason}。記録の削除を意味しません。過去大会のREAD権限を確認してください。`;
   })();
   ekP87RenderList();try{await ekP87State.pending}finally{ekP87State.pending=null;ekP87RenderList()}
 }
