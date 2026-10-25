@@ -149,6 +149,38 @@ jobs:
               return json({ok:true,cleared:true,registeredDevices:changed},200,headers);
             }catch{return json({ok:false,error:'Badge reset unavailable'},503,headers);}
           }
+          async function trBadgeSyncAuthenticated(request,env){
+            const headers=cors(request);
+            if(request.method==='OPTIONS')return new Response(null,{status:request.headers.get('Origin')===ALLOWED_ORIGIN?204:403,headers});
+            if(request.method!=='POST')return json({ok:false},405,headers);
+            if(request.headers.get('Origin')!==ALLOWED_ORIGIN)return json({ok:false},403,headers);
+            if(!env.DB)return json({ok:false},503,headers);
+            let auth,data;
+            try{
+              auth=await stage3VerifyToken(request);
+              data=await parseJson(request);
+              if(!auth?.uid||typeof data?.profileId!=='string'||
+                 !/^[-A-Za-z0-9_]{8,160}$/.test(data.profileId)||
+                 !Number.isSafeInteger(data.count)||data.count<0||data.count>99)
+                throw Error('Bad badge sync input');
+            }catch{return json({ok:false,error:'Not authorized'},403,headers);}
+            try{
+              await stage3EnsureDb(env.DB);
+              await trBadgeSchema(env.DB);
+              const row=await env.DB.prepare('SELECT COUNT(*) AS n FROM stage3_devices WHERE uid=?1 AND profile_id=?2')
+                .bind(auth.uid,data.profileId).first();
+              const n=Number(row?.n||0);
+              if(!Number.isSafeInteger(n)||n<1)return json({ok:false,error:'No registered device'},404,headers);
+              // Only existing devices owned by this signed UID/profileId.
+              // No Firebase writes, no notification content and no independent auth.
+              const ts=Date.now();
+              await env.DB.prepare('INSERT OR IGNORE INTO push_badge_states(id,badge_count,updated_at) SELECT id,0,?3 FROM stage3_devices WHERE uid=?1 AND profile_id=?2')
+                .bind(auth.uid,data.profileId,ts).run();
+              await env.DB.prepare('UPDATE push_badge_states SET badge_count=?3,updated_at=?4 WHERE id IN (SELECT id FROM stage3_devices WHERE uid=?1 AND profile_id=?2)')
+                .bind(auth.uid,data.profileId,data.count,ts).run();
+              return json({ok:true,count:data.count,registeredDevices:n},200,headers);
+            }catch{return json({ok:false,error:'Badge sync unavailable'},503,headers);}
+          }
           `;
           const sendStart = 'async function sendWebPush(subscription,env,fetcher=fetch,payload=stage2Payload()){\n  let prepared;';
           if(source.split(sendStart).length!==2)throw Error('Shared sendWebPush anchor mismatch. Stop deploy.');
@@ -158,7 +190,8 @@ jobs:
           if(source.split(serializeBefore).length!==2)throw Error('Unique Push serialization anchor missing. Stop deploy.');
           const entryBefore = "    if(path!=='/api/stage3/event-notify')return baseWorker.fetch(request,env,ctx);";
           const entryAfter = "    if(path==='/api/stage2/badge-clear')return trBadgeClear(request,env);\n" +
-            "    if(path==='/api/stage3/badge-clear')return trBadgeClearAuthenticated(request,env);\n" + entryBefore;
+            "    if(path==='/api/stage3/badge-clear')return trBadgeClearAuthenticated(request,env);\n" +
+            "    if(path==='/api/stage3/badge-sync')return trBadgeSyncAuthenticated(request,env);\n" + entryBefore;
           if(source.split(entryBefore).length!==2)throw Error('Export router anchor mismatch. Stop deploy.');
           let patched=source.replace(sendStart,sendWithBadge)
             .replace(serializeBefore,serializeAfter)
@@ -171,7 +204,8 @@ jobs:
             .replace(serializeAfter,serializeBefore).replace(entryAfter,entryBefore);
           if(restored!==source)throw Error('Non-badge Worker code modified. Stop deploy.');
           for(const marker of ['trBadgeNext(subscription,env)','/api/stage3/badge-clear',
-            'trBadgeClearAuthenticated(request,env)','/api/stage2/badge-clear',
+            'trBadgeClearAuthenticated(request,env)','trBadgeSyncAuthenticated(request,env)',
+            '/api/stage3/badge-sync','/api/stage2/badge-clear',
             'app_badge:trBadge','ON CONFLICT(id) DO UPDATE SET badge_count']){
             if(!patched.includes(marker))throw Error('Expected badge integration missing: '+marker);
           }
