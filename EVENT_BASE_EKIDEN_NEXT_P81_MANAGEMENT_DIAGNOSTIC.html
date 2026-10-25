@@ -1,3 +1,4 @@
+<!-- P88 2026-10-25 READ-ONLY HISTORIC RECORD CACHE RECOVERY: for recorded 2026-10-06 runners, prefer authorized Firebase read, fallback to exactly matched P47 same-origin old-event device state when historical READ denied; no Rules/Auth/new database/writes/UID changes. -->
 <!-- 2026-10-25 P87 HISTORICAL EKIDEN RECORD HOLDERS / OLD EVENT eventbase_ekiden_dev_20261006 / read-only timingRecords + recorded race legs / existing Firebase Auth reused / no new subscriber or write paths; NOT DEPLOYED. -->
 <!-- 2026-10-25 P86 / DEVELOPER ADDED CARDS: source tournament players + legacy athletesV125 read-only, current canonical root cards prioritized, no new Firebase init/Rules/writes; visible build marker. -->
 <!-- 2026-10-25 P85 DEVELOPER-REGISTERED EKIDEN ATHLETE ROSTER REFERENCE: include existing local s.profiles in unified list; read-only inspection/jump to existing entry; no duplicate registration, no Firebase changes. -->
@@ -24951,7 +24952,7 @@ function ekP84CandidateRows(){
    historic EKIDEN timingRecords and saved race leg events. No new registration
    until the owner confirms it in the existing manual-registration form. */
 const EKP87_HISTORIC_ID='eventbase_ekiden_dev_20261006';
-let ekP87State={loadedAt:0,rows:[],error:'',partial:false,pending:null};
+let ekP87State={loadedAt:0,rows:[],error:'',partial:false,pending:null,source:''};
 function ekP87Objects(x){
   if(Array.isArray(x))return x.filter(v=>v&&typeof v==='object');
   return x&&typeof x==='object'?Object.entries(x).map(([id,v])=>v&&typeof v==='object'?{id,...v}:null).filter(Boolean):[];
@@ -25019,7 +25020,7 @@ function ekP87BuildRecordedRows(data){
   return out.sort((a,b)=>a.name.localeCompare(b.name,'ja'));
 }
 function ekP87RecordRosterHtml(){
-  return `<section id="ekP87Roster" class="ek15TeamSection"><div class="ekP84Header"><b style="font-size:16px;color:#ffe04d">過去の駅伝記録がある選手 <small style="font-size:10px">P87</small></b><span id="ekP87Count">読込前</span></div>
+  return `<section id="ekP87Roster" class="ek15TeamSection"><div class="ekP84Header"><b style="font-size:16px;color:#ffe04d">過去の駅伝記録がある選手 <small style="font-size:10px">P88</small></b><span id="ekP87Count">読込前</span></div>
   <div class="ek15TeamSectionHelp">2026年10月6日の駅伝BASE本番記録に、区間タイムまたは保存済みのレース記録がある選手だけを表示します。通常EVENT BASEの参加者名簿ではありません。過去記録は変更せず、今回の出走登録は別に行います。</div>
   <input id="ekP87Search" type="search" autocomplete="off" placeholder="記録のある選手を検索" aria-label="過去駅伝の記録者を検索" style="box-sizing:border-box;width:100%;min-height:45px;border:1px solid #657079;border-radius:11px;background:#0e1215;color:#fff;font-size:15px;padding:10px 12px;margin-bottom:9px">
   <div id="ekP87Message" style="font-size:11px;color:#ddd;padding:8px 0" role="status">過去の駅伝記録を読み込んでいます…</div>
@@ -25034,26 +25035,94 @@ function ekP87RenderList(){
   if(counter)counter.textContent=ekP87State.loadedAt?`${ekP87State.rows.length}人`:'読込中';
   msg.textContent=ekP87State.error?ekP87State.error:ekP87State.pending?'過去駅伝記録を読み込んでいます…':
     !ekP87State.loadedAt?'記録読込待機中':
-    ekP87State.rows.length?`${ekP87State.rows.length}人の駅伝記録を確認しました${ekP87State.partial?'（一部の記録経路は参照できません）':''}`:
+    ekP87State.rows.length?(ekP87State.source==='device'?`${ekP87State.rows.length}人を端末の過去駅伝保存データから表示しています。過去大会のFirebase正式記録は未照合です。`: `${ekP87State.rows.length}人の駅伝記録を確認しました${ekP87State.partial?'（一部の記録経路は参照できません）':''}`):
     '該当する駅伝の記録者は取得できませんでした。大会ID・記録保存状況・読み取り権限を確認してください。';
   list.innerHTML=rows.map(p=>{
     const currentlyLinked=(s.profiles||[]).some(x=>
       (p.globalProfileId&&String(x.globalProfileId||'')===String(p.globalProfileId))||
       (p.subjectUid&&[x.sourceRegistrationUid,x.subjectUid,x.candidateUid].some(u=>String(u||'')===String(p.subjectUid))));
-    return `<button type="button" class="ekP84Candidate" data-ekp87-key="${esc(p.key)}" style="width:100%"><span class="ekP84Check">${currentlyLinked?'✓':'○'}</span><span class="ekP84Person"><b>${esc(p.name)}</b><small>${esc([p.affiliation,p.team,p.leg?`${p.leg}区`:'',p.record?`記録 ${p.record}`:''].filter(Boolean).join('｜'))}</small></span><span class="ekP84Tag">${currentlyLinked?'今大会登録済':'駅伝記録'}</span></button>`;
+    return `<button type="button" class="ekP84Candidate" data-ekp87-key="${esc(p.key)}" style="width:100%"><span class="ekP84Check">${currentlyLinked?'✓':'○'}</span><span class="ekP84Person"><b>${esc(p.name)}</b><small>${esc([p.affiliation,p.team,p.leg?`${p.leg}区`:'',p.record?`記録 ${p.record}`:''].filter(Boolean).join('｜'))}</small></span><span class="ekP84Tag">${currentlyLinked?'今大会登録済':(ekP87State.source==='device'?'端末保存':'駅伝記録')}</span></button>`;
   }).join('')||(!ekP87State.pending&&!ekP87State.error?'<div class="ekP84NoMatch">該当する記録者はいません。</div>':'');
+}
+/* P88: read-only rescue of the ORIGINAL EKIDEN's same-origin saved race data.
+   Official Firebase data remains authoritative; do not change Rules, auth,
+   binding, person IDs, official results, or store any prior event in NEXT. */
+function ekP88ReadHistoricalDeviceCopy(){
+  if(!ekIsDeveloper())return {data:null,source:'',reason:'開発者権限がありません'};
+  const base='eventbase_ekiden_dev_20261006';
+  // Keys are event-bound on the original P47; NEVER enumerate unrelated storage.
+  const keys=[
+    'EVENT_BASE_V81_EKIDEN_P1_DRAFT_V1_EVENT_'+base,
+    'eventbase_ekiden_raceday_linked_v1_EVENT_'+base,
+    // P47/P55 used these ORIGINAL, unsuffixed same-origin keys (MASTER ch.42).
+    'EVENT_BASE_V81_EKIDEN_P1_DRAFT_V1',
+    'eventbase_ekiden_raceday_linked_v1'
+  ];
+  const vals=[];
+  for(const key of keys){
+    try{
+      const raw=localStorage.getItem(key);
+      if(!raw)continue;
+      const obj=JSON.parse(raw);
+      if(obj&&typeof obj==='object'&&!Array.isArray(obj))vals.push({key,obj});
+    }catch(e){console.warn('P88 old race cache parse failed',key,e)}
+  }
+  const draft=vals.find(v=>v.key===keys[0])?.obj||vals.find(v=>v.key===keys[2])?.obj;
+  const raceCache=vals.find(v=>v.key===keys[1])?.obj||vals.find(v=>v.key===keys[3])?.obj;
+  if(draft?.eventId&&String(draft.eventId)!==base)return {data:null,source:'',reason:'保存済み大会IDが一致しません'};
+  if(draft&&draft.schema!==17)return {data:null,source:'',reason:'旧駅伝保存データの形式が一致しません'};
+  const profiles=Array.isArray(draft?.profiles)?draft.profiles:[];
+  const teams=Array.isArray(draft?.teams)?draft.teams:[];
+  const racesA=draft?.raceDayStateP5?.races;
+  const racesB=raceCache?.races;
+  const validRaces=(v)=>v&&typeof v==='object'&&!Array.isArray(v)?v:{};
+  const races={...validRaces(racesB),...validRaces(racesA)};
+  if(!profiles.length||!teams.length||!Object.keys(races).length)
+    return {data:null,source:'',reason:'この端末に過去駅伝の記録付き保存データがありません'};
+  // Data is display-only. Never sync the old schema17 state into the NEXT event.
+  return {data:{profiles,teams,races,timingRecords:null,failed:[],readable:0},
+    source:'device',reason:'2026年10月6日の駅伝BASEでこの端末に保存された記録'};
 }
 async function ekP87LoadRecords(force=false){
   if(ekP87State.pending)return ekP87State.pending;
   if(!force&&ekP87State.loadedAt&&Date.now()-ekP87State.loadedAt<15*60*1000){ekP87RenderList();return}
+  // Instantly show P47 recorded runners from existing device storage if present.
+  // The button '再読込' explicitly requests the official server afterwards.
+  if(!force){
+    const copy=ekP88ReadHistoricalDeviceCopy();
+    const rows=copy.data?ekP87BuildRecordedRows(copy.data):[];
+    if(rows.length){
+      ekP87State.rows=rows;ekP87State.loadedAt=Date.now();
+      ekP87State.partial=true;ekP87State.source='device';ekP87State.error='';
+      ekP87RenderList();return;
+    }
+  }
   const api=window.EventBaseConnectionAPI?.readEkidenRecordedPeopleP87;
   if(typeof api!=='function'){ekP87State.error='過去駅伝記録の読み取り経路を確認できません';ekP87RenderList();return}
   ekP87State.error='';ekP87State.pending=(async()=>{
+    let onlineError='';
     try{
-      const raw=await api(EKP87_HISTORIC_ID);const rows=ekP87BuildRecordedRows(raw);
-      ekP87State.rows=rows;ekP87State.loadedAt=Date.now();ekP87State.partial=!!raw.failed?.length;
-      if(!rows.length&&raw.failed?.length)ekP87State.error='駅伝記録の一部を読み取れません。Firebaseの過去大会READ権限を確認してください。';
-    }catch(e){ekP87State.error=String(e?.message||e);}
+      const raw=await api(EKP87_HISTORIC_ID),rows=ekP87BuildRecordedRows(raw);
+      if(rows.length){
+        ekP87State.rows=rows;ekP87State.loadedAt=Date.now();
+        ekP87State.partial=!!raw.failed?.length;ekP87State.source='firebase';
+        return;
+      }
+      onlineError=raw.failed?.length?'一部の過去大会データの読み込みが拒否されました':'Firebaseに記録者を確認できませんでした';
+    }catch(e){onlineError=String(e?.message||e)}
+    // The read may fail because the current NEXT UID is not authorized for the
+    // historical race. Do not change/reissue UID or bypass the old event Rules.
+    const cache=ekP88ReadHistoricalDeviceCopy();
+    if(cache.data){
+      const rows=ekP87BuildRecordedRows(cache.data);
+      if(rows.length){
+        ekP87State.rows=rows;ekP87State.loadedAt=Date.now();
+        ekP87State.partial=true;ekP87State.source='device';
+        ekP87State.error='';return;
+      }
+    }
+    ekP87State.rows=[];ekP87State.source='';
+    ekP87State.error=`過去大会の記録を取得できません。${onlineError}。${cache.reason}。現在のUIDには過去大会のREAD権限がない可能性があります。`;
   })();
   ekP87RenderList();try{await ekP87State.pending}finally{ekP87State.pending=null;ekP87RenderList()}
 }
