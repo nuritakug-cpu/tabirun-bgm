@@ -5227,9 +5227,16 @@ html[data-portal-personal-color="matte"] #screen-chat .chatUnreadLine>span{backg
 <style id="top-run-unified-notice-view-20261025">
 /* The existing notice surface is the only visitor list. Never show the event chooser. */
 #screen-notices .trEventCommsScope,#screen-notices #trEventNoticesPanel{display:none!important}
-body.trEventCommsActive #screen-notices [data-list-filter="notices"],
-body.trEventCommsActive #portalNoticeList{display:initial!important}
-#screen-notices #portalNoticeList{display:flex!important;flex-direction:column;gap:11px}
+body.trEventCommsActive #screen-notices [data-list-filter="notices"]{display:grid!important}
+body.trEventCommsActive #portalNoticeList{display:grid!important}
+#screen-notices [data-list-filter="notices"]{grid-template-columns:125px minmax(0,1fr);max-width:100%;margin:10px 0 17px}
+#screen-notices [data-list-filter="notices"].portalFilterAllMode{grid-template-columns:125px}
+#screen-notices [data-list-filter="notices"] select{width:125px;max-width:100%}
+#screen-notices #portalNoticeList{display:grid!important;gap:18px}
+#screen-notices .portalNoticeItem{padding:15px!important;border-radius:18px!important}
+#screen-notices .portalNoticeItem small{font-size:10px!important}
+#screen-notices .portalNoticeItem b{font-size:15px!important;line-height:1.35!important;margin-top:5px!important}
+#screen-notices .portalNoticeItem p{font-size:12px!important;line-height:1.55!important;margin-top:7px!important}
 #screen-notices .portalNoticeItem .trNoticeSource{display:inline-flex;align-items:center;gap:5px;
  padding:4px 8px;border-radius:999px;background:#ede5c5;color:#5c4513;font-size:11px;font-weight:900;
  letter-spacing:.02em;max-width:100%}
@@ -6698,10 +6705,16 @@ body.trEventCommsActive #portalNoticeList{display:initial!important}
       // Do not fabricate a successful read marker when Firebase did not ACK.
       remoteNoticeReads={...remoteNoticeReads,[key]:Math.max(Number(remoteNoticeReads[key]||0),portalNoticeVersion(item)||1)};
       remoteNoticeReadsReady=true;
-      if(source==='common'){
-        unreadNoticeIds.delete(item.id);renderNoticeHome();
-      }
+      if(source==='common')unreadNoticeIds.delete(item.id);
+      // Render from the SAME canonical read map used by NEW labels, including EKIDENBASE.
+      renderNoticeHome();
       renderNotices();
+      // The Worker otherwise reissues its stale D1 badge count on the next Push.
+      // Only after the existing Firebase save ACK may we sync the remaining count.
+      const remaining=Math.min(99,unreadNoticeCount()+unreadPortalChatMessages().length);
+      void Promise.resolve(window.__TR_NOTICE_BADGE_SYNC__?.(remaining)).then(ok=>{
+        if(!ok)showActionFeedback('ホームのバッジは未同期です','既読は保存できました。通知バッジの同期を確認してください。');
+      });
     }catch(error){showActionFeedback('既読を保存できません',String(error?.message||error).slice(0,120));}
     finally{portalNoticePendingRead.delete(key);}
   }
@@ -7913,7 +7926,7 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
     $('portalNotiShowAll').classList.toggle('active',portalNotiFilter==='all');
     $('portalNotiShowUnread').classList.toggle('active',portalNotiFilter==='unread');
     const notices=noticeItems.filter(x=>x.enabled!==false).map(x=>({
-      kind:'notice',id:x.id,title:x.title||'お知らせ',body:x.body||'',ts:Number(x.createdAt)||0,unread:unreadNoticeIds.has(x.id)
+      kind:'notice',id:x.id,title:x.title||'お知らせ',body:x.body||'',ts:Number(x.createdAt)||0,unread:portalNoticeIsUnread('common',x)
     }));
     const chats=chatMessages.filter(x=>!isMyPortalChat(x)).map(x=>({
       kind:'chat',id:x.id,title:(x.name||'参加者')+'からのチャット',body:x.text||'',ts:Number(x.ts)||0,unread:!portalChatReadIds.has(x.id)
@@ -7923,6 +7936,9 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
     list.innerHTML=rows.map(x=>`<button type="button" class="${x.unread?'unread':''}" data-preview-kind="${x.kind}" data-preview-id="${esc(x.id)}"><span class="portalNotiRowHead"><span>${x.kind==='notice'?'お知らせ':'チャット'} / ${x.unread?'未読':'既読'}</span><span>${x.unread?'NEW':'✓'}</span></span><strong class="portalNotiRowTitle">${esc(x.title)}</strong><span class="portalNotiRowBody">${esc(x.body.slice(0,90))}</span></button>`).join('');
     list.querySelectorAll('[data-preview-kind]').forEach(b=>b.addEventListener('click',()=>{
       const kind=b.dataset.previewKind,id=b.dataset.previewId;
+      if(kind==='notice'&&new URLSearchParams(location.search).get('commonPilot')!=='1'){
+        showRootScreen('notices');openNoticeDetail(id);return;
+      }
       if(kind==='notice')markNoticeRead(id);
       if(kind==='chat')portalChatReadIds.add(id);
       savePortalNotiPreview();renderPortalChatBadge();renderNotificationPreview();
@@ -7932,6 +7948,9 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
   $('portalNotiShowAll').addEventListener('click',()=>{portalNotiFilter='all';renderNotificationPreview();});
   $('portalNotiShowUnread').addEventListener('click',()=>{portalNotiFilter='unread';renderNotificationPreview();});
   $('portalNotiReadAll').addEventListener('click',()=>{
+    if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
+      showActionFeedback('個別に確認してください','お知らせはカードを開いたものだけ既読になります。');return;
+    }
     noticeItems.forEach(n=>{unreadNoticeIds.delete(n.id);portalPreviewReadState.notices[n.id]=Number(n.createdAt)||0;});
     chatMessages.filter(m=>!isMyPortalChat(m)).forEach(m=>portalChatReadIds.add(m.id));
     savePortalNotiPreview();renderNoticeHome();renderNotices();renderPortalChatBadge();renderNotificationPreview();
@@ -16239,6 +16258,36 @@ setInterval(display,1000);
     })().catch(()=>false).finally(()=>{legacyResetting=null;});
     return legacyResetting;
   }
+  // Card-level unread sync. Uses the existing signed identity and the same
+  // Stage3 D1 devices. Never adjust server counts before Firebase read ACK.
+  let badgeSyncPending=null;
+  window.__TR_NOTICE_BADGE_SYNC__=async value=>{
+    const count=Math.max(0,Math.min(99,Number(value)||0));
+    if(document.visibilityState!=='visible'||!usableIdentity()||!Number.isInteger(count))return false;
+    if(badgeSyncPending)await badgeSyncPending;
+    const g=gate(),uid=g.uid,pid=g.profileId;
+    badgeSyncPending=(async()=>{
+      // Serialise with foreground counter reset to avoid a stale reset racing a read.
+      if(authenticating)await authenticating;
+      if(!usableIdentity()||gate().uid!==uid||gate().profileId!==pid)return false;
+      const identity=await g.stage3NotificationToken();
+      if(identity.uid!==uid||identity.profileId!==pid||!usableIdentity())return false;
+      const res=await fetch(BASE+'/api/stage3/badge-sync',{
+        method:'POST',mode:'cors',cache:'no-store',
+        headers:{'Authorization':'Bearer '+identity.token,'Content-Type':'application/json'},
+        body:JSON.stringify({profileId:pid,count})
+      });
+      const ack=await res.json().catch(()=>null);
+      if(!res.ok||ack?.ok!==true||ack?.count!==count||Number(ack?.registeredDevices)<1)return false;
+      if(!usableIdentity()||gate().uid!==uid||gate().profileId!==pid)return false;
+      try{
+        if(count===0)await navigator.clearAppBadge?.();
+        else await navigator.setAppBadge?.(count);
+      }catch{/* Chrome/Android may show a dot rather than a number. */}
+      return true;
+    })().catch(()=>false).finally(()=>{badgeSyncPending=null;});
+    return badgeSyncPending;
+  };
   function opened(){
     // Preserve the already-working immediate iPhone icon clear behavior.
     clearBadge();
