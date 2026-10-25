@@ -24,7 +24,7 @@ self.addEventListener('push',event=>{
     await self.registration.showNotification(title,{
       body,lang:'ja',dir:'auto',tag:typeof n?.tag==='string'?n.tag.slice(0,70):'top-run-message',
       data:{url:navigate},silent:n?.silent===true
-    });
+    }); const badge=Number.isSafeInteger(value?.badge)&&value.badge>=0?value.badge:1;try{if(badge===0){await self.navigator?.clearAppBadge?.();}else{await self.navigator?.setAppBadge?.(badge);}}catch{}
   })());
 });
 self.addEventListener('notificationclick',event=>{
