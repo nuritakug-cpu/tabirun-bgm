@@ -1,4 +1,9 @@
-<!-- 2026-10-24 EVENT COMMS integration ownerProof/UI safeguard continuing V91: existing unified Firebase/Auth; explicit event selection; common NOTICE/CHAT and Stage3 untouched. NOT DEPLOYED; Rules/Push E2E unverified. -->
+<!-- 2026-10-25 AUTH LINK READY REVIEW: allow only the explicitly named EVENT BASE v83 file with fixed existing eventId, in the existing official URL validator and same-URL authorized binding guard. Retains standard PRODUCTION and NEXT P83. NO Rules/data/identity/write path changes. NOT DEPLOYED. -->
+<!-- 2026-10-25 PRODUCTION INTEGRATION CANDIDATE / EVENT NOTICE READ ONLY, COMMON PUSH PRESERVED, EVENT PUSH OFF, FIREBASE RULES UNCHANGED -->
+<!-- 2026-10-25 AUTH SINGLE RESTORE REVIEW (PORTAL): initial onAuthStateChanged states before DB operations; existing UID reused across historical app names; no new UID on restoration failure; console UID logs; no Rules/data/UID/profileId changes; NOT DEPLOYED. -->
+<!-- TRAFFIC OPTIMIZATION 2026-10-25 / REVIEW ONLY / PARENT: TOP_RUN_PORTAL_MULTI_EVENT_NOTIFY_REVIEW.html. Scope: same-event listener reuse and participant-only RSVP subscription. No Auth/UID/profileId/Rules/RTDB-path/writer changes. NOT DEPLOYED. -->
+<!-- 2026-10-24 MULTI-EVENT per-event binding fixes on the inherited EVENT COMMS notification candidate; no Firebase/Rules/production deployment. -->
+<!-- 2026-10-24 event push Worker contract, canonical ACK and tap-target continuing V91: existing unified Firebase/Auth; explicit event selection; common NOTICE/CHAT and Stage3 untouched. NOT DEPLOYED; Rules/Push E2E unverified. -->
 <!-- V91 2026-10-24 INTEGRATION REVIEW: V90 latest parent + published TOP_RUN_PORTAL.html notification preferences under MY PAGE and Stage3 device enrollment, same Auth/gateway, no production overwrite. -->
 <!-- PORTAL V90 2026-10-24: developer verified participant record selector uses existing UID/profileId roster, staff past record gateway only. Local preview segregated under separate details. No Firebase writes/init, production unchanged. -->
 <!-- PORTAL V86 2026-10-24: staff practice record DELETE with UID guard; no auto cascade; regular event three choices; practice secondary hierarchy; race-only graph default plus comparable practice overlay; record count corrected; no Firebase new init/path. REVIEW ONLY -->
@@ -2994,7 +2999,7 @@ html[data-portal-personal-color="winter"] :is(.portalScreenBody,.portalManageFor
   --pc-input-soft-text:#252b2b;
   --pc-input-soft-border:#bcb4a0;
   --pc-action-strong-bg:#373e3b;
-  --pc-action-strong-text:#ffffff;
+--pc-action-strong-text:#ffffff;
   --pc-action-strong-border:#8a7c49;
   --pc-secondary-soft-bg:#ffffff;
   --pc-secondary-soft-text:#514a3a;
@@ -3993,8 +3998,8 @@ html[data-portal-personal-color="matte"]{
 }
 :is(html[data-portal-personal-color="winter"],html[data-portal-personal-color="matte"])
  #screen-flow-manager #portalAuditPanel .portalAuditMetric{
- background:var(--audit-entry-surface)!important;
- border:1px solid var(--audit-entry-outline)!important;
+background:var(--audit-entry-surface)!important;
+border:1px solid var(--audit-entry-outline)!important;
  color:var(--audit-card-ink)!important;
  -webkit-text-fill-color:var(--audit-card-ink)!important;
 }
@@ -5189,7 +5194,9 @@ html #screen-competition-results #crSecondaryPbGrid .crPbCard em{font-size:10px!
 #trEventChatMessages{display:flex;flex-direction:column;gap:8px;max-width:100%;min-width:0}
 #trEventChatMessages .msg{max-width:86%}
 #trEventChatMessages .msg.mine{align-self:flex-end}
-body.trEventCommsActive #screen-notices [data-list-filter="notices"],body.trEventCommsActive #portalNoticeList,body.trEventCommsActive #screen-chat [data-list-filter="chat"],body.trEventCommsActive #portalChatThread,body.trEventCommsActive #screen-chat>.chatMain>.chatComposer{display:none!important}
+body.trEventCommsActive #screen-notices [data-list-filter="notices"],body.trEventCommsActive #portalNoticeList{display:none!important}
+/* 2026-10-25: tournament CHAT stays inside EVENT BASE; PORTAL common CHAT is independent. */
+#trEventChatScope,#trEventChatPanel,#trEventNoticeEditor{display:none!important}
 #trEventChatPanel .trEventCommsHint{color:#605d50}
 </style>
 </head>
@@ -5991,10 +5998,10 @@ body.trEventCommsActive #screen-notices [data-list-filter="notices"],body.trEven
             <label class="portalWeekday"><input type="checkbox" value="5"><span>金</span></label>
             <label class="portalWeekday"><input type="checkbox" value="6"><span>土</span></label>
           </div>
-        </div>
+</div>
         <div class="portalFormRow"><label>練習場所</label><select id="bulkPracticePlace" data-common-place></select></div>
         <div class="portalFormRow portalPlaceCustom hidden" id="bulkPracticeCustomPlaceRow"><label>その他の場所</label><input type="text" id="bulkPracticeCustomPlace" placeholder="場所を入力"></div>
-        <div class="portalTimeGrid">
+<div class="portalTimeGrid">
           <div class="portalFormRow"><label>開始時間</label><input type="time" id="bulkPracticeStart" value="18:50"></div>
           <div class="portalFormRow"><label>終了時間</label><input type="time" id="bulkPracticeEnd" value="20:30"></div>
         </div>
@@ -6990,11 +6997,11 @@ body.trEventCommsActive #screen-notices [data-list-filter="notices"],body.trEven
     const sameYear=current.getFullYear()===other.getFullYear();
     const text=sameYear?`${other.getMonth()+1}月`:`${other.getFullYear()}.${String(other.getMonth()+1).padStart(2,'0')}`;
     return left?`← ${text}`:`${text} →`;
-  }
+}
   function setMonthLabels(prefix,cursor){
     const year=cursor.getFullYear(), monthIndex=cursor.getMonth();
     const prev=shiftMonth(cursor,-1), next=shiftMonth(cursor,1);
-    if(prefix==='home'){
+if(prefix==='home'){
       $('homeCalMonth').textContent=`${year}.${String(monthIndex+1).padStart(2,'0')}`;
       $('homeCalMonthName').textContent=monthNames[monthIndex];
       $('homePrevMonth').textContent=neighborLabel(cursor,prev,true);
@@ -7989,12 +7996,12 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
       if(kind==='notice')renderManageNotices();if(kind==='practice')renderManagePractices();if(kind==='event')renderManageEvents();
     }
     pane.dataset.mwView=view;
-    if(kind==='event'&&view!=='menu'){
+if(kind==='event'&&view!=='menu'){
       portalSwitchEventWorkspace(view==='list'?'list':view==='participants'?'participants':'new');}
     const heading=pane.querySelector('[data-workflow-title]');
     if(heading&&view==='edit')heading.textContent=(kind==='notice'?'お知らせ':kind==='practice'?'練習予定':'イベント')+'を修正';
     if(heading&&view==='new')heading.textContent=(kind==='notice'?'お知らせ':kind==='practice'?'練習予定':'イベント')+'を新規作成';
-    if(view==='list')portalApplyManageSearch(kind);
+if(view==='list')portalApplyManageSearch(kind);
     pane.scrollIntoView({behavior:'auto',block:'start'});
   }
   qsa('[data-workflow-open]').forEach(btn=>btn.addEventListener('click',()=>{
@@ -8988,13 +8995,13 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
       probe.onerror=()=>{$('developerHomeImageState').textContent='画像を読み込めませんでした。';};
       probe.src=source;
     };
-    reader.onerror=()=>{$('developerHomeImageState').textContent='画像を読み込めませんでした。';};
+reader.onerror=()=>{$('developerHomeImageState').textContent='画像を読み込めませんでした。';};
     reader.readAsDataURL(file);
   });
   $('developerHomeImageApply')?.addEventListener('click',async()=>{
     if(!isDeveloper)return;
     if(!developerHomeImagePending){$('developerHomeImageState').textContent='先に画像を選択してください。';return;}
-    const gateway=window.__TR_PORTAL_SYNC__;
+const gateway=window.__TR_PORTAL_SYNC__;
     if(!gateway?.canWrite('homeImage')){showActionFeedback('画像未保存','Firebase本人・権限・画像受信が未成立です。');return;}
     const kind=developerHomeImagePending.match(/^data:image\/(jpeg|png|webp);base64,/i);
     if(!kind){$('developerHomeImageState').textContent='JPEG・PNG・WebP画像を選択してください。';return;}
@@ -9987,14 +9994,14 @@ const chosen=new Set(eventSelectableMetrics(event));
     catch(error){$('portalBasicProfileState').textContent='保存できません：'+String(error?.message||error).slice(0,110);showActionFeedback('未保存','Firebaseの保存が成立しませんでした。');return;}
     finally{button.disabled=false;}
     flowState.basicProfiles[actor]=value;
-    const cached=flowPersist();
+const cached=flowPersist();
     $('portalBasicProfileState').textContent='基本プロフィールをFirebaseへ保存しました。'+(cached?'':'端末キャッシュ未保存。');
     showActionFeedback('基本プロフィールを保存しました','本人データのFirebase保存応答を確認しました。');
     portalRefreshProfileDisclosure();
     if(flowEvent(flowSelectedEventId))flowRenderEvent();
   });
   function flowGoalsFor(actorId=flowSelfId()){const item=flowState.defaultGoals[actorId];return item&&typeof item==='object'?item:{};}
-  function portalGoalSwitchTab(tab,{keepScroll=false}={}){
+function portalGoalSwitchTab(tab,{keepScroll=false}={}){
     if(!['setting','guide','lap','overview'].includes(tab))return;
     for(const name of ['setting','guide','lap','overview']){
       const suffix=name.charAt(0).toUpperCase()+name.slice(1);
@@ -10986,7 +10993,7 @@ function portalLapRelayEligibleEvents(){
     rows.innerHTML='<div class="lap-result-heading"><span>区間の目安</span><em>累積通過タイム</em></div>'+marks.filter(item=>{if(seen.has(item.mark))return false;seen.add(item.mark);return true;}).map(item=>{
       const mark=item.mark,row=item.row;
       const halfLine=full&&Math.abs(mark-21097.5)<.01;
-      const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
+const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
       const finish=mark===dist;
       const finalRest=full&&finish;
       const emphasize=halfLine?' lap-highlight-half':fiveLine?' lap-highlight-five':finish?' lap-highlight-finish':'';
@@ -10994,7 +11001,7 @@ function portalLapRelayEligibleEvents(){
       const note=finalRest&&(plan?.composite||choice==='2')?`40kmからゴールまで ${portalLapDisplay(timeAtMetres(42195)-timeAtMetres(40000))}`:row?`区間 ${portalLapSegmentDisplay(row.lapCs/100,row.length)}`:halfLine?'中間通過（区間の途中）':'通過地点';
       const editable=row&&row.covered===mark?`<button type="button" data-lap-adjust="${row.index}" class="${portalLapManualTimeOffsets.has(row.index)?'is-edited':''}">この区間の時間を調整 ›</button>`:'';
       return `<div class="portalToolResult portalToolSplitRow${emphasize}"><b>${name}</b><div class="lap-passing-time" aria-label="${mark}m通過">${portalLapSegmentDisplay(timeAtMetres(mark),mark)}</div><div class="lap-segment-time">${note}${editable}</div></div>`;
-    }).join('');
+}).join('');
     passCs=laps.reduce((a,row)=>a+row.lapCs,0);
     state.innerHTML=`<strong>目標 ${portalLapSegmentDisplay(totalCs/100,dist)} ／ 配分後 ${portalLapSegmentDisplay(passCs/100,dist)}</strong>。各ブロックをタップして時間を調整できます。`;
     $('portalLapFixedStatus').textContent=`✓ 目標タイム固定：${portalLapSegmentDisplay(passCs/100,dist)}（差 0.00秒）`;
@@ -11288,8 +11295,10 @@ function portalLapRelayEligibleEvents(){
       if(u.protocol!=='https:'||u.hostname!=='nuritakug-cpu.github.io'||
          !/^[A-Za-z0-9_-]{6,100}$/.test(id))return null;
       const standard=u.pathname==='/tabirun-bgm/EVENT_BASE_PRODUCTION.html';
+      // Explicit EVENT BASE v83 review target only; do not trust arbitrary HTML paths.
+      const eventAuthReview=u.pathname==='/tabirun-bgm/EVENT_BASE_v83_AUTH_SINGLE_RESTORE_20261025_REVIEW.html' && id==='eventbase_mu4ujce3_xxx1';
       const ekidenNext=portalIsEkidenNextPath(u.pathname) && id==='eventbase_ekiden_next_2026_38fa5537b6';
-      if(!standard&&!ekidenNext)return null;
+      if(!standard&&!eventAuthReview&&!ekidenNext)return null;
       // Neither participant numbers nor developer secrets appear in public event links.
       return {id,url:u.origin+u.pathname+'?event='+encodeURIComponent(id)+'&portal=1',ekidenNext};
     }catch(_){return null;}
@@ -11985,14 +11994,14 @@ flowSelectedManagerActor=actorId;
     $('flowJoin').textContent=(r||official)?'この種目は登録済み':portalOfficialPreparationRequired(e)?'③ 正式大会の接続待ち':flowOfficialDestination(e)?'③ Firebaseへ正式出走登録する':'③ 試用出走登録（本人参加予定は共有）';
     $('flowSelfStatus').textContent=!metric?'種目を選択してください。':r?'この種目は登録済みです。別の種目を追加できます。':!check.allowed?check.text:'登録可能です。目標タイムをプルダウンで選択してください。';
     for(const id of ['flowGoal','flowDeclaredTime']){
-      const field=document.querySelector(`#screen-flow-event [data-flow-time="${id}"]`);
+const field=document.querySelector(`#screen-flow-event [data-flow-time="${id}"]`);
       field?.querySelectorAll('select,button').forEach(x=>x.disabled=closed||!!r);
     }
   });
   function flowRenderNamedGoalPresets(e,metric){
     const wrap=$('portalGoalPresetWrap'),sel=$('portalGoalPreset');const options=(flowGoalsFor().namedGoals||[]).filter(g=>g.kind===metric&&g.name&&g.time);
     wrap.classList.toggle('hidden',options.length===0);
-    sel.innerHTML='<option value="">大会に合わせて共通目標を選択</option>'+options.map((g,i)=>`<option value="${esc(g.time)}">${esc(g.name)} (${esc(g.time)})</option>`).join('');
+sel.innerHTML='<option value="">大会に合わせて共通目標を選択</option>'+options.map((g,i)=>`<option value="${esc(g.time)}">${esc(g.name)} (${esc(g.time)})</option>`).join('');
   }
   $('portalGoalPreset').addEventListener('change',()=>{if($('portalGoalPreset').value)flowSetTime('flowGoal',$('portalGoalPreset').value);});
   $('flowJoin').addEventListener('click',async()=>{
@@ -12984,7 +12993,7 @@ flowSelectedManagerActor=actorId;
       renderHomeCalendar();renderFullCalendar();renderEventTab();renderManagedHomeEvents();renderManageEvents();renderHomeNextEvent();
       flowRefreshAll();
     },
-    applyNotices(rows){
+applyNotices(rows){
       noticeItems.splice(0,noticeItems.length,...rows);
       unreadNoticeIds.clear();
       rows.forEach(x=>{if(Number(portalPreviewReadState.notices[x.id]||0)!==Number(x.createdAt||0))unreadNoticeIds.add(x.id);});
@@ -12992,7 +13001,7 @@ flowSelectedManagerActor=actorId;
     },
     applyChat(rows){
       chatMessages.splice(0,chatMessages.length,...rows);
-      // A message already visible in the open room is read, not a new notification
+// A message already visible in the open room is read, not a new notification
       // merely because a Firebase snapshot or another screen transition arrived.
       if(!$('screen-chat').classList.contains('hidden'))markPortalChatRead();
       renderChat();renderPortalChatBadge();renderNotificationPreview();renderDeveloperChatSummary();
@@ -13039,6 +13048,8 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
     const stableAuth=authMod.getAuth(stableApp);
     const legacyAuth=authMod.getAuth(legacyApp);
     await Promise.all([stableAuth,legacyAuth].map(a=>typeof a.authStateReady==='function'?a.authStateReady():Promise.resolve()));
+    if(stableAuth.currentUser?.uid)console.log('[PORTAL pilot Auth] 復元できた','uid='+stableAuth.currentUser.uid);
+    if(legacyAuth.currentUser?.uid && legacyAuth.currentUser.uid!==stableAuth.currentUser?.uid)console.log('[PORTAL pilot Auth] 復元できた','uid='+legacyAuth.currentUser.uid);
     if(stableAuth.currentUser && legacyAuth.currentUser && stableAuth.currentUser.uid!==legacyAuth.currentUser.uid){
       gate.identityConflict=true;
       setState('本人識別が一致しないため停止しました');
@@ -13682,6 +13693,8 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
     };
     const selected=await selectPersistedPortalSession({authA,authB,appA,appB,dbMod});
     const auth=selected.auth;
+    if(auth.currentUser?.uid)console.log('[PORTAL Auth] 復元できた','uid='+auth.currentUser.uid);
+    else console.log('[PORTAL Auth] 保存済みUIDなし。明示的な新規登録操作まで匿名認証しません');
     const db=dbMod.getDatabase(selected.app);
     // Published Stage3: only an existing, verified PORTAL user may request an ID token.
     gate.stage3NotificationToken=async()=>{
@@ -13701,11 +13714,14 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
     // Firebase/Auth gateway. One explicitly selected connected event at a time.
     // PORTAL common notices/chat remain on portalCommon/topRun, untouched.
     let eventCommsStops=[],eventCommsEpoch=0;
+    // TRAFFIC 2026-10-25: same-event navigation reuses the verified live subscriptions.
+    let eventCommsVerifiedScope='',eventCommsVerifiedGeneration=-1;
     const eventCommsEmpty=()=>({eventId:'',catalogId:'',name:'',role:'',notices:{},chat:{},noticeLoaded:false,chatLoaded:false,noticeError:'',chatError:'',status:'',canManage:false});
     gate.eventCommsState=eventCommsEmpty();
     const eventCommsPaint=()=>window.__TR_EVENT_COMMS_UI__?.render?.(gate.eventCommsState);
     const eventCommsStop=(reason='')=>{
       ++eventCommsEpoch;
+      eventCommsVerifiedScope='';eventCommsVerifiedGeneration=-1;
       eventCommsStops.splice(0).forEach(stop=>{try{stop();}catch(_){}});
       gate.eventCommsState=eventCommsEmpty();
       gate.eventCommsState.status=reason;
@@ -13717,11 +13733,26 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
         if(v?.enabled!==true||!['EVENT BASE','RELAY EVENT BASE'].includes(v?.type))return [];
         const linked=window.__TR_PORTAL_OFFICIAL_PUBLIC_LINK__?.(v.url||'');
         if(!linked||!linked.id||linked.ekidenNext!==(v.type==='RELAY EVENT BASE'))return [];
-        return [{id:linked.id,catalogId,name:String(v.title||'連携大会').slice(0,120)}];
+        const day=String(v.date||'').slice(0,10);
+        const name=String(v.title||'連携大会').slice(0,80);
+        return [{id:linked.id,catalogId,name:name+(day?' / '+day:'')+' / '+linked.id.slice(-9)}];
       }).slice(0,30);
     };
     gate.selectEventComms=async(rawEventId)=>{
       const id=String(rawEventId||'');
+      const expectedRole=gate.role==='developer'?'owner':gate.role==='admin'?'manager':'participant';
+      const scope=[gate.uid,gate.profileId,gate.role,id].join('|');
+      // Existing verified subscriptions already receive real-time changes.
+      // Never re-read the full NOTICE/CHAT trees just for a screen transition.
+      if(id && gate.eventCommsState.eventId===id &&
+         gate.eventCommsState.role===expectedRole &&
+         eventCommsVerifiedScope===scope && eventCommsVerifiedGeneration===generation &&
+         eventCommsStops.length===1 &&
+         gate.eventCommsState.noticeLoaded &&
+         gate.hasOperationalAccess() && auth.currentUser?.uid===gate.uid &&
+         gate.eventCommsCatalog().some(x=>x.id===id&&x.catalogId===gate.eventCommsState.catalogId)){
+        eventCommsPaint();return;
+      }
       eventCommsStop();
       if(!id)return;
       if(!gate.hasOperationalAccess()||auth.currentUser?.uid!==gate.uid)throw Error('本人認証とPORTAL参加承認が必要です');
@@ -13739,11 +13770,12 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
         // binding.profileId. They instead carry a canonical 64-hex ownerProof.
         // Verify that proof against the same authenticated PORTAL developer role;
         // do not manufacture a profileId or weaken manager/participant matching.
-        const expectedRole=gate.role==='developer'?'owner':gate.role==='admin'?'manager':'participant';
+        // Global PORTAL staff/member role never overrides a canonical binding.
+        // Same UID may hold a different role for each independent eventId.
+        const expectedRole=binding?.role;
         if(!binding||!['owner','manager','participant'].includes(binding.role)||!pid||
            (binding.portalCatalogId&&binding.portalCatalogId!==option.catalogId))
-          throw Error('この大会の本人接続を確認できません。駅伝BASEの接続を確認してください');
-        if(binding.role!==expectedRole)throw Error('PORTALと大会の権限が一致しません');
+          throw Error('この大会の本人接続を確認できません。大会の接続を確認してください');
         if(expectedRole==='owner'){
           // portalRoles/<uid> is already part of the same canonical PORTAL
           // identity gate and is protected by the existing Firebase Rules.
@@ -13758,10 +13790,9 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
         }
         gate.eventCommsState.role=binding.role;
         gate.eventCommsState.canManage=['owner','manager'].includes(binding.role);
-        gate.eventCommsState.status='大会NOTICE・CHATを受信中';
+        gate.eventCommsState.status='大会のお知らせを受信中（CHATは大会内で運用）';
         eventCommsPaint();
         const noticeRef=dbMod.ref(db,'events/'+id+'/notices');
-        const chatRef=dbMod.query(dbMod.ref(db,'events/'+id+'/chat'),dbMod.orderByChild('ts'),dbMod.limitToLast(100));
         const onNotices=dbMod.onValue(noticeRef,snap=>{
           if(!valid())return;
           gate.eventCommsState.notices=snap.val()||{};
@@ -13774,17 +13805,9 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
         });
         if(!valid()){onNotices();return;}
         eventCommsStops.push(onNotices);
-        const onChat=dbMod.onValue(chatRef,snap=>{
-          if(!valid())return;
-          gate.eventCommsState.chat=snap.val()||{};
-          gate.eventCommsState.chatLoaded=true;gate.eventCommsState.chatError='';eventCommsPaint();
-        },error=>{
-          if(!valid())return;
-          gate.eventCommsState.chat={};gate.eventCommsState.chatLoaded=false;
-          gate.eventCommsState.chatError=String(error?.code||error?.message||error).slice(0,110);eventCommsPaint();
-        });
-        if(!valid()){onChat();return;}
-        eventCommsStops.push(onChat);
+        // 2026-10-25: No tournament CHAT listener; only canonical tournament NOTICE is mirrored read-only.
+        eventCommsVerifiedScope=[uid,pid,gate.role,id].join('|');
+        eventCommsVerifiedGeneration=generation;
       }catch(error){
         if(valid()){
           eventCommsStops.splice(0).forEach(stop=>{try{stop();}catch(_){}});
@@ -13796,64 +13819,12 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
         throw error;
       }
     };
-    const eventCommsCheck=async({notice=false}={})=>{
-      const state=gate.eventCommsState,uid=gate.uid,pid=gate.profileId,seq=generation,epoch=eventCommsEpoch;
-      if(!state.eventId||!gate.hasOperationalAccess()||auth.currentUser?.uid!==uid||!pid||
-         (notice?!state.canManage||!state.noticeLoaded:!state.chatLoaded))
-        throw Error('大会の本人・権限・受信状況が確認できません');
-      // Emergency LIVE stop is NOT formal completion; only eventCompletedAt stops communication.
-      const safety=(await dbMod.get(dbMod.ref(db,'events/'+state.eventId+'/safety/eventCompletedAt'))).val();
-      if(Number(safety)>0)throw Error('正式終了済みの大会です。新しい投稿はできません');
-      if(seq!==generation||epoch!==eventCommsEpoch||gate.uid!==uid||gate.profileId!==pid||!gate.hasOperationalAccess()||
-         auth.currentUser?.uid!==uid||state!==gate.eventCommsState)throw Error('保存中に本人または大会が切り替わりました');
-      return {state,uid,pid};
-    };
-    gate.eventCommsSaveNotice=async({id='',title='',body=''})=>{
-      const {state,uid}=await eventCommsCheck({notice:true});
-      const heading=String(title||'').trim().slice(0,120),text=String(body||'').trim().slice(0,3000);
-      if(!heading)throw Error('お知らせのタイトルを入力してください');
-      if(id&&!/^[A-Za-z0-9_-]{1,90}$/.test(id))throw Error('編集対象IDが不正です');
-      const key=id||('notice_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,9));
-      const previous=id?state.notices[key]:null;
-      if(id&&!previous)throw Error('編集元のお知らせがありません。再読込してください');
-      let conflict=false;
-      const dest=dbMod.ref(db,'events/'+state.eventId+'/notices/'+key);
-      const result=await dbMod.runTransaction(dest,current=>{
-        if(state!==gate.eventCommsState||auth.currentUser?.uid!==uid)return;
-        if(id&&(!current||Number(current.updatedAt||current.createdAt||0)!==Number(previous.updatedAt||previous.createdAt||0))){conflict=true;return;}
-        if(!id&&current){conflict=true;return;}
-        const now=Date.now();
-        return {...(current||{}),id:key,title:heading,body:text,createdAt:Number(current?.createdAt)||now,updatedAt:now,updatedBy:uid};
-      },{applyLocally:false});
-      if(!result.committed)throw Error(conflict?'別端末で更新されています。再読込してから編集してください':'大会のお知らせを保存できませんでした');
-      const actual=(await dbMod.get(dest)).val();
-      if(!actual||actual.title!==heading||actual.body!==text)throw Error('保存後のお知らせ照合が成立しません');
-      // Stage3 is currently scoped to PORTAL common nodes. Do not falsely notify an event ID.
-      return actual;
-    };
-    gate.eventCommsDeleteNotice=async id=>{
-      const {state,uid}=await eventCommsCheck({notice:true});
-      if(!/^[A-Za-z0-9_-]{1,90}$/.test(id)||!state.notices[id])throw Error('削除対象が見つかりません');
-      const old=state.notices[id],dest=dbMod.ref(db,'events/'+state.eventId+'/notices/'+id);
-      const result=await dbMod.runTransaction(dest,current=>{
-        if(state!==gate.eventCommsState||auth.currentUser?.uid!==uid)return;
-        if(!current||Number(current.updatedAt||current.createdAt||0)!==Number(old.updatedAt||old.createdAt||0))return;
-        return null;
-      },{applyLocally:false});
-      if(!result.committed||(await dbMod.get(dest)).exists())throw Error('削除が確定しません。別端末の変更をご確認ください');
-      return true;
-    };
-    gate.eventCommsSendChat=async value=>{
-      const {state,uid}=await eventCommsCheck();
-      const text=String(value||'').trim().slice(0,1000);if(!text)throw Error('メッセージを入力してください');
-      const id='c_'+Date.now()+'_'+Math.random().toString(36).slice(2,9);
-      const record={id,senderUid:uid,name:String(gate.displayName||'参加者').slice(0,24),staff:state.canManage,text,ts:Date.now()};
-      const dest=dbMod.ref(db,'events/'+state.eventId+'/chat/'+id);
-      await dbMod.set(dest,record);
-      const checked=(await dbMod.get(dest)).val();
-      if(!checked||checked.senderUid!==uid||checked.text!==text)throw Error('CHAT送信後の保存照合が成立しません');
-      return checked;
-    };
+    // Event notices and CHAT are authored exclusively in EVENT BASE / EKIDEN BASE.
+    // PORTAL reads selected event notices without changing tournament read receipts.
+    const eventCommsReadonly=()=>{throw Error('大会の投稿・修正・CHATはEVENT BASE／駅伝BASEで操作してください');};
+    gate.eventCommsSaveNotice=async()=>eventCommsReadonly();
+    gate.eventCommsDeleteNotice=async()=>eventCommsReadonly();
+    gate.eventCommsSendChat=async()=>eventCommsReadonly();
 
     const reset=()=>{
       // If the trusted identity changes or staff authorization is revoked,
@@ -13929,9 +13900,11 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
       if(gate.role!=='participant')throw Error('EVENT BASEの管理者・開発者接続を確認できません。既存の大会入口で認証してください');
       const item=gate.eventItems?.[catalogId];
       const expected='https://nuritakug-cpu.github.io/tabirun-bgm/EVENT_BASE_PRODUCTION.html?event='+encodeURIComponent(eventId)+'&portal=1';
+      const eventAuthReviewExpected=eventId==='eventbase_mu4ujce3_xxx1'
+        ?'https://nuritakug-cpu.github.io/tabirun-bgm/EVENT_BASE_v83_AUTH_SINGLE_RESTORE_20261025_REVIEW.html?event=eventbase_mu4ujce3_xxx1&portal=1':'';
       const nextEkidenExpected=eventId==='eventbase_ekiden_next_2026_38fa5537b6'&&portalOfficialPublicLink(item?.url||'')?.ekidenNext?String(item.url):'';
       if(!item||item.enabled===false||item.raceEntryEnabled===false||
-         (String(item.url||'')!==expected&&String(item.url||'')!==nextEkidenExpected)||
+         (String(item.url||'')!==expected&&String(item.url||'')!==eventAuthReviewExpected&&String(item.url||'')!==nextEkidenExpected)||
          !/^(?:event-[A-Za-z0-9_-]{1,80}|event-current|event-relay)$/.test(catalogId||''))
         throw Error('承認済みPORTALの正式大会URLが未設定です。管理者にEVENT BASE正式リンクの登録を依頼してください');
       if(auth.currentUser?.uid!==person.uid||gate.profileId!==person.profileId||!gate.memberApproved)
@@ -13962,7 +13935,7 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
     const EKIDEN_PORTAL_EVENT_ID='eventbase_ekiden_next_2026_38fa5537b6';
     // The saved PORTAL eventItems URL is the only navigation destination; no fixed HTML revision.
     gate.prepareEkidenEntry=async(catalogId)=>{
-      const uid=String(gate.uid||''),profileId=String(gate.profileId||'');
+const uid=String(gate.uid||''),profileId=String(gate.profileId||'');
       if(!uid||!profileId||auth.currentUser?.uid!==uid||gate.roleVerified!==true||
          gate.hasOperationalAccess()!==true||!gate.loaded.eventItems)
         throw Error('PORTALの本人確認と大会情報の受信が完了していません');
@@ -13977,7 +13950,7 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
       // Ordinary members must never require the staff-only portalRoles READ.
       const staff=gate.role==='developer'||gate.role==='admin'
         ?(await dbMod.get(dbMod.ref(db,'portalRoles/'+uid))).val():null;
-      let role='',linkProof='',ownerProof='';
+let role='',linkProof='',ownerProof='';
       if(gate.role==='developer'&&staff?.role==='developer'&&/^[0-9a-f]{64}$/i.test(String(staff.ownerProof||''))){
         role='owner';linkProof='verified-portal-developer-v1';ownerProof=staff.ownerProof;
       }else if(gate.role==='admin'&&staff?.role==='admin'&&typeof staff.grantedByUid==='string'&&staff.grantedByUid){
@@ -14683,27 +14656,19 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       const myUid=gate.uid,seq=generation;
       const sharedBind=(kind,id,path,notify)=>{
         const readyKind=kind==='practiceResponses'?'practice':'event';
-        const stop=dbMod.onValue(ref(path),snap=>{
+        const stop=dbMod.onValue(ref(path+'/'+myUid),snap=>{
           if(seq!==generation||auth.currentUser?.uid!==myUid)return;
-          gate[kind][id]=snap.val()||{};
+          const row=snap.val();
+          gate[kind][id]=row?{[myUid]:row}:{};
           gate.sharedResponseReady[readyKind][id]=true;
-          gate.loaded[kind]=true;delete gate.errors[kind];notify(gate[kind]);statusResources();
+          gate.loaded[kind]=true;delete gate.errors[kind];
+          notify(gate[kind]);statusResources();
         },error=>{
-          if(seq!==generation)return;
+          if(seq!==generation||auth.currentUser?.uid!==myUid)return;
           gate.sharedResponseReady[readyKind][id]=false;
-          // Rules not yet updated: preserve the existing own-UID RSVP route.
-          // Do not show a partial list as a full roster, or keep stale private names.
           gate[kind][id]={};
-          gate.errors[kind]='共有一覧READ不可：'+String(error?.code||error?.message||error).slice(0,55);
           notify(gate[kind]);
-          if(/permission[_-]denied/i.test(String(error?.code||error?.message||error))){
-            const ownStop=dbMod.onValue(ref(path+'/'+myUid),own=>{
-              if(seq!==generation||auth.currentUser?.uid!==myUid)return;
-              const myRow=own.val();gate[kind][id]=myRow?{[myUid]:myRow}:{};
-              gate.loaded[kind]=true;notify(gate[kind]);statusResources();
-            },ownError=>{if(seq===generation)fail(kind,ownError);});
-            ownSubs.push(ownStop);
-          }else fail(kind,error);
+          fail(kind,error);
         });
         ownSubs.push(stop);
       };
@@ -14970,17 +14935,20 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         const snapshot=await dbMod.get(dbMod.ref(db,'profiles/'+current.uid));
         if(auth.currentUser?.uid!==current.uid||snapshot.val()!==null)
           throw Error('既存プロフィールが存在するため、上書きせず停止します');
-        ownIncompleteEnrollmentUid=current.uid;
+ownIncompleteEnrollmentUid=current.uid;
       }else if(!resuming&&(existingAuthA||existingAuthB))
         throw Error('既存UIDがあります。既存の本人プロフィールを確認してください');
       if(resuming&&((existingAuthA&&existingAuthA!==ownIncompleteEnrollmentUid)||(existingAuthB&&existingAuthB!==ownIncompleteEnrollmentUid)))
         throw Error('別の既存UIDが検出されたため登録を停止します');
       enrolling=true;
-      try{
+try{
         // Only the submit handler with explicit confirmation calls this route.
         if(!resuming&&!recovering){
+          // Only the explicit participant enrollment submit path may create an anonymous UID.
+          await authMod.setPersistence(auth,authMod.browserLocalPersistence); // reject ephemeral Auth before new UID issuance
           const result=await authMod.signInAnonymously(auth);
           ownIncompleteEnrollmentUid=result.user.uid;
+          console.log('[PORTAL Auth] 新規作成した','uid='+result.user.uid);
         }
         const uid=auth.currentUser?.uid||'';
         if(!uid||uid!==ownIncompleteEnrollmentUid)throw Error('新規登録中の本人認証が一致しません');
@@ -15671,6 +15639,36 @@ setInterval(display,1000);
  }
  const same=(a,b)=>a.length===b.length&&a.every((v,i)=>v===b[i]);
  // Trusted gateway from the existing Firebase Auth; never a second Auth or Firebase writer.
+ // Formal tournament delivery uses the SAME Firebase token and the SAME Worker,
+ // not another Firebase connection. The Worker must authorize event membership,
+ // canonical saved record, recipients and idempotency; client claims are untrusted.
+ window.__TR_STAGE3_NOTIFY_EVENT__=async(kind,eventId,id)=>{
+   return {ok:false,disabled:true}; // Event-level Push OFF by 2026-10-25 decision.
+   if(!eligible()||!onSite()||!['chat','notice'].includes(kind)||
+      !/^eventbase_[a-z0-9_]{8,75}$/i.test(String(eventId||''))||
+      !/^[A-Za-z0-9_-]{1,100}$/.test(String(id||'')))return {ok:false};
+   try{
+     const config=await fetch(BASE+'/api/stage2/config',{mode:'cors',cache:'no-store'}).then(r=>r.ok?r.json():null);
+     if(config?.stage3Enabled!==true||config?.formalDeliveryEnabled!==true)return {ok:false};
+     const member=await gate().stage3NotificationToken();
+     if(!checkSame(member))return {ok:false};
+     const response=await fetch(BASE+'/api/stage3/event-notify',{
+       method:'POST',mode:'cors',cache:'no-store',keepalive:true,
+       headers:{'Content-Type':'application/json','Authorization':'Bearer '+member.token},
+       body:JSON.stringify({kind,eventId,id})
+     });
+     const result=await response.json().catch(()=>({}));
+     if(!response.ok||result.ok!==true){
+       if(box.open)say('大会投稿は保存しましたが、プッシュ通知は未成立です（'+response.status+'）。');
+       return {ok:false,status:response.status};
+     }
+     if(box.open)say('大会投稿を保存しました。通知サービス受付：'+Number(result.acceptedByPushService||0)+'端末。実機到達は未確認です。');
+     return {ok:true,accepted:Number(result.acceptedByPushService||0)};
+   }catch(error){
+     if(box.open)say('大会投稿は保存しましたが、通知送信結果を確認できません。');
+     return {ok:false,error:String(error?.message||error)};
+   }
+ };
  window.__TR_STAGE3_NOTIFY__=async(kind,id)=>{
    if(!eligible()||!onSite())return;
    try{
@@ -15843,18 +15841,19 @@ setInterval(display,1000);
    // Never carry an edited notice ID/draft across different canonical events.
    if(currentId!==id){clearEditor();latest=null;}
    currentId=id;
-   [noticeSel,chatSel].forEach(s=>{if([...s.options].some(o=>o.value===id))s.value=id;else s.value='';});
+   if([...noticeSel.options].some(o=>o.value===id))noticeSel.value=id;else noticeSel.value='';
+   chatSel.value='';
    document.body.classList.toggle('trEventCommsActive',!!id);
-   $('trEventNoticesPanel').hidden=!id;$('trEventChatPanel').hidden=!id;
+   $('trEventNoticesPanel').hidden=!id;$('trEventChatPanel').hidden=true;
    if(!id){ns.textContent='';cs.textContent='';}
  }
  function makeOptions(){
-   for(const el of [noticeSel,chatSel]){
-     const v=el.value;
-     el.replaceChildren(new Option(el===noticeSel?'PORTAL共通のお知らせ':'PORTAL共通CHAT',''));
-     for(const item of knownCatalog)el.add(new Option('大会｜'+item.name,item.id));
-     el.value=[...el.options].some(o=>o.value===v)?v:'';
-   }
+   const v=noticeSel.value;
+   noticeSel.replaceChildren(new Option('PORTAL共通のお知らせ',''));
+   for(const item of knownCatalog)noticeSel.add(new Option('大会｜'+item.name,item.id));
+   noticeSel.value=[...noticeSel.options].some(o=>o.value===v)?v:'';
+   // This remains only the existing independent PORTAL common CHAT.
+   chatSel.replaceChildren(new Option('PORTAL共通CHAT',''));
    if(currentId&&!knownCatalog.some(x=>x.id===currentId))scopeUI('');
  }
  const fmtTime=n=>{const v=Number(n);return Number.isFinite(v)&&v>0?new Date(v).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'}):'';};
@@ -15865,15 +15864,13 @@ setInterval(display,1000);
    if(currentId!==state.eventId)scopeUI(state.eventId);
    latest=state;
    ns.textContent=state.noticeError?'大会お知らせREAD不可：'+state.noticeError:state.noticeLoaded?'大会のお知らせを受信しました':state.status||'読み込み中';
-   cs.textContent=state.chatError?'大会CHAT READ不可：'+state.chatError:state.chatLoaded?'大会CHATを受信しました':state.status||'読み込み中';
+   cs.textContent='大会CHATは駅伝BASE／EVENT BASE内でご利用ください。';
    const rows=Object.entries(state.notices||{}).map(([key,n])=>({...n,id:key})).sort((a,b)=>Number(b.updatedAt||b.createdAt||0)-Number(a.updatedAt||a.createdAt||0));
    notices.innerHTML=!state.noticeLoaded?'<div class="portalEmpty">大会のお知らせを受信中です。権限エラーは上に表示します。</div>':
-     (rows.map(n=>`<article class="portalNoticeItem"><small>${safe(fmtTime(n.updatedAt||n.createdAt))}</small><b>${safe(n.title||'お知らせ')}</b><p>${safe(n.body||'')}</p>${state.canManage?`<div class="trEventNoticeActions"><button type="button" class="trEventNoticeAction" data-event-edit="${safe(n.id)}">修正</button><button type="button" class="trEventNoticeAction" data-event-delete="${safe(n.id)}">削除</button></div>`:''}</article>`).join('')||'<div class="portalEmpty">この大会のお知らせはまだありません。</div>');
-   editor.hidden=!(state.canManage&&state.noticeLoaded);
-   const msg=Object.entries(state.chat||{}).map(([key,v])=>({...v,id:key})).sort((a,b)=>Number(a.ts||0)-Number(b.ts||0));
-   chat.innerHTML=!state.chatLoaded?'<div class="portalEmpty">大会CHATを受信中です。権限エラーは上に表示します。</div>':
-     (msg.map(m=>`<div class="msg ${m.staff?'staff ':''}${m.senderUid===portal()?.uid?'mine ':''}"><div class="msgHead"><span>${safe(m.name||'参加者')}</span><span>${safe(fmtTime(m.ts))}</span></div><p>${safe(m.text||'')}</p></div>`).join('')||'<div class="portalEmpty">この大会のCHATはまだありません。</div>');
-   $('trEventChatSend').disabled=!state.chatLoaded||pending;
+     (rows.map(n=>`<article class="portalNoticeItem"><small>${safe(fmtTime(n.updatedAt||n.createdAt))}</small><b>${safe(n.title||'お知らせ')}</b><p>${safe(n.body||'')}</p></article>`).join('')||'<div class="portalEmpty">この大会のお知らせはまだありません。</div>');
+   editor.hidden=true; // event notice editing stays in EVENT BASE
+   chat.replaceChildren(); // No event CHAT rendering inside PORTAL.
+   $('trEventChatSend').disabled=true;
    $('trEventNoticeSave').disabled=!state.canManage||!state.noticeLoaded||pending;
  }
  async function choose(id){
@@ -15883,7 +15880,7 @@ setInterval(display,1000);
    ns.textContent='大会の本人接続を確認中';cs.textContent='大会の本人接続を確認中';
    try{await portal()?.selectEventComms?.(id);}catch(e){const reason=String(e?.message||e);ns.textContent='大会接続不可：'+reason;cs.textContent='大会接続不可：'+reason;}
  }
- for(const el of [noticeSel,chatSel])el.addEventListener('change',()=>void choose(el.value));
+ noticeSel.addEventListener('change',()=>void choose(noticeSel.value));
  $('trEventNoticeMgmtOpen')?.addEventListener('click',()=>{
     // Management STEP 1 is explicit tournament selection, never an implicit write target.
     document.querySelector('[data-bottom-target="notices"]')?.click();
@@ -15919,7 +15916,19 @@ setInterval(display,1000);
    catch(err){$('trEventChatSaveState').textContent='送信未成立：'+String(err?.message||err);}
    finally{pending=false;$('trEventChatSend').disabled=!latest?.chatLoaded;}
  });
- window.__TR_EVENT_COMMS_UI__={catalog(items){knownCatalog=Array.isArray(items)?items:[];makeOptions();},render};
+  // Notification taps select the existing verified event; no URL-only authorization.
+  const deepQuery=new URLSearchParams(location.search),deepKind=deepQuery.get('pushTo'),deepEvent=deepQuery.get('eventId');
+  let deepOpened=false;
+  function openDeepLink(){
+    if(deepOpened||deepKind!=='event-notices'||
+       !/^eventbase_[a-z0-9_]{8,75}$/i.test(String(deepEvent||''))||
+       !knownCatalog.some(item=>item.id===deepEvent)||!portal()?.hasOperationalAccess?.())return;
+    deepOpened=true;
+    document.querySelector('[data-bottom-target="'+'notices'+'"]')?.click();
+    void choose(deepEvent);
+  }
+  window.__TR_EVENT_COMMS_UI__={catalog(items){knownCatalog=Array.isArray(items)?items:[];makeOptions();openDeepLink();},render};
+  window.addEventListener('tr-portal-authorized',openDeepLink);
  // If an identity switch occurs, the unified gateway explicitly clears current event scope.
  window.addEventListener('tr-portal-identity-ready',()=>{if(!portal()?.hasOperationalAccess?.()){knownCatalog=[];makeOptions();scopeUI('');}});
 })();

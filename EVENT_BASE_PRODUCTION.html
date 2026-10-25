@@ -1,4 +1,27 @@
+<!-- 2026-10-25 PRODUCTION CANDIDATE / SAME UID / PORTAL RETURN ONLY IN portal=1 / NO RULES OR DATA CHANGES -->
 <!doctype html>
+<!-- 2026-10-25 AUTH SINGLE RESTORE REVIEW (EVENT): initial onAuthStateChanged states before DB operations; existing UID reused across historical app names; no new UID on restoration failure; console UID logs; no Rules/data/UID/profileId changes; NOT DEPLOYED. -->
+<!-- EVENT_BASE_v82_LIVE_START_GPS_WAIT_FIX
+PHYSICAL_PARENT: EVENT_BASE_v81.html (Git blob 93a79aa13b0d2edb4e5662d1ca2bae13f4f38e04)
+TARGET ONLY: explicit LIVE start no longer fails solely because GPS accuracy has not reached <=60m within 16 seconds; it keeps watching until <=60m or the user cancels.
+PRESERVE: <=60m first-write threshold, venue range check, safety check, EventBaseLiveV45/setLive path, Firebase Rules/Auth/binding, UI/CSS/DOM, CHAT, timing/results, and every v81 stability fix.
+CANCEL SAFETY: closing/canceling the confirmation aborts the pending geolocation watch so LIVE cannot start later after cancel.
+DEVICE STATUS: static/code self-check only; user-device verification not yet completed.
+-->
+<!-- EVENT_BASE_PRODUCTION_v81_POST_EVENT_STABILITY_CANDIDATE
+PHYSICAL_PARENT: EVENT_BASE_PRODUCTION.html (Git blob cf487d55a6116f2adc725512814daa7df0db4518)
+REAPPLIED EVIDENCE: v77 manager cross-write guard + v78 first-time self-registration profileId prevention + v80 manager conflict-safe save. No candidate is used as the physical parent.
+TARGET A: disable legacy duplicated flat-config read/write under REBUILD core and keep canonical event-root as the event-state source.
+TARGET B: manager maininfo save uses field-aware optimistic conflict protection; unrelated remote fields are preserved; same-field concurrent changes are not silently overwritten; one atomic maininfo transaction replaces serial field writes.
+TARGET C: active notice/parking save paths perform one Firebase sync only (no immediate second persist-triggered sync).
+TARGET D: preserve/reuse existing PLAYER profileId; first-time self registration uses COMMON PROFILE profileId; operator proxy registration retains separate PLAYER-id behavior.
+PRESERVATION FIX: HOME custom image data remains received from root.config.homeHeroDataUrl through the canonical event-root subscription; no second config listener is restored.
+CONCURRENCY FIX: event-day normalization updates each affected PLAYER through a latest-value transaction so concurrent delete/edit cannot be resurrected or overwritten.
+LATENCY FIX: documents/homeDesign child changes remain sibling-safe but are sent in one branch update instead of serial child writes.
+HERO META PRESERVE: canonical root consumes the newer HOME-hero metadata source (homeDesign vs legacy config) and clears stale remote-image cache when the canonical custom-image state is reset.
+NON-TARGET/FROZEN: Firebase Rules/Auth/binding/eventId, existing PLAYER data migration, results/timingRecords, LIVE, CHAT, MAP, HOME/SCHEDULE UI/appearance, parent-child handoff, duplicate cleanup.
+DEVICE STATUS: candidate; static/self-check + limited user visual check only. Firebase concurrency behavior remains user-device/uncontrolled-network unverified until natural operation or dedicated test.
+-->
 <!-- EVENT_BASE_REBUILD_v76_V74_RESULT_PRIORITY_REGISTRANTS_BINDINGS
 PHYSICAL_PARENT: EVENT_BASE_REBUILD_v74_V64_RECORD_LOCK_DEVELOPER_RESET.html
 TARGET ONLY: (1) own MY PAGE result hierarchy: result prominent / competition time secondary; (2) developer-only read-only current-event registrant list from existing bindings/<eventId> one-shot read.
@@ -1976,7 +1999,7 @@ body{background:var(--home-bg)}
   background:#d25b65!important;
 }
 .scheduleBadge.dns{
-  background:#5a2026;
+background:#5a2026;
   color:#ffb0b6;
 }
 .scheduleSectionBlock{
@@ -2976,7 +2999,7 @@ body{background:var(--home-bg)}
   font-size:15px!important;
 }
 #page-map .mapBox{
-  min-height:0!important;
+min-height:0!important;
   height:100%!important;
 }
 #page-map .mapMiniLegend{
@@ -3976,7 +3999,7 @@ html,body{
   color:var(--home-accent)!important;
   font-size:62px!important;
   line-height:.92!important;
-  letter-spacing:-.055em!important;
+letter-spacing:-.055em!important;
   white-space:nowrap!important;
 }
 
@@ -4976,7 +4999,7 @@ html,body{
 }
 #page-home #countdownBox .statusMain42{
   position:absolute!important;
-  right:56px!important;
+right:56px!important;
   top:50%!important;
   transform:translateY(-50%)!important;
   display:flex!important;
@@ -7976,7 +7999,7 @@ body.mapFullscreenOpen170{
   display:block;
   width:max-content;
   max-width:100%;
-  margin-top:5px;
+margin-top:5px;
   color:#7f898f;
   font-size:8px;
   line-height:1.2;
@@ -8976,8 +8999,7 @@ body.mapFullscreenOpen170{
               <div class="field"><label>緯度</label><input id="parkingV125Lat" inputmode="decimal" placeholder="34.9962337"></div>
               <div class="field"><label>経度</label><input id="parkingV125Lng" inputmode="decimal" placeholder="136.9442297"></div>
             </div>
-
-            <div class="locationActionGrid">
+<div class="locationActionGrid">
               <button class="primary" id="parkingV125Gps" type="button">現在地を選択</button>
               <button class="locationPickBtn" id="parkingV125Map" type="button">MAPで位置を選択</button>
             </div>
@@ -9976,6 +9998,7 @@ if(typeof data.homeHeroCustom!=='boolean')data.homeHeroCustom=false;
 if(!('homeHeroName' in data))data.homeHeroName='';
 if(!data.venuePoint)data.venuePoint={name:'大会開催場所',lat:34.9947003,lng:136.9481809};
 if(!('basePoint' in data))data.basePoint=null;
+
 if(!data.managerColorsV167 || typeof data.managerColorsV167!=='object')data.managerColorsV167={};
 if(!('previewNow' in data))data.previewNow='';
 if(!('chatLastRead' in data))data.chatLastRead=0;
@@ -10956,6 +10979,8 @@ let eventConfigRetryTimer158=null;
 let eventConfigSnapshotAt169=0;
 
 function applyRemoteEventConfig107(cfg){
+  // v80/v77: canonical REBUILD event-root is the only config source.
+  if(window.__EVENTBASE_REBUILD_CORE__)return;
   if(!cfg||typeof cfg!=='object')return;
 
   // v143: 大会情報の同期は位置共有のON/OFFとは別物。
@@ -10974,7 +10999,7 @@ function applyRemoteEventConfig107(cfg){
       .catch(()=>{});
   }
 
-  data.liveShareEnabled=keepLiveSession143;
+data.liveShareEnabled=keepLiveSession143;
   lastAppliedRemoteConfigTs158=Math.max(lastAppliedRemoteConfigTs158,Number(cfg.updatedAt)||0);
   save(ACTIVE_DATA_KEY100,data);
   applyEventDataToUI100();
@@ -10986,6 +11011,8 @@ function applyRemoteEventConfig107(cfg){
   }catch(_){}
 }
 async function remotePushEventConfig107(force=false){
+  // v80/v77: do not run the legacy whole-config writer in REBUILD core.
+  if(window.__EVENTBASE_REBUILD_CORE__)return false;
   const b=readRemoteBinding84();
   if(!b?.eventId||!currentUserIsAdmin97())return false;
 
@@ -11044,12 +11071,21 @@ async function remotePushEventConfig107(force=false){
   return true;
 }
 function scheduleRemoteConfigSync107(force=false){
+  // v80/v77: do not schedule the legacy whole-config writer in REBUILD core.
+  if(window.__EVENTBASE_REBUILD_CORE__)return;
   const b=readRemoteBinding84();
   if(!b?.eventId||!currentUserIsAdmin97()||firebase82.status!=='ready')return;
   clearTimeout(remoteConfigTimer107);
   remoteConfigTimer107=setTimeout(()=>remotePushEventConfig107(force).catch(e=>console.warn('event config sync v107',e)),220);
 }
 function ensureRemoteEventDataSubscription107(force=false){
+  // v80/v77: canonical root subscription is the only event-config source in REBUILD core.
+  if(window.__EVENTBASE_REBUILD_CORE__){
+    if(firebase82.eventConfigUnsub){try{firebase82.eventConfigUnsub()}catch(_){}firebase82.eventConfigUnsub=null}
+    firebase82.eventConfigId='';
+    if(eventConfigRetryTimer158){clearTimeout(eventConfigRetryTimer158);eventConfigRetryTimer158=null}
+    return;
+  }
   if(firebase82.status!=='ready'||!firebase82.db||!firebase82.mods)return;
   const b=readRemoteBinding84();if(!b?.eventId)return;
   if(!force&&firebase82.eventConfigUnsub&&firebase82.eventConfigId===b.eventId)return;
@@ -11091,6 +11127,8 @@ function ensureRemoteEventDataSubscription107(force=false){
 }
 
 async function ownerConfigFallback158(){
+  // v80/v77: legacy flat-config fallback is not a REBUILD data source.
+  if(window.__EVENTBASE_REBUILD_CORE__)return;
   if(document.hidden)return;
   const b=readRemoteBinding84();
   if(b?.role!=='owner'||!b.eventId||!firebase82.uid)return;
@@ -11477,7 +11515,7 @@ async function ensureFirebaseCore162(allowCreate=true){
       }
 
       if(!auth.currentUser && allowCreate){
-        await firebaseTimeout156(authMod.signInAnonymously(auth),10000,'Firebase匿名認証');
+        throw new Error('旧Firebase接続経路による新しい匿名UIDの発行を停止しました。現行の統合接続から再入場してください。');
       }
 
       const db=dbMod.getDatabase(app);
@@ -12961,7 +12999,7 @@ async function dbDelete(key){
     await new Promise((res,rej)=>{
       const tx=db.transaction(STORE,'readwrite');
       tx.objectStore(STORE).delete(key);
-      tx.oncomplete=res;
+tx.oncomplete=res;
       tx.onerror=()=>rej(tx.error);
     });
   }catch(e){
@@ -13476,6 +13514,42 @@ if($('liveRangeRadiusV59'))$('liveRangeRadiusV59').onchange=()=>{liveRangeEditin
 if($('liveRangeCustomKmV59'))$('liveRangeCustomKmV59').addEventListener('input',()=>{liveRangeEditingV61=true});
 if($('saveLiveRangeV59'))$('saveLiveRangeV59').onclick=saveLiveRangeSettingV59;
 
+// v80: track only fields actually edited in 大会主要情報.
+let maininfoBaselineV80=null;
+const maininfoDirtyFieldsV80=new Set();
+function normalizeMaininfoSnapshotV80(m){
+  m=(m&&typeof m==='object')?m:{};
+  return {
+    title:String(m.title||''),
+    eventDays:(Array.isArray(m.eventDays)?m.eventDays:[]).map(String).filter(Boolean).sort(),
+    start:String(m.start||''),
+    end:String(m.end||''),
+    state:String(m.state||''),
+    note:String(m.note||'')
+  };
+}
+function maininfoCanonicalSnapshotV80(){
+  const root=window.EventBaseConnectionAPI?.getState?.().eventRoot||{};
+  return normalizeMaininfoSnapshotV80(root.config?.maininfo||{});
+}
+function setMaininfoBaselineV80(m){
+  maininfoBaselineV80=normalizeMaininfoSnapshotV80(m);
+  maininfoDirtyFieldsV80.clear();
+}
+function beginMaininfoEditV80(){
+  setMaininfoBaselineV80(maininfoCanonicalSnapshotV80());
+}
+function markMaininfoFieldDirtyV80(target){
+  if(activeEditorName!=='maininfo'||!target)return;
+  let key='';
+  if(target.closest?.('#eventDaysEditor73'))key='eventDays';
+  else key=({eventTitleInput:'title',eventStartInput:'start',eventEndInput:'end',eventStateInput:'state',eventNoteInput:'note'})[target.id]||'';
+  if(key)maininfoDirtyFieldsV80.add(key);
+}
+function markMaininfoEventDaysDirtyV80(){
+  if(activeEditorName==='maininfo')maininfoDirtyFieldsV80.add('eventDays');
+}
+
 function openEditor(name){
   if(name==='players' && !$('page-manage')?.classList.contains('participantDirect117')){
     playerPageContext123='operator';
@@ -13515,6 +13589,7 @@ function openEditor(name){
   }
   syncEditors();
   refreshEditorSaveState(name);
+  if(name==='maininfo')beginMaininfoEditV80();
   if(name==='myPage'){renderCommonMyPageV59();}
   if(name==='eventResults'){closeEventResultEditV67();renderEventResultsV67();}
   if(name==='developerData'){renderDeveloperDataV74();loadDeveloperRegistrantsV76(true).catch(e=>console.warn('developer registrants v76',e));}
@@ -13563,10 +13638,10 @@ function openEditor(name){
 }
 document.querySelectorAll('[data-flow]').forEach(b=>b.onclick=()=>openEditor(b.dataset.flow));
 $('editorView').addEventListener('input',e=>{
-  if(e.target.closest('.editor') && !e.target.matches('[type=file]'))markEditorDirty();
+  if(e.target.closest('.editor') && !e.target.matches('[type=file]')){markMaininfoFieldDirtyV80(e.target);markEditorDirty()}
 });
 $('editorView').addEventListener('change',e=>{
-  if(e.target.closest('.editor') && !e.target.matches('[type=file]'))markEditorDirty();
+  if(e.target.closest('.editor') && !e.target.matches('[type=file]')){markMaininfoFieldDirtyV80(e.target);markEditorDirty()}
 });
 
 document.querySelectorAll('[data-next-editor]').forEach(b=>b.onclick=()=>openEditor(b.dataset.nextEditor));
@@ -13924,7 +13999,7 @@ function scheduleLiveReconnect124(delay=1800){
       if(!verified.ok){
         setLiveRuntimeMessage124('安全状態を再確認中です。位置送信は一時停止しています。');
         if(data.liveShareEnabled)scheduleLiveReconnect124(2500);
-        return;
+return;
       }
       startRealtimeLayer162(false);
       resumeLiveWatch124();
@@ -14924,7 +14999,7 @@ async function applyOfficialResultV68(){
   try{const p=persist();if(p&&typeof p.then==='function')await p;window.__EVENTBASE_LAST_WRITE_PROMISE__=null;renderCommonMyPageV59();renderPlayersV125();renderManagePlayers();renderSchedule();renderEventResultsV67();closeEventResultEditV67();toastNowV22(hasOfficial?'公式結果をMY PAGEへ反映しました':(provResult||provPlace?'公式結果を解除し、概算結果表示へ戻しました':'公式結果の表示を解除しました'))}catch(e){console.error('official result apply v69',e);data.players[idx]=backup;window.__EVENTBASE_LAST_WRITE_PROMISE__=null;renderEventResultsV67();toastNowV22('公式結果を保存できませんでした')}finally{if(btn)btn.disabled=false}
 }
 async function deleteTimingRecordV67(recordId){
-  if(!operator125())return toast('計測記録の削除は開発者・管理者だけが行えます');const rec=(data.timingRecords||[]).find(r=>r.id===recordId);if(!rec)return toast('削除する計測記録が見つかりません');if(!confirm('この保存済み手動計測原本を削除しますか？\n\n手動計測とLAP履歴が削除されます。MY PAGEへ反映済みの概算結果・公式結果は削除しません。'))return;try{if(!window.EventBaseConnectionAPI?.deleteTimingRecord)throw new Error('計測記録の削除経路がありません');await window.EventBaseConnectionAPI.deleteTimingRecord(recordId);data.timingRecords=(data.timingRecords||[]).filter(r=>r.id!==recordId);save(ACTIVE_DATA_KEY100,data);eventResultEditV67.recordId='';closeEventResultEditV67();renderEventResultsV67();toastNowV22('手動計測原本を削除しました')}catch(e){console.error('timing delete v69',e);toastNowV22('計測記録を削除できませんでした')}
+if(!operator125())return toast('計測記録の削除は開発者・管理者だけが行えます');const rec=(data.timingRecords||[]).find(r=>r.id===recordId);if(!rec)return toast('削除する計測記録が見つかりません');if(!confirm('この保存済み手動計測原本を削除しますか？\n\n手動計測とLAP履歴が削除されます。MY PAGEへ反映済みの概算結果・公式結果は削除しません。'))return;try{if(!window.EventBaseConnectionAPI?.deleteTimingRecord)throw new Error('計測記録の削除経路がありません');await window.EventBaseConnectionAPI.deleteTimingRecord(recordId);data.timingRecords=(data.timingRecords||[]).filter(r=>r.id!==recordId);save(ACTIVE_DATA_KEY100,data);eventResultEditV67.recordId='';closeEventResultEditV67();renderEventResultsV67();toastNowV22('手動計測原本を削除しました')}catch(e){console.error('timing delete v69',e);toastNowV22('計測記録を削除できませんでした')}
 }
 initResultTimeSelectV70();$('eventResultEditBackV67').onclick=closeEventResultEditV67;$('eventResultApplyV67').onclick=applyEventResultV67;$('eventResultOfficialApplyV68').onclick=applyOfficialResultV68;$('eventResultDeleteCurrentV69').onclick=()=>{if(eventResultEditV67.recordId)deleteTimingRecordV67(eventResultEditV67.recordId)};
 
@@ -15924,7 +15999,7 @@ function renderManageNotices(){
     clearNoticeEditor();
     renderManageNotices();
     renderHome();
-    refreshEditorSaveState('notices');
+refreshEditorSaveState('notices');
     toast(target?`「${target.title||'お知らせ'}」を削除しました`:'お知らせを削除しました');
   });
 }
@@ -15962,7 +16037,7 @@ function makeDayRow73(date=''){
   const ds=Array.from({length:daysInMonth73(yy,mm)},(_,i)=>i+1).map(d=>`<option value="${d}" ${d===dd?'selected':''}>${d}日</option>`).join('');
   row.innerHTML=`<select class="dayY73">${ys}</select><select class="dayM73">${ms}</select><select class="dayD73">${ds}</select><button type="button" class="removeDay73">削除</button>`;
   const refill=()=>{const y=Number(row.querySelector('.dayY73').value),m=Number(row.querySelector('.dayM73').value),old=Number(row.querySelector('.dayD73').value)||1,max=daysInMonth73(y,m);row.querySelector('.dayD73').innerHTML=Array.from({length:max},(_,i)=>i+1).map(d=>`<option value="${d}" ${d===Math.min(old,max)?'selected':''}>${d}日</option>`).join('')};
-  row.querySelector('.dayY73').onchange=refill;row.querySelector('.dayM73').onchange=refill;row.querySelector('.removeDay73').onclick=()=>{row.remove();if(!$('eventDaysEditor73').children.length)$('eventDaysEditor73').appendChild(makeDayRow73())};
+  row.querySelector('.dayY73').onchange=refill;row.querySelector('.dayM73').onchange=refill;row.querySelector('.removeDay73').onclick=()=>{markMaininfoEventDaysDirtyV80();markEditorDirty('開催日を変更しました。保存すると反映されます。');row.remove();if(!$('eventDaysEditor73').children.length)$('eventDaysEditor73').appendChild(makeDayRow73())};
   return row;
 }
 function readEventDaysEditor73(){
@@ -16018,7 +16093,7 @@ $('playerCalPrev74').onclick=()=>{playerCalCursor74=new Date(playerCalCursor74.g
 $('playerCalNext74').onclick=()=>{playerCalCursor74=new Date(playerCalCursor74.getFullYear(),playerCalCursor74.getMonth()+1,1);renderPlayerCalendar74()};
 $('playerCalendarClose74').onclick=()=>$('playerCalendarModal74').classList.add('hidden');
 $('playerCalendarModal74').addEventListener('click',e=>{if(e.target===$('playerCalendarModal74'))$('playerCalendarModal74').classList.add('hidden')});
-$('addEventDayBtn73').onclick=()=>$('eventDaysEditor73').appendChild(makeDayRow73());
+$('addEventDayBtn73').onclick=()=>{markMaininfoEventDaysDirtyV80();$('eventDaysEditor73').appendChild(makeDayRow73());markEditorDirty('開催日を変更しました。保存すると反映されます。')};
 
 
 function syncEditors(){
@@ -16067,18 +16142,52 @@ function syncEditors(){
   safe('players',()=>renderManagePlayers());
 }
 
-$('saveMainInfoBtn').onclick=()=>{
-  data.title=$('eventTitleInput').value.trim()||'大会名未設定';
+$('saveMainInfoBtn').onclick=async()=>{
   const dayDates=readEventDaysEditor73();
   if(!dayDates.length)return toast('開催日を1日以上登録してください');
-  data.eventDays=dayDates.map(d=>({id:'day_'+d.replace(/-/g,''),date:d}));
-  data.date=dayDates[0];
-  (data.players||[]).forEach(p=>{if(!dayDates.includes(p.dayDate))p.dayDate=dayDates[0]});
-  data.startTime=$('eventStartInput').value;
-  data.endTime=$('eventEndInput').value;
-  data.state=$('eventStateInput').value;
-  data.note=$('eventNoteInput').value.trim();
-  persist();renderHome();renderSchedule();syncPlayerDaySelect73();renderSharingDayState73();markEditorSaved('大会主要情報を保存しました');toast('大会主要情報を保存しました');
+  const dirty=new Set(maininfoDirtyFieldsV80);
+  if(!dirty.size){markEditorSaved('変更はありません');toast('変更はありません');return}
+
+  const fields={};
+  if(dirty.has('title'))fields.title=$('eventTitleInput').value.trim()||'大会名未設定';
+  if(dirty.has('eventDays'))fields.eventDays=dayDates;
+  if(dirty.has('start'))fields.start=$('eventStartInput').value;
+  if(dirty.has('end'))fields.end=$('eventEndInput').value;
+  if(dirty.has('state'))fields.state=$('eventStateInput').value;
+  if(dirty.has('note'))fields.note=$('eventNoteInput').value.trim();
+
+  let saveResultV80=null;
+  try{
+    saveResultV80=await window.EventBaseConnectionAPI.saveMaininfoV80(fields,maininfoBaselineV80||maininfoCanonicalSnapshotV80());
+  }catch(e){
+    console.error('maininfo save v80',e);
+    if(e?.code==='MAININFO_CONFLICT'){
+      setEditorSaveState('dirty','保存を保留','別端末で同じ項目が更新されています。一度この画面を開き直し、最新内容を確認してください。');
+      toast('別端末で同じ項目が更新されています。最新内容を確認してください');
+    }else toastNowV22('大会主要情報を保存できませんでした');
+    return;
+  }
+
+  // Apply only fields this device actually edited; untouched fields remain the latest Firebase values already held in data.
+  if('title' in fields)data.title=fields.title;
+  if('eventDays' in fields){
+    data.eventDays=fields.eventDays.map(d=>({id:'day_'+d.replace(/-/g,''),date:d}));
+    data.date=fields.eventDays[0]||'';
+    if(!saveResultV80?.playerDaySyncFailed)(data.players||[]).forEach(p=>{if(!fields.eventDays.includes(p.dayDate))p.dayDate=fields.eventDays[0]});
+  }
+  if('start' in fields)data.startTime=fields.start;
+  if('end' in fields)data.endTime=fields.end;
+  if('state' in fields)data.state=fields.state;
+  if('note' in fields)data.note=fields.note;
+  save(ACTIVE_DATA_KEY100,data);
+  renderHome();renderSchedule();syncPlayerDaySelect73();renderSharingDayState73();
+  setMaininfoBaselineV80(saveResultV80?.maininfo||{...(maininfoBaselineV80||{}),...fields});
+  if(saveResultV80?.playerDaySyncFailed){
+    markEditorSaved('大会主要情報は保存済み｜出走日の同期要確認');
+    toastNowV22('大会主要情報は保存しました｜出走日の同期を確認してください');
+  }else{
+    markEditorSaved('大会主要情報を保存しました');toastNowV22('大会主要情報を保存しました');
+  }
   syncRemoteSharePolicy87();
 };
 $('progressModeInput')?.addEventListener('change',()=>{
@@ -16890,7 +16999,7 @@ function callAlertEventId151(){
 }
 function callAlertKey151(p){
   return [
-    callAlertEventId151(),
+callAlertEventId151(),
     String(p?.id||''),
     String(p?.dayDate||''),
     String(p?.call||'')
@@ -17013,7 +17122,7 @@ function renderNoticesV125(){
     try{
       await window.EventBaseConnectionAPI.syncFromUI();
     }catch(e){data.notices=before;renderNoticesV125();renderHome();toast('お知らせを削除できません');return}
-    persist();renderNoticesV125();renderHome();toast('お知らせを削除しました');
+    save(ACTIVE_DATA_KEY100,data);renderNoticesV125();renderHome();toast('お知らせを削除しました');
   });
 }
 $('noticeV125Clear').onclick=clearNoticeV125;
@@ -17031,7 +17140,7 @@ $('noticeV125Save').onclick=async()=>{
   try{
     await window.EventBaseConnectionAPI.syncFromUI();
   }catch(e){data.notices=before;renderNoticesV125();renderHome();toast('お知らせを保存できません');return}
-  persist();clearNoticeV125();renderNoticesV125();renderHome();
+  save(ACTIVE_DATA_KEY100,data);clearNoticeV125();renderNoticesV125();renderHome();
   toast(wasEdit?'お知らせを編集しました':'お知らせを追加しました');
 };
 
@@ -17068,7 +17177,7 @@ function renderParkingV125(){
     try{
       await window.EventBaseConnectionAPI.syncFromUI();
     }catch(e){data.parkingPoints=before;renderParkingV125();if(map)renderMapMarkers();if(liveMap)renderLiveStaticMarkers();toast('駐車場を削除できません');return}
-    persist();renderParkingV125();
+    save(ACTIVE_DATA_KEY100,data);renderParkingV125();
     if(map)renderMapMarkers();if(liveMap)renderLiveStaticMarkers();
     toast('駐車場を削除しました');
   });
@@ -17100,7 +17209,7 @@ $('parkingV125Save').onclick=async()=>{
   try{
     await window.EventBaseConnectionAPI.syncFromUI();
   }catch(e){data.parkingPoints=before;renderParkingV125();if(map)renderMapMarkers();if(liveMap)renderLiveStaticMarkers();toast('駐車場を保存できません');return}
-  persist();clearParkingV125();renderParkingV125();
+  save(ACTIVE_DATA_KEY100,data);clearParkingV125();renderParkingV125();
   if(map)renderMapMarkers();if(liveMap)renderLiveStaticMarkers();
   toast(wasEdit?'駐車場を編集しました':'駐車場を追加しました');
 };
@@ -17803,7 +17912,11 @@ $('athleteV133Save').onclick=async()=>{
   const ownerUid=old?.ownerUid||(uid125()||'draft');
   const subjectUid=participant?uid125():(old?.subjectUid||'');
   const sameSubject=(data.players||[]).find(x=>subjectUid && x.subjectUid===subjectUid && x.profileId);
-  const profileId=old?.profileId||sameSubject?.profileId||('profile_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8));
+  // v80/v78: existing PLAYER id stays stable; first-time self registration uses COMMON PROFILE.
+  const commonProfileId=participant?String(window.EventBaseConnection?.profileId||'').trim().slice(0,120):'';
+  let profileId=old?.profileId||sameSubject?.profileId||commonProfileId;
+  if(participant&&!profileId)return toast('本人プロフィールを確認できません。画面を再読み込みしてからもう一度お試しください');
+  if(!profileId)profileId='profile_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8);
 
   const creatorRole=old?.createdByRole||(
     actualParticipant?'participant':
@@ -17886,8 +17999,7 @@ $('athleteV133Save').onclick=async()=>{
       return;
     }
   }
-
-  const idx=(data.players||[]).findIndex(x=>x.id===id);
+const idx=(data.players||[]).findIndex(x=>x.id===id);
   const wasEdit=idx>=0;
   const previous=wasEdit?{...data.players[idx]}:null;
 
@@ -18616,6 +18728,12 @@ function syncLiveShareUI(){
   renderParticipants79();
 }
 let shareStartPending110=false;
+let liveStartGpsCancel168=null;
+function cancelLiveStartPosition168(){
+  const cancel=liveStartGpsCancel168;
+  liveStartGpsCancel168=null;
+  if(cancel)cancel();
+}
 function resetShareConfirmButton110(){
   const yes=$('shareConfirmYes87');
   if(!yes)return;
@@ -18643,6 +18761,7 @@ function openShareConfirm87(){
   $('shareConfirm87')?.classList.remove('hidden');
 }
 function closeShareConfirm87(){
+  cancelLiveStartPosition168();
   $('shareConfirm87')?.classList.add('hidden');
   setShareConfirmPending110(false);
 }
@@ -18658,7 +18777,7 @@ async function requestLiveShare87(){
   warmLiveSafety176();
 }
 
-function acquireLiveStartPosition168(maxAccuracy=60,timeoutMs=16000){
+function acquireLiveStartPosition168(maxAccuracy=60,timeoutMs=16000,keepWaiting=false){
   return new Promise((resolve,reject)=>{
     if(!navigator.geolocation){
       reject(Object.assign(new Error('この端末ではGPSを利用できません'),{code:0}));
@@ -18669,6 +18788,7 @@ function acquireLiveStartPosition168(maxAccuracy=60,timeoutMs=16000){
     let timer=null;
     let finished=false;
     let bestAccuracy=Infinity;
+    let cancelCurrent=null;
 
     const cleanup=()=>{
       if(timer){clearTimeout(timer);timer=null}
@@ -18676,6 +18796,7 @@ function acquireLiveStartPosition168(maxAccuracy=60,timeoutMs=16000){
         try{navigator.geolocation.clearWatch(watchId)}catch(_){}
         watchId=null;
       }
+      if(liveStartGpsCancel168===cancelCurrent)liveStartGpsCancel168=null;
     };
     const fail=(err)=>{
       if(finished)return;
@@ -18690,32 +18811,39 @@ function acquireLiveStartPosition168(maxAccuracy=60,timeoutMs=16000){
       resolve(pos);
     };
 
-    timer=setTimeout(()=>{
-      const e=Object.assign(
-        new Error('GPS精度を確認できませんでした'),
-        {code:3,bestAccuracy:Number.isFinite(bestAccuracy)?bestAccuracy:null}
-      );
-      fail(e);
-    },timeoutMs);
+    cancelCurrent=()=>fail(Object.assign(
+      new Error('位置共有開始をキャンセルしました'),
+      {code:20,silent:true}
+    ));
+    if(keepWaiting)liveStartGpsCancel168=cancelCurrent;
 
+    if(!keepWaiting){
+      timer=setTimeout(()=>{
+        const e=Object.assign(
+          new Error('GPS精度を確認できませんでした'),
+          {code:3,bestAccuracy:Number.isFinite(bestAccuracy)?bestAccuracy:null}
+        );
+        fail(e);
+      },timeoutMs);
+    }
+
+    const watchOptions={enableHighAccuracy:true,maximumAge:0};
+    if(!keepWaiting)watchOptions.timeout=Math.min(timeoutMs,12000);
     watchId=navigator.geolocation.watchPosition(
       pos=>{
         const acc=Number(pos?.coords?.accuracy);
         if(Number.isFinite(acc)&&acc>0){
           bestAccuracy=Math.min(bestAccuracy,acc);
           // 最初の粗い測位では弾かず、同じ1回の操作の中で精度向上を待つ。
+          // 明示的なLIVE開始では16秒を超えても失敗にせず、60m以下になるまで同じwatchで待つ。
           if(acc<=maxAccuracy)succeed(pos);
         }
       },
       err=>{
-        // 権限拒否だけは即終了。一時的な測位失敗はタイムアウトまで待つ。
+        // 権限拒否だけは即終了。一時的な測位失敗はGPS watchを継続する。
         if(err?.code===1)fail(err);
       },
-      {
-        enableHighAccuracy:true,
-        maximumAge:0,
-        timeout:Math.min(timeoutMs,12000)
-      }
+      watchOptions
     );
   });
 }
@@ -18733,7 +18861,7 @@ async function startLiveShare(approved87=false){
     if(!navigator.geolocation)throw new Error('この端末ではGPSを利用できません');
     const day=gate.day;
     toast('GPS位置を確認しています…');
-    const pos=await acquireLiveStartPosition168(60,16000);
+    const pos=await acquireLiveStartPosition168(60,16000,true);
     if(!venueBypassAllowed166()&&venueLimitEnabledV59()){
       const check=livePositionPolicyCheckV59(pos);
       if(!Number.isFinite(check.distance))throw new Error('会場との距離を確認できないため位置共有を開始しません');
@@ -18747,7 +18875,9 @@ async function startLiveShare(approved87=false){
   }catch(err){
     await EventBaseLiveV45.stop();
     closeShareConfirm87();syncLiveShareUI();
-    if(err?.code===1)toast('位置情報が許可されていません。ブラウザの位置情報許可を確認してください');
+    if(err?.code===20){
+      // ユーザーが確認画面を閉じた／キャンセルした場合は追加エラーを出さない。
+    }else if(err?.code===1)toast('位置情報が許可されていません。ブラウザの位置情報許可を確認してください');
     else if(Number.isFinite(Number(err?.bestAccuracy)))toast(`GPS精度を確認できませんでした（最良 約${Math.round(Number(err.bestAccuracy))}m）。屋外で再度お試しください`);
     else toast(String(err?.message||err||'位置共有を開始できません'));
   }finally{setShareConfirmPending110(false)}
@@ -18867,6 +18997,7 @@ function initMap(){
 // explicitly press ON and confirm again on the actual event day.
 const shareWasActiveAtBoot87=false;
 data.liveShareEnabled=false; // v45 compatibility mirror; manual session never restores
+
 
 function enforceShareGate87(){
   if(!EventBaseLiveV45.isOn())return;
@@ -19184,11 +19315,49 @@ function rebuildV22ApplyRoot(root){
     const remoteDocsV63=(root.documents&&typeof root.documents==='object')?root.documents:{};
     data.docs={guidelines:'',startlist:'',eventSchedule:'',...remoteDocsV63};
     data.extraResourcesV60=normalizeExtraResourcesV60(root.extraResources||{});
-    if(root.homeDesign&&typeof root.homeDesign==='object'){
-      if(root.homeDesign.theme)data.homeTheme={...DEFAULT_HOME_THEME,...root.homeDesign.theme};
-      if('heroCustom' in root.homeDesign)data.homeHeroCustom=!!root.homeDesign.heroCustom;
-      if('heroName' in root.homeDesign)data.homeHeroName=String(root.homeDesign.heroName||'');
-      if('heroUpdatedAt' in root.homeDesign)data.homeHeroUpdatedAt=Number(root.homeDesign.heroUpdatedAt)||0;
+    const heroDesign=(root.homeDesign&&typeof root.homeDesign==='object')?root.homeDesign:{};
+    const heroLegacy=(root.config&&typeof root.config==='object')?root.config:{};
+    const heroCustomBefore=!!data.homeHeroCustom;
+    if(heroDesign.theme)data.homeTheme={...DEFAULT_HOME_THEME,...heroDesign.theme};
+
+    // v81 preservation: HOME image bytes still live in config/homeHeroDataUrl even though the duplicate config listener is disabled.
+    // Metadata normally lives in homeDesign; during the established two-step image save/reset, legacy config may be newer for one snapshot.
+    const designHeroTs=Number(heroDesign.heroUpdatedAt)||0;
+    const legacyHeroTs=Number(heroLegacy.homeHeroUpdatedAt)||0;
+    const useLegacyHeroMeta=legacyHeroTs>designHeroTs;
+    const heroMeta=useLegacyHeroMeta?heroLegacy:heroDesign;
+    const heroCustomKey=useLegacyHeroMeta?'homeHeroCustom':'heroCustom';
+    const heroNameKey=useLegacyHeroMeta?'homeHeroName':'heroName';
+    const heroUpdatedKey=useLegacyHeroMeta?'homeHeroUpdatedAt':'heroUpdatedAt';
+    const hasDesignHeroMeta=('heroCustom' in heroDesign)||('heroName' in heroDesign)||('heroUpdatedAt' in heroDesign);
+    const hasLegacyHeroMeta=('homeHeroCustom' in heroLegacy)||('homeHeroName' in heroLegacy)||('homeHeroUpdatedAt' in heroLegacy);
+    if((useLegacyHeroMeta&&hasLegacyHeroMeta)||(!useLegacyHeroMeta&&hasDesignHeroMeta)){
+      if(heroCustomKey in heroMeta)data.homeHeroCustom=!!heroMeta[heroCustomKey];
+      if(heroNameKey in heroMeta)data.homeHeroName=String(heroMeta[heroNameKey]||'');
+      if(heroUpdatedKey in heroMeta)data.homeHeroUpdatedAt=Number(heroMeta[heroUpdatedKey])||0;
+    }else if(hasLegacyHeroMeta){
+      // Compatibility only when canonical homeDesign metadata does not exist yet.
+      if('homeHeroCustom' in heroLegacy)data.homeHeroCustom=!!heroLegacy.homeHeroCustom;
+      if('homeHeroName' in heroLegacy)data.homeHeroName=String(heroLegacy.homeHeroName||'');
+      if('homeHeroUpdatedAt' in heroLegacy)data.homeHeroUpdatedAt=Number(heroLegacy.homeHeroUpdatedAt)||0;
+    }
+
+    const heroKey=homeHeroDbKey152();
+    const hasHeroData=Object.prototype.hasOwnProperty.call(heroLegacy,'homeHeroDataUrl');
+    if(data.homeHeroCustom===false && (heroCustomBefore||HOME_HERO_REMOTE_152[heroKey])){
+      setHomeHeroRemoteCache152('');
+      cacheRemoteHomeHero152('',data.homeHeroName||'event-home.jpg')
+        .then(()=>renderHomeHero())
+        .catch(e=>console.warn('home hero canonical clear v81',e));
+    }else if(hasHeroData){
+      const remoteHero=String(heroLegacy.homeHeroDataUrl||'');
+      if(String(HOME_HERO_REMOTE_152[heroKey]||'')!==remoteHero){
+        setHomeHeroRemoteCache152(remoteHero);
+        const remoteHeroName=String(data.homeHeroName||heroLegacy.homeHeroName||'event-home.jpg');
+        cacheRemoteHomeHero152(remoteHero,remoteHeroName)
+          .then(()=>renderHomeHero())
+          .catch(e=>console.warn('home hero canonical receive v81',e));
+      }
     }
     if(root.safety&&typeof root.safety==='object'){
       if('eventCompletedAt' in root.safety)data.eventCompletedAt=Number(root.safety.eventCompletedAt)||null;
@@ -19246,7 +19415,10 @@ function rebuildV22ApplyRoot(root){
     }
     try{syncPlayerDaySelect73()}catch(e){}
     const editorDirtyV41=!!(activeEditorName&&$('editorSaveBar')?.classList.contains('dirty'));
-    if(!editorDirtyV41){try{syncEditors()}catch(e){}}
+    if(!editorDirtyV41){
+      try{syncEditors()}catch(e){}
+      if(activeEditorName==='maininfo'){try{beginMaininfoEditV80()}catch(e){}}
+    }
     try{renderSharingDayState73()}catch(e){}
     try{syncLiveRangeSettingV59()}catch(e){}
     try{renderCommonMyPageV59()}catch(e){}
@@ -19359,9 +19531,9 @@ if(!window.__EVENTBASE_REBUILD_CORE__ && !STORAGE_PERSISTENT)setTimeout(()=>toas
 
 
 <script type="module" id="event-base-rebuild-v22-core">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
-import { getDatabase, ref, set, remove, get, update, onValue } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js";
+import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import { getAuth, signInAnonymously, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import { getDatabase, ref, set, remove, get, update, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js";
 
 const firebaseConfig={
   apiKey:"AIzaSyDthNBZk7aMzCM0kpZ5QIV39gXztVqM4L0",
@@ -19416,18 +19588,96 @@ async function sha256(v){
   return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");
 }
 async function accessHash(role,code){return sha256(`${S.eventId}|${role}|${String(code).trim()}`)}
-function firstAuth(){
+// 2026-10-25 AUTH V83: restore BOTH historical Auth app names before new UID issuance.
+// Never treat a restoration timeout or an Auth error as "no user".
+let authSelectionPromiseV83=null;
+function authInitialSnapshotV83(auth){
   return new Promise((resolve,reject)=>{
-    let off=()=>{};
-    const t=setTimeout(()=>{try{off()}catch{};resolve(S.auth.currentUser||null)},5000);
-    off=onAuthStateChanged(S.auth,u=>{clearTimeout(t);try{off()}catch{};resolve(u||null)},e=>{clearTimeout(t);try{off()}catch{};reject(e)});
+    let completed=false,off=()=>{};
+    off=onAuthStateChanged(auth,user=>{
+      if(completed)return;
+      completed=true;
+      off();
+      resolve(user||null);
+    },error=>{
+      if(completed)return;
+      completed=true;
+      off();
+      reject(error);
+    });
+  });
+}
+async function selectUnifiedAuthV83(){
+  if(authSelectionPromiseV83)return authSelectionPromiseV83;
+  authSelectionPromiseV83=(async()=>{
+    const candidates=['eventbase-rebuild','eventbase-rebuild-v22'].map(name=>{
+      const app=getApps().find(x=>x.name===name)||initializeApp(firebaseConfig,name);
+      return {name,app,auth:getAuth(app)};
+    });
+    // onAuthStateChanged provides the first settled Auth state; all snapshots
+    // must resolve successfully before any Realtime Database operation starts.
+    await Promise.all(candidates.map(x=>authInitialSnapshotV83(x.auth)));
+    const existing=candidates.filter(x=>!!x.auth.currentUser?.uid);
+    let selected=null,created=false;
+    if(existing.length===1)selected=existing[0];
+    else if(existing.length===2){
+      if(existing[0].auth.currentUser.uid===existing[1].auth.currentUser.uid){
+        selected=existing[0];
+      }else{
+        // Match existing PORTAL selection rules. A failed profile READ does NOT
+        // authorize guessing or creating a new anonymous identity.
+        const checked=await Promise.all(existing.map(async item=>{
+          const uid=item.auth.currentUser.uid;
+          try{
+            const snap=await get(ref(getDatabase(item.app),'profiles/'+uid));
+            return {item,bound:!!String(snap.val()?.profileId||'').trim()};
+          }catch(error){return {item,unknown:true};}
+        }));
+        const bound=checked.filter(x=>x.bound);
+        if(checked.some(x=>x.unknown)||bound.length!==1)
+          throw new Error('既存UIDが複数存在します。本人を確認できないため新しいUIDを発行せず停止しました。');
+        selected=bound[0].item;
+      }
+    }else{
+      // The new identity must use the same canonical Auth namespace as PORTAL.
+      // navigator.locks serializes creation across concurrent same-origin tabs
+      // where supported. No hidden retries; one signInAnonymously invocation.
+      const makeOne=async()=>{
+        // Recheck both sessions while holding the same-origin creation lock.
+        await Promise.all(candidates.map(x=>authInitialSnapshotV83(x.auth)));
+        const now=candidates.filter(x=>!!x.auth.currentUser?.uid);
+        if(now.length===1)return now[0];
+        if(now.length>1)throw new Error('認証復元中に複数UIDが検出されました。新規登録を中止しました。');
+        const target=candidates[0];
+        // Reject environments that cannot preserve a LOCAL Auth session.
+        // An in-memory anonymous session would mint another UID on every reopen.
+        await setPersistence(target.auth,browserLocalPersistence);
+        const credential=await signInAnonymously(target.auth);
+        if(!credential?.user?.uid||credential.user.uid!==target.auth.currentUser?.uid)
+          throw new Error('新規匿名UIDの確認に失敗しました。再作成せず接続を停止しました。');
+        created=true;
+        return target;
+      };
+      selected=(navigator.locks&&typeof navigator.locks.request==='function')
+        ?await navigator.locks.request('event-base-anonymous-uid-create',makeOne)
+        :await makeOne();
+    }
+    const uid=selected?.auth.currentUser?.uid;
+    if(!uid)throw new Error('保存済み本人の復元に失敗しました。新しいUIDは発行しません。');
+    console.log('[EVENT BASE Auth]',created?'新規作成した':'復元できた','uid='+uid);
+    return selected;
+  })();
+  return authSelectionPromiseV83.catch(error=>{
+    authSelectionPromiseV83=null; // Do not automatically retry. Only a new explicit navigation may restart.
+    throw error;
   });
 }
 async function ensureAuth(){
-  let u=await firstAuth();
-  if(!u){await signInAnonymously(S.auth);u=S.auth.currentUser}
-  if(!u)throw new Error("匿名認証を開始できません");
-  S.uid=u.uid;
+  const selected=await selectUnifiedAuthV83();
+  S.app=selected.app;
+  S.auth=selected.auth;
+  S.db=getDatabase(selected.app);
+  S.uid=selected.auth.currentUser.uid;
 }
 function eventIdFromUrl(){
   const e=clean(params.get("event"),80);
@@ -19618,6 +19868,88 @@ async function writeIfChanged(path,before,after){
   else await set(childRef(path),after);
   return true;
 }
+async function syncObjectFieldsV77(path,beforeNode,afterNode){
+  const before=asObj(beforeNode),after=asObj(afterNode);
+  const keys=new Set([...Object.keys(before),...Object.keys(after)]);
+  const patch={};
+  for(const key of keys){
+    const b=before[key],a=after[key];
+    if(stable(b)===stable(a))continue;
+    patch[key]=a===undefined?null:a;
+  }
+  if(!Object.keys(patch).length)return false;
+  // v81: one branch update keeps sibling fields isolated without serial Firebase round trips.
+  await update(childRef(path),patch);
+  return true;
+}
+function normalizeMaininfoValueV80(key,value){
+  if(key==='eventDays')return (Array.isArray(value)?value:[]).map(v=>clean(v,10)).filter(v=>/^\d{4}-\d{2}-\d{2}$/.test(v)).sort();
+  return String(value??'');
+}
+async function saveMaininfoV80(fields,baseline){
+  await assertSession();
+  if(!canManage())throw new Error('管理権限がありません');
+  fields=asObj(fields);baseline=asObj(baseline);
+  const allowed=['title','eventDays','start','end','state','note'];
+  const keys=allowed.filter(k=>Object.prototype.hasOwnProperty.call(fields,k));
+  if(!keys.length)return true;
+  let conflicts=[];
+  const tx=await runTransaction(childRef('config/maininfo'),currentRaw=>{
+    const current=asObj(currentRaw);
+    conflicts=[];
+    for(const key of keys){
+      const now=normalizeMaininfoValueV80(key,current[key]);
+      const base=normalizeMaininfoValueV80(key,baseline[key]);
+      const proposed=normalizeMaininfoValueV80(key,fields[key]);
+      if(stable(now)!==stable(base) && stable(now)!==stable(proposed)){
+        conflicts.push(key);
+      }
+    }
+    if(conflicts.length)return;
+    const merged={...current};
+    let changed=false;
+    for(const key of keys){
+      const proposed=normalizeMaininfoValueV80(key,fields[key]);
+      if(stable(normalizeMaininfoValueV80(key,current[key]))===stable(proposed))continue;
+      merged[key]=proposed;changed=true;
+    }
+    if(changed)merged.updatedAt=Date.now();
+    return merged;
+  },{applyLocally:false});
+  if(!tx.committed){
+    const e=new Error('別端末で同じ項目が更新されています');
+    e.code='MAININFO_CONFLICT';e.fields=[...conflicts];throw e;
+  }
+
+  const committedMaininfo=asObj(tx.snapshot?.val?.());
+  let playerDaySyncFailed=false;
+  // v82: preserve the established event-day normalization without resurrecting or clobbering a PLAYER
+  // that another device deletes/edits while maininfo is being saved. Each affected PLAYER transaction
+  // re-evaluates the latest server value and changes dayDate only when it still exists and is outside the new day set.
+  if(Object.prototype.hasOwnProperty.call(fields,'eventDays')){
+    const days=normalizeMaininfoValueV80('eventDays',fields.eventDays);
+    if(days.length){
+      const players=asObj(S.eventRoot?.players);
+      const affected=Object.entries(players).filter(([,p])=>p&&typeof p==='object'&&!days.includes(String(p.dayDate||'')));
+      if(affected.length){
+        const results=await Promise.allSettled(affected.map(([id])=>
+          runTransaction(childRef(`players/${id}`),currentRaw=>{
+            if(!currentRaw||typeof currentRaw!=='object')return;
+            const current={...currentRaw};
+            if(days.includes(String(current.dayDate||'')))return;
+            current.dayDate=days[0];
+            return current;
+          },{applyLocally:false})
+        ));
+        if(results.some(r=>r.status==='rejected')){
+          playerDaySyncFailed=true;
+          console.warn('player day sync after maininfo v81',results.filter(r=>r.status==='rejected').map(r=>r.reason));
+        }
+      }
+    }
+  }
+  return {maininfo:committedMaininfo,playerDaySyncFailed};
+}
 async function syncCollection(path,beforeNode,afterNode,{participantOwn=false}={}){
   const before=asObj(beforeNode),after=asObj(afterNode);
   const ids=new Set([...Object.keys(before),...Object.keys(after)]);
@@ -19647,13 +19979,14 @@ async function syncFromUI(){
   if(S.role==="participant"){
     wrote=(await syncCollection("players",prev.players,next.players,{participantOwn:true}))||wrote;
   }else if(canManage()){
-    wrote=(await writeIfChanged("config/maininfo",prev.config?.maininfo,next.config?.maininfo))||wrote;
+    // v80: maininfo is saved only by saveMaininfoV80; unrelated manager saves cannot write it.
     wrote=(await writeIfChanged("config/resultsUrl",prev.config?.resultsUrl??"",next.config?.resultsUrl??""))||wrote;
     wrote=(await writeIfChanged("venue",prev.venue??null,next.venue??null))||wrote;
     wrote=(await writeIfChanged("base",prev.base??null,next.base??null))||wrote;
     wrote=(await writeIfChanged("progress",prev.progress??null,next.progress??null))||wrote;
-    wrote=(await writeIfChanged("documents",prev.documents||{},next.documents||{}))||wrote;
-    wrote=(await writeIfChanged("homeDesign",prev.homeDesign||{},next.homeDesign||{}))||wrote;
+    // v77: child-scoped writes avoid replacing a sibling manager's newer document/homeDesign child.
+    wrote=(await syncObjectFieldsV77("documents",prev.documents||{},next.documents||{}))||wrote;
+    wrote=(await syncObjectFieldsV77("homeDesign",prev.homeDesign||{},next.homeDesign||{}))||wrote;
     wrote=(await syncCollection("notices",prev.notices,next.notices))||wrote;
     wrote=(await syncCollection("parking",prev.parking,next.parking))||wrote;
     wrote=(await syncCollection("players",prev.players,next.players))||wrote;
@@ -19666,7 +19999,7 @@ async function syncFromUI(){
 async function saveTimingRecords(records){
   await assertSession();
   if(!canManage())throw new Error('計測記録の保存権限がありません');
-  const list=(Array.isArray(records)?records:[]).filter(r=>r&&typeof r==='object'&&clean(r.id,120));
+const list=(Array.isArray(records)?records:[]).filter(r=>r&&typeof r==='object'&&clean(r.id,120));
   if(!list.length)return true;
   const patch={};
   for(const rec of list){const id=clean(rec.id,120);patch[`timingRecords/${id}`]={...rec,id,savedAt:Date.now(),savedByUid:S.uid,savedByRole:S.role}}
@@ -19892,10 +20225,7 @@ async function boot(){
   lock();
   try{
     status("新Firebaseへ接続しています…","wait");
-    S.app=initializeApp(firebaseConfig,"eventbase-rebuild-v22");
-    S.auth=getAuth(S.app);
-    S.db=getDatabase(S.app);
-    await ensureAuth();
+    await ensureAuth(); // restore both historical Auth stores first; no pre-Auth database reads.
 
     S.eventId=eventIdFromUrl();
     const ownerKey=clean(params.get("ownerKey"),100);
@@ -19938,7 +20268,7 @@ async function boot(){
 }
 
 window.EventBaseConnectionAPI={
-  join,ownerFromUrl,syncFromUI,saveProgressFromUI,saveTimingRecords,deleteTimingRecord,developerResetTestResults,developerDeleteEventPlayer,verify,unlink,sendChat,clearChat,setManagerColors,updateDisplayName,setLiveLocationPolicy,setLive,removeLiveSelf,clearLive,completeLiveEvent,setEmergencyStop,saveExtraResources,saveExtraDocumentFile,getExtraDocumentFile,deleteExtraDocumentFile,saveDocumentFile,getDocumentFile,deleteDocumentFile,
+  join,ownerFromUrl,syncFromUI,saveMaininfoV80,saveProgressFromUI,saveTimingRecords,deleteTimingRecord,developerResetTestResults,developerDeleteEventPlayer,verify,unlink,sendChat,clearChat,setManagerColors,updateDisplayName,setLiveLocationPolicy,setLive,removeLiveSelf,clearLive,completeLiveEvent,setEmergencyStop,saveExtraResources,saveExtraDocumentFile,getExtraDocumentFile,deleteExtraDocumentFile,saveDocumentFile,getDocumentFile,deleteDocumentFile,
   getState:()=>({...S})
 };
 
@@ -19952,5 +20282,12 @@ $("developerCodeV31").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preve
 boot();
 </script>
 
+
+<style id="event-base-portal-return-20261025">
+#eventBasePortalReturn20261025{display:none;position:fixed;right:14px;bottom:calc(82px + env(safe-area-inset-bottom));z-index:2147482000;background:#222;color:#fff;border:2px solid #e0bc49;border-radius:24px;padding:10px 14px;font:700 13px/1.3 -apple-system,BlinkMacSystemFont,sans-serif;text-decoration:none;box-shadow:0 4px 14px #0005}
+html[data-from-toprun-portal="1"] #eventBasePortalReturn20261025{display:block}
+</style>
+<a id="eventBasePortalReturn20261025" href="https://nuritakug-cpu.github.io/tabirun-bgm/TOP_RUN_PORTAL.html" aria-label="TOP RUN PORTALへ戻る">PORTALへ戻る</a>
+<script>(function(){const q=new URLSearchParams(location.search);if(q.get('portal')==='1'&&q.get('event')==='eventbase_mu4ujce3_xxx1')document.documentElement.dataset.fromToprunPortal='1';})();</script>
 </body>
 </html>
