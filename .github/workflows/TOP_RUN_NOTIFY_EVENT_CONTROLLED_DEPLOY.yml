@@ -71,13 +71,78 @@ jobs:
           ]) {
             if (!source.includes(marker)) throw Error('Worker code missing ' + marker);
           }
-          // The original signed-off Worker carrier remains byte-for-byte unchanged.
-          // Add only the simple badge envelope at the existing Web Push serialization boundary.
-          const before = 'data:JSON.stringify(payload),options:';
-          const after = 'data:JSON.stringify({...payload,badge:Number.isSafeInteger(payload?.badge)&&payload.badge>=0?payload.badge:1,app_badge:Number.isSafeInteger(payload?.badge)&&payload.badge>=0?payload.badge:1,notification:{...payload.notification,app_badge:Number.isSafeInteger(payload?.badge)&&payload.badge>=0?payload.badge:1}}),options:';
-          if(source.split(before).length!==2)throw Error('Badge insertion anchor not unique. Stop deploy.');
-          const patched=source.replace(before,after);
-          if(patched.replace(after,before)!==source)throw Error('Unexpected Worker modification. Stop deploy.');
+          // Original Worker carrier remains byte-for-byte unchanged and SHA-checked.
+          // Extend the EXISTING shared sendWebPush and existing export router only.
+          // D1 owns per-subscription counters. No Firebase/UID/profile changes.
+          const badgeHelpers = String.raw`
+          let trBadgeSchemaReady=false;
+          async function trBadgeSchema(db){
+            if(trBadgeSchemaReady)return;
+            await db.prepare('CREATE TABLE IF NOT EXISTS push_badge_states (id TEXT PRIMARY KEY, badge_count INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL)').run();
+            trBadgeSchemaReady=true;
+          }
+          async function trBadgeNext(sub,env){
+            if(!env.DB)return 1;
+            await trBadgeSchema(env.DB);
+            const id=await hashId(sub.endpoint);
+            const row=await env.DB.prepare('INSERT INTO push_badge_states(id,badge_count,updated_at) VALUES (?1,1,?2) ON CONFLICT(id) DO UPDATE SET badge_count=MIN(99,push_badge_states.badge_count+1),updated_at=excluded.updated_at RETURNING badge_count')
+              .bind(id,Date.now()).first();
+            if(!Number.isSafeInteger(row?.badge_count)||row.badge_count<1||row.badge_count>99)throw Error('Badge counter acknowledgement invalid');
+            return row.badge_count;
+          }
+          function trBadgeSame(a,b){
+            return a?.endpoint===b?.endpoint&&a?.keys?.p256dh===b?.keys?.p256dh&&a?.keys?.auth===b?.keys?.auth;
+          }
+          async function trBadgeClear(request,env){
+            const headers=cors(request);
+            if(request.method==='OPTIONS')return new Response(null,{status:request.headers.get('Origin')===ALLOWED_ORIGIN?204:403,headers});
+            if(request.method!=='POST')return json({ok:false},405,headers);
+            if(request.headers.get('Origin')!==ALLOWED_ORIGIN)return json({ok:false},403,headers);
+            if(!env.DB)return json({ok:false},503,headers);
+            try{
+              const sub=subscriptionFrom(await parseJson(request));
+              const id=await hashId(sub.endpoint);
+              // The endpoint by itself does not authorize a reset. Both existing Push
+              // subscription keys must match a server-registered endpoint, byte-for-byte.
+              // This operation does not expose or modify another user's Firebase identity.
+              let valid=false;
+              const legacy=await env.DB.prepare('SELECT raw FROM subs WHERE id=?1').bind(id).first();
+              if(legacy?.raw)valid=trBadgeSame(subscriptionFrom(JSON.parse(legacy.raw)),sub);
+              if(!valid){
+                await stage3EnsureDb(env.DB);
+                const formal=await env.DB.prepare('SELECT raw FROM stage3_devices WHERE id=?1').bind(id).first();
+                if(formal?.raw)valid=trBadgeSame(subscriptionFrom(JSON.parse(formal.raw)),sub);
+              }
+              if(!valid)return json({ok:false},404,headers);
+              await trBadgeSchema(env.DB);
+              await env.DB.prepare('UPDATE push_badge_states SET badge_count=0,updated_at=?2 WHERE id=?1').bind(id,Date.now()).run();
+              return json({ok:true,cleared:true},200,headers);
+            }catch{return json({ok:false},400,headers);}
+          }
+          `;
+          const sendStart = 'async function sendWebPush(subscription,env,fetcher=fetch,payload=stage2Payload()){\n  let prepared;';
+          if(source.split(sendStart).length!==2)throw Error('Shared sendWebPush anchor mismatch. Stop deploy.');
+          const sendWithBadge = sendStart + '\n  let trBadge=1;\n  try{trBadge=await trBadgeNext(subscription,env);}catch(_){/* Delivery remains available if count storage fails. */}';
+          const serializeBefore = 'data:JSON.stringify(payload),options:';
+          const serializeAfter = 'data:JSON.stringify({...payload,badge:trBadge,app_badge:trBadge,notification:{...payload.notification,app_badge:trBadge}}),options:';
+          if(source.split(serializeBefore).length!==2)throw Error('Unique Push serialization anchor missing. Stop deploy.');
+          const entryBefore = "    if(path!=='/api/stage3/event-notify')return baseWorker.fetch(request,env,ctx);";
+          const entryAfter = "    if(path==='/api/stage2/badge-clear')return trBadgeClear(request,env);\n" + entryBefore;
+          if(source.split(entryBefore).length!==2)throw Error('Export router anchor mismatch. Stop deploy.');
+          let patched=source.replace(sendStart,sendWithBadge)
+            .replace(serializeBefore,serializeAfter)
+            .replace(entryBefore,entryAfter);
+          const insertBefore = 'async function sendWebPush(subscription,env,fetcher=fetch,payload=stage2Payload())';
+          if(patched.split(insertBefore).length!==2)throw Error('Counter helper anchor missing. Stop deploy.');
+          patched=patched.replace(insertBefore,badgeHelpers+'\n'+insertBefore);
+          // Verify this change can be mechanically undone to precisely the signed parent.
+          let restored=patched.replace(badgeHelpers+'\n','').replace(sendWithBadge,sendStart)
+            .replace(serializeAfter,serializeBefore).replace(entryAfter,entryBefore);
+          if(restored!==source)throw Error('Non-badge Worker code modified. Stop deploy.');
+          for(const marker of ['trBadgeNext(subscription,env)','/api/stage2/badge-clear',
+            'app_badge:trBadge','ON CONFLICT(id) DO UPDATE SET badge_count']){
+            if(!patched.includes(marker))throw Error('Expected badge integration missing: '+marker);
+          }
           fs.writeFileSync(dir + 'worker.js', patched, 'utf8');
           fs.writeFileSync(dir + 'package.json', JSON.stringify({
             private: true,
@@ -90,7 +155,7 @@ jobs:
               wrangler: '4.0.0'
             }
           }, null, 2));
-          console.log('Worker SHA and D1 verified; badge-only patch prepared.');
+          console.log('Original Worker SHA and D1 verified; cumulative badge-count patch prepared.');
           NODE
           node --check cloudflare/top-run-notify/worker.js
 
