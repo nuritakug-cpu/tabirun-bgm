@@ -163,6 +163,7 @@ This candidate implements confirmed EVENT BASE design requirements in one cohere
 UI outside the explicitly completed flows is frozen. No legacy/new duplicate renderer or override layer is added.
 Candidate only: user-device verification is still required before baseline promotion.
 -->
+<!-- 2026-10-25 notification integration candidate. Parent: uploaded P82 HTML; no Rules/Auth/LIVE/race change. -->
 <html lang="ja">
 <head>
 <script id="ekiden-p3-safety-guard">
@@ -16999,8 +17000,11 @@ $('saveNoticeBtn').onclick=()=>{
   const title=$('noticeTitleInput').value.trim();
   const body=$('noticeBodyInput').value.trim();
   if(!title)return toast('タイトルを入力してください');const id=$('noticeEditId').value||`n${Date.now()}`;
-  const rec={id,title,body,updatedAt:Date.now()};
   const index=(data.notices||[]).findIndex(x=>x.id===id);
+  const previous=index>=0?data.notices[index]:null,now=Date.now();
+  const editorUid=window.EventBaseConnectionAPI?.getState?.()?.uid||'';
+  const rec={...previous,id,title,body,createdAt:Number(previous?.createdAt)||Number(previous?.updatedAt)||(previous?now-1:now),
+    updatedAt:now,...(previous?{}:{createdByUid:editorUid||undefined})};
 
   if(index>=0)data.notices[index]=rec;
   else{
@@ -18130,7 +18134,9 @@ $('noticeV125Save').onclick=async()=>{
   if(!title)return toast('タイトルを入力してください');
   let id=$('noticeV125Id').value||('notice_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,6));
   const old=(data.notices||[]).find(x=>x.id===id);
-  const rec={id,title,body,createdAt:Number(old?.createdAt)||Date.now(),updatedAt:Date.now(),updatedBy:uid125()};
+  const newNoticeNow=Date.now();
+  const rec={id,title,body,createdAt:Number(old?.createdAt)||newNoticeNow,updatedAt:newNoticeNow,
+    updatedBy:uid125(),...(old?.createdByUid?{createdByUid:old.createdByUid}:!old?{createdByUid:uid125()}:{})};
   const before=(data.notices||[]).slice();
   const idx=(data.notices||[]).findIndex(x=>x.id===id);
   const wasEdit=idx>=0;
@@ -21057,6 +21063,22 @@ async function syncFromUI(){
     throw new Error("大会への接続権限がありません");
   }
 
+  // After canonical NOTICE writes, verify newly created notices before notifying.
+  // An old notice or an edit is never sent as a new push; no Firebase listener is added.
+  if(canManage() && window.__TR_EKIDEN_EVENT_PUSH__){
+    const older=asObj(prev.notices),newer=asObj(next.notices),sender=S.uid,eventId=S.eventId;
+    for(const [id,rec] of Object.entries(newer)){
+      if(older[id]!==undefined||rec?.createdByUid!==sender||
+         !Number.isFinite(Number(rec.createdAt))||Number(rec.updatedAt)!==Number(rec.createdAt))continue;
+      void (async()=>{
+        try{
+          const ack=(await get(childRef('notices/'+id))).val();
+          if(ack?.id!==id||ack?.createdByUid!==sender||Number(ack.createdAt)!==Number(rec.createdAt))return;
+          await window.__TR_EKIDEN_EVENT_PUSH__?.('notice',id,eventId,sender);
+        }catch(_){/* Push cannot change the canonical save result. */}
+      })();
+    }
+  }
   return wrote||true;
 }
 // P41: keep HOME image on the existing canonical event-root path, but make the write small and verified.
@@ -21314,7 +21336,7 @@ function monitorConnection(){
     if(prev===false&&S.ready)scheduleVerify("connection-restored");
   },e=>console.warn("connection monitor",e));
 }
-async function sendChat(msg){await assertSession();const id=clean(msg?.id,80);if(!id)throw new Error('CHAT IDがありません');await set(childRef(`chat/${id}`),msg)}
+async function sendChat(msg){await assertSession();const id=clean(msg?.id,80);if(!id)throw new Error('CHAT IDがありません');await set(childRef(`chat/${id}`),msg);void window.__TR_EKIDEN_EVENT_PUSH__?.('chat',id,S.eventId,S.uid)}
 async function clearChat(){await assertSession();if(S.role!=='owner')throw new Error('開発者のみ');await remove(childRef('chat'))}
 async function setManagerColors(colors){
   await assertSession();
@@ -25387,6 +25409,33 @@ window.addEventListener('error',e=>window.__roundtripDiag('JS ERROR',e.message))
 window.addEventListener('unhandledrejection',e=>window.__roundtripDiag('PROMISE ERROR',e.reason));
 window.__roundtripDiag('起動','standalone='+Boolean(window.matchMedia?.('(display-mode: standalone)').matches));
 setInterval(display,1000);
+})();
+</script>
+<script id="tr-ekiden-event-notify-20261025">
+/* EKIDEN outgoing tournament notifications — same connected Firebase Auth, no new listeners. */
+(()=>{
+ 'use strict';
+ const SERVER='https://top-run-notify.nuritaku-g.workers.dev';
+ window.__TR_EKIDEN_EVENT_PUSH_STATUS__={status:'unattempted'};
+ window.__TR_EKIDEN_EVENT_PUSH__=async(kind,id,eventId,expectedUid)=>{
+   const st=window.__TR_EKIDEN_EVENT_PUSH_STATUS__;st.status='unverified';
+   if(!/^eventbase_[A-Za-z0-9_-]{5,119}$/.test(eventId||'')||!['notice','chat'].includes(kind)||
+      !/^[A-Za-z0-9_-]{1,128}$/.test(id||''))return;
+   const api=window.EventBaseConnectionAPI,s=api?.getState?.();
+   if(!s?.ready||s.uid!==expectedUid||s.eventId!==eventId||!s.commonProfile?.profileId||s.auth?.currentUser?.uid!==expectedUid)return;
+   try{
+     const c=await fetch(SERVER+'/api/stage2/config',{mode:'cors',cache:'no-store'});
+     const cfg=c.ok?await c.json():null;
+     if(!cfg?.stage3Enabled||!cfg?.formalDeliveryEnabled){st.status='server_disabled';return;}
+     const token=await s.auth.currentUser.getIdToken(false),check=api.getState();
+     if(!check.ready||check.uid!==expectedUid||check.eventId!==eventId||check.commonProfile?.profileId!==s.commonProfile.profileId)return;
+     const resp=await fetch(SERVER+'/api/stage3/event-notify',{method:'POST',mode:'cors',cache:'no-store',
+       headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({kind,id,eventId})});
+     const outcome=await resp.json().catch(()=>null);
+     st.status=resp.ok&&outcome?.ok===true?'provider_processed':'server_rejected';
+     st.accepted=outcome?.acceptedByPushService||0;
+   }catch{st.status='network_unverified';}
+ };
 })();
 </script>
 </body>
