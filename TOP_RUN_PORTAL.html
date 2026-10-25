@@ -5199,6 +5199,31 @@ body.trEventCommsActive #screen-notices [data-list-filter="notices"],body.trEven
 #trEventChatScope,#trEventChatPanel,#trEventNoticeEditor{display:none!important}
 #trEventChatPanel .trEventCommsHint{color:#605d50}
 </style>
+<style id="top-run-chat-viewport-unread-20261025">
+/* CHAT only: a single inner scroll region, with bottom space above the fixed composer. */
+#screen-chat:not(.hidden){display:flex;flex-direction:column;height:100dvh;max-height:100dvh;overflow:hidden!important}
+#screen-chat .portalScreenHead{position:relative;flex:0 0 auto;z-index:2}
+#screen-chat>main.chatMain{
+ flex:1 1 auto;min-height:0!important;max-height:none!important;
+ overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;
+ -webkit-overflow-scrolling:touch;
+ padding-bottom:calc(112px + env(safe-area-inset-bottom));
+ scroll-padding-bottom:calc(112px + env(safe-area-inset-bottom));
+}
+#screen-chat .chatUnreadLine{
+ display:flex;align-items:center;gap:10px;justify-content:center;
+ width:100%;margin:13px 0 11px;color:#8d4a12;
+ font-size:12px;font-weight:1000;line-height:1.4;letter-spacing:.03em;
+}
+#screen-chat .chatUnreadLine::before,#screen-chat .chatUnreadLine::after{
+ content:"";height:1px;flex:1 1 0;min-width:15px;background:currentColor;opacity:.75;
+}
+#screen-chat .chatUnreadLine>span{flex:none;border:1px solid currentColor;border-radius:999px;padding:5px 11px;background:#fff8e6}
+html[data-portal-personal-color="winter"] #screen-chat .chatUnreadLine{color:#71eee1}
+html[data-portal-personal-color="winter"] #screen-chat .chatUnreadLine>span{background:#07323e}
+html[data-portal-personal-color="matte"] #screen-chat .chatUnreadLine{color:#ffa168}
+html[data-portal-personal-color="matte"] #screen-chat .chatUnreadLine>span{background:#2f2024}
+</style>
 </head>
 <body>
 <div id="portalFirstPaintAuthOverlay" role="status" aria-live="polite" aria-label="TOP RUN PORTAL 認証中">
@@ -6713,6 +6738,21 @@ body.trEventCommsActive #screen-notices [data-list-filter="notices"],body.trEven
   function currentScreen(){
     return qsa('.portalScreen').find(s => !s.classList.contains('hidden')) || null;
   }
+  let portalChatUnreadBoundaryId='';
+  let portalChatAwaitInitialLoad=false;
+  let portalChatUnreadScrollPending=false;
+  function capturePortalChatUnreadBoundary(){
+    const first=(chatMessages||[]).filter(m=>portalListAccept('chat',portalChatLocalDay(m.ts)))
+      .slice().sort((a,b)=>(Number(a.ts)||0)-(Number(b.ts)||0))
+      .find(m=>!isMyPortalChat(m)&&!portalChatReadIds.has(m.id));
+    portalChatUnreadBoundaryId=first?.id||'';
+    portalChatAwaitInitialLoad=window.__TR_PORTAL_SYNC__?.loaded?.chat===false;
+    portalChatUnreadScrollPending=!!portalChatUnreadBoundaryId||portalChatAwaitInitialLoad;
+  }
+  function enterPortalChat(){
+    capturePortalChatUnreadBoundary();
+    markPortalChatRead();renderChat();
+  }
   function showScreen(name, push=true){
     if(window.__TR_PORTAL_VIEW_ONLY__ && !['links'].includes(name))return;
     if(['management','athlete-directory','flow-manager'].includes(name) && (!canManage || !verifiedPortalUid || portalParticipantPreviewMode))return;
@@ -6720,7 +6760,7 @@ body.trEventCommsActive #screen-notices [data-list-filter="notices"],body.trEven
     if(!next) return;
     const cur = currentScreen();
     if(cur){
-      if(cur.id==='screen-chat')markPortalChatRead();
+      if(cur.id==='screen-chat'){markPortalChatRead();portalChatUnreadBoundaryId='';portalChatAwaitInitialLoad=false;portalChatUnreadScrollPending=false;}
       if(push) screenStack.push(cur.id.replace('screen-',''));
       cur.classList.add('hidden'); cur.setAttribute('aria-hidden','true');
     }
@@ -6744,7 +6784,7 @@ body.trEventCommsActive #screen-notices [data-list-filter="notices"],body.trEven
     if(name === 'links') renderLinks();
     if(name === 'notices') renderNotices();
     if(name === 'events-tab') renderEventTab();
-    if(name === 'chat'){ markPortalChatRead(); renderChat(); }
+    if(name === 'chat'){ enterPortalChat(); }
     if(name === 'management') renderManagement();
     if(name === 'races') flowRenderMyRaces();
     if(name === 'flow-external') flowRenderExternal();
@@ -7652,6 +7692,7 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
   }
   function returnPortalHome(){
     if(!$('screen-chat').classList.contains('hidden'))markPortalChatRead();
+    portalChatUnreadBoundaryId='';portalChatAwaitInitialLoad=false;
     hideAllScreens();
     qsa('.portalBottomTab').forEach(b=>b.classList.remove('active'));
     renderManagementVisibility();
@@ -7663,13 +7704,14 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
   function showRootScreen(name){
     if(window.__TR_PORTAL_VIEW_ONLY__)return;
     if(!$('screen-chat').classList.contains('hidden'))markPortalChatRead();
+    portalChatUnreadBoundaryId='';portalChatAwaitInitialLoad=false;
     hideAllScreens();
     qsa('.portalBottomTab').forEach(b=>b.classList.toggle('active', b.dataset.bottomTarget===name));
     const next=$('screen-'+name); if(!next) return;
     next.classList.remove('hidden'); next.setAttribute('aria-hidden','false'); next.scrollTop=0;
     if(name==='notices'){ renderNotices(); }
     if(name==='events-tab') renderEventTab();
-    if(name==='chat'){ markPortalChatRead(); renderChat(); requestAnimationFrame(scrollPortalChatToLatest); }
+    if(name==='chat'){ enterPortalChat(); }
     renderManagementVisibility();
   }
   qsa('[data-bottom-target]').forEach(btn=>btn.addEventListener('click',()=>showRootScreen(btn.dataset.bottomTarget)));
@@ -7832,7 +7874,9 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
       const dayKey=Number.isFinite(d.getTime())?`${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`:'';
       const dayBand=dayKey&&dayKey!==lastDay?`<div class="chatDateBand"><span>${esc(portalChatDateLabel(ts))}</span></div>`:'';
       if(dayKey)lastDay=dayKey;
-      return `${dayBand}<div class="msg ${m.staff?'staff ':''}${isMyPortalChat(m)?'mine ':''}" data-chat-ts="${ts}">
+      const boundary=portalChatUnreadBoundaryId&&m.id===portalChatUnreadBoundaryId?
+        '<div class="chatUnreadLine" role="separator" aria-label="ここから未読"><span>ここから未読</span></div>':'';
+      return `${dayBand}${boundary}<div class="msg ${m.staff?'staff ':''}${isMyPortalChat(m)?'mine ':''}" data-chat-ts="${ts}">
         <div class="msgHead">
           <span>${esc(m.name||'参加者')}</span>
           <span>${Number.isFinite(d.getTime())?d.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):''}</span>
@@ -7840,9 +7884,20 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
         <p>${esc(m.text||'')}</p>
       </div>`;
     }).join('');
-    // Firebase notifications redraw the chat after send acknowledgement; scroll once DOM is updated.
-    if(rows.length && isMyPortalChat(rows[rows.length-1])){
-      requestAnimationFrame(scrollPortalChatToLatest);
+    // Enter at the first unread line; after entry, new incoming/outgoing messages
+    // move the chat to the latest visible row above the composer.
+    if(rows.length && !chatScreen.classList.contains('hidden')){
+      if(portalChatUnreadScrollPending && box.querySelector('.chatUnreadLine')){
+        portalChatUnreadScrollPending=false;
+        requestAnimationFrame(()=>{
+          const main=chatScreen.querySelector('main.chatMain');
+          const line=box.querySelector('.chatUnreadLine');
+          if(!main||!line)return;
+          main.scrollTop+=line.getBoundingClientRect().top-main.getBoundingClientRect().top-14;
+        });
+      }else if(!portalChatUnreadScrollPending){
+        requestAnimationFrame(scrollPortalChatToLatest);
+      }
     }
   }
   const chatInput=$('portalChatInput');
@@ -7858,7 +7913,16 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
   }
   function scrollPortalChatToLatest(){
     if(!chatScreen || chatScreen.classList.contains('hidden')) return;
-    chatScreen.scrollTo({top:Math.max(0,chatScreen.scrollHeight-chatScreen.clientHeight),behavior:'auto'});
+    const main=chatScreen.querySelector('main.chatMain');
+    if(!main)return;
+    main.scrollTop=Math.max(0,main.scrollHeight-main.clientHeight);
+  }
+  // A second frame catches iOS PWA layout after virtual keyboard / message wrapping changes.
+  chatInput.addEventListener('focus',()=>requestAnimationFrame(()=>requestAnimationFrame(scrollPortalChatToLatest)));
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize',()=>{
+      if(!chatScreen.classList.contains('hidden'))requestAnimationFrame(scrollPortalChatToLatest);
+    },{passive:true});
   }
   $('portalChatSend').onclick=async()=>{
     const t=chatInput.value.trim();
@@ -13000,11 +13064,20 @@ applyNotices(rows){
       renderNoticeHome();renderNotices();renderManageNotices();renderNotificationPreview();
     },
     applyChat(rows){
+      const visible=!$('screen-chat').classList.contains('hidden')&&document.visibilityState==='visible';
+      const existingIds=visible?new Set(chatMessages.map(m=>m.id)):null;
+      const receivedNew=visible && rows.some(m=>!isMyPortalChat(m)&&!existingIds.has(m.id));
       chatMessages.splice(0,chatMessages.length,...rows);
-// A message already visible in the open room is read, not a new notification
-      // merely because a Firebase snapshot or another screen transition arrived.
-      if(!$('screen-chat').classList.contains('hidden'))markPortalChatRead();
+      // When this room opened before its first Firebase snapshot, preserve the
+      // unread boundary before writing browser-local read receipts.
+      if(visible&&portalChatAwaitInitialLoad){
+        capturePortalChatUnreadBoundary();portalChatAwaitInitialLoad=false;
+      }
+      if(visible)markPortalChatRead();
       renderChat();renderPortalChatBadge();renderNotificationPreview();renderDeveloperChatSummary();
+      if(receivedNew){
+        window.dispatchEvent(new Event('tr-portal-chat-visible-message'));
+      }
     },
     disableChat(){$('portalChatSend').disabled=true;$('portalChatSend').textContent='接続待ち';},
     enableChat(){$('portalChatSend').disabled=false;$('portalChatSend').textContent='送信';}
@@ -16027,6 +16100,18 @@ setInterval(display,1000);
   // authorized. Retry once it is verified, without polling or extra RTDB reads.
   window.addEventListener('tr-portal-authorized',()=>{
     if(document.visibilityState==='visible')void resetAuthenticated().then(ok=>{if(!ok)void resetLegacy();});
+  });
+  let chatActiveResetTimer=null;
+  window.addEventListener('tr-portal-chat-visible-message',()=>{
+    if(document.visibilityState!=='visible'||document.getElementById('screen-chat')?.classList.contains('hidden'))return;
+    opened();
+    // The canonical Firebase subscription can show the CHAT before Push send
+    // increments D1. Debounce and clear after sender processing as well.
+    if(chatActiveResetTimer)clearTimeout(chatActiveResetTimer);
+    chatActiveResetTimer=setTimeout(()=>{
+      chatActiveResetTimer=null;
+      if(document.visibilityState==='visible'&&!document.getElementById('screen-chat')?.classList.contains('hidden'))opened();
+    },3200);
   });
 })();
 </script>
