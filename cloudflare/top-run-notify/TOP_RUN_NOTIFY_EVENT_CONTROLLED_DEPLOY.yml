@@ -1,0 +1,113 @@
+name: TOP RUN Event Notification Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Deploy to Cloudflare (first run false)"
+        type: boolean
+        default: false
+      enable_event:
+        description: "Enable event notifications (first run false)"
+        type: boolean
+        default: false
+      confirm_event:
+        description: "Only when enabling, enter ENABLE_EVENT_PUSH"
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: top-run-notify-manual
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout reviewed notification branch
+        uses: actions/checkout@v4
+        with:
+          ref: top-run-notify-event-release-20261025
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify and restore Worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('node:fs');
+          const crypto = require('node:crypto');
+          const dir = 'cloudflare/top-run-notify/';
+          const html = fs.readFileSync(dir + 'WORKER_UPLOAD.html', 'utf8');
+          const match = html.match(/<script id="tr-worker-source-base64" type="text\/plain">\s*([A-Za-z0-9+/=\s]+?)\s*<\/script>/);
+          if (!match) throw Error('Worker payload missing');
+          const buf = Buffer.from(match[1].replace(/\s/g, ''), 'base64');
+          const sha = crypto.createHash('sha256').update(buf).digest('hex');
+          if (sha !== 'e70dba5d25f3a553146d5e7997255badee7d8976efd0be7eb4ff4349b51cbc09') {
+            throw Error('Worker SHA mismatch');
+          }
+          const cfg = JSON.parse(fs.readFileSync(dir + 'wrangler.jsonc', 'utf8'));
+          if (
+            cfg.name !== 'top-run-notify' ||
+            cfg.main !== './worker.js' ||
+            cfg.keep_vars !== true ||
+            cfg.vars?.STAGE3_EVENT_ENABLED !== 'false' ||
+            cfg.d1_databases?.length !== 1 ||
+            cfg.d1_databases[0].binding !== 'DB' ||
+            cfg.d1_databases[0].database_id !== '4c6b92f5-460e-4309-8fdf-539651d8b461'
+          ) throw Error('Worker or D1 configuration mismatch');
+          const source = buf.toString('utf8');
+          for (const marker of [
+            'stage2Declarative:true',
+            'web_push:8030',
+            '/api/stage3/event-notify'
+          ]) {
+            if (!source.includes(marker)) throw Error('Worker code missing ' + marker);
+          }
+          fs.writeFileSync(dir + 'worker.js', buf);
+          fs.writeFileSync(dir + 'package.json', JSON.stringify({
+            private: true,
+            type: 'module',
+            dependencies: {
+              '@block65/webcrypto-web-push': '2.0.0',
+              'uint8array-extras': '1.5.0'
+            },
+            devDependencies: {
+              wrangler: '4.0.0'
+            }
+          }, null, 2));
+          console.log('Worker source, checksum and D1 verified.');
+          NODE
+          node --check cloudflare/top-run-notify/worker.js
+
+      - name: Install dependencies
+        working-directory: cloudflare/top-run-notify
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Dry run
+        working-directory: cloudflare/top-run-notify
+        run: npx wrangler deploy --dry-run
+
+      - name: Require explicit confirmation to enable
+        if: ${{ inputs.enable_event }}
+        env:
+          PUBLISH: ${{ inputs.publish }}
+          CONFIRM: ${{ inputs.confirm_event }}
+        run: test "$PUBLISH" = "true" && test "$CONFIRM" = "ENABLE_EVENT_PUSH"
+
+      - name: Deploy to Cloudflare
+        if: ${{ inputs.publish }}
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: cloudflare/top-run-notify
+          wranglerVersion: "4"
+          command: deploy --var STAGE3_ENABLED:true --var STAGE3_EVENT_ENABLED:${{ inputs.enable_event }}
