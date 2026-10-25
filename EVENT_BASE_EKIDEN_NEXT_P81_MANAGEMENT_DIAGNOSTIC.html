@@ -1,3 +1,5 @@
+<!-- 2026-10-25 P87 HISTORICAL EKIDEN RECORD HOLDERS / OLD EVENT eventbase_ekiden_dev_20261006 / read-only timingRecords + recorded race legs / existing Firebase Auth reused / no new subscriber or write paths; NOT DEPLOYED. -->
+<!-- 2026-10-25 P86 / DEVELOPER ADDED CARDS: source tournament players + legacy athletesV125 read-only, current canonical root cards prioritized, no new Firebase init/Rules/writes; visible build marker. -->
 <!-- 2026-10-25 P85 DEVELOPER-REGISTERED EKIDEN ATHLETE ROSTER REFERENCE: include existing local s.profiles in unified list; read-only inspection/jump to existing entry; no duplicate registration, no Firebase changes. -->
 <!-- 2026-10-25 P84 PARTICIPANT ROSTER DISPLAY / REVIEW: visible read-only unified listing from existing EVENT BASE player cards + authenticated registrants, no name-only identity association, existing category and registration save routes, source and Rules unchanged. -->
 <!-- 2026-10-25 PRODUCTION CANDIDATE / V83 AUTH & TRAFFIC V2 / EVENT PUSH OFF / COMMON PUSH UNCHANGED -->
@@ -21902,9 +21904,27 @@ async function readEventPlayersReadOnlyP5(eventId){
   eventId=clean(eventId,80);
   if(!/^[A-Za-z0-9_-]{8,80}$/.test(eventId))throw new Error('参照元大会IDを確認できません');
   if(!S.db||!S.auth?.currentUser)throw new Error('Firebase認証を確認できません');
-  const snap=await get(ref(S.db,`events/${eventId}/players`));
-  const raw=snap.exists()?snap.val():{};
-  return raw&&typeof raw==='object'?raw:{};
+  // P86: legacy operator-registered cards may still be under athletesV125.
+  // This is one on-demand read per collection, NOT a new listener or save path.
+  const canonicalPath=`events/${eventId}/players`;
+  const legacyPath=`events/${eventId}/athletesV125`;
+  const [canonical,legacy]=await Promise.allSettled([
+    get(ref(S.db,canonicalPath)),get(ref(S.db,legacyPath))
+  ]);
+  if(canonical.status!=='fulfilled'&&legacy.status!=='fulfilled')
+    throw new Error('既存大会の出走カードを読み取れません。閲覧権限を確認してください。');
+  const combined={};
+  for(const response of [legacy,canonical]){
+    if(response.status!=='fulfilled')continue;
+    const snap=response.value,raw=snap.exists()?snap.val():{};
+    if(!raw||typeof raw!=='object')continue;
+    for(const [id,value] of Object.entries(raw)){
+      if(value&&typeof value==='object')combined[id]={id,...value};
+    }
+  }
+  if(canonical.status!=='fulfilled'||legacy.status!=='fulfilled')
+    console.warn('P86: only one historical player-card path was readable; canonical identity must not be inferred');
+  return combined;
 }
 async function readEventRegistrantsReadOnlyP6(eventId){
   eventId=clean(eventId,80);
@@ -21921,12 +21941,37 @@ async function readEventRegistrantsReadOnlyP6(eventId){
     profiles:profiles&&typeof profiles==='object'?profiles:{}
   };
 }
+
+// P87: historical 2026-10-06 EKIDEN race results, read-only, same Auth/DB instance.
+// No new listener, app, binding, Rules, write path or person database.
+async function readEkidenRecordedPeopleP87(eventId){
+  if(String(eventId)!=='eventbase_ekiden_dev_20261006')throw new Error('過去駅伝大会IDの照合に失敗しました');
+  if(!S.db||!S.auth?.currentUser||S.auth.currentUser.uid!==S.uid||!S.ready)throw new Error('既存のFirebase本人接続を確認できません');
+  if(S.role!=='owner')throw new Error('過去駅伝の選手記録は開発者接続で参照してください');
+  const paths=[
+    `events/${eventId}/timingRecords`,
+    `eventEkiden/${eventId}/state/profiles`,
+    `eventEkiden/${eventId}/state/teams`,
+    `eventEkiden/${eventId}/state/raceDayStateP5/races`
+  ];
+  const results=await Promise.allSettled(paths.map(p=>get(ref(S.db,p))));
+  const raw={},failed=[];let readable=0;
+  for(let i=0;i<paths.length;i++){
+    const item=results[i];
+    if(item.status==='fulfilled'){
+      readable++;raw[['timingRecords','profiles','teams','races'][i]]=item.value.exists()?item.value.val():null;
+    }else{failed.push(paths[i]);raw[['timingRecords','profiles','teams','races'][i]]=null;}
+  }
+  if(!readable)throw new Error('2026年10月6日の駅伝記録を参照できません（Firebase READ権限または接続をご確認ください）');
+  return {...raw,failed,readable};
+}
+
 window.EventBaseConnectionAPI={
   join,ownerFromUrl,syncFromUI,notifyEventPost,saveMaininfoV80,saveProgressFromUI,saveHomeHeroDataP41,saveTimingRecords,deleteTimingRecord,publishEkidenEntriesP30,claimEkidenEntryP30,developerResetTestResults,developerDeleteEventPlayer,verify,unlink,sendChat,clearChat,setManagerColors,updateDisplayName,setLiveLocationPolicy,setLive,removeLiveSelf,clearLive,completeLiveEvent,setEmergencyStop,saveExtraResources,saveExtraDocumentFile,getExtraDocumentFile,deleteExtraDocumentFile,saveDocumentFile,getDocumentFile,deleteDocumentFile,
   getState:()=>({...S}),
   saveEkidenStateP41,saveEkidenRaceP75,
   readEventPlayersReadOnlyP5,
-  readEventRegistrantsReadOnlyP6
+  readEventRegistrantsReadOnlyP6,readEkidenRecordedPeopleP87
 };
 
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")verify("visible")});
@@ -23680,7 +23725,36 @@ body.ek15-test .ek15NavBtn{font-size:9px!important}
 #ekP84Roster .ekP84PickStatus{font-size:11px;color:#e8d78a;margin:8px 0;min-height:18px}
 #ekP84Roster .ekP84NoMatch{padding:10px;color:#bac3cb;font-size:12px}
 #ekP84Roster .ekP84LegacyFields{display:none!important}
-@media(max-width:370px){#ekP84Roster .ekP84Candidate{grid-template-columns:24px minmax(0,1fr)}#ekP84Roster .ekP84Tag{grid-column:2;justify-self:start}}
+@media(max-width:370px){#ekP84Roster .ekP84Candidate{grid-template-columns:24px minmax(0,1fr)}
+/* P87 historic recorded-runner list visuals (isolated; no existing UI changes). */
+#ekP87Roster{margin-bottom:15px}
+#ekP87Roster .ekP84Header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}
+#ekP87Roster .ekP84Header b{font-size:16px;color:#ffe04d}
+#ekP87Roster .ekP84Header span{font-size:11px;color:#c5ced4}
+#ekP84Search{box-sizing:border-box;width:100%;min-height:45px;border:1px solid #657079;border-radius:11px;background:#0e1215;color:#fff;font-size:15px;padding:10px 12px;margin-bottom:9px}
+#ekP87Roster .ekP84List{display:grid;gap:7px;max-height:min(51vh,500px);overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:2px 3px 4px 1px}
+#ekP87Roster .ekP84Candidate{display:grid;grid-template-columns:30px minmax(0,1fr) auto;align-items:center;gap:8px;width:100%;min-height:58px;padding:10px 11px;border:1px solid #444c52;border-radius:12px;background:#181c20;color:#fff;text-align:left;touch-action:manipulation}
+#ekP87Roster .ekP84Candidate[hidden]{display:none}
+#ekP87Roster .ekP84Candidate:active{background:#31341c}
+#ekP87Roster .ekP84Candidate[aria-pressed="true"]{border:2px solid #ffd400;background:#343017}
+#ekP87Roster .ekP84Candidate[data-ekp84-kind="existing"]{border-left:3px solid #8bd7b2}
+#ekP87Roster .ekP84Candidate[data-ekp84-kind="existing"] .ekP84Tag{color:#adeac9;border-color:#518c70}
+#ekP87Roster .ekP84Bottom select:disabled{opacity:.72}
+#ekP87Roster .ekP1StationRow.ekP85Located{outline:2px solid #ffe04d;outline-offset:2px;background:#38321b}
+#ekP87Roster .ekP84Check{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;border:1px solid #747e85;color:#ffd400;font-size:18px}
+#ekP87Roster .ekP84Candidate[aria-pressed="true"] .ekP84Check{background:#ffd400;color:#111;border-color:#ffd400}
+#ekP87Roster .ekP84Person{min-width:0}
+#ekP87Roster .ekP84Person b{display:block;white-space:normal;overflow-wrap:anywhere;font-size:14px;color:#fff}
+#ekP87Roster .ekP84Person small{display:block;color:#b4c0c8;font-size:10px;margin-top:3px;line-height:1.45}
+#ekP87Roster .ekP84Tag{font-size:9px;border-radius:7px;padding:4px 6px;border:1px solid #6d6860;color:#f5db8d;white-space:nowrap}
+#ekP87Roster .ekP84Bottom{margin-top:12px;border-top:1px solid #454b4f;padding-top:10px}
+#ekP87Roster .ekP84Bottom label{display:block;font-size:11px;font-weight:800;color:#d1d9de;margin-bottom:6px}
+#ekP87Roster .ekP84Bottom select{width:100%;min-height:46px;border:1px solid #657079;border-radius:10px;background:#0d1114;color:#fff;padding:10px;font-size:14px}
+#ekP87Roster .ekP84PickStatus{font-size:11px;color:#e8d78a;margin:8px 0;min-height:18px}
+#ekP87Roster .ekP84NoMatch{padding:10px;color:#bac3cb;font-size:12px}
+#ekP87Roster .ekP84LegacyFields{display:none!important}
+@media(max-width:370px){#ekP87Roster .ekP84Candidate{grid-template-columns:24px minmax(0,1fr)}
+#ekP84Roster .ekP84Tag{grid-column:2;justify-self:start}}
 .ekP7CommonField{display:grid;gap:5px}.ekP7CommonField>label{font-size:10px;font-weight:900;color:#aab2b8}.ekP7CommonField input,.ekP7CommonField select{width:100%;min-width:0;min-height:46px;border:1px solid #454d53;border-radius:11px;background:#111417;color:#fff;padding:9px;font-size:15px}.ekP7TargetGrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px}.ekP7TargetGrid label{display:grid;gap:4px}.ekP7TargetGrid small{font-size:9px;color:#8d969d}.ekP7Other.hidden{display:none!important}.ekP7CommonFull{grid-column:1/-1}
 .ekP1Slot{display:grid;gap:10px;padding:16px;border:1px solid #4b5156;border-radius:16px;background:linear-gradient(145deg,#181c1f,#0e1012)}.ekP1Slot strong{font-size:18px}.ekP1Slot p{margin:0;color:#9aa2a8;font-size:12px;line-height:1.6}.ekP1Slot .ok{padding:10px;border-radius:11px;background:#10241d;border:1px solid #2e6d54;color:#82d6b0;font-size:11px;font-weight:900}.ekP1Slot .wait{padding:10px;border-radius:11px;background:#241f0d;border:1px solid #6f6100;color:#ffe86a;font-size:11px;font-weight:900}
 .ekP1Publish{margin-top:12px;padding:14px;border:1px solid #4b5156;border-radius:16px;background:#111417}.ekP1Publish button{width:100%;min-height:48px;border:0;border-radius:12px;background:#333;color:#888;font-weight:1000}.ekP1Publish small{display:block;margin-top:8px;color:#90989e;line-height:1.5}.ekP1AuditRow{padding:10px;border:1px solid #363d42;border-radius:11px;background:#111417;margin-bottom:7px}.ekP1AuditRow b{display:block;font-size:12px}.ekP1AuditRow span{display:block;margin-top:3px;color:#8c969c;font-size:10px;line-height:1.5}
@@ -24725,12 +24799,32 @@ function ekP5NormalizePlayerRows(raw){
 }
 function ekP5PlayerIdentity(p){return String(p?.profileId||p?.subjectUid||p?.id||'')}
 function ekP5CurrentEventPlayers(){
-  try{return ekP5NormalizePlayerRows(ekCoreState()?.eventRoot?.players||{})}catch(_){return[]}
+  // P86: reuse the existing root subscription. Both core player cards and
+  // older developer-added athlete cards can be present in the event root.
+  try{
+    const root=ekCoreState()?.eventRoot||{};
+    const byId=new Map();
+    for(const source of [root.athletesV125,root.players]){
+      for(const p of ekP5NormalizePlayerRows(source||{})){
+        const id=String(p?.id||'');if(!id)continue;
+        byId.set(id,{...p,sourceEventId:String(ekCoreState()?.eventId||'')});
+      }
+    }
+    return [...byId.values()];
+  }catch(e){console.warn('P86 current event roster read',e);return[]}
 }
 function ekP5CachedSourcePlayers(){return Array.isArray(s.sourceEventPlayersP5)?s.sourceEventPlayersP5:[]}
 function ekP1BasePlayers(){
-  const all=[...ekP5CachedSourcePlayers(),...ekP5CurrentEventPlayers()],seen=new Set(),out=[];
-  for(const p of all){const identity=ekP5PlayerIdentity(p);if(!identity||seen.has(identity))continue;seen.add(identity);out.push(p)}
+  // P86: current tournament takes priority over the older source tournament.
+  // The previous source-first merge concealed newer developer-added cards
+  // when profileId/subjectUid matched a historical card.
+  const current=ekP5CurrentEventPlayers(),past=ekP5CachedSourcePlayers();
+  const all=[...current,...past],seen=new Set(),out=[];
+  for(const p of all){
+    const identity=ekP5PlayerIdentity(p);
+    if(!identity||seen.has(identity))continue;
+    seen.add(identity);out.push(p);
+  }
   return out;
 }
 async function ekP5LoadSourcePlayers(force=false){
@@ -24741,6 +24835,7 @@ async function ekP5LoadSourcePlayers(force=false){
     const raw=await api(EKP5_SOURCE_EVENT_ID),rows=ekP5NormalizePlayerRows(raw);
     s.sourceEventPlayersP5=rows.map(p=>({
       id:String(p.id||''),profileId:String(p.profileId||''),subjectUid:String(p.subjectUid||''),ownerUid:String(p.ownerUid||''),
+      sourceEventId:EKP5_SOURCE_EVENT_ID,
       name:String(p.name||p.displayName||''),displayName:String(p.displayName||''),affiliation:String(p.affiliation||''),grade:String(p.grade||''),
       raceNo:String(p.raceNo||p.bib||''),bib:String(p.bib||''),targetTime:String(p.targetTime||''),status:String(p.status||''),
       dayDate:String(p.dayDate||''),event:String(p.event||''),heat:String(p.heat||''),start:String(p.start||''),
@@ -24842,7 +24937,7 @@ function ekP84CandidateRows(){
     const operatorCreated=['developer','owner','manager'].includes(String(p.createdByRole||''));
     rows.push({kind:'player',key:playerId,name:String(p.name||p.displayName||'名前未設定'),
       detail:String([p.affiliation,p.grade].filter(Boolean).join('｜')),
-      tag:operatorCreated?(p.createdByRole==='manager'?'管理者登録':'開発者登録'):'過去出走',uid,pid});
+      tag:operatorCreated?(p.createdByRole==='manager'?'管理者追加':'開発者追加'):(p.sourceEventId===EKP5_SOURCE_EVENT_ID?'過去出走':'大会出走'),uid,pid});
   }
   for(const r of ekP6RegisteredNoRace()){
     const uid=String(r.uid||'');if(!uid||seenUid.has(uid)||ekP6RunnerDuplicate({sourceRegistrationUid:uid}))continue;
@@ -24851,11 +24946,146 @@ function ekP84CandidateRows(){
   }
   return rows.sort((a,b)=>Number(a.kind!=='existing')-Number(b.kind!=='existing')||a.name.localeCompare(b.name,'ja'));
 }
+
+/* P87: recorded runners, NOT a participant directory. Source: 2026-10-06
+   historic EKIDEN timingRecords and saved race leg events. No new registration
+   until the owner confirms it in the existing manual-registration form. */
+const EKP87_HISTORIC_ID='eventbase_ekiden_dev_20261006';
+let ekP87State={loadedAt:0,rows:[],error:'',partial:false,pending:null};
+function ekP87Objects(x){
+  if(Array.isArray(x))return x.filter(v=>v&&typeof v==='object');
+  return x&&typeof x==='object'?Object.entries(x).map(([id,v])=>v&&typeof v==='object'?{id,...v}:null).filter(Boolean):[];
+}
+function ekP87BuildRecordedRows(data){
+  const out=[],byIdentity=new Map();
+  // Identity keys must carry explicit source IDs. Names are NEVER merge keys.
+  function put(p){
+    const name=String(p.name||'').trim();if(!name)return;
+    const identity=String(p.globalProfileId||p.profileId||p.subjectUid||p.playerId||p.runnerId||'').trim();
+    const key=identity?`id:${identity}`:`record:${p.recordKey}`;
+    const entry={key,name,affiliation:String(p.affiliation||''),grade:String(p.grade||''),
+      record:String(p.record||''),team:String(p.team||''),leg:Number(p.leg)||0,source:String(p.source||'')};
+    if(byIdentity.has(key)){
+      const prev=out[byIdentity.get(key)];
+      if(prev.source!=='timing'&&entry.source==='timing')out[byIdentity.get(key)]=entry;
+      return;
+    }
+    byIdentity.set(key,out.length);out.push(entry);
+  }
+  const people=ekP87Objects(data?.profiles),personById=new Map(people.filter(p=>p.id).map(p=>[String(p.id),p]));
+  const runnerByExternalId=new Map();
+  for(const p of people){
+    for(const id of [p.sourcePlayerId,p.globalProfileId,p.sourceRegistrationUid,p.subjectUid])
+      if(id&&!runnerByExternalId.has(String(id)))runnerByExternalId.set(String(id),p);
+  }
+  for(const [ri,rec] of ekP87Objects(data?.timingRecords).entries()){
+    // Only actual timed records from the historical EKIDEN event.
+    const names=ekP87Objects(rec.athletes);
+    for(const [i,a] of names.entries()){
+      const value=String(a.correctedTime||a.finalTime||a.officialResult||a.result||'').trim();
+      const milli=Number(a.finalMs);
+      if(!value&&!(a.finalMs!=null&&Number.isFinite(milli)&&milli>0))continue;
+      const match=runnerByExternalId.get(String(a.playerId||''))||runnerByExternalId.get(String(a.profileId||''))||{};
+      const name=String(a.name||match.name||'').trim();if(!name)continue;
+      put({name,affiliation:match.affiliation||a.affiliation||'',grade:match.grade||a.grade||'',
+        globalProfileId:match.globalProfileId||a.profileId||'',playerId:a.playerId||'',
+        subjectUid:match.subjectUid||'',runnerId:match.id||'',
+        record:value||ekP29FormatMs(milli),team:a.ekidenTeamName||rec.heat||'',leg:a.ekidenLeg||0,
+        source:'timing',recordKey:`${rec.id||ri}_${i}`});
+    }
+  }
+  // Fallback for a recorded GOAL not yet bridged to the standard timingRecords.
+  const teams=ekP87Objects(data?.teams);
+  const races=data?.races&&typeof data.races==='object'?data.races:{};
+  for(const [raceId,r] of Object.entries(races)){
+    if(!r||!['saved','finished'].includes(String(r.status||'')))continue;
+    const events=Array.isArray(r.events)?r.events:[];
+    for(const tm of teams.filter(x=>String(x.categoryId||'')===String(raceId))){
+      const legs=Array.isArray(tm.legs)?tm.legs:[];
+      let prev=Number(r.startAt)||0;
+      for(let i=0;i<legs.length;i++){
+        const ev=events.filter(e=>e&&e.status!=='cancelled'&&String(e.subjectId||'')===String(tm.id||'')&&Number(e.stage)===i&&Number(e.effectiveAt)>0)
+           .sort((a,b)=>Number(b.effectiveAt)-Number(a.effectiveAt))[0];
+        if(!ev)continue;
+        const when=Number(ev.effectiveAt),duration=prev&&when>=prev?when-prev:null;prev=when;
+        const pr=personById.get(String(legs[i]?.profileId||''));
+        if(!pr?.name)continue;
+        put({name:pr.name,affiliation:pr.affiliation||'',grade:pr.grade||'',globalProfileId:pr.globalProfileId||'',
+          subjectUid:pr.sourceRegistrationUid||pr.subjectUid||'',runnerId:pr.id,record:duration!==null?ekP29FormatMs(duration):'区間計測記録あり',
+          team:tm.name||'',leg:i+1,source:'race',recordKey:`${raceId}_${tm.id}_${i}`});
+      }
+    }
+  }
+  return out.sort((a,b)=>a.name.localeCompare(b.name,'ja'));
+}
+function ekP87RecordRosterHtml(){
+  return `<section id="ekP87Roster" class="ek15TeamSection"><div class="ekP84Header"><b style="font-size:16px;color:#ffe04d">過去の駅伝記録がある選手 <small style="font-size:10px">P87</small></b><span id="ekP87Count">読込前</span></div>
+  <div class="ek15TeamSectionHelp">2026年10月6日の駅伝BASE本番記録に、区間タイムまたは保存済みのレース記録がある選手だけを表示します。通常EVENT BASEの参加者名簿ではありません。過去記録は変更せず、今回の出走登録は別に行います。</div>
+  <input id="ekP87Search" type="search" autocomplete="off" placeholder="記録のある選手を検索" aria-label="過去駅伝の記録者を検索" style="box-sizing:border-box;width:100%;min-height:45px;border:1px solid #657079;border-radius:11px;background:#0e1215;color:#fff;font-size:15px;padding:10px 12px;margin-bottom:9px">
+  <div id="ekP87Message" style="font-size:11px;color:#ddd;padding:8px 0" role="status">過去の駅伝記録を読み込んでいます…</div>
+  <div id="ekP87List" class="ekP84List" style="display:grid;gap:7px;max-height:48vh;overflow:auto"></div>
+  <button type="button" id="ekP87Refresh" class="ek15Reset" style="width:100%;margin-top:10px">過去駅伝記録を再読込</button>
+  <small style="display:block;margin-top:8px;color:#9aa9b3">選手を選ぶと下の「新規登録」入力欄へ氏名・所属を転記します。出走カテゴリを選び、登録を確定してください。UID・profileIdは氏名から自動紐付けしません。</small></section>`;
+}
+function ekP87RenderList(){
+  const list=$('ekP87List'),msg=$('ekP87Message'),counter=$('ekP87Count');if(!list||!msg)return;
+  const q=String($('ekP87Search')?.value||'').normalize('NFKC').toLocaleLowerCase('ja').trim();
+  const rows=ekP87State.rows.filter(p=>!q||[p.name,p.affiliation,p.team,p.record].join(' ').normalize('NFKC').toLocaleLowerCase('ja').includes(q));
+  if(counter)counter.textContent=ekP87State.loadedAt?`${ekP87State.rows.length}人`:'読込中';
+  msg.textContent=ekP87State.error?ekP87State.error:ekP87State.pending?'過去駅伝記録を読み込んでいます…':
+    !ekP87State.loadedAt?'記録読込待機中':
+    ekP87State.rows.length?`${ekP87State.rows.length}人の駅伝記録を確認しました${ekP87State.partial?'（一部の記録経路は参照できません）':''}`:
+    '該当する駅伝の記録者は取得できませんでした。大会ID・記録保存状況・読み取り権限を確認してください。';
+  list.innerHTML=rows.map(p=>{
+    const currentlyLinked=(s.profiles||[]).some(x=>
+      (p.globalProfileId&&String(x.globalProfileId||'')===String(p.globalProfileId))||
+      (p.subjectUid&&[x.sourceRegistrationUid,x.subjectUid,x.candidateUid].some(u=>String(u||'')===String(p.subjectUid))));
+    return `<button type="button" class="ekP84Candidate" data-ekp87-key="${esc(p.key)}" style="width:100%"><span class="ekP84Check">${currentlyLinked?'✓':'○'}</span><span class="ekP84Person"><b>${esc(p.name)}</b><small>${esc([p.affiliation,p.team,p.leg?`${p.leg}区`:'',p.record?`記録 ${p.record}`:''].filter(Boolean).join('｜'))}</small></span><span class="ekP84Tag">${currentlyLinked?'今大会登録済':'駅伝記録'}</span></button>`;
+  }).join('')||(!ekP87State.pending&&!ekP87State.error?'<div class="ekP84NoMatch">該当する記録者はいません。</div>':'');
+}
+async function ekP87LoadRecords(force=false){
+  if(ekP87State.pending)return ekP87State.pending;
+  if(!force&&ekP87State.loadedAt&&Date.now()-ekP87State.loadedAt<15*60*1000){ekP87RenderList();return}
+  const api=window.EventBaseConnectionAPI?.readEkidenRecordedPeopleP87;
+  if(typeof api!=='function'){ekP87State.error='過去駅伝記録の読み取り経路を確認できません';ekP87RenderList();return}
+  ekP87State.error='';ekP87State.pending=(async()=>{
+    try{
+      const raw=await api(EKP87_HISTORIC_ID);const rows=ekP87BuildRecordedRows(raw);
+      ekP87State.rows=rows;ekP87State.loadedAt=Date.now();ekP87State.partial=!!raw.failed?.length;
+      if(!rows.length&&raw.failed?.length)ekP87State.error='駅伝記録の一部を読み取れません。Firebaseの過去大会READ権限を確認してください。';
+    }catch(e){ekP87State.error=String(e?.message||e);}
+  })();
+  ekP87RenderList();try{await ekP87State.pending}finally{ekP87State.pending=null;ekP87RenderList()}
+}
+function ekP87BindRoster(){
+  const root=$('ekP87Roster');if(!root)return;
+  $('ekP87Search')?.addEventListener('input',ekP87RenderList);
+  $('ekP87Refresh')?.addEventListener('click',()=>ekP87LoadRecords(true));
+  $('ekP87List')?.addEventListener('click',e=>{
+    const btn=e.target.closest('button[data-ekp87-key]');if(!btn)return;
+    const r=ekP87State.rows.find(p=>p.key===btn.dataset.ekp87Key);if(!r)return;
+    const name=$('ekP6NewName');if(!name)return;
+    name.value=r.name;
+    const select=$('ekP7NewAffiliation'),other=$('ekP7NewAffiliationOther');
+    if(select){
+      const avail=[...select.options].some(o=>o.value===r.affiliation);
+      select.value=r.affiliation?(avail?r.affiliation:'__other__'):'';
+      if(other)other.value=r.affiliation&&!avail?r.affiliation:'';
+      window.ekP7SyncNewAffiliation?.();
+    }
+    const grade=$('ekP7NewGrade');if(grade)grade.value=[...grade.options].some(o=>o.value===r.grade)?r.grade:'';
+    const target=$('ekP6NewCategory');if(target)target.value='';
+    name.closest('.ek15TeamSection')?.scrollIntoView({behavior:'smooth',block:'start'});
+    toastNowV22('過去駅伝の記録者を入力欄へ反映しました。カテゴリを選択して出走登録してください');
+  });
+  ekP87RenderList();void ekP87LoadRecords(false);
+}
+
 function ekP84RosterHtml(cats,sourceCount,registeredCount,updated,regUpdated){
   const candidates=ekP84CandidateRows();
   const existingCount=candidates.filter(r=>r.kind==='existing').length;
   const buttons=candidates.map(r=>`<button type="button" class="ekP84Candidate" data-ekp84-kind="${esc(r.kind)}" data-ekp84-key="${esc(r.key)}" aria-pressed="false"><span class="ekP84Check">○</span><span class="ekP84Person"><b>${esc(r.name)}</b><small>${esc(r.detail||'本人情報の確認は出走登録後')}</small></span><span class="ekP84Tag">${esc(r.tag)}</span></button>`).join('');
-  return `<section id="ekP84Roster" class="ek15TeamSection"><div class="ekP84Header"><b>参加者一覧</b><span>駅伝登録済 ${existingCount}人｜追加候補 ${candidates.length-existingCount}人</span></div><div class="ek15TeamSectionHelp">駅伝BASEで開発者が追加登録した選手も、過去のEVENT BASE出走者・登録者と一緒に表示します。「登録済み」の選手は参照専用で、もう一度登録されません。新しい候補だけカテゴリを選んで追加します。本人の紐付けはUID／profileIdで確認し、氏名だけでは統合しません。</div><input id="ekP84Search" type="search" autocomplete="off" placeholder="名前・所属から探す" aria-label="駅伝登録済み・過去参加者の絞り込み"><div class="ekP84List" id="ekP84List">${buttons||'<div class="ekP84NoMatch">候補を確認できません。読み取りが許可されていない場合もあります。下の再読込結果をご確認ください。</div>'}</div><div class="ekP84NoMatch" id="ekP84NoMatch" hidden>一致する参加者が見つかりません。</div><div class="ekP84Bottom"><label for="ekP84Category">出走カテゴリ</label><select id="ekP84Category"><option value="">カテゴリを選択</option>${cats.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}</select><div id="ekP84PickStatus" class="ekP84PickStatus">参加者を一覧から選んでください。</div><button id="ekP84Add" type="button" class="ekP1Action" disabled>選択した参加者を出走登録</button></div><div class="ekP84LegacyFields" aria-hidden="true"><select id="ekP1BasePlayer"><option value="">未選択</option>${ekP1BaseOptions()}</select><select id="ekP1BaseCategory"><option value="">カテゴリ</option>${cats.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}</select><select id="ekP6Registrant"><option value="">未選択</option>${ekP6RegistrantOptions()}</select><select id="ekP6RegistrantCategory"><option value="">カテゴリ</option>${cats.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}</select></div><div class="ekP6ClaimNote">参照元：出走カード ${sourceCount}件／登録者 ${registeredCount}人。${updated?`出走最終読込 ${esc(updated)}。`:''}${regUpdated?`参加者最終読込 ${esc(regUpdated)}。`:''} 大会側の名簿・記録は変更しません。</div></section>`;
+  return `<section id="ekP84Roster" class="ek15TeamSection"><div class="ekP84Header"><b>参加者一覧 <small style="font-size:10px;color:#a9b2ba">P86</small></b><span>駅伝登録済 ${existingCount}人｜追加候補 ${candidates.length-existingCount}人</span></div><div class="ek15TeamSectionHelp">駅伝BASEで開発者が追加登録した選手も、過去のEVENT BASE出走者・登録者と一緒に表示します。「登録済み」の選手は参照専用で、もう一度登録されません。新しい候補だけカテゴリを選んで追加します。本人の紐付けはUID／profileIdで確認し、氏名だけでは統合しません。</div><input id="ekP84Search" type="search" autocomplete="off" placeholder="名前・所属から探す" aria-label="駅伝登録済み・過去参加者の絞り込み"><div class="ekP84List" id="ekP84List">${buttons||'<div class="ekP84NoMatch">候補を確認できません。読み取りが許可されていない場合もあります。下の再読込結果をご確認ください。</div>'}</div><div class="ekP84NoMatch" id="ekP84NoMatch" hidden>一致する参加者が見つかりません。</div><div class="ekP84Bottom"><label for="ekP84Category">出走カテゴリ</label><select id="ekP84Category"><option value="">カテゴリを選択</option>${cats.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}</select><div id="ekP84PickStatus" class="ekP84PickStatus">参加者を一覧から選んでください。</div><button id="ekP84Add" type="button" class="ekP1Action" disabled>選択した参加者を出走登録</button></div><div class="ekP84LegacyFields" aria-hidden="true"><select id="ekP1BasePlayer"><option value="">未選択</option>${ekP1BaseOptions()}</select><select id="ekP1BaseCategory"><option value="">カテゴリ</option>${cats.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}</select><select id="ekP6Registrant"><option value="">未選択</option>${ekP6RegistrantOptions()}</select><select id="ekP6RegistrantCategory"><option value="">カテゴリ</option>${cats.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}</select></div><div class="ekP6ClaimNote">参照元：現大会・過去大会の出走カード ${sourceCount}件／登録者 ${registeredCount}人。開発者が出走リストで追加したカードも候補に含めます。${updated?`出走最終読込 ${esc(updated)}。`:''}${regUpdated?`参加者最終読込 ${esc(regUpdated)}。`:''} 大会側の名簿・記録は変更しません。</div></section>`;
 }
 function ekP84BindRoster(){
   const root=$('ekP84Roster');if(!root)return;
@@ -24993,8 +25223,8 @@ function ekP1RenderStation(statusText=''){
   const sourceCount=ekP1BasePlayers().length,registeredNoRace=ekP6RegisteredNoRace(),updated=s.sourcePlayersUpdatedAtP5?new Date(s.sourcePlayersUpdatedAtP5).toLocaleString('ja-JP'):'',regUpdated=s.sourceRegistrantsUpdatedAtP6?new Date(s.sourceRegistrantsUpdatedAtP6).toLocaleString('ja-JP'):'';
   const catOptions=cats.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
   const staleRegistrants=!!s.sourceRegistrantsUpdatedAtP6&&Date.now()-Number(s.sourceRegistrantsUpdatedAtP6)>15*60*1000;
-  $('ek15AdminRoot').innerHTML=adminTop('出走メンバー','',1)+ek15StepNav(1)+`<div class="ek15AdminNote">出走メンバーは、①EVENT BASE出走登録済み、②EVENT BASE登録済み・出走未登録、③運営側の新規登録、の3経路です。既存大会は読み取りのみで変更しません。駅伝下書きは今後の修正版でも同じ保存キーを維持します。</div>
-  ${ekP84RosterHtml(cats,sourceCount,registeredNoRace.length,updated,regUpdated)}
+  $('ek15AdminRoot').innerHTML=adminTop('出走メンバー','',1)+ek15StepNav(1)+`<div class="ek15AdminNote">過去の駅伝BASEで区間記録・正式記録のある選手を上の一覧に表示します。選択して下の入力欄から新大会へ登録してください。過去大会の結果は変更しません。</div>
+  ${ekP87RecordRosterHtml()}
   <section class="ek15TeamSection"><div class="ekP6PathTitle"><b>③ 新規登録（運営側先行登録）</b><span>本人未紐付けで作成</span></div><div class="ek15TeamSectionHelp">まだEVENT BASEに登録していない人も先に駅伝出走へ登録できます。後から本人へ「この登録はあなたですか？」と確認し、本人が承認した時だけprofileIdへ紐付ける前提で保持します。</div><div class="ekP6ManualGrid">
   <div class="ekP7CommonField ekP7CommonFull"><label>選手名</label><input id="ekP6NewName" maxlength="30" placeholder="選手名（必須）"></div>
   <div class="ekP7CommonField"><label>所属</label><select id="ekP7NewAffiliation" onchange="ekP7SyncNewAffiliation()"><option value="">未設定</option><option value="TOP RUN AGUI">TOP RUN AGUI</option><option value="阿久比中学校">阿久比中学校</option><option value="__other__">その他</option></select><input class="ekP7Other hidden" id="ekP7NewAffiliationOther" maxlength="60" placeholder="所属名を入力"></div>
@@ -25003,21 +25233,22 @@ function ekP1RenderStation(statusText=''){
   <div class="ekP7CommonField"><label>出走カテゴリ</label><select id="ekP6NewCategory"><option value="">出走カテゴリ</option>${catOptions}</select></div>
   <div class="ekP7CommonField ekP7CommonFull"><label>目標タイム</label><div class="ekP7TargetGrid"><label><small>分</small><select id="ekP7NewTargetMin">${ekP7TargetOptions(59,false)}</select></label><label><small>秒</small><select id="ekP7NewTargetSec">${ekP7TargetOptions(59,true)}</select></label><label><small>1/100秒</small><select id="ekP7NewTargetCs">${ekP7TargetOptions(99,true)}</select></label></div></div>
 </div><button class="ekP1Action" onclick="ekP6AddManualRunner()">新規選手を駅伝出走へ登録</button></section>
-  <button class="ek15Reset" style="margin:0 0 12px;width:100%" onclick="ekP6RefreshSourcePeople()">EVENT BASE登録情報を再読込</button>${statusText?`<div class="ekP6ClaimNote">${esc(statusText)}</div>`:''}
+  ${statusText?`<div class="ekP6ClaimNote">${esc(statusText)}</div>`:''}
   <section class="ek15TeamSection"><div class="ek15TeamSectionHead"><b>駅伝出走メンバー</b><span>${rows.length}人</span></div><div class="ekP1StationList">${rows.length?rows.map(p=>`<div class="ekP1StationRow" data-ekp85-runner-id="${esc(p.id||'')}"><div><b>${esc(p.name||'名称未設定')}</b><span>${esc(p.affiliation||'')}${p.bib?'｜No.'+esc(p.bib):''}</span>${ekP6RunnerIdentityLabel(p)}</div><select onchange="ekP1SetRunnerCategory('${esc(p.id)}',this.value)"><option value="">カテゴリ未設定</option>${cats.map(c=>`<option value="${esc(c.id)}" ${p.categoryId===c.id?'selected':''}>${esc(c.name)}${c.scheduledStart?'｜'+esc(c.scheduledStart):'｜発走未定'}</option>`).join('')}</select><button onclick="ekP1DeleteRunner('${esc(p.id)}')">削除</button></div>`).join(''):'<div class="ek15EmptyState">まだ駅伝出走メンバーはいません。</div>'}</div><div class="ekP6ClaimNote"><b>本人引き継ぎ方針：</b>本人未紐付け／本人確認待ちのデータは自動統合しません。駅伝Firebase接続後、本人側に候補を表示し、本人が「この登録を引き継ぐ」と確認した場合だけ既存profileIdへ紐付けます。</div></section>${ek15StepNavBottom(1)}`
-  ekP84BindRoster();
+  ekP87BindRoster();
 }
 window.ek15ShowStationPlayers=async()=>{
   if(!ek15HasOverviewB36R()){toastNowV22('先に① 駅伝概要を保存してください');return ek15AdminView('overview')}
-  const needsPlayers=!ekP5CachedSourcePlayers().length||Date.now()-Number(s.sourcePlayersUpdatedAtP5||0)>=15*60*1000,needsRegs=Number(s.sourceRegistrantsPolicyP31)!==1||!ekP6CachedSourceRegistrants().length||Date.now()-Number(s.sourceRegistrantsUpdatedAtP6||0)>=15*60*1000;
-  ekP1RenderStation(needsPlayers||needsRegs?'EVENT BASE登録情報を読み込んでいます…':'');
-  if(needsPlayers||needsRegs){const [p,r]=await Promise.all([ekP5LoadSourcePlayers(false),ekP6LoadSourceRegistrants(false)]);const msg=[p.ok?`出走登録 ${p.count}人`:`出走登録読込失敗：${p.error||'権限確認'}`,r.ok?`参加登録 ${r.count}人`:`参加登録読込失敗：${r.error||'権限確認'}`].join('｜');ekP1RenderStation(msg)}
+  // P87: the target list is historic EKIDEN records. Do not poll general
+  // EVENT BASE participants on screen entry. The owner may still refresh
+  // legacy records explicitly if needed for a separate workflow.
+  ekP1RenderStation();
 };
 window.ekP6RefreshSourcePeople=async()=>{ekP1RenderStation('EVENT BASE登録情報を再読込しています…');const [p,r]=await Promise.all([ekP5LoadSourcePlayers(true),ekP6LoadSourceRegistrants(true)]);ekP1RenderStation([p.ok?`出走登録 ${p.count}人`:`出走登録失敗：${p.error||''}`,r.ok?`参加登録 ${r.count}人`:`参加登録失敗：${r.error||''}`].join('｜'))};
 window.ekP1AddBasePlayer=()=>{
   const pid=$('ekP1BasePlayer')?.value||'',catId=$('ekP1BaseCategory')?.value||'',bp=ekP1FindBasePlayer(pid),cat=ek15CategoryById(catId);if(!bp)return toastNowV22('出走登録済み選手を選択してください');if(!cat)return toastNowV22('出走カテゴリを選択してください');
   const gp=String(bp.profileId||''),candidateUid=String(bp.subjectUid||'');if(ekP6RunnerDuplicate({globalProfileId:gp,sourcePlayerId:String(bp.id||''),candidateUid}))return toastNowV22('この選手は追加済みです');const creator=ekP6Creator(),id='EP_'+Date.now().toString(36),linked=!!gp;
-  const pr={id,name:String(bp.name||bp.displayName||''),affiliation:String(bp.affiliation||''),grade:String(bp.grade||''),bib:String(bp.raceNo||bp.bib||''),targetTime:String(bp.targetTime||''),target3000:secInput(bp.targetTime||''),settingTimes:[],globalProfileId:gp,categoryId:catId,sourcePlayerId:String(bp.id||''),sourceRegistrationUid:candidateUid,sourceRegistrationEventId:EKP5_SOURCE_EVENT_ID,identityState:linked?'linked':'candidate',candidateUid:linked?'':candidateUid,subjectUid:linked?String(bp.subjectUid||''):'',ownerUid:linked?String(bp.ownerUid||bp.subjectUid||creator.uid):creator.uid,createdByUid:String(bp.createdByUid||creator.uid),createdByRole:String(bp.createdByRole||creator.role),createdByName:String(bp.createdByName||creator.name)};
+  const pr={id,name:String(bp.name||bp.displayName||''),affiliation:String(bp.affiliation||''),grade:String(bp.grade||''),bib:String(bp.raceNo||bp.bib||''),targetTime:String(bp.targetTime||''),target3000:secInput(bp.targetTime||''),settingTimes:[],globalProfileId:gp,categoryId:catId,sourcePlayerId:String(bp.id||''),sourceRegistrationUid:candidateUid,sourceRegistrationEventId:String(bp.sourceEventId||EKP5_SOURCE_EVENT_ID),identityState:linked?'linked':'candidate',candidateUid:linked?'':candidateUid,subjectUid:linked?String(bp.subjectUid||''):'',ownerUid:linked?String(bp.ownerUid||bp.subjectUid||creator.uid):creator.uid,createdByUid:String(bp.createdByUid||creator.uid),createdByRole:String(bp.createdByRole||creator.role),createdByName:String(bp.createdByName||creator.name)};
   s.profiles.push(pr);ekP1Audit('② 出走メンバー','既存出走から追加',pr.name,'',`${cat.name}｜${linked?'profileId '+gp:'本人確認待ち'}`);save();ekP1RenderStation();renderSchedule()
 };
 window.ekP6AddRegisteredNoRace=()=>{
