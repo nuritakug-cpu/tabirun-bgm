@@ -5224,6 +5224,19 @@ html[data-portal-personal-color="winter"] #screen-chat .chatUnreadLine>span{back
 html[data-portal-personal-color="matte"] #screen-chat .chatUnreadLine{color:#ffa168}
 html[data-portal-personal-color="matte"] #screen-chat .chatUnreadLine>span{background:#2f2024}
 </style>
+<style id="top-run-unified-notice-view-20261025">
+/* The existing notice surface is the only visitor list. Never show the event chooser. */
+#screen-notices .trEventCommsScope,#screen-notices #trEventNoticesPanel{display:none!important}
+body.trEventCommsActive #screen-notices [data-list-filter="notices"],
+body.trEventCommsActive #portalNoticeList{display:initial!important}
+#screen-notices #portalNoticeList{display:flex!important;flex-direction:column;gap:11px}
+#screen-notices .portalNoticeItem .trNoticeSource{display:inline-flex;align-items:center;gap:5px;
+ padding:4px 8px;border-radius:999px;background:#ede5c5;color:#5c4513;font-size:11px;font-weight:900;
+ letter-spacing:.02em;max-width:100%}
+#screen-notices .portalNoticeItem .trNoticeOriginal{display:block;font-size:13px;font-weight:800;
+ margin-top:8px;overflow-wrap:anywhere;white-space:pre-wrap}
+#screen-notices .portalNoticeItem.trNoticeReadPending{opacity:.78}
+</style>
 </head>
 <body>
 <div id="portalFirstPaintAuthOverlay" role="status" aria-live="polite" aria-label="TOP RUN PORTAL 認証中">
@@ -6635,6 +6648,75 @@ html[data-portal-personal-color="matte"] #screen-chat .chatUnreadLine>span{backg
     Number(portalPreviewReadState.notices[x.id]||0)!==Number(x.createdAt||0)
   ).map(x=>x.id));
   const portalChatReadIds = new Set(portalPreviewReadState.chatReadIds);
+  let remoteNoticeReads=Object.create(null);
+  let remoteNoticeReadsReady=false;
+  const portalNoticeReadKey=(source,id,eventId='')=>{
+    // No personal names or content in Firebase keys. Dots, slashes, and arbitrary
+    // IDs are not accepted; refusing is safer than a wrong-person read marker.
+    const candidate=(source==='event'?'e_'+eventId+'_':'p_')+String(id||'');
+    return /^[A-Za-z0-9_-]{1,300}$/.test(candidate)?candidate:'';
+  };
+  const portalNoticeVersion=item=>{
+    const n=Number(item?.updatedAt||item?.createdAt||0);
+    return Number.isSafeInteger(n)&&n>=0?n:0;
+  };
+  function portalNoticeIsUnread(source,item,eventId=''){
+    const key=portalNoticeReadKey(source,item?.id,eventId);
+    if(!key)return false;
+    if(remoteNoticeReadsReady){
+      const seen=Number(remoteNoticeReads[key]||0);
+      // A value of 1 is the marker for records without a timestamp.
+      return seen<(portalNoticeVersion(item)||1);
+    }
+    if(source==='common')return unreadNoticeIds.has(item.id);
+    return true;
+  }
+  const portalNoticePendingRead=new Set();
+  function updateNoticeReadFromCanonical(value){
+    const g=window.__TR_PORTAL_SYNC__;
+    if(!g?.uid||!g?.profileId||g?.loaded?.personal!==true)return;
+    if(value?.profileId&&value.profileId!==g.profileId)return;
+    remoteNoticeReads=value?.noticeReads&&typeof value.noticeReads==='object'&&!Array.isArray(value.noticeReads)?value.noticeReads:Object.create(null);
+    remoteNoticeReadsReady=true;
+    unreadNoticeIds.clear();
+    noticeItems.forEach(n=>{if(portalNoticeIsUnread('common',n))unreadNoticeIds.add(n.id);});
+    renderNoticeHome();renderNotices();
+  }
+  async function markUnifiedNoticeRead(source,item,eventId=''){
+    const key=portalNoticeReadKey(source,item?.id,eventId);
+    if(!key)return;
+    if(!portalNoticeIsUnread(source,item,eventId)||portalNoticePendingRead.has(key))return;
+    const g=window.__TR_PORTAL_SYNC__;
+    if(!g?.hasOperationalAccess?.()||g.loaded?.personal!==true||typeof g.saveNoticeRead!=='function'){
+      showActionFeedback('既読を保存できません','本人の接続と読み込み完了を確認してください。');return;
+    }
+    portalNoticePendingRead.add(key);
+    try{
+      const saved=await g.saveNoticeRead({key,version:portalNoticeVersion(item)||1});
+      if(saved!==true)throw Error('Firebaseで既読保存を確認できません');
+      // The existing profiles/$uid/portalSelf subscription owns cross-device refresh.
+      // Do not fabricate a successful read marker when Firebase did not ACK.
+      remoteNoticeReads={...remoteNoticeReads,[key]:Math.max(Number(remoteNoticeReads[key]||0),portalNoticeVersion(item)||1)};
+      remoteNoticeReadsReady=true;
+      if(source==='common'){
+        unreadNoticeIds.delete(item.id);renderNoticeHome();
+      }
+      renderNotices();
+    }catch(error){showActionFeedback('既読を保存できません',String(error?.message||error).slice(0,120));}
+    finally{portalNoticePendingRead.delete(key);}
+  }
+  function showUnifiedNoticeDetail(source,item,eventId=''){
+    if(!item)return;
+    const isEvent=source==='event';
+    openModal(isEvent?'EKIDEN BASE':'お知らせ',isEvent?'EKIDENBASEからのお知らせ':portalNoticeDisplayTitle(item.title||'お知らせ'));
+    const ts=Number(item.updatedAt||item.createdAt)||0;
+    $('modalNoticeDate').textContent=isEvent&&ts?new Date(ts).toLocaleDateString('ja-JP'):String(item.date||'').replaceAll('-','.');
+    $('modalNoticeDate').hidden=!$('modalNoticeDate').textContent;
+    $('modalNoticeBody').textContent=(isEvent&&item.title?String(item.title)+'\n\n':'')+String(item.body||'');
+    $('modalNoticeBody').hidden=false;
+    modal.classList.add('portalNoticeDetailOpen');
+    void markUnifiedNoticeRead(source,item,eventId);
+  }
   let portalNotiFilter='all';
   function savePortalNotiPreview(){
     portalPreviewReadState.chatReadIds=[...portalChatReadIds].slice(-500);
@@ -7608,7 +7690,11 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
   function latestUnreadNotice(){
     return latestAddedNotice(noticeItems.filter(x=>x.enabled!==false && unreadNoticeIds.has(x.id)));
   }
-  function unreadNoticeCount(){ return noticeItems.filter(x=>x.enabled!==false && unreadNoticeIds.has(x.id)).length; }
+  function unreadNoticeCount(){
+    const common=noticeItems.filter(x=>x.enabled!==false && portalNoticeIsUnread('common',x)).length;
+    const f=window.__TR_EVENT_NOTICE_FEED__;
+    return common+(f?.loaded===true?(f.rows||[]).filter(x=>portalNoticeIsUnread('event',x,f.eventId)).length:0);
+  }
   function markNoticeRead(id){
     if(id){
       unreadNoticeIds.delete(id);
@@ -7641,39 +7727,53 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
     return String(value||'').replace(/：(?!\n)/,'：\n');
   }
   function renderNotices(){
-    const box = $('portalNoticeList'); box.innerHTML='';
+    const box=$('portalNoticeList');box.replaceChildren();
     const statusGate=window.__TR_PORTAL_SYNC__;
-    if(statusGate && statusGate.loaded?.notices!==true){
+    if(statusGate&&statusGate.loaded?.notices!==true){
       const reason=statusGate.errors?.notices;
       box.innerHTML='<div class="portalEmpty" role="status">'+(reason?'お知らせを取得できません。Firebaseの利用承認・閲覧権限を確認してください（'+esc(reason)+'）。':'お知らせをFirebaseから受信中です。')+'</div>';
       return;
     }
-    const sorted = noticeItems.filter(x=>x.enabled!==false&&portalListAccept('notices',x.date)).slice().sort((a,b)=>noticeAddedRank(b)-noticeAddedRank(a));
-    if(!sorted.length){ box.innerHTML='<div class="portalEmpty">現在のお知らせはありません。</div>'; return; }
-    sorted.forEach(item=>{
-      const unread=unreadNoticeIds.has(item.id);
+    const commons=noticeItems.filter(x=>x.enabled!==false&&portalListAccept('notices',x.date))
+      .map(item=>({source:'common',item,when:noticeAddedRank(item),eventId:''}));
+    const eventFeed=window.__TR_EVENT_NOTICE_FEED__;
+    const events=eventFeed?.loaded===true?(eventFeed.rows||[]).filter(n=>{
+      const ts=Number(n.updatedAt||n.createdAt)||0;
+      return portalListAccept('notices',ts?new Date(ts).toLocaleDateString('sv-SE',{timeZone:'Asia/Tokyo'}):'');
+    }).map(item=>({source:'event',item,when:Number(item.updatedAt||item.createdAt)||0,eventId:eventFeed.eventId})):[];
+    const sorted=commons.concat(events).sort((a,b)=>b.when-a.when);
+    if(!sorted.length){box.innerHTML='<div class="portalEmpty">現在のお知らせはありません。</div>';}
+    if(window.__TR_EVENT_NOTICE_FEED_STATUS__){
+      const warning=document.createElement('p');warning.className='portalEmpty';warning.setAttribute('role','status');
+      warning.textContent=window.__TR_EVENT_NOTICE_FEED_STATUS__;box.appendChild(warning);
+    }
+    for(const entry of sorted){
+      const {item,source,eventId}=entry,isEvent=source==='event',unread=portalNoticeIsUnread(source,item,eventId);
       const el=document.createElement('article');
       el.className='portalNoticeItem'+(unread?' unread':'');
-      el.setAttribute('role','button');
-      el.setAttribute('tabindex','0');
-      el.dataset.noticeId=item.id;
-      el.innerHTML=`<div class="portalNoticeItemTop"><small>${esc(String(item.date||'').replaceAll('-','.'))}</small>${unread?'<span class="portalNoticeNew">NEW</span>':''}</div><b>${esc(portalNoticeDisplayTitle(item.title))}</b><p>${esc(item.body)}</p>`;
-      const read=()=>openNoticeDetail(item.id);
-      el.addEventListener('click',read);
-      el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();read();}});
+      el.setAttribute('role','button');el.setAttribute('tabindex','0');
+      el.dataset.noticeId=item.id;el.dataset.source=source;
+      const stamp=isEvent?(entry.when?new Date(entry.when).toLocaleDateString('ja-JP'):''):String(item.date||'').replaceAll('-','.');
+      el.innerHTML=`<div class="portalNoticeItemTop"><small>${esc(stamp)}</small>${unread?'<span class="portalNoticeNew">NEW</span>':''}</div>${isEvent?'<span class="trNoticeSource">駅伝BASE</span><b>EKIDENBASEからのお知らせ</b>'+ (item.title?`<span class="trNoticeOriginal">${esc(item.title)}</span>`:''):`<b>${esc(portalNoticeDisplayTitle(item.title))}</b>`}<p>${esc(item.body||'')}</p>`;
+      const open=()=>isEvent?showUnifiedNoticeDetail('event',item,eventId):openNoticeDetail(item.id);
+      el.addEventListener('click',open);
+      el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open();}});
       box.appendChild(el);
-    });
+    }
   }
   function openNoticeDetail(id){
     const item=noticeItems.find(n=>n.id===id && n.enabled!==false);
     if(!item)return;
-    if(unreadNoticeIds.has(item.id))markNoticeRead(item.id);
-    openModal('お知らせ',portalNoticeDisplayTitle(item.title||'お知らせ'));
-    $('modalNoticeDate').textContent=String(item.date||'').replaceAll('-','.');
-    $('modalNoticeDate').hidden=!item.date;
-    $('modalNoticeBody').textContent=item.body||'';
-    $('modalNoticeBody').hidden=false;
-    modal.classList.add('portalNoticeDetailOpen');
+    if(new URLSearchParams(location.search).get('commonPilot')==='1'){
+      if(unreadNoticeIds.has(item.id))markNoticeRead(item.id);
+      openModal('お知らせ',portalNoticeDisplayTitle(item.title||'お知らせ'));
+      $('modalNoticeDate').textContent=String(item.date||'').replaceAll('-','.');
+      $('modalNoticeDate').hidden=!item.date;
+      $('modalNoticeBody').textContent=item.body||'';
+      $('modalNoticeBody').hidden=false;
+      modal.classList.add('portalNoticeDetailOpen');return;
+    }
+    showUnifiedNoticeDetail('common',item);
   }
   function openNoticesFromHome(){
     const id=$('homeNoticeWrap').dataset.noticeId||'';
@@ -7709,7 +7809,7 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
     qsa('.portalBottomTab').forEach(b=>b.classList.toggle('active', b.dataset.bottomTarget===name));
     const next=$('screen-'+name); if(!next) return;
     next.classList.remove('hidden'); next.setAttribute('aria-hidden','false'); next.scrollTop=0;
-    if(name==='notices'){ renderNotices(); }
+    if(name==='notices'){ renderNotices();window.__TR_EVENT_COMMS_UI__?.ensureEkiden?.(); }
     if(name==='events-tab') renderEventTab();
     if(name==='chat'){ enterPortalChat(); }
     renderManagementVisibility();
@@ -12800,6 +12900,9 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
   renderManagementVisibility();
   // Read-only display adapter: user-facing UI remains the existing PORTAL rendering.
   window.__TR_COMMON_PILOT_UI__={
+    refreshNotices(){renderNoticeHome();renderNotices();},
+    applyNoticeReads(value){updateNoticeReadFromCanonical(value);},
+    clearNoticeReads(){remoteNoticeReads=Object.create(null);remoteNoticeReadsReady=false;},
     applyVerifiedRole(role,uid){portalApplyVerifiedRole(role,uid);},
     isParticipantPreview(){return portalParticipantPreviewMode;},
     refreshCurrentScheduleDetail(){if(currentScreen()?.id==='screen-schedule-detail')renderScheduleDetailBody(selectedDateKey);},
@@ -13060,7 +13163,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
 applyNotices(rows){
       noticeItems.splice(0,noticeItems.length,...rows);
       unreadNoticeIds.clear();
-      rows.forEach(x=>{if(Number(portalPreviewReadState.notices[x.id]||0)!==Number(x.createdAt||0))unreadNoticeIds.add(x.id);});
+      rows.forEach(x=>{if(remoteNoticeReadsReady?portalNoticeIsUnread('common',x):Number(portalPreviewReadState.notices[x.id]||0)!==Number(x.createdAt||0))unreadNoticeIds.add(x.id);});
       renderNoticeHome();renderNotices();renderManageNotices();renderNotificationPreview();
     },
     applyChat(rows){
@@ -13808,7 +13911,7 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
         if(!linked||!linked.id||linked.ekidenNext!==(v.type==='RELAY EVENT BASE'))return [];
         const day=String(v.date||'').slice(0,10);
         const name=String(v.title||'連携大会').slice(0,80);
-        return [{id:linked.id,catalogId,name:name+(day?' / '+day:'')+' / '+linked.id.slice(-9)}];
+        return [{id:linked.id,catalogId,name:name+(day?' / '+day:'')+' / '+linked.id.slice(-9),kind:v.type==='RELAY EVENT BASE'?'ekiden':'event'}];
       }).slice(0,30);
     };
     gate.selectEventComms=async(rawEventId)=>{
@@ -13907,6 +14010,7 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
       eventCommsStop('本人の接続を確認してください');
       generation++;
       unsubs.splice(0).concat(ownSubs.splice(0),officialSubs.splice(0)).forEach(stop=>{try{stop();}catch(_){}});ownSignature='';officialSignature='';
+      ui?.clearNoticeReads?.();
       gate.ready=false;gate.uid='';gate.profileId='';gate.role='unverified';gate.roleVerified=false;gate.memberApproved=false;gate.firstEventOwnerBinding='not-applicable';
       {const w=document.getElementById('portalOwnerBindingRecovery');if(w)w.hidden=true;
        const b=document.getElementById('portalOwnerBindingRecoveryButton');if(b){b.hidden=true;b.onclick=null;}}
@@ -14182,6 +14286,28 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       if(confirmed.val()?.profileId!==profileId || confirmed.val()?.displayName!==name)
         throw Error('保存後の本人情報を再確認できませんでした');
       gate.displayName=name;
+    };
+    gate.saveNoticeRead=async({key,version})=>{
+      if(!gate.hasOperationalAccess()||gate.loaded.personal!==true||
+         !/^(?:p|e)_[A-Za-z0-9_-]{1,298}$/.test(String(key||''))||
+         !Number.isSafeInteger(version)||version<1||auth.currentUser?.uid!==gate.uid)
+        throw Error('既読保存の本人情報または対象が不正です');
+      const uid=gate.uid,pid=gate.profileId;
+      if(gate.personal?.profileId&&gate.personal.profileId!==pid)throw Error('既読保存の本人profileIdが一致しません');
+      const dst=dbMod.ref(db,'profiles/'+uid+'/portalSelf/noticeReads/'+key);
+      const result=await dbMod.runTransaction(dst,old=>{
+        if(auth.currentUser?.uid!==uid||gate.uid!==uid||gate.profileId!==pid)return;
+        const prev=Number(old)||0;
+        return prev>=version?undefined:version;
+      },{applyLocally:false});
+      if(auth.currentUser?.uid!==uid||gate.uid!==uid||gate.profileId!==pid)throw Error('保存中に本人が切り替わりました');
+      // Another device may have already marked this item. Verify the canonical leaf.
+      if(!result.committed){
+        const saved=(await dbMod.get(dst)).val();
+        if(Number(saved)>=version)return true;
+        throw Error('既読の保存を確認できません');
+      }
+      return Number(result.snapshot.val())>=version;
     };
     gate.saveOwnBasicProfile=value=>gate.savePersonalField('basicProfile',value);
     gate.saveOwnGoals=async value=>{
@@ -15247,7 +15373,8 @@ try{
         const ownProfileSub=dbMod.onValue(ownPortalData,snap=>{
           if(seq!==generation||auth.currentUser?.uid!==uid)return;
           gate.personal=snap.val()||{};if(gate.personal.profileId&&gate.personal.profileId!==gate.profileId){fail('personal',new Error('本人profileIdが一致しません'));return;}gate.loaded.personal=true;delete gate.errors.personal;
-          ui?.applyPersonal(gate.personal);statusResources();
+          ui?.applyPersonal(gate.personal);
+          ui?.applyNoticeReads?.(gate.personal);statusResources();
         },error=>{if(seq===generation)fail('personal',error);});
         unsubs.push(ownProfileSub);
         // Start the existing HOME image read as soon as the verified person gate is ready,
@@ -15907,6 +16034,7 @@ setInterval(display,1000);
  const editor=$('trEventNoticeEditor'),title=$('trEventNoticeTitle'),body=$('trEventNoticeBody');
  const ns=$('trEventCommsNoticeStatus'),cs=$('trEventCommsChatStatus');
  let currentId='',editingId='',latest=null,knownCatalog=[],pending=false;
+ let autoSelectedId='',autoSelecting=false;
  const safe=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const portal=()=>window.__TR_PORTAL_SYNC__;
  function clearEditor(){editingId='';editor.reset();$('trEventNoticeEditorTitle').textContent='STEP 2｜大会のお知らせを新規作成';$('trEventNoticeSaveState').textContent='';}
@@ -15919,6 +16047,18 @@ setInterval(display,1000);
    document.body.classList.toggle('trEventCommsActive',!!id);
    $('trEventNoticesPanel').hidden=!id;$('trEventChatPanel').hidden=true;
    if(!id){ns.textContent='';cs.textContent='';}
+ }
+ async function ensureEkiden(){
+   const g=portal();
+   if(autoSelecting||!g?.hasOperationalAccess?.()||!g?.loaded?.eventItems)return;
+   const target=knownCatalog.find(x=>x.kind==='ekiden');
+   if(!target)return;
+   if(currentId===target.id && latest?.noticeLoaded)return;
+   if(autoSelectedId===target.id)return;
+   autoSelectedId=target.id;autoSelecting=true;
+   try{await choose(target.id);}
+   catch(e){autoSelectedId='';}
+   finally{autoSelecting=false;}
  }
  function makeOptions(){
    const v=noticeSel.value;
@@ -15933,12 +16073,23 @@ setInterval(display,1000);
  function render(state){
    // Set the selected scope first; scopeUI clears stale drafts on change.
    // Assign the incoming snapshot AFTER clearing to keep its edit/delete actions live.
-   if(!state?.eventId){latest=null;if(currentId)scopeUI('');return;}
+   if(!state?.eventId){
+     latest=null;window.__TR_EVENT_NOTICE_FEED__=null;window.__TR_EVENT_NOTICE_FEED_STATUS__=null;
+     if(currentId)scopeUI('');
+     window.__TR_COMMON_PILOT_UI__?.refreshNotices?.();return;
+   }
    if(currentId!==state.eventId)scopeUI(state.eventId);
    latest=state;
    ns.textContent=state.noticeError?'大会お知らせREAD不可：'+state.noticeError:state.noticeLoaded?'大会のお知らせを受信しました':state.status||'読み込み中';
    cs.textContent='大会CHATは駅伝BASE／EVENT BASE内でご利用ください。';
-   const rows=Object.entries(state.notices||{}).map(([key,n])=>({...n,id:key})).sort((a,b)=>Number(b.updatedAt||b.createdAt||0)-Number(a.updatedAt||a.createdAt||0));
+   const rows=Object.entries(state.notices||{}).filter(([key,n])=>n&&typeof n==='object')
+     .map(([key,n])=>({...n,id:key})).sort((a,b)=>Number(b.updatedAt||b.createdAt||0)-Number(a.updatedAt||a.createdAt||0));
+   const ekiden=knownCatalog.find(x=>x.id===state.eventId&&x.kind==='ekiden');
+   window.__TR_EVENT_NOTICE_FEED__=ekiden&&state.noticeLoaded?{
+     eventId:state.eventId,loaded:true,rows:rows.filter(x=>x.enabled!==false)}:null;
+   window.__TR_EVENT_NOTICE_FEED_STATUS__=ekiden&&state.noticeError?
+     '駅伝BASEのお知らせを受信できません。大会の本人接続・閲覧権限を確認してください。':null;
+   window.__TR_COMMON_PILOT_UI__?.refreshNotices?.();
    notices.innerHTML=!state.noticeLoaded?'<div class="portalEmpty">大会のお知らせを受信中です。権限エラーは上に表示します。</div>':
      (rows.map(n=>`<article class="portalNoticeItem"><small>${safe(fmtTime(n.updatedAt||n.createdAt))}</small><b>${safe(n.title||'お知らせ')}</b><p>${safe(n.body||'')}</p></article>`).join('')||'<div class="portalEmpty">この大会のお知らせはまだありません。</div>');
    editor.hidden=true; // event notice editing stays in EVENT BASE
@@ -16000,7 +16151,12 @@ setInterval(display,1000);
     document.querySelector('[data-bottom-target="'+'notices'+'"]')?.click();
     void choose(deepEvent);
   }
-  window.__TR_EVENT_COMMS_UI__={catalog(items){knownCatalog=Array.isArray(items)?items:[];makeOptions();openDeepLink();},render};
+  window.__TR_EVENT_COMMS_UI__={
+   catalog(items){
+     knownCatalog=Array.isArray(items)?items:[];makeOptions();openDeepLink();
+     if(!$('screen-notices').classList.contains('hidden'))void ensureEkiden();
+   },render,ensureEkiden
+ };
   window.addEventListener('tr-portal-authorized',openDeepLink);
  // If an identity switch occurs, the unified gateway explicitly clears current event scope.
  window.addEventListener('tr-portal-identity-ready',()=>{if(!portal()?.hasOperationalAccess?.()){knownCatalog=[];makeOptions();scopeUI('');}});
