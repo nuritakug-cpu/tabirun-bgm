@@ -71,7 +71,14 @@ jobs:
           ]) {
             if (!source.includes(marker)) throw Error('Worker code missing ' + marker);
           }
-          fs.writeFileSync(dir + 'worker.js', buf);
+          // The original signed-off Worker carrier remains byte-for-byte unchanged.
+          // Add only the simple badge envelope at the existing Web Push serialization boundary.
+          const before = 'data:JSON.stringify(payload),options:';
+          const after = 'data:JSON.stringify({...payload,badge:Number.isSafeInteger(payload?.badge)&&payload.badge>=0?payload.badge:1,notification:{...payload.notification,app_badge:Number.isSafeInteger(payload?.badge)&&payload.badge>=0?payload.badge:1}}),options:';
+          if(source.split(before).length!==2)throw Error('Badge insertion anchor not unique. Stop deploy.');
+          const patched=source.replace(before,after);
+          if(patched.replace(after,before)!==source)throw Error('Unexpected Worker modification. Stop deploy.');
+          fs.writeFileSync(dir + 'worker.js', patched, 'utf8');
           fs.writeFileSync(dir + 'package.json', JSON.stringify({
             private: true,
             type: 'module',
@@ -83,7 +90,7 @@ jobs:
               wrangler: '4.0.0'
             }
           }, null, 2));
-          console.log('Worker source, checksum and D1 verified.');
+          console.log('Worker SHA and D1 verified; badge-only patch prepared.');
           NODE
           node --check cloudflare/top-run-notify/worker.js
 
