@@ -15934,17 +15934,55 @@ setInterval(display,1000);
 })();
 </script>
 <script id="top-run-app-badge-clear-20261025">
-/* OS badge only: no Firebase, push subscription, identity or read-receipt mutations. */
+/* One device/one server badge counter. Does not alter Firebase, Auth or read status.
+   The SW handles Android; on iPhone Declarative Web Push can update OS badges without SW.
+   Clear the local badge immediately, then securely reset only this subscription in D1. */
 (()=>{
   'use strict';
+  const BASE='https://top-run-notify.nuritaku-g.workers.dev';
+  const ORIGIN='https://nuritakug-cpu.github.io';
   const clearBadge=()=>{
     if(typeof navigator.clearAppBadge!=='function')return;
     try{Promise.resolve(navigator.clearAppBadge()).catch(()=>{});}catch{}
   };
-  clearBadge();
+  let active=null;
+  let lastSuccess=0;
+  async function clearOnServer(){
+    if(location.origin!==ORIGIN||location.pathname!=='/tabirun-bgm/TOP_RUN_PORTAL.html')return;
+    if(active)return active;
+    // Duplicate callbacks within 1.5 seconds need not re-issue an idempotent reset.
+    if(Date.now()-lastSuccess<1500)return;
+    active=(async()=>{
+      let sub=null;
+      if(window.pushManager?.getSubscription){
+        try{sub=await window.pushManager.getSubscription();}catch(_){/* SW fallback */}
+      }
+      if(!sub&&navigator.serviceWorker?.getRegistration){
+        const reg=await navigator.serviceWorker.getRegistration('./TOP_RUN_PORTAL');
+        if(reg?.pushManager?.getSubscription)sub=await reg.pushManager.getSubscription();
+      }
+      if(!sub)return;
+      const info=typeof sub.toJSON==='function'?sub.toJSON():sub;
+      if(!info?.endpoint||!info?.keys?.p256dh||!info?.keys?.auth)return;
+      const res=await fetch(BASE+'/api/stage2/badge-clear',{
+        method:'POST',mode:'cors',cache:'no-store',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({subscription:info})
+      });
+      if(res.ok){
+        const ack=await res.json().catch(()=>null);
+        if(ack?.ok===true){lastSuccess=Date.now();clearBadge();}
+      }
+    })().catch(()=>{}).finally(()=>{active=null;});
+    return active;
+  }
+  function opened(){clearBadge();void clearOnServer();}
+  opened();
   document.addEventListener('visibilitychange',()=>{
-    if(document.visibilityState==='visible')clearBadge();
+    if(document.visibilityState==='visible')opened();
   });
+  // Retry a previously failed reset when internet service returns, no polling.
+  window.addEventListener('online',()=>{if(document.visibilityState==='visible')opened();});
 })();
 </script>
 </body>
