@@ -1,3 +1,5 @@
+<!-- 2026-10-27 TOP RUN PORTAL P100 本番アップロード用実ファイル。実装親: TOP_RUN_PORTAL_P100_ADMISSION_FIELD_TEST.html (sha256:4222e0aeba6351c0a5664ec923923e15b46076393545b620f943fdc18c4eb843)。UID/profileId/Auth/Rules/RTDB書き込み/既存結果/交通量抑制を維持。GitHubアップロード・Firebase実機入場の検証は未実施。 -->
+
 <!-- P99 PRODUCTION HTML UPLOAD PACKAGE 2026-10-26 | physical parent: TOP_RUN_PORTAL_P99_TRAFFIC_COMMON_IDENTITY_INTEGRATED_REVIEW.html | sha256: 52a36fb6565bba1013854702b75045da44e031f758cec19cb764fdb5b2d5959d | inherited complete P99 traffic guard + P98 common identity rules alignment. STATIC PACKAGE ONLY: Requires P99 aligned Rules approval/deployment and real Firebase/iPhone/2-device tests. This file was not deployed or field-verified. -->
 <!-- P99 + P98 COMMON IDENTITY RULES ALIGNMENT INTEGRATED REVIEW (2026-10-26): P99 actual physical parent; preserves its 8s transient-visibility traffic guard. Adds only P98 existing-source UID/profileId approval recheck, no other user-facing/UI/Auth/RTDB/listener/write/race changes. Pair with unchanged P98 full integrated Rules candidate; NOT DEPLOYED / FIREBASE ACK & real bandwidth UNVERIFIED. -->
 <!-- P99 TRAFFIC TRANSIENT-VISIBILITY GUARD (P98 exact parent): defers read-only core listener detach for up to 8s of temporary hidden; explicit pagehide and long hidden still detach. Existing UID/profileId/Auth, Rules, DB paths, save and official result logic unchanged. Does not avoid cross-document boot reads. STATIC/REVIEW ONLY; no Firebase measurements or production deployment. -->
@@ -11612,6 +11614,21 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
   // One verified navigation path for both calendar and the management list.
   // Linking an event does not register a runner; it only opens its saved service.
   let portalEkidenOpening=false;
+  function portalP100EntryFeedback(item,message){
+    const id=String(item?.id||'');
+    if(!/^event-[A-Za-z0-9_-]{1,80}$/.test(id))return;
+    const button=document.querySelector('[data-cal-open-base="'+id+'"]');
+    if(!button)return; // Don't add a floating element on unrelated pages.
+    let box=document.getElementById('portalP100EntryFeedback');
+    if(!box){
+      box=document.createElement('div');box.id='portalP100EntryFeedback';
+      box.setAttribute('role','alert');
+      box.style.cssText='margin:10px 0;padding:12px;border:2px solid #ac6638;border-radius:12px;background:#fff2de;color:#392414;font-weight:800;font-size:13px;line-height:1.6;overflow-wrap:anywhere';
+      button.insertAdjacentElement('afterend',box);
+    }
+    // Only an error stage/message is displayed, never UID or proof/hash.
+    box.textContent='駅伝BASE入場確認：'+String(message||'確認できません').slice(0,250);
+  }
   async function portalOpenLinkedBase(item){
     window.__roundtripDiag?.("PORTAL: 入場操作開始");
     if(portalEkidenOpening)return false;
@@ -11622,6 +11639,7 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
     }
     const gate=window.__TR_PORTAL_SYNC__;
     if(!portalCanOpenBaseAsSelf()){
+      portalP100EntryFeedback(item,'PORTAL本人承認の確認で停止しました。本人情報は変更していません');
       showActionFeedback('本人確認が必要です','PORTALの本人認証を確認してから大会を開いてください。');return false;
     }
     const target=flowOfficialDestination(item);
@@ -11637,6 +11655,7 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
       safeUrl=u.href;
     }else safeUrl=target?portalOfficialSafeOpenUrl(target,item):'';
     if(!safeUrl){
+      portalP100EntryFeedback(item,'PORTALの接続先URL確認で停止しました');
       showActionFeedback('大会を開けません','駅伝BASE／EVENT BASEの正規接続先を確認できません。');return false;
     }
     if(link.ekidenNext){
@@ -11651,7 +11670,9 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
           throw Error('同じUID・profileIdで接続できないため移動を停止しました');
       }catch(error){
         window.__roundtripDiag?.('PORTAL: 接続停止',error);
-        showActionFeedback('駅伝BASEを開けません',String(error?.message||error).slice(0,210),15000);
+        const cause=String(error?.message||error).slice(0,210);
+        portalP100EntryFeedback(item,cause);
+        showActionFeedback('駅伝BASEを開けません',cause,15000);
         return false;
       }finally{portalEkidenOpening=false;}
     }
@@ -11659,6 +11680,7 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
     window.__roundtripDiag?.("PORTAL: 駅伝BASEへ移動",new URL(safeUrl).pathname.split("/").pop());
     const destination=new URL(safeUrl,location.href);
     if(destination.origin!==location.origin || !destination.pathname.startsWith('/tabirun-bgm/')){
+      portalP100EntryFeedback(item,'接続先ドメイン・URL安全確認で停止しました');
       showActionFeedback('接続先を開けません','同一ドメイン・同一ウィンドウ以外には移動しません');return false;
     }
     window.location.assign(destination.href);
@@ -14111,17 +14133,6 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
     };
     const selected=await selectPersistedPortalSession();
     const auth=selected.auth;
-    // P99 UID read-only diagnostic: expose the already-restored Auth state. No login / Firebase reads / writes.
-    window.__TR_P99_READ_ONLY_UID__=()=>({
-      selectedApp:selected.app?.name||'',
-      selectedUid:auth.currentUser?.uid||'',
-      selectedAnonymous:auth.currentUser?.isAnonymous===true,
-      legacyUid:authA.currentUser?.uid||'',
-      v22Uid:authB.currentUser?.uid||'',
-      gateUid:gate.uid||'',
-      gateRole:gate.role||'',
-      gateVerified:gate.roleVerified===true
-    });
     if(auth.currentUser?.uid)console.log('[PORTAL Auth] 復元できた','uid='+auth.currentUser.uid);
     else console.log('[PORTAL Auth] 保存済みUIDなし。明示的な新規登録操作まで匿名認証しません');
     const db=dbMod.getDatabase(selected.app);
@@ -14698,18 +14709,16 @@ let role='',linkProof='',ownerProof='';
            (role==='owner'&&previous.portalManaged===true&&
              (previous.portalLinkProof!=='verified-portal-developer-v1'||previous.ownerProof!==ownerProof)))
           throw Error('既存の駅伝BASE接続の本人・役割・管理資格が一致しません。データは変更していません');
-        // P93 already requires a managed binding's original display name to
-        // match its current canonical profile. Report an actual mismatch now,
-        // rather than sending the user to a second unexplained failure.
-        if(previous.portalManaged===true&&
-           String(previous.displayName).trim()!==String(profile.displayName).trim().slice(0,24))
-          throw Error('既存の駅伝BASE接続の表示名が本人プロフィールと異なります。既存データは変更していません');
+        // P100: only the validated UID, role, and canonical profileId are
+        // identity authority. A previously saved display label can be stale
+        // after an approved profile rename; do not block rightful entry for it.
+        // No binding, profile or official-result write is performed here.
         // One common path for *all* returning users: the catalog is a mutable
         // PORTAL display index, NOT the canonical event or person's identity.
         // Only the catalog pointer may change; no person/role/result overwrite.
         if(role!=='owner' && previous.portalManaged===true && previous.portalCatalogId!==catalogId){
           if(previous.portalLinkProof!==linkProof || previous.profileId!==profileId ||
-             previous.role!==role || String(previous.displayName||'')!==String(profile.displayName||'').trim().slice(0,24))
+             previous.role!==role)
             throw Error('駅伝BASEの既存本人・権限が一致しないため接続変更を中止しました');
           const original={...previous};
           let conflicted=false;
@@ -16989,71 +16998,5 @@ setInterval(display,1000);
   reveal();checkStaff();
 })();
 </script>
-
-<!-- P99 UID check / iPhone Safari and home-screen standalone / READ-ONLY REVIEW FILE. Not published. -->
-<style id="p99-uid-visibility-review-style">
-#p99UidCheckOnly{all:initial;position:fixed;left:8px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:2147483600;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,Meiryo,sans-serif;font-size:13px;color:#111}
-#p99UidCheckOnly button{box-sizing:border-box;min-height:38px;border:1px solid #ad9742;background:#211f1b;color:#fff5cb;border-radius:9px;padding:7px 9px;font-size:12px;font-weight:750}
-#p99UidCheckOnly .p99UidPanel{box-sizing:border-box;position:absolute;left:0;bottom:46px;width:min(360px,calc(100vw - 16px));max-height:55dvh;overflow:auto;box-shadow:0 10px 34px #0007;border:2px solid #b69f45;border-radius:12px;background:#f9f8f3;color:#222;padding:13px}
-#p99UidCheckOnly .p99UidPanel[hidden]{display:none!important}
-#p99UidCheckOnly h3{margin:0 0 8px;font-size:15px;color:#222}
-#p99UidCheckOnly p{margin:7px 0;font-size:12px;line-height:1.45;color:#333}
-#p99UidCheckOnly textarea{display:block;width:100%;min-height:172px;box-sizing:border-box;background:white;color:#111;border:1px solid #aaa;border-radius:7px;padding:9px;font:12px/1.55 ui-monospace,monospace;resize:vertical;overflow-wrap:anywhere}
-#p99UidCheckOnly .p99UidButtons{display:flex;gap:7px;margin-top:8px}
-#p99UidCheckOnly .p99UidButtons button{flex:1;min-height:41px;background:#3b4543;color:#fff}
-</style>
-<div id="p99UidCheckOnly">
-  <button type="button" id="p99UidToggle">UID確認</button>
-  <section id="p99UidPanel" class="p99UidPanel" hidden aria-label="UID確認 読み取りのみ">
-    <h3>現在の本人認証 UID（読み取りのみ）</h3>
-    <p>Safari／ホーム画面アプリでそれぞれ表示してください。新しいUIDを作成しません。</p>
-    <textarea id="p99UidResult" readonly spellcheck="false" aria-label="UID確認結果"></textarea>
-    <div class="p99UidButtons">
-      <button type="button" id="p99UidCopy">UIDをコピー</button>
-      <button type="button" id="p99UidClose">閉じる</button>
-    </div>
-    <p id="p99UidHint" aria-live="polite">※この診断用HTMLは未公開です。</p>
-  </section>
-</div>
-<script id="p99-uid-only-no-firebase">
-(()=>{
-  const root=document.getElementById('p99UidCheckOnly');
-  const panel=document.getElementById('p99UidPanel');
-  const result=document.getElementById('p99UidResult');
-  const hint=document.getElementById('p99UidHint');
-  let refreshTimer=null;
-  const get=()=>typeof window.__TR_P99_READ_ONLY_UID__==='function'?window.__TR_P99_READ_ONLY_UID__():null;
-  const render=()=>{
-    const state=get();
-    const mode=(window.matchMedia?.('(display-mode: standalone)')?.matches||navigator.standalone===true)?'ホーム画面アプリ':'Safari／ブラウザ';
-    const uid=state?.selectedUid||'(認証復元中・未取得)';
-    const lines=[
-      '表示環境: '+mode,
-      'ページ: '+location.pathname,
-      'PORTAL選択中 UID: '+uid,
-      '匿名Auth: '+(state?String(state.selectedAnonymous):'未確認'),
-      '本人ゲート UID: '+(state?.gateUid||'(まだ確定していない)'),
-      'Auth名: '+(state?.selectedApp||'(認証復元中)'),
-      'eventbase-rebuild UID: '+(state?.legacyUid||'(未認証)'),
-      'eventbase-rebuild-v22 UID: '+(state?.v22Uid||'(未認証)'),
-      '権限状態: '+(state?.gateRole||'(未確認)')+(state?.gateVerified?' [検証済み]':' [未検証]')
-    ];
-    result.value=lines.join('\n');
-  };
-  const hide=()=>{panel.hidden=true;clearInterval(refreshTimer);refreshTimer=null;};
-  document.getElementById('p99UidToggle').addEventListener('click',()=>{
-    if(!panel.hidden){hide();return;}
-    panel.hidden=false;render();refreshTimer=setInterval(render,1600);
-  });
-  document.getElementById('p99UidClose').addEventListener('click',hide);
-  document.getElementById('p99UidCopy').addEventListener('click',async()=>{
-    render();const state=get();
-    if(!state?.selectedUid){hint.textContent='UID未取得です。認証復元後にもう一度確認してください。';return;}
-    try{await navigator.clipboard.writeText(state.selectedUid);hint.textContent='UIDをコピーしました';}
-    catch(e){result.focus();result.select();hint.textContent='コピーできない場合は、選択された文字を長押ししてコピーしてください。';}
-  });
-})();
-</script>
-
 </body>
 </html>
