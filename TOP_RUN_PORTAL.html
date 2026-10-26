@@ -1,3 +1,11 @@
+<!-- 2026-10-26 TOP RUN PORTAL / EKIDEN NEXT P93 PRODUCTION FIELD-TEST LINK
+PHYSICAL PARENT: TOP_RUN_PORTAL(20261026-071020).html
+PARENT_SHA256: 29db943b913e321834d3503310bdb58c3304561855987ff8f26a17c96607e67c
+LINKED EVENT: eventbase_ekiden_next_2026_38fa5537b6 -> EVENT_BASE_EKIDEN_NEXT_P93_PRODUCTION_PORTAL_INTEGRATED.html
+CHANGE SCOPE: existing PORTAL event connection editor default, detect obsolete NEXT linked HTML, enforce latest file before navigation and the already-existing pre-entry guard; no automatic Firebase data changes.
+UNMODIFIED: all other PORTAL screens/functions; Firebase init/Auth/UID/profileId/Rules/paths/writes, memberAccess, normal EVENT BASE, results, LIVE/NOTICE/CHAT/Push.
+STATUS: upload package only. Real-device and Firebase tests by user; old eventItem URL requires explicit staff save with existing writer.
+-->
 <!-- 2026-10-26 PORTAL HOME/SETTINGS/MANAGEMENT UX / exact physical parent: TOP_RUN_PORTAL(20261026-061557).html; preserve all Firebase/Auth/UID/profileId/RTDB writers/Rules. UI routing only; no deployment. -->
 <!-- 2026-10-25 AUTH LINK READY REVIEW: allow only the explicitly named EVENT BASE v83 file with fixed existing eventId, in the existing official URL validator and same-URL authorized binding guard. Retains standard PRODUCTION and NEXT P83. NO Rules/data/identity/write path changes. NOT DEPLOYED. -->
 <!-- 2026-10-25 PRODUCTION INTEGRATION CANDIDATE / EVENT NOTICE READ ONLY, COMMON PUSH PRESERVED, EVENT PUSH OFF, FIREBASE RULES UNCHANGED -->
@@ -11402,23 +11410,27 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
     if(item.type==='RELAY EVENT BASE'){
       const input=$('portalEventConnectionUrl');
       if(input&&!input.value)input.value=
-        'https://nuritakug-cpu.github.io/tabirun-bgm/EVENT_BASE_EKIDEN_NEXT_P79_HOME_RENDER_DIAG.html?event=eventbase_ekiden_next_2026_38fa5537b6&portal=1';
+        'https://nuritakug-cpu.github.io/tabirun-bgm/EVENT_BASE_EKIDEN_NEXT_P93_PRODUCTION_PORTAL_INTEGRATED.html?event=eventbase_ekiden_next_2026_38fa5537b6&portal=1';
       $('portalEventConnectionStatus').textContent=portalNeedsOfficialLinkRepair(item)
         ?'接続先が駅伝BASEと一致しません。現在：'+String(item.url||'').slice(0,200)+'。指定する最新版が同じ大会か確認し、保存してください。自動更新しません。'
-        :'駅伝BASE NEXTのP79 URLを候補として入力しました。このPORTALイベントと同じ大会か確認してから「対応する大会に接続する」で保存してください。自動保存はしません。';
+        :'駅伝BASE NEXTのP93本番検証URLを候補として入力しました。このPORTALイベントと同じ大会か確認してから「対応する大会に接続する」で保存してください。自動保存はしません。';
     }
   }
   function portalNeedsOfficialLinkRepair(item){
     if(!item||!['EVENT BASE','RELAY EVENT BASE'].includes(item.type)||
        !String(item.url||'').trim())return false;
     const publicLink=portalOfficialPublicLink(item.url||'');
-    // Never replace an already matching, canonical tournament link.
-    return !publicLink||publicLink.ekidenNext!==(item.type==='RELAY EVENT BASE');
+    // A same-event OLD revision is not the approved P93 test destination.
+    // It remains in Firebase until an authorized staff member explicitly saves the corrected URL.
+    if(!publicLink||publicLink.ekidenNext!==(item.type==='RELAY EVENT BASE'))return true;
+    if(publicLink.ekidenNext)return new URL(publicLink.url).pathname!=='/tabirun-bgm/EVENT_BASE_EKIDEN_NEXT_P93_PRODUCTION_PORTAL_INTEGRATED.html';
+    return false;
   }
   function portalConnectedBase(item){
     if(!item||!['EVENT BASE','RELAY EVENT BASE'].includes(item.type))return false;
     const publicLink=portalOfficialPublicLink(item.url||'');
     if(!publicLink||publicLink.ekidenNext!==(item.type==='RELAY EVENT BASE'))return false;
+    if(publicLink.ekidenNext && new URL(publicLink.url).pathname!=='/tabirun-bgm/EVENT_BASE_EKIDEN_NEXT_P93_PRODUCTION_PORTAL_INTEGRATED.html')return false;
     // EKIDEN is a linked PORTAL service, not a preexisting official race
     // registration. Requiring officialTargetFor here deadlocks first-time entry.
     if(publicLink.ekidenNext)return /^event-[A-Za-z0-9_-]{1,80}$/.test(item.id||'');
@@ -11480,6 +11492,9 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
        !link||link.ekidenNext!==(item.type==='RELAY EVENT BASE')){
       showActionFeedback('大会を開けません','PORTALに保存した大会の接続先を確認してください。');return false;
     }
+    if(link.ekidenNext && new URL(link.url).pathname!=='/tabirun-bgm/EVENT_BASE_EKIDEN_NEXT_P93_PRODUCTION_PORTAL_INTEGRATED.html'){
+      showActionFeedback('駅伝BASEの接続先更新が必要です','管理者が現在のP93大会URLを確認して保存してください。旧版への移動は停止しました。');return false;
+    }
     const gate=window.__TR_PORTAL_SYNC__;
     if(!portalCanOpenBaseAsSelf()){
       showActionFeedback('本人確認が必要です','PORTALの本人認証を確認してから大会を開いてください。');return false;
@@ -11493,7 +11508,7 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
       u.searchParams.set('portalEvent',item.id);
       u.searchParams.set('portal','1');
       // Separate this revision from a previously cached P76 document on iOS.
-      u.searchParams.set('entryBuild','20261022-PORTAL-ROUNDTRIP-1');
+      u.searchParams.set('entryBuild','20261026-P93-INTEGRATED-1');
       safeUrl=u.href;
     }else safeUrl=target?portalOfficialSafeOpenUrl(target,item):'';
     if(!safeUrl){
@@ -14223,8 +14238,10 @@ const uid=String(gate.uid||''),profileId=String(gate.profileId||'');
       if(!/^event-[A-Za-z0-9_-]{1,80}$/.test(String(catalogId||'')))
         throw Error('接続先の大会が特定できません');
       const event=(await dbMod.get(ref('eventItems/'+catalogId))).val();
-      if(!event||event.enabled!==true||event.type!=='RELAY EVENT BASE'||!portalOfficialPublicLink(event.url||'')?.ekidenNext)
-        throw Error('PORTALの保存済み駅伝大会と接続先が一致しません');
+      const savedRoute=portalOfficialPublicLink(event?.url||'');
+      if(!event||event.enabled!==true||event.type!=='RELAY EVENT BASE'||
+         !savedRoute?.ekidenNext||new URL(savedRoute.url).pathname!=='/tabirun-bgm/EVENT_BASE_EKIDEN_NEXT_P93_PRODUCTION_PORTAL_INTEGRATED.html')
+        throw Error('PORTALの保存済み駅伝大会URLがP93と一致しません。管理者が接続先を保存してください');
       const profile=(await dbMod.get(dbMod.ref(db,'profiles/'+uid))).val();
       if(!profile||profile.profileId!==profileId||!String(profile.displayName||'').trim())
         throw Error('PORTALと駅伝BASEで本人情報が一致しません');
