@@ -1,3 +1,10 @@
+<!-- 2026-10-26 PORTAL LATEST 08:54 + P94 lifecycle integrated / P95 admission-compatible candidate
+PHYSICAL PARENT: TOP_RUN_PORTAL(20261026-085424).html
+PARENT_SHA256: a82f44a53601c2c5b02751d4090eac83831a8c4520b3f431bd16215b95216f7e
+Preserve: dynamic EKIDEN revision URL / matching saved eventItems (user's 08:54 file), recreated-catalog binding fix, approved roster identity, MY PAGE, notification and push.
+Integrated: P94 existing shared gateway visibilitychange off + coalesced resume, WITHOUT old revision-pinning or old gateway logic.
+No Firebase Auth/UID/profileId/binding/Rules/saved URL/official data writes altered. STATIC ONLY, not deployed.
+-->
 <!-- 2026-10-26 EKIDEN EXISTING BINDING / APPROVED ROSTER TARGETED REPAIR
 PHYSICAL PARENT: TOP_RUN_PORTAL_20261026_EKIDEN_DYNAMIC_RELEASE_LINK_REPAIR.html
 FIX: an existing valid same-UID / same-role / same-profile tournament binding no longer fails just because a saved PORTAL eventItems catalog item was recreated. Current official saved event URL and role/owner proof are still verified. No data rewrite.
@@ -14021,6 +14028,38 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
     if(auth.currentUser?.uid)console.log('[PORTAL Auth] 復元できた','uid='+auth.currentUser.uid);
     else console.log('[PORTAL Auth] 保存済みUIDなし。明示的な新規登録操作まで匿名認証しません');
     const db=dbMod.getDatabase(selected.app);
+    // TRAFFIC P94: existing unified Firebase gateway lifecycle (no new Auth/app/paths).
+    // Wrappers keep the same unsubscribe ownership and callbacks, but stop SDK
+    // listeners on hidden and restore them once when Safari/PWA becomes visible.
+    const p94Observed=new Set();let p94Suspended=document.hidden,p94ResumePending=false;
+    const p94WatchValue=(...args)=>{
+      const task={args,active:null,stopped:false};
+      const attach=()=>{if(task.stopped||task.active||document.hidden||p94Suspended)return;
+        task.active=dbMod.onValue(...task.args);};
+      p94Observed.add(task);attach();
+      return ()=>{task.stopped=true;if(task.active){try{task.active()}catch(_){}task.active=null;}p94Observed.delete(task);};
+    };
+    const p94Pause=()=>{
+      if(p94Suspended)return;p94Suspended=true;
+      for(const task of p94Observed){if(task.active){try{task.active()}catch(_){}task.active=null;}}
+    };
+    const p94Resume=()=>{
+      if(document.hidden||!p94Suspended||p94ResumePending)return;
+      p94ResumePending=true;
+      queueMicrotask(()=>{
+        p94ResumePending=false;
+        if(document.hidden||!p94Suspended)return;
+        p94Suspended=false;
+        for(const task of p94Observed){
+          if(task.stopped||task.active)continue;
+          task.active=dbMod.onValue(...task.args);
+        }
+      });
+    };
+    document.addEventListener('visibilitychange',()=>{if(document.hidden)p94Pause();else p94Resume();});
+    window.addEventListener('pageshow',()=>p94Resume());
+    window.addEventListener('focus',()=>p94Resume());
+
     // Published Stage3: only an existing, verified PORTAL user may request an ID token.
     gate.stage3NotificationToken=async()=>{
       const uid=String(gate.uid||''), profileId=String(gate.profileId||'');
@@ -14118,7 +14157,7 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
         gate.eventCommsState.status='大会のお知らせを受信中（CHATは大会内で運用）';
         eventCommsPaint();
         const noticeRef=dbMod.ref(db,'events/'+id+'/notices');
-        const onNotices=dbMod.onValue(noticeRef,snap=>{
+        const onNotices=p94WatchValue(noticeRef,snap=>{
           if(!valid())return;
           gate.eventCommsState.notices=snap.val()||{};
           gate.eventCommsState.noticeLoaded=true;
@@ -15030,7 +15069,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       const myUid=gate.uid,seq=generation;
       const sharedBind=(kind,id,path,notify)=>{
         const readyKind=kind==='practiceResponses'?'practice':'event';
-        const stop=dbMod.onValue(ref(path+'/'+myUid),snap=>{
+        const stop=p94WatchValue(ref(path+'/'+myUid),snap=>{
           if(seq!==generation||auth.currentUser?.uid!==myUid)return;
           const row=snap.val();
           gate[kind][id]=row?{[myUid]:row}:{};
@@ -15150,7 +15189,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
           delete gate.errors['eventBase:'+info.id];pushOfficialRoster();ui?.applyEventBaseRecords(gate.officialResults);
           ui?.applyEventBaseEntries(gate.officialEntries);ui?.refreshCurrentScheduleDetail?.();statusResources();
         };
-        const stop=dbMod.onValue(dbMod.ref(db,'events/'+info.id+'/players'),applyPlayers,error=>{
+        const stop=p94WatchValue(dbMod.ref(db,'events/'+info.id+'/players'),applyPlayers,error=>{
           if(seq!==generation)return;
           gate.errors['eventBase:'+info.id]=String(error?.code||error?.message||error).slice(0,90);
           delete gate.officialEntries[info.id];delete gate.officialPlayerResults[info.id];
@@ -15519,7 +15558,7 @@ try{
         // An invalidated grant closes UI immediately; a new UID is never generated.
         if(['developer','admin'].includes(gate.role)){
           const watchedRole=gate.role;
-          const roleStop=dbMod.onValue(dbMod.ref(db,'portalRoles/'+uid),snap=>{
+          const roleStop=p94WatchValue(dbMod.ref(db,'portalRoles/'+uid),snap=>{
             if(seq!==generation||auth.currentUser?.uid!==uid)return;
             if(snap.val()?.role!==watchedRole){
               reset();status('PORTAL管理権限が変更されました。再読み込みして既存本人で確認してください');
@@ -15533,7 +15572,7 @@ try{
           unsubs.push(roleStop);
         }
         const bind=(key,path,receive,queryRef)=>{
-          const observer=dbMod.onValue(queryRef||ref(path),snap=>{
+          const observer=p94WatchValue(queryRef||ref(path),snap=>{
             if(seq!==generation||auth.currentUser?.uid!==uid)return;
             const items=snap.val()||{};
             gate[key]=items;gate.loaded[key]=true;delete gate.errors[key];receive(items);
@@ -15545,7 +15584,7 @@ try{
         };
         // Existing canonical profile: self-only READ, no general public/user roster access.
         const ownPortalData=dbMod.ref(db,'profiles/'+uid+'/portalSelf');
-        const ownProfileSub=dbMod.onValue(ownPortalData,snap=>{
+        const ownProfileSub=p94WatchValue(ownPortalData,snap=>{
           if(seq!==generation||auth.currentUser?.uid!==uid)return;
           gate.personal=snap.val()||{};if(gate.personal.profileId&&gate.personal.profileId!==gate.profileId){fail('personal',new Error('本人profileIdが一致しません'));return;}gate.loaded.personal=true;delete gate.errors.personal;
           ui?.applyPersonal(gate.personal);
