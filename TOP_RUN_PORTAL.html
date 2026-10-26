@@ -1,8 +1,13 @@
-<!-- 2026-10-26 PORTAL P93 SHARED ENTRY / VERIFIED ROSTER REPAIR
-PHYSICAL PARENT: GitHub main TOP_RUN_PORTAL.html (1,683,295 bytes; blob 4baa03fd59994b3315c01a593f25763def586bae)
-SCOPE: keep Firebase errors visible, restore safe existing staff-UID selection only on unique RTDB-verified role, match event.enabled default used by PORTAL UI, and recognize active approved-member requests for roster display.
-NO CHANGES: Firebase Rules, Firebase Auth issuance, existing UID/profileId/bindings, database writes, official race records, unrelated screens.
-STATUS: code-only candidate; not uploaded, field tests and live Firebase ACK not verified.
+<!-- 2026-10-26 EKIDEN EXISTING BINDING / APPROVED ROSTER TARGETED REPAIR
+PHYSICAL PARENT: TOP_RUN_PORTAL_20261026_EKIDEN_DYNAMIC_RELEASE_LINK_REPAIR.html
+FIX: an existing valid same-UID / same-role / same-profile tournament binding no longer fails just because a saved PORTAL eventItems catalog item was recreated. Current official saved event URL and role/owner proof are still verified. No data rewrite.
+FIX: approved-member directory uses canonical memberAccess.active + profileId rather than requiring request.status to remain pending; existing authorized one-shot GET only.
+UNMODIFIED: Auth/UID/profileId, Firebase init/Rules, binding writes, event/results canonical paths, P93 file, other features. No real Firebase/device acceptance claimed. NOT DEPLOYED.
+-->
+<!-- 2026-10-26 EKIDEN LINK REVISION-INDEPENDENT REPAIR / NON-PRODUCTION REVIEW
+PHYSICAL PARENT: GitHub main TOP_RUN_PORTAL.html (blob 4baa03fd59994b3315c01a593f25763def586bae / 1683295 bytes)
+SCOPE: no pinned P revision in executable PORTAL gates; validate saved Firebase eventItems URL against the clicked one, same eventId/official GitHub Pages origin and path; restore hidden error detail for 15 seconds on EKIDEN entry failure. Existing developer participants pane can reuse the already-present bounded member approval GET and show UID-matched approved names.
+NO CHANGES: Firebase Auth/UID/profileId/portalRoles/memberAccess/bindings/Rules/RTDB paths/writes, canonical roster/official results or manager-published selections, other PAGE content. NO runtime/firebase/mobile acceptance claimed. Not deployed.
 -->
 <!-- 2026-10-26 TOP RUN PORTAL / EKIDEN NEXT P93 PRODUCTION FIELD-TEST LINK
 PHYSICAL PARENT: TOP_RUN_PORTAL(20261026-071020).html
@@ -1312,7 +1317,7 @@ body.portalParticipantPreview .portalDevPreviewActor:not([hidden]){display:block
 #homeNextEventCard .calFooterText{min-width:0}
 #homeNextEventCard .calFooterDate{min-width:42px;padding-right:9px}
 .portalProfileHero p,.portalProfileHero .portalTheoryNote{display:none!important}
-.portalActionToast span{display:none!important}
+.portalActionToast span{display:block!important;font-size:12px;line-height:1.5;overflow-wrap:anywhere}
 .portalSimpleFilter{margin:10px 0 12px;display:grid;grid-template-columns:minmax(90px,125px) minmax(0,1fr);align-items:start;gap:8px;max-width:100%;min-width:0}
 .portalSimpleFilter select,.portalSimpleFilter input,.portalSimpleSearch{width:100%;max-width:100%;min-width:0;box-sizing:border-box;display:block;border:1px solid #cbc5b8;border-radius:11px;background:#fff;color:var(--ink);padding:9px 10px;min-height:44px;font-size:16px;font-weight:750}
 .portalSimpleFilter [hidden]{display:none!important}
@@ -1329,12 +1334,6 @@ body.portalParticipantPreview .portalDevPreviewActor:not([hidden]){display:block
 .portalSimpleSearch{margin:12px 0}
 @media(max-width:350px){.portalSimpleFilter{grid-template-columns:minmax(76px,105px) minmax(0,1fr);gap:6px}.portalSimpleFilter select,.portalSimpleFilter input{padding-left:6px;padding-right:5px}}
 #screen-flow-event [hidden]{display:none!important}
-</style>
-<style id="portal-p93-error-visibility-20261026">
-#portalActionToast.portalActionError{max-width:520px;z-index:13000;pointer-events:auto;max-height:55dvh;overflow:auto;border-color:#e6af61;box-shadow:0 12px 45px rgba(0,0,0,.4)}
-#portalActionToast.portalActionError #portalActionToastDetail{display:block!important;font-size:12px;line-height:1.55;font-weight:700;white-space:pre-wrap;overflow-wrap:anywhere;margin:9px 0}
-#portalActionToast #portalActionToastDismissP93{display:none}
-#portalActionToast.portalActionError #portalActionToastDismissP93:not([hidden]){display:block!important;min-height:37px;margin:7px 0 0 auto;padding:6px 18px;border:1px solid #d8be85;border-radius:10px;background:#f1dab0;color:#2e2925;font-weight:800;font-size:12px}
 </style>
 <style id="portal-official-goals-eligibility-20261010">
 /* This scope only: race creation criteria, self goal templates, official PB and entry feedback. */
@@ -6391,8 +6390,7 @@ body.trEventCommsActive #portalNoticeList{display:grid!important}
 
 <div class="portalActionToast" id="portalActionToast" role="status" aria-live="polite" aria-atomic="true">
   <strong id="portalActionToastTitle">保存しました</strong>
-  <span id="portalActionToastDetail" hidden>このHTML内に反映しました。Firebase未保存です。</span>
-  <button type="button" id="portalActionToastDismissP93" hidden aria-label="エラーを閉じる">閉じる</button>
+  <span id="portalActionToastDetail">このHTML内に反映しました。Firebase未保存です。</span>
 </div>
 
 <div class="modal hidden" id="modal">
@@ -6912,26 +6910,16 @@ body.trEventCommsActive #portalNoticeList{display:grid!important}
     if(portalDeveloperUpdates.length>100)portalDeveloperUpdates.length=100;
     renderDeveloperUpdates();
   }
-  function showActionFeedback(title,detail='このHTML内に反映しました。Firebase未保存です。'){
+  function showActionFeedback(title,detail='このHTML内に反映しました。Firebase未保存です。',duration=2600){
     const box=$('portalActionToast');
     if(!box)return;
-    const serious=/(開けません|できません|不可|失敗|停止|不一致|未成立|拒否|未確認|必要です)/.test(String(title||''));
-    const detailNode=$('portalActionToastDetail');
-    const close=$('portalActionToastDismissP93');
     $('portalActionToastTitle').textContent=title;
-    detailNode.textContent=detail;
-    detailNode.hidden=!serious;
-    box.classList.toggle('portalActionError',serious);
-    box.setAttribute('role',serious?'alert':'status');
-    if(close)close.hidden=!serious;
+    $('portalActionToastDetail').textContent=detail;
     box.classList.add('show');
     clearTimeout(portalActionToastTimer);
-    if(!serious)portalActionToastTimer=setTimeout(()=>box.classList.remove('show'),2600);
+    portalActionToastTimer=setTimeout(()=>box.classList.remove('show'),duration);
     recordDeveloperUpdate(title,detail);
   }
-  $('portalActionToastDismissP93')?.addEventListener('click',()=>{
-    $('portalActionToast').classList.remove('show','portalActionError');
-  });
   function manageKindLabel(kind){
     return kind==='notice'?'お知らせ':kind==='practice'?'練習予定':kind==='event'?'イベント':kind==='resource'?'リンク／PDF':'項目';
   }
@@ -8228,6 +8216,11 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
     });
     if(['notice','practice','event','athletes'].includes(btn.dataset.managePane)) $('portalManagementExtras').open=false;
     if(btn.dataset.managePane==='athletes') renderPortalAthleteDirectory();
+    // Only first explicit opening of the participant pane performs an existing,
+    // bounded Firebase approval read; ordinary screen changes do not poll.
+    if(btn.dataset.managePane==='participants'&&isDeveloper&&
+       ['承認済み参加者の取得待ち','本人認証の再確認待ち'].includes(portalApprovedMemberLoad))
+      $('developerParticipantRefresh')?.click();
     if(isDeveloper)renderDeveloperTools();
   }));
   // Athlete navigation uses the already-existing manager form/save path; no new persistence route.
@@ -9103,6 +9096,13 @@ if(view==='list')portalApplyManageSearch(kind);
       rows.set(key,{name:old?.name||p.name,details,profileIds:ids,names,source:old?.source||source,
         conflict:old?.conflict===true||p.identityConflict===true||ids.size>1});
     };
+    // Reuse the already authorized existing approval read, not a new member DB.
+    // Do not guess UID by name or substitute profileId for the Auth UID.
+    for(const member of portalApprovedMemberRows){
+      if(!member?.uid||!member.profileId||!member.name||
+         !/^[A-Za-z0-9_-]{6,128}$/.test(member.uid))continue;
+      append('uid:'+member.uid,{id:member.profileId,name:member.name,detail:'PORTAL承認済み'},'approved');
+    }
     for(const p of portalVerifiedNumberRegistrations){
       if(!p?.uid||!p.name||!/^[A-Za-z0-9_-]{6,128}$/.test(p.uid))continue;
       append('uid:'+p.uid,p,'number');
@@ -9118,7 +9118,7 @@ if(view==='list')portalApplyManageSearch(kind);
     const matched=valid.filter(p=>!query||p.name.toLocaleLowerCase('ja').includes(query));
     const refs=portalNumberRegistrationState;
     count.textContent='確認できた識別別候補 '+valid.length+'件（全登録者数は未取得）';
-    const note='大会番号登録 '+portalVerifiedNumberRegistrations.length+'件、参加回答 '+portalDeveloperParticipants.length+'件を照合。UID一致だけ重複整理。登録取得 '+refs.checked+'/'+refs.expected+'大会'+(refs.errors.length?' ／ '+refs.errors.join(' ／ '):'')+'。同姓同名・異UIDは統合しません。全プロフィールを列挙する権限は現行Rulesにありません。';
+    const note='PORTAL承認 '+portalApprovedMemberRows.length+'件、大会番号登録 '+portalVerifiedNumberRegistrations.length+'件、参加回答 '+portalDeveloperParticipants.length+'件を照合。'+portalApprovedMemberLoad+'。UID一致だけ重複整理。登録取得 '+refs.checked+'/'+refs.expected+'大会'+(refs.errors.length?' ／ '+refs.errors.join(' ／ '):'')+'。同姓同名・異UIDは統合しません。全プロフィールを列挙する権限は現行Rulesにありません。';
     list.innerHTML='<div class="portalDeveloperEmpty" role="status">'+esc(note)+'</div>'+
       (matched.length?matched.map(p=>`<div class="portalDeveloperListRow"><b>${esc(p.name)}</b><span>${esc(p.detail)}</span></div>`).join(''):
         '<div class="portalDeveloperEmpty">確認できた登録情報はありません。未取得を未登録とは判定しません。</div>');
@@ -9384,10 +9384,22 @@ const gateway=window.__TR_PORTAL_SYNC__;
     await portalRemoveChatRows([row],'共有CHATを削除しました');
     btn.disabled=false;
   });
-  $('developerParticipantRefresh')?.addEventListener('click',()=>{
+  $('developerParticipantRefresh')?.addEventListener('click',async()=>{
     if(!isDeveloper)return;
+    const gate=window.__TR_PORTAL_SYNC__,button=$('developerParticipantRefresh');
+    if(button?.disabled)return;
+    if(!gate?.loadApprovedMembersForSelection){
+      portalApprovedMemberLoad='共通Firebaseの本人接続が未完了です';renderDeveloperParticipants();return;
+    }
+    button.disabled=true;
+    portalApprovedMemberLoad='既存Firebaseの承認済み参加者を確認中';
     renderDeveloperParticipants();
-    // Re-render only server-authorized response subset, not all registered users.
+    try{await gate.loadApprovedMembersForSelection();}
+    catch(error){
+      const reason=String(error?.code||error?.message||error).slice(0,120);
+      window.__TR_COMMON_PILOT_UI__?.applyApprovedMemberRoster?.([],reason);
+      showActionFeedback('参加者一覧を取得できません',reason,15000);
+    }finally{if(button)button.disabled=false;renderDeveloperParticipants();}
   });
 
 
@@ -11432,28 +11444,25 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
     portalShowEventConnection(item);
     if(item.type==='RELAY EVENT BASE'){
       const input=$('portalEventConnectionUrl');
-      if(input&&!input.value)input.value=
-        'https://nuritakug-cpu.github.io/tabirun-bgm/EVENT_BASE_EKIDEN_NEXT_P93_PRODUCTION_PORTAL_INTEGRATED.html?event=eventbase_ekiden_next_2026_38fa5537b6&portal=1';
+      // No revision number is bundled into PORTAL. The staff-selected link
+      // remains the single canonical eventItems URL; never auto-overwrite it.
       $('portalEventConnectionStatus').textContent=portalNeedsOfficialLinkRepair(item)
-        ?'接続先が駅伝BASEと一致しません。現在：'+String(item.url||'').slice(0,200)+'。指定する最新版が同じ大会か確認し、保存してください。自動更新しません。'
-        :'駅伝BASE NEXTのP93本番検証URLを候補として入力しました。このPORTALイベントと同じ大会か確認してから「対応する大会に接続する」で保存してください。自動保存はしません。';
+        ?'現在の接続先を確認できません。正規の駅伝BASE大会URLを入力し、同じ大会IDか確認して保存してください。自動更新しません。'
+        :'最新版の駅伝BASE大会URLを入力し、同じ大会IDか確認して「対応する大会に接続する」で保存してください。自動保存しません。';
     }
   }
   function portalNeedsOfficialLinkRepair(item){
     if(!item||!['EVENT BASE','RELAY EVENT BASE'].includes(item.type)||
        !String(item.url||'').trim())return false;
     const publicLink=portalOfficialPublicLink(item.url||'');
-    // A same-event OLD revision is not the approved P93 test destination.
-    // It remains in Firebase until an authorized staff member explicitly saves the corrected URL.
-    if(!publicLink||publicLink.ekidenNext!==(item.type==='RELAY EVENT BASE'))return true;
-    if(publicLink.ekidenNext)return new URL(publicLink.url).pathname!=='/tabirun-bgm/EVENT_BASE_EKIDEN_NEXT_P93_PRODUCTION_PORTAL_INTEGRATED.html';
-    return false;
+    // Only the official saved URL and its strict destination validator count.
+    // PXX numbers are not authorization rules; staff edit eventItems explicitly.
+    return !publicLink||publicLink.ekidenNext!==(item.type==='RELAY EVENT BASE');
   }
   function portalConnectedBase(item){
     if(!item||!['EVENT BASE','RELAY EVENT BASE'].includes(item.type))return false;
     const publicLink=portalOfficialPublicLink(item.url||'');
     if(!publicLink||publicLink.ekidenNext!==(item.type==='RELAY EVENT BASE'))return false;
-    if(publicLink.ekidenNext && new URL(publicLink.url).pathname!=='/tabirun-bgm/EVENT_BASE_EKIDEN_NEXT_P93_PRODUCTION_PORTAL_INTEGRATED.html')return false;
     // EKIDEN is a linked PORTAL service, not a preexisting official race
     // registration. Requiring officialTargetFor here deadlocks first-time entry.
     if(publicLink.ekidenNext)return /^event-[A-Za-z0-9_-]{1,80}$/.test(item.id||'');
@@ -11515,9 +11524,6 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
        !link||link.ekidenNext!==(item.type==='RELAY EVENT BASE')){
       showActionFeedback('大会を開けません','PORTALに保存した大会の接続先を確認してください。');return false;
     }
-    if(link.ekidenNext && new URL(link.url).pathname!=='/tabirun-bgm/EVENT_BASE_EKIDEN_NEXT_P93_PRODUCTION_PORTAL_INTEGRATED.html'){
-      showActionFeedback('駅伝BASEの接続先更新が必要です','管理者が現在のP93大会URLを確認して保存してください。旧版への移動は停止しました。');return false;
-    }
     const gate=window.__TR_PORTAL_SYNC__;
     if(!portalCanOpenBaseAsSelf()){
       showActionFeedback('本人確認が必要です','PORTALの本人認証を確認してから大会を開いてください。');return false;
@@ -11530,8 +11536,8 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
       const u=new URL(link.url);
       u.searchParams.set('portalEvent',item.id);
       u.searchParams.set('portal','1');
-      // Separate this revision from a previously cached P76 document on iOS.
-      u.searchParams.set('entryBuild','20261026-P93-INTEGRATED-1');
+      // Cache-bust using the verified saved filename, never a hard-coded P-number.
+      u.searchParams.set('entryBuild',u.pathname.split('/').pop().replace(/\.html$/i,''));
       safeUrl=u.href;
     }else safeUrl=target?portalOfficialSafeOpenUrl(target,item):'';
     if(!safeUrl){
@@ -11542,14 +11548,14 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
       try{
         showActionFeedback('駅伝BASEへ接続中','PORTALの本人情報と入場許可を確認しています…');
         window.__roundtripDiag?.("PORTAL: 認証・権限・binding確認中");
-        await gate.prepareEkidenEntry(item.id);
+        await gate.prepareEkidenEntry(item.id,link.url);
         window.__roundtripDiag?.("PORTAL: 入場確認完了");
         window.__roundtripDiag?.("PORTAL: 本人引継ぎ確認中");
         if(!portalPrepareP76VerifiedHandoff(safeUrl))
           throw Error('同じUID・profileIdで接続できないため移動を停止しました');
       }catch(error){
         window.__roundtripDiag?.('PORTAL: 接続停止',error);
-        showActionFeedback('駅伝BASEを開けません',String(error?.message||error).slice(0,210));
+        showActionFeedback('駅伝BASEを開けません',String(error?.message||error).slice(0,210),15000);
         return false;
       }finally{portalEkidenOpening=false;}
     }
@@ -13100,8 +13106,9 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
         if(!invalid.has(key))proof.set(key,{uid:m.uid,profileId:key,name:m.name.trim()});
       }
       portalApprovedMemberRows=[...proof.values()];
-      portalApprovedMemberLoad=error?'承認一覧を取得できません（未登録の証拠ではありません）：'+String(error).slice(0,120):
+      portalApprovedMemberLoad=error?'承認一覧のFirebase READ不可：'+String(error).slice(0,120):
         'PORTAL承認済み '+portalApprovedMemberRows.length+'人（本人UID・profileId一致）';
+      renderDeveloperParticipants();
       renderPortalAthleteDirectory();
       if(currentScreen()?.id==='screen-flow-manager'&&!$('flowManagerExternalArea')?.classList.contains('hidden'))flowRenderManagerExternal();
     },
@@ -14004,35 +14011,10 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
         }catch(_){return {candidate,status:'unknown'};}
       }));
       const bound=checked.filter(x=>x.status==='bound');
-      // A denied READ is not proof of identity absence. Do not mint or merge a UID.
-      if(checked.some(x=>x.status==='unknown'))
+      // A denied READ is not evidence that this person has no profile.
+      if(checked.some(x=>x.status==='unknown')||bound.length!==1)
         throw Error('PORTAL_MULTIPLE_IDENTITY_CONFLICT');
-      if(bound.length===1)return bound[0].candidate;
-      // Only explicit staff entry can choose between two stored, verified persons.
-      // A URL requests a role but never proves it: Firebase portalRoles does.
-      const entry=new URLSearchParams(location.search);
-      const asked=entry.has('ownerKey')?'developer':String(entry.get('role')||'').toLowerCase();
-      if(bound.length===2&&['developer','admin'].includes(asked)){
-        const roles=await Promise.all(bound.map(async x=>{
-          try{
-            const uid=x.candidate.auth.currentUser?.uid;
-            if(!uid)return {candidate:x.candidate,eligible:false,unknown:true};
-            const data=(await dbMod.get(dbMod.ref(dbMod.getDatabase(x.candidate.app),'portalRoles/'+uid))).val();
-            const eligible=asked==='developer'
-              ? data?.role==='developer'&&/^[0-9a-f]{64}$/i.test(String(data.ownerProof||''))
-              : data?.role==='admin'&&typeof data.grantedByUid==='string'&&!!data.grantedByUid;
-            return {candidate:x.candidate,eligible,unknown:false};
-          }catch(_){return {candidate:x.candidate,eligible:false,unknown:true};}
-        }));
-        if(!roles.some(x=>x.unknown)){
-          const matches=roles.filter(x=>x.eligible);
-          if(matches.length===1){
-            status('複数の保存済みUIDから正式'+(asked==='developer'?'開発者':'管理者')+'権限を持つ本人を一意に確認しました。UIDは変更していません');
-            return matches[0].candidate;
-          }
-        }
-      }
-      throw Error('PORTAL_MULTIPLE_IDENTITY_CONFLICT');
+      return bound[0].candidate;
     };
     const selected=await selectPersistedPortalSession({authA,authB,appA,appB,dbMod});
     const auth=selected.auth;
@@ -14278,7 +14260,7 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
     // P76 then reads the same canonical binding; it must not mint a new UID.
     const EKIDEN_PORTAL_EVENT_ID='eventbase_ekiden_next_2026_38fa5537b6';
     // The saved PORTAL eventItems URL is the only navigation destination; no fixed HTML revision.
-    gate.prepareEkidenEntry=async(catalogId)=>{
+    gate.prepareEkidenEntry=async(catalogId,expectedUrl)=>{
 const uid=String(gate.uid||''),profileId=String(gate.profileId||'');
       if(!uid||!profileId||auth.currentUser?.uid!==uid||gate.roleVerified!==true||
          gate.hasOperationalAccess()!==true||!gate.loaded.eventItems)
@@ -14287,9 +14269,14 @@ const uid=String(gate.uid||''),profileId=String(gate.profileId||'');
         throw Error('接続先の大会が特定できません');
       const event=(await dbMod.get(ref('eventItems/'+catalogId))).val();
       const savedRoute=portalOfficialPublicLink(event?.url||'');
-      if(!event||event.enabled===false||event.type!=='RELAY EVENT BASE'||
-         !savedRoute?.ekidenNext||new URL(savedRoute.url).pathname!=='/tabirun-bgm/EVENT_BASE_EKIDEN_NEXT_P93_PRODUCTION_PORTAL_INTEGRATED.html')
-        throw Error(event?.enabled===false?'駅伝大会が非公開に設定されています。大会を有効化してください':'PORTALのFirebase保存済み駅伝大会URLまたは種別がP93と一致しません。既存大会の接続先を確認してください');
+      const clickedRoute=portalOfficialPublicLink(expectedUrl||'');
+      if(!event||event.enabled!==true||event.type!=='RELAY EVENT BASE'||
+         !savedRoute?.ekidenNext||!clickedRoute?.ekidenNext)
+        throw Error('有効な駅伝BASEの正規大会URLをFirebaseから確認できません');
+      // The displayed link and fresh server-read eventItems must agree. A stale
+      // tab cannot redirect to an obsolete revision or a different event.
+      if(savedRoute.url!==clickedRoute.url)
+        throw Error('大会接続先が別端末で更新されています。PORTALのイベント情報を再読み込みしてください');
       const profile=(await dbMod.get(dbMod.ref(db,'profiles/'+uid))).val();
       if(!profile||profile.profileId!==profileId||!String(profile.displayName||'').trim())
         throw Error('PORTALと駅伝BASEで本人情報が一致しません');
@@ -14314,11 +14301,24 @@ let role='',linkProof='',ownerProof='';
       const dest=dbMod.ref(db,'bindings/'+EKIDEN_PORTAL_EVENT_ID+'/'+uid);
       const previous=(await dbMod.get(dest)).val();
       if(previous){
-        if(previous.role!==role||!String(previous.displayName||'').trim()||
-           (previous.profileId&&previous.profileId!==profileId)||
-           (previous.portalManaged===true&&
-             (previous.portalCatalogId!==catalogId||previous.portalLinkProof!==linkProof)))
-          throw Error('既存の駅伝BASE接続が現在のPORTAL権限と一致しません。接続を上書きしません');
+        // The canonical tournament binding belongs to this Auth UID and eventId.
+        // A PORTAL catalog item can be recreated/relinked independently of the
+        // tournament binding. Its OLD portalCatalogId is not a second identity
+        // credential: the CURRENT staff-approved catalog URL, same eventId,
+        // profiles/<uid>, role and Auth UID have already been reverified above.
+        // Do NOT overwrite a binding or permit a role/profile switch.
+        if(previous.role!==role || !String(previous.displayName||'').trim() ||
+           (previous.profileId&&previous.profileId!==profileId) ||
+           (role==='manager'&&previous.eventId&&previous.eventId!==EKIDEN_PORTAL_EVENT_ID) ||
+           (role==='owner'&&previous.portalManaged===true&&
+             (previous.portalLinkProof!=='verified-portal-developer-v1'||previous.ownerProof!==ownerProof)))
+          throw Error('既存の駅伝BASE接続の本人・役割・管理資格が一致しません。データは変更していません');
+        // P93 already requires a managed binding's original display name to
+        // match its current canonical profile. Report an actual mismatch now,
+        // rather than sending the user to a second unexplained failure.
+        if(previous.portalManaged===true&&
+           String(previous.displayName).trim()!==String(profile.displayName).trim().slice(0,24))
+          throw Error('既存の駅伝BASE接続の表示名が本人プロフィールと異なります。既存データは変更していません');
         return {uid,profileId,role,existing:true};
       }
       const binding={role,displayName:String(profile.displayName).trim().slice(0,24),
@@ -14694,11 +14694,17 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       const reqs=reqSnap.val()||{},access=accessSnap.val()||{},rows=[];
       for(const [uid,m] of Object.entries(access)){
         const r=reqs[uid];
+        // memberAccess(active + profileId) is the current canonical approval;
+        // memberRequests.status is a *request history* field and may change
+        // after approval. Treating only 'pending' as valid hid approved people.
+        // Never list unapproved users or infer a UID by a matching name.
         if(!/^[A-Za-z0-9_-]{6,128}$/.test(uid)||m?.active!==true||
           typeof m.profileId!=='string'||!m.profileId||m.profileId.length>120||
-          m.profileId!==r?.profileId||!['pending','approved'].includes(String(r?.status||''))||
-          typeof r?.displayName!=='string'||!r.displayName.trim()||r.displayName.length>24)continue;
-        rows.push({uid,profileId:m.profileId,name:r.displayName});
+          (r?.profileId&&m.profileId!==r.profileId))continue;
+        const approvedName=typeof r?.displayName==='string'&&r.displayName.trim()?r.displayName.trim():
+          typeof m?.displayName==='string'&&m.displayName.trim()?m.displayName.trim():'';
+        if(!approvedName||approvedName.length>24)continue;
+        rows.push({uid,profileId:m.profileId,name:approvedName});
       }
       ui?.applyApprovedMemberRoster?.(rows);
       return rows.length;
