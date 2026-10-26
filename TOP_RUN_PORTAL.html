@@ -1,3 +1,9 @@
+<!-- P99 PRODUCTION HTML UPLOAD PACKAGE 2026-10-26 | physical parent: TOP_RUN_PORTAL_P99_TRAFFIC_COMMON_IDENTITY_INTEGRATED_REVIEW.html | sha256: 52a36fb6565bba1013854702b75045da44e031f758cec19cb764fdb5b2d5959d | inherited complete P99 traffic guard + P98 common identity rules alignment. STATIC PACKAGE ONLY: Requires P99 aligned Rules approval/deployment and real Firebase/iPhone/2-device tests. This file was not deployed or field-verified. -->
+<!-- P99 + P98 COMMON IDENTITY RULES ALIGNMENT INTEGRATED REVIEW (2026-10-26): P99 actual physical parent; preserves its 8s transient-visibility traffic guard. Adds only P98 existing-source UID/profileId approval recheck, no other user-facing/UI/Auth/RTDB/listener/write/race changes. Pair with unchanged P98 full integrated Rules candidate; NOT DEPLOYED / FIREBASE ACK & real bandwidth UNVERIFIED. -->
+<!-- P99 TRAFFIC TRANSIENT-VISIBILITY GUARD (P98 exact parent): defers read-only core listener detach for up to 8s of temporary hidden; explicit pagehide and long hidden still detach. Existing UID/profileId/Auth, Rules, DB paths, save and official result logic unchanged. Does not avoid cross-document boot reads. STATIC/REVIEW ONLY; no Firebase measurements or production deployment. -->
+<!-- P98 COMMON IDENTITY CROSS-ROLE CANDIDATE; P97 exact physical parent; production Rules deployment and field tests REQUIRED. No published resources changed. -->
+<!-- 2026-10-26 P97 INTEGRATED PRODUCTION CANDIDATE. Physical parent P96. The current production Rules must be amended and verified BEFORE PUBLICATION. Not published or field-verified. No independent Firebase app, no new person store, no automatic UID merge, no rules deployment. -->
+<!-- 2026-10-26 P96 COMMON AUTH ENTRY REVIEW: shared byte-identical inlined Auth selector; restore settled state before any anonymous create, keep legacy named persisted identity scan; no silent user creation in PORTAL; stop stale catalog bindings before navigation; same origin/same window. NO Rules/RTDB/schema/official results changes. Developer approval and old record migration cannot be completed under published Rules. STATIC-ONLY; DO NOT DEPLOY AS FIX WITHOUT RULES APPROVAL/TEST. -->
 <!-- 2026-10-26 PORTAL LATEST 08:54 + P94 lifecycle integrated / P95 admission-compatible candidate
 PHYSICAL PARENT: TOP_RUN_PORTAL(20261026-085424).html
 PARENT_SHA256: a82f44a53601c2c5b02751d4090eac83831a8c4520b3f431bd16215b95216f7e
@@ -5314,6 +5320,81 @@ body.trEventCommsActive #portalNoticeList{display:grid!important}
  margin-top:8px;overflow-wrap:anywhere;white-space:pre-wrap}
 #screen-notices .portalNoticeItem.trNoticeReadPending{opacity:.78}
 </style>
+<script id="tr-common-auth-p96" type="text/javascript">
+/* P96: shared Auth restoration contract, SAME embedded source in PORTAL/EKIDEN.
+ * NO Firebase app initialization, DB writes, custom UID, role or permission elevation.
+ * No new anonymous Auth except explicit opts.allowAnonymous and *settled* null state.
+ * Both historic app names are inspected; distinct authenticated people never auto-merge.
+ */
+(function(){'use strict';
+ if(window.__TR_COMMON_AUTH_P96__)return;
+ const APP_NAMES=Object.freeze(['eventbase-rebuild','eventbase-rebuild-v22']);
+ let createPromise=null;
+ function initial(auth,authMod){
+   if(typeof auth.authStateReady==='function')return auth.authStateReady().then(()=>auth.currentUser||null);
+   return new Promise((resolve,reject)=>{
+     let resolved=false,stop=()=>{};
+     stop=authMod.onAuthStateChanged(auth,user=>{
+       if(resolved)return;resolved=true;stop();resolve(user||null);
+     },error=>{if(resolved)return;resolved=true;stop();reject(error);});
+   });
+ }
+ async function resolve({appMod,authMod,dbMod,config,allowAnonymous=false,preferredUid='',requireProfile=false}){
+   if(!appMod||!authMod||!dbMod||!config)throw Error('共有認証モジュールの依存が不足しています');
+   const candidates=APP_NAMES.map(name=>{
+     const app=appMod.getApps().find(x=>x.name===name)||appMod.initializeApp(config,name);
+     return {name,app,auth:authMod.getAuth(app)};
+   });
+   await Promise.all(candidates.map(x=>initial(x.auth,authMod)));
+   let alive=candidates.filter(x=>!!x.auth.currentUser?.uid);
+   let selected=null,created=false;
+   if(preferredUid){
+     selected=alive.find(x=>x.auth.currentUser.uid===preferredUid)||null;
+     if(!selected)throw Error('PORTALと駅伝BASEで本人UIDが一致しません。新しいUIDは作りません');
+   }else if(alive.length===1)selected=alive[0];
+   else if(alive.length===2&&alive[0].auth.currentUser.uid===alive[1].auth.currentUser.uid)selected=alive[0];
+   else if(alive.length===2){
+     // Only one readable canonical profile can resolve the legacy app-name conflict.
+     const checks=await Promise.all(alive.map(async x=>{
+       try{const uid=x.auth.currentUser.uid,p=(await dbMod.get(dbMod.ref(dbMod.getDatabase(x.app),'profiles/'+uid))).val();
+         return {x,hasProfile:typeof p?.profileId==='string'&&!!p.profileId.trim()};
+       }catch(e){return {x,error:e};}
+     }));
+     if(checks.some(x=>x.error)||checks.filter(x=>x.hasProfile).length!==1)
+       throw Error('PORTAL_MULTIPLE_IDENTITY_CONFLICT');
+     selected=checks.find(x=>x.hasProfile).x;
+   }
+   if(!selected){
+     if(!allowAnonymous)return {selected:candidates[0],created:false,missing:true,candidates};
+     // A retry may NOT issue a second anonymous identity. Recheck under same-origin lock.
+     const make=async()=>{
+       await Promise.all(candidates.map(x=>initial(x.auth,authMod)));
+       const seen=candidates.filter(x=>!!x.auth.currentUser?.uid);
+       if(seen.length===1)return seen[0];
+       if(seen.length>1)throw Error('認証復元中に複数UIDが現れました。新規発行を中止しました');
+       const x=candidates[0];
+       await authMod.setPersistence(x.auth,authMod.browserLocalPersistence);
+       const result=await authMod.signInAnonymously(x.auth);
+       if(!result?.user?.uid||result.user.uid!==x.auth.currentUser?.uid)throw Error('新規匿名認証の確認に失敗しました');
+       created=true;return x;
+     };
+     const get=()=>createPromise||(createPromise=make().finally(()=>{createPromise=null}));
+     selected=(navigator.locks&&typeof navigator.locks.request==='function')
+       ?await navigator.locks.request('event-base-anonymous-uid-create',get):await get();
+   }
+   const uid=selected.auth.currentUser?.uid||'';
+   if(!uid)throw Error('共有認証からUIDを確認できません');
+   if(requireProfile){
+     const p=(await dbMod.get(dbMod.ref(dbMod.getDatabase(selected.app),'profiles/'+uid))).val();
+     if(!p||!p.profileId||!String(p.displayName||'').trim())
+       throw Error('既存本人profileIdがありません。PORTALの開発者承認・紐付け確認へ戻ってください');
+     return {selected,created,missing:false,candidates,profile:p};
+   }
+   return {selected,created,missing:false,candidates};
+ }
+ window.__TR_COMMON_AUTH_P96__=Object.freeze({resolve,appNames:APP_NAMES});
+})();
+</script>
 </head>
 <body>
 <div id="portalFirstPaintAuthOverlay" role="status" aria-live="polite" aria-label="TOP RUN PORTAL 認証中">
@@ -5979,6 +6060,14 @@ body.trEventCommsActive #portalNoticeList{display:grid!important}
 </div>
 
 <div class="portalScreen hidden" id="screen-management" aria-hidden="true">
+<section id="portalIdentityLinkDeveloper" hidden style="margin:15px;padding:14px;border:1px solid #d8bf50;border-radius:12px;background:#293430;color:#fff">
+  <details id="portalIdentityLinkDeveloperDetails"><summary style="cursor:pointer;font-weight:900">開発者：本人引き継ぎの承認・紐付け</summary>
+    <p style="font-size:13px">本人確認を別途行ってから承認してください。氏名だけで同一人物と判断しません。過去のUID・記録は削除しません。</p>
+    <button id="portalIdentityLinkRefresh" type="button" style="min-height:43px">申請と既存本人一覧を確認</button>
+    <div id="portalIdentityLinkDeveloperList" style="display:grid;gap:10px;margin-top:12px"></div>
+    <p id="portalIdentityLinkDeveloperState" role="status" style="white-space:pre-wrap;font-size:12px"></p>
+  </details>
+</section>
   <div class="portalScreenHead">
     <button class="portalBack" type="button" data-root-home>← PORTAL</button>
     <div><small>MANAGEMENT</small><b>管理画面</b></div>
@@ -11568,7 +11657,11 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
     }
     try{sessionStorage.setItem(portalCalendarReturnKey20261022,JSON.stringify({eventId:item.id,t:Date.now()}));}catch(_){}
     window.__roundtripDiag?.("PORTAL: 駅伝BASEへ移動",new URL(safeUrl).pathname.split("/").pop());
-    window.location.assign(safeUrl);
+    const destination=new URL(safeUrl,location.href);
+    if(destination.origin!==location.origin || !destination.pathname.startsWith('/tabirun-bgm/')){
+      showActionFeedback('接続先を開けません','同一ドメイン・同一ウィンドウ以外には移動しません');return false;
+    }
+    window.location.assign(destination.href);
     return true;
   }
   // PORTAL is the event schedule authority. A connected EVENT BASE is a service
@@ -13585,6 +13678,16 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
     <button id="portalParticipantLoginRetry" type="button" hidden>この端末のログインを再確認</button>
     <button id="portalExistingParticipantStart" type="button" hidden>登録済みの方：元の本人に戻る</button>
     <button id="portalNewParticipantStart" type="button" hidden>このアイコンで利用登録する（既存利用者も可）</button>
+    <button id="portalIdentityLinkOpen" type="button" class="portalHandoffSecondary" hidden>以前の記録を引き継ぐ（開発者の本人確認）</button>
+    <form id="portalIdentityLinkRequestForm" hidden style="margin:13px 0;padding:14px;border:1px solid #c4b252;border-radius:12px">
+      <strong>既存データへの本人紐付け申請</strong>
+      <p>以前の本人記録を探し、開発者が本人を確認してから同じprofileIdへ紐付けます。申請だけで他人の記録は閲覧できません。</p>
+      <label for="portalIdentityLinkRequestName">本人確認用の名前</label>
+      <input id="portalIdentityLinkRequestName" maxlength="24" required autocomplete="name" style="display:block;width:100%;min-height:45px;border-radius:8px;color:#151515;background:#fff;padding:8px">
+      <button type="submit">本人紐付けを申請する</button>
+      <button type="button" id="portalIdentityLinkCheck" class="portalHandoffSecondary">開発者の承認を確認する</button>
+      <p id="portalIdentityLinkRequestState" role="status" aria-live="polite" style="white-space:pre-wrap"></p>
+    </form>
     <button id="portalParticipantEntryBack" class="portalHandoffSecondary" type="button" hidden>登録状況の選択へ戻る</button>
     <section id="portalParticipantRoleStep" class="portalParticipantRoleStep" aria-label="利用区分を選ぶ" hidden>
       <p class="portalRoleStepLabel">STEP 1 / ご利用区分</p>
@@ -14000,30 +14103,13 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
     // Existing EVENT BASE app names may retain different authenticated sessions.
     // This is a READ-ONLY resolution of existing credentials; never sign in, mint a UID,
     // merge profiles, alter bindings, or silently choose between two valid identities.
-    const selectPersistedPortalSession=async ({authA,authB,appA,appB,dbMod})=>{
-      const candidates=[{auth:authA,app:appA},{auth:authB,app:appB}];
-      const [a,b]=candidates;
-      const aUid=a.auth.currentUser?.uid||'';
-      const bUid=b.auth.currentUser?.uid||'';
-      // If neither store has an identity, use the canonical app A ONLY for
-      // future explicit enrollment, not a different hidden Auth namespace.
-      if(!aUid&&!bUid)return a;
-      if(!aUid||!bUid||aUid===bUid)return aUid?a:b;
-      const checked=await Promise.all(candidates.map(async candidate=>{
-        try{
-          const uid=candidate.auth.currentUser.uid;
-          const snapshot=await dbMod.get(dbMod.ref(dbMod.getDatabase(candidate.app),'profiles/'+uid));
-          const profile=snapshot.val();
-          return {candidate,status:typeof profile?.profileId==='string'&&profile.profileId.trim()?'bound':'unbound'};
-        }catch(_){return {candidate,status:'unknown'};}
-      }));
-      const bound=checked.filter(x=>x.status==='bound');
-      // A denied READ is not evidence that this person has no profile.
-      if(checked.some(x=>x.status==='unknown')||bound.length!==1)
-        throw Error('PORTAL_MULTIPLE_IDENTITY_CONFLICT');
-      return bound[0].candidate;
+    const selectPersistedPortalSession=async ()=>{
+      const result=await window.__TR_COMMON_AUTH_P96__.resolve({
+        appMod,authMod,dbMod,config:firebaseConfig,allowAnonymous:false
+      });
+      return result.selected; // Same existing Auth, no automatic UID creation.
     };
-    const selected=await selectPersistedPortalSession({authA,authB,appA,appB,dbMod});
+    const selected=await selectPersistedPortalSession();
     const auth=selected.auth;
     if(auth.currentUser?.uid)console.log('[PORTAL Auth] 復元できた','uid='+auth.currentUser.uid);
     else console.log('[PORTAL Auth] 保存済みUIDなし。明示的な新規登録操作まで匿名認証しません');
@@ -14032,6 +14118,10 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
     // Wrappers keep the same unsubscribe ownership and callbacks, but stop SDK
     // listeners on hidden and restore them once when Safari/PWA becomes visible.
     const p94Observed=new Set();let p94Suspended=document.hidden,p94ResumePending=false;
+    // P99: transient iOS task-switch/notification interruptions should not
+    // repeatedly download the same initial RTDB snapshots. Auth/role watchers
+    // remain active during the short grace; long background still disconnects.
+    let p99HideTimer=null;
     const p94WatchValue=(...args)=>{
       const task={args,active:null,stopped:false};
       const attach=()=>{if(task.stopped||task.active||document.hidden||p94Suspended)return;
@@ -14039,17 +14129,27 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
       p94Observed.add(task);attach();
       return ()=>{task.stopped=true;if(task.active){try{task.active()}catch(_){}task.active=null;}p94Observed.delete(task);};
     };
-    const p94Pause=()=>{
+    const p99PauseNow=()=>{
+      if(p99HideTimer){clearTimeout(p99HideTimer);p99HideTimer=null;}
       if(p94Suspended)return;p94Suspended=true;
       for(const task of p94Observed){if(task.active){try{task.active()}catch(_){}task.active=null;}}
     };
+    const p94Pause=()=>{
+      if(p94Suspended||p99HideTimer)return;
+      p99HideTimer=setTimeout(()=>{
+        p99HideTimer=null;
+        if(document.hidden)p99PauseNow();
+      },8000);
+    };
     const p94Resume=()=>{
-      if(document.hidden||!p94Suspended||p94ResumePending)return;
+      if(p99HideTimer){clearTimeout(p99HideTimer);p99HideTimer=null;}
+      if(document.hidden||p94ResumePending)return;
       p94ResumePending=true;
       queueMicrotask(()=>{
         p94ResumePending=false;
-        if(document.hidden||!p94Suspended)return;
+        if(document.hidden)return;
         p94Suspended=false;
+        // Also attach any watchers created while the tab was briefly hidden.
         for(const task of p94Observed){
           if(task.stopped||task.active)continue;
           task.active=dbMod.onValue(...task.args);
@@ -14059,6 +14159,8 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
     document.addEventListener('visibilitychange',()=>{if(document.hidden)p94Pause();else p94Resume();});
     window.addEventListener('pageshow',()=>p94Resume());
     window.addEventListener('focus',()=>p94Resume());
+    // A real document navigation has no useful listener state to preserve.
+    window.addEventListener('pagehide',p99PauseNow);
 
     // Published Stage3: only an existing, verified PORTAL user may request an ID token.
     gate.stage3NotificationToken=async()=>{
@@ -14072,6 +14174,239 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
     };
     const root='portalCommon/topRun';
     const ref=(path)=>dbMod.ref(db,root+'/'+path);
+
+    // P97 shared identity re-linking: approvals, never a new PERSON database.
+    // Existing profileId remains canonical; the new UID is only an authenticated session alias.
+    // All operations use THIS gateway's existing auth, dbMod and db. Rules must independently verify.
+    const identityLinks='identityLinks/';
+    const isDeveloper=()=>gate.role==='developer'&&gate.roleVerified===true&&
+      gate.uid===auth.currentUser?.uid&&!!gate.profileId;
+    gate.requestExistingIdentityLink=async(name)=>{
+      name=String(name||'').trim();
+      if(name.length<1||name.length>24||/[\x00-\x1f]/.test(name))throw Error('本人確認用の名前を1～24文字で入力してください');
+      if(!auth.currentUser?.uid){
+        // Explicit submit only. Auth has finished restoration before this point.
+        const resolved=await window.__TR_COMMON_AUTH_P96__.resolve({appMod,authMod,dbMod,config:firebaseConfig,allowAnonymous:true});
+        if(resolved.selected?.auth!==auth)throw Error('別の認証状態が現れました。新しいUIDを作らず停止します');
+      }
+      const uid=auth.currentUser?.uid;
+      if(!uid)throw Error('Firebaseの本人認証を確認できません');
+      if((await dbMod.get(dbMod.ref(db,'profiles/'+uid))).exists())
+        throw Error('このUIDには既存profileIdがあります。新規の紐付け申請は行いません');
+      const at=ref(identityLinks+uid),before=(await dbMod.get(at)).val();
+      if(before){if(before.status==='pending'||before.status==='approved')return {uid,status:before.status};
+        throw Error('このUIDの申請状態を開発者に確認してください');}
+      const request={status:'pending',requestedName:name,requestedAt:Date.now()};
+      const result=await dbMod.runTransaction(at,v=>v===null?request:undefined,{applyLocally:false});
+      const verified=(await dbMod.get(at)).val();
+      if(!verified || verified.requestedName!==name || verified.status!=='pending')
+        throw Error('本人紐付け申請のFirebase保存確認ができません');
+      return {uid,status:'pending',created:result.committed};
+    };
+    gate.checkExistingIdentityLink=async()=>{
+      const uid=auth.currentUser?.uid||'';
+      if(!uid)throw Error('この画面の認証がまだありません');
+      const link=(await dbMod.get(ref(identityLinks+uid))).val();
+      if(!link)return {status:'none'};
+      if(link.status!=='approved')return {status:link.status};
+      if(!link.sourceUid||!link.profileId||!link.approvedByUid||
+         link.sourceUid===uid)throw Error('承認済みの本人識別情報が不完全です');
+      const at=dbMod.ref(db,'profiles/'+uid);
+      const previous=(await dbMod.get(at)).val();
+      if(previous&&previous.profileId!==link.profileId)throw Error('別のprofileIdが既存です。上書きは禁止しています');
+      if(!previous){
+        const now=Date.now();
+        const result=await dbMod.runTransaction(at,v=>v===null?{
+          profileId:link.profileId,displayName:String(link.requestedName).trim().slice(0,24),
+          createdAt:now,updatedAt:now}:undefined,{applyLocally:false});
+        if(!result.committed){const fresh=(await dbMod.get(at)).val();
+          if(!fresh||fresh.profileId!==link.profileId)throw Error('本人profileIdが別端末で変更されました');}
+      }
+      const confirmed=(await dbMod.get(at)).val();
+      if(!confirmed||confirmed.profileId!==link.profileId)throw Error('既存profileIdへの紐付け確認ができません');
+      // The existing staff approval path relies on memberRequests.pending.
+      // This is not a second identity; it is a staff-verifiable access request for the same UID.
+      const req=ref('memberRequests/'+uid);
+      if(!(await dbMod.get(req)).exists()){
+        const digest=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(uid)));
+        const digits=Array.from(digest.slice(0,2),v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();
+        await dbMod.runTransaction(req,v=>v===null?{
+          profileId:link.profileId,displayName:confirmed.displayName,status:'pending',
+          numberSuffix:digits,requestedAt:Date.now()}:undefined,{applyLocally:false});
+      }
+      const requestVerified=(await dbMod.get(req)).val();
+      if(requestVerified?.profileId!==link.profileId)throw Error('参加承認申請のprofileIdが一致しません');
+      const access=(await dbMod.get(ref('memberAccess/'+uid))).val();
+      if(access?.active===true&&access.profileId===link.profileId){
+        let migration=null;
+        try{migration=await gate.importApprovedPersonalState();}
+        catch(error){await onUser(auth.currentUser);
+          return {status:'active-migration-pending',reason:String(error?.message||error)};}
+        await onUser(auth.currentUser);
+        return {status:'active',profileId:link.profileId,personalCopied:!!migration?.imported};
+      }
+      await onUser(auth.currentUser);
+      return {status:'approved-awaiting-access',profileId:link.profileId};
+    };
+    gate.getIdentityLinkReview=async()=>{
+      if(!isDeveloper())throw Error('開発者の本人資格が必要です');
+      const uid=gate.uid;
+      const [requests,access,join,ekidenBindings]=await Promise.all([
+        dbMod.get(ref('identityLinks')),dbMod.get(ref('memberAccess')),dbMod.get(ref('memberRequests')),
+        // This is an existing canonical binding collection, READ authorized by
+        // the current event-owner Rules; no person directory or second identity DB.
+        // Some PORTAL developers are not EVENT owners: fail closed and retain
+        // the memberAccess candidate list rather than inventing profiles.
+        dbMod.get(dbMod.ref(db,'bindings/eventbase_ekiden_next_2026_38fa5537b6')).then(s=>s.val()||{}).catch(()=>null)
+      ]);
+      if(!isDeveloper()||uid!==gate.uid)throw Error('本人権限が途中で変更されました');
+      const links=requests.val()||{},members=access.val()||{},joinHistory=join.val()||{};
+      const candidateMap=new Map();
+      for(const [sourceUid,v] of Object.entries(members)){
+        if(sourceUid===uid||v?.active!==true||typeof v?.profileId!=='string'||!v.profileId)continue;
+        candidateMap.set(sourceUid,{uid:sourceUid,profileId:v.profileId,
+          name:joinHistory[sourceUid]?.displayName||'(元の参加者)',source:'approved-member'});
+      }
+      if(ekidenBindings&&typeof ekidenBindings==='object')for(const [sourceUid,v] of Object.entries(ekidenBindings)){
+        if(sourceUid===uid||!['manager','owner'].includes(v?.role)||
+           typeof v?.profileId!=='string'||!v.profileId)continue;
+        const existing=candidateMap.get(sourceUid);
+        if(existing&&existing.profileId!==v.profileId){candidateMap.delete(sourceUid);continue;}
+        candidateMap.set(sourceUid,{uid:sourceUid,profileId:v.profileId,
+          name:String(v.displayName||existing?.name||'(元の大会関係者)').slice(0,24),
+          source:existing?.source||'event-'+v.role});
+      }
+      return {
+        requests:Object.entries(links).filter(([key,v])=>key!==uid&&v&&['pending','approved'].includes(v.status)).map(([uid,v])=>({uid,...v})),
+        candidates:[...candidateMap.values()].sort((a,b)=>a.name.localeCompare(b.name,'ja')),
+        memberAccess:members,
+        eventOwnerCanReviewBindings:ekidenBindings!==null
+      };
+    };
+    gate.approveIdentityLink=async(targetUid,sourceUid)=>{
+      if(!isDeveloper())throw Error('開発者の権限が必要です');
+      if(!/^[A-Za-z0-9_-]{6,128}$/.test(targetUid)||!/^[A-Za-z0-9_-]{6,128}$/.test(sourceUid)||
+          targetUid===sourceUid)throw Error('承認先と引継ぎ元のUIDが不正です');
+      const data=await gate.getIdentityLinkReview();
+      const candidate=data.candidates.find(x=>x.uid===sourceUid);
+      const request=data.requests.find(x=>x.uid===targetUid&&x.status==='pending');
+      if(!candidate||!request)throw Error('既存の正式本人と未処理の申請を確認できません');
+      // P98 Rules-alignment: source UID must still own its canonical profileId.
+      // Only the developer may read this single existing profileId field.
+      const sourceProfileId=(await dbMod.get(dbMod.ref(db,'profiles/'+sourceUid+'/profileId'))).val();
+      if(typeof sourceProfileId!=='string'||sourceProfileId!==candidate.profileId)
+        throw Error('引継ぎ元のUIDと既存profileIdが一致しません。承認せず停止します');
+      if(candidate.source==='event-manager'){
+        // A known role in a legacy event binding is NOT by itself proof of
+        // authorization to transfer. Verify the existing staff grant when
+        // applicable. The server Rules independently check the same source.
+        const sourceGrant=(await dbMod.get(dbMod.ref(db,'portalRoles/'+sourceUid))).val();
+        if(sourceGrant?.role!=='admin')
+          throw Error('元管理者のPORTAL管理資格が確認できないため承認できません');
+      }
+      const approved={...request};delete approved.uid;
+      Object.assign(approved,{status:'approved',sourceUid,profileId:candidate.profileId,
+        approvedAt:Date.now(),approvedByUid:gate.uid});
+      const at=ref(identityLinks+targetUid);
+      const result=await dbMod.runTransaction(at,current=>{
+        if(!isDeveloper()||!current||current.status!=='pending'||current.requestedAt!==request.requestedAt||
+           current.requestedName!==request.requestedName)return;
+        return approved;
+      },{applyLocally:false});
+      const actual=(await dbMod.get(at)).val();
+      if(!result.committed||actual?.status!=='approved'||actual?.sourceUid!==sourceUid||
+         actual?.profileId!==candidate.profileId)throw Error('本人承認のFirebase保存ACKが成立しません');
+      return actual;
+    };
+    gate.finalizeIdentityLink=async(targetUid)=>{
+      if(!isDeveloper())throw Error('開発者の権限が必要です');
+      const review=await gate.getIdentityLinkReview();
+      const link=review.requests.find(x=>x.uid===targetUid&&x.status==='approved');
+      if(!link||!link.sourceUid||!link.profileId)throw Error('開発者承認がありません');
+      const source=review.candidates.find(x=>x.uid===link.sourceUid);
+      if(!source||source.profileId!==link.profileId)
+        throw Error('元の本人profileIdを正規PORTAL承認または既存大会bindingで検証できません');
+      // The member must have first accepted the grant on their own UID;
+      // staff cannot overwrite anyone's protected profiles/$uid directly.
+      const waiting=await dbMod.get(ref('memberRequests/'+targetUid));
+      if(waiting.val()?.profileId!==link.profileId||waiting.val()?.status!=='pending')
+        throw Error('本人の新UID側で承認の受取確認がまだ終わっていません');
+      const at=ref('memberAccess/'+targetUid);
+      const old=(await dbMod.get(at)).val();
+      if(old){if(old.active===true&&old.profileId===link.profileId)return {alreadyActive:true};
+        throw Error('別の参加者承認が保存されています。上書きしません');}
+      const grant={profileId:link.profileId,active:true,approvedAt:Date.now(),approvedBy:gate.uid};
+      const result=await dbMod.runTransaction(at,v=>v===null?grant:undefined,{applyLocally:false});
+      const verified=(await dbMod.get(at)).val();
+      if(!result.committed||verified?.active!==true||verified?.profileId!==link.profileId)
+        throw Error('紐付け後のPORTAL利用承認のFirebase保存確認に失敗しました');
+      // Preserve management authorization only if the old UID had a verified
+      // administrator grant. Never auto-promote a participant or recover owner proof.
+      let previousStaff=null;
+      try{previousStaff=(await dbMod.get(dbMod.ref(db,'portalRoles/'+link.sourceUid))).val();}catch(_){/* no promotion */}
+      if(previousStaff?.role==='admin'){
+        const roleRef=dbMod.ref(db,'portalRoles/'+targetUid);
+        const roleGrant={role:'admin',grantedByUid:gate.uid,boundAt:Date.now()};
+        const roleTxn=await dbMod.runTransaction(roleRef,v=>v===null?roleGrant:undefined,{applyLocally:false});
+        const roleConfirmed=(await dbMod.get(roleRef)).val();
+        if(!roleTxn.committed&&roleConfirmed?.role!=='admin')
+          throw Error('参加承認は保存しましたが管理者資格の継承は未完了です。開発者の確認が必要です');
+      }
+      return {granted:true};
+    };
+    gate.importApprovedPersonalState=async()=>{
+      const uid=auth.currentUser?.uid||'';
+      if(!uid)throw Error('本人UIDがありません');
+      const link=(await dbMod.get(ref(identityLinks+uid))).val();
+      const member=(await dbMod.get(ref('memberAccess/'+uid))).val();
+      const p=(await dbMod.get(dbMod.ref(db,'profiles/'+uid))).val();
+      if(link?.status!=='approved'||!link.sourceUid||link.sourceUid===uid||
+         !link.profileId||p?.profileId!==link.profileId||
+         member?.active!==true||member.profileId!==p.profileId)
+        throw Error('本人・引継ぎ承認・参加資格を確認できません');
+      const old=(await dbMod.get(dbMod.ref(db,'profiles/'+link.sourceUid+'/portalSelf'))).val();
+      if(!old||typeof old!=='object')return {imported:false,reason:'元の個人設定なし'};
+      if(old.profileId&&old.profileId!==link.profileId)throw Error('旧マイページのprofileIdが一致しません');
+      const at=dbMod.ref(db,'profiles/'+uid+'/portalSelf');
+      let changed=false;
+      const keys=['basicProfile','defaultGoals','personalColor','externalRecords'];
+      const tx=await dbMod.runTransaction(at,current=>{
+        if(auth.currentUser?.uid!==uid)return;
+        const live=current&&typeof current==='object'&&!Array.isArray(current)?current:{};
+        if(live.profileId&&live.profileId!==link.profileId)return;
+        const next={...live,profileId:link.profileId};
+        let wrote=false;
+        for(const k of keys){
+          if(!Object.prototype.hasOwnProperty.call(old,k))continue;
+          if(!Object.prototype.hasOwnProperty.call(next,k)){next[k]=old[k];wrote=true;}
+          else if(k==='externalRecords'&&old[k]&&typeof old[k]==='object'&&next[k]&&typeof next[k]==='object'){
+            const combined={...next[k]};
+            for(const [id,record] of Object.entries(old[k])){
+              if(!Object.prototype.hasOwnProperty.call(combined,id)){combined[id]=record;wrote=true;}
+            }
+            next[k]=combined;
+          }
+        }
+        if(!wrote&&live.profileId)return;
+        changed=wrote;next.updatedAt=Date.now();return next;
+      },{applyLocally:false});
+      const verified=(await dbMod.get(at)).val();
+      if(auth.currentUser?.uid!==uid||verified?.profileId!==link.profileId)
+        throw Error('マイページ移行の保存・再読込確認が成立しません');
+      return {imported:tx.committed&&changed};
+    };
+    gate.readRecoveredPastRecords=async()=>{
+      const uid=gate.uid,pid=gate.profileId;
+      if(!uid||uid!==auth.currentUser?.uid||!pid||gate.memberApproved!==true)return [];
+      const approved=(await dbMod.get(ref(identityLinks+uid))).val();
+      if(approved?.status!=='approved'||approved.profileId!==pid||!approved.sourceUid)return [];
+      const oldUid=approved.sourceUid;
+      const snap=await dbMod.get(ref('pastRecords/'+oldUid));
+      if(uid!==auth.currentUser?.uid||pid!==gate.profileId)throw Error('本人認証が変更されました');
+      return Object.values(snap.val()||{}).filter(r=>r&&r.subjectUid===oldUid&&r.profileId===pid)
+        .map(r=>({id:String(r.id||''),name:String(r.name||''),date:String(r.date||''),
+          metric:String(r.metric||''),time:String(r.time||''),status:String(r.status||'')})).slice(0,300);
+    };
     let unsubs=[],ownSubs=[],officialSubs=[],ownSignature='',officialSignature='',generation=0;
 
     // 2026-10-24: EVENT BASE communication scopes live inside the EXISTING unified
@@ -14358,6 +14693,36 @@ let role='',linkProof='',ownerProof='';
         if(previous.portalManaged===true&&
            String(previous.displayName).trim()!==String(profile.displayName).trim().slice(0,24))
           throw Error('既存の駅伝BASE接続の表示名が本人プロフィールと異なります。既存データは変更していません');
+        // One common path for *all* returning users: the catalog is a mutable
+        // PORTAL display index, NOT the canonical event or person's identity.
+        // Only the catalog pointer may change; no person/role/result overwrite.
+        if(role!=='owner' && previous.portalManaged===true && previous.portalCatalogId!==catalogId){
+          if(previous.portalLinkProof!==linkProof || previous.profileId!==profileId ||
+             previous.role!==role || String(previous.displayName||'')!==String(profile.displayName||'').trim().slice(0,24))
+            throw Error('駅伝BASEの既存本人・権限が一致しないため接続変更を中止しました');
+          const original={...previous};
+          let conflicted=false;
+          try{
+            const leaf=dbMod.ref(db,'bindings/'+EKIDEN_PORTAL_EVENT_ID+'/'+uid+'/portalCatalogId');
+            const updated=await dbMod.runTransaction(leaf,current=>{
+              if(auth.currentUser?.uid!==uid || gate.uid!==uid || gate.profileId!==profileId ||
+                 gate.roleVerified!==true || !gate.hasOperationalAccess())return;
+              if(current===catalogId)return;  // Another device may have succeeded already.
+              if(current!==original.portalCatalogId){conflicted=true;return;}
+              return catalogId;
+            },{applyLocally:false});
+            const fresh=(await dbMod.get(dest)).val();
+            if(!updated.committed && fresh?.portalCatalogId!==catalogId)
+              throw Error(conflicted?'別端末が大会参照先を更新しました。再取得してください':'既存接続の更新は許可されませんでした');
+            if(!fresh || fresh.portalCatalogId!==catalogId ||
+               Object.keys(original).some(k=>k!=='portalCatalogId' && JSON.stringify(fresh[k])!==JSON.stringify(original[k])))
+              throw Error('大会接続ID以外の保存情報に差異が生じたため接続を停止しました');
+          }catch(error){
+            if(/permission[_-]denied/i.test(String(error?.code||error?.message||error)))
+              throw Error('現在のFirebase Rulesは、本人を維持した大会接続IDの安全な更新を許可していません。Rules統合適用が必要です。');
+            throw error;
+          }
+        }
         return {uid,profileId,role,existing:true};
       }
       const binding={role,displayName:String(profile.displayName).trim().slice(0,24),
@@ -16513,6 +16878,104 @@ setInterval(display,1000);
       if(document.visibilityState==='visible'&&!document.getElementById('screen-chat')?.classList.contains('hidden'))opened();
     },3200);
   });
+})();
+</script>
+
+<script id="tr-identity-link-ui-p97">
+(function(){'use strict';
+  const $=id=>document.getElementById(id);
+  const open=$('portalIdentityLinkOpen'),form=$('portalIdentityLinkRequestForm'),state=$('portalIdentityLinkRequestState');
+  const gate=()=>window.__TR_PORTAL_SYNC__;
+  let busy=false;
+  const run=async(fn,where=state)=>{
+    if(busy)return;busy=true;
+    if(where)where.textContent='Firebaseの保存状態を確認中…';
+    try{const result=await fn();if(where)where.textContent=result;}
+    catch(err){if(where)where.textContent='未完了：'+String(err?.message||err).slice(0,240);}
+    finally{busy=false;}
+  };
+  const reveal=()=>{
+    const parent=$('portalParticipantIdentityGate');
+    if(!parent||parent.hidden)return;
+    if(open)open.hidden=false;
+  };
+  const observer=new MutationObserver(reveal);
+  const parent=$('portalParticipantIdentityGate');
+  if(parent)observer.observe(parent,{attributes:true,attributeFilter:['hidden']});
+  window.addEventListener('tr-portal-authorized',()=>{if(open)open.hidden=true;if(form)form.hidden=true;});
+  open?.addEventListener('click',()=>{form.hidden=false;open.hidden=true;state.textContent='申請内容を確認してください。';});
+  form?.addEventListener('submit',ev=>{
+    ev.preventDefault();
+    const name=$('portalIdentityLinkRequestName')?.value||'';
+    if(!confirm('元の記録を残したまま、開発者の本人確認を申請しますか？'))return;
+    void run(async()=>{
+      const v=await gate()?.requestExistingIdentityLink?.(name);
+      if(!v)throw Error('PORTAL共通認証の接続を確認できません');
+      return v.status==='approved'?'承認済みです。「承認を確認する」を押してください。':'申請を保存しました。開発者による本人確認をお待ちください。';
+    });
+  });
+  $('portalIdentityLinkCheck')?.addEventListener('click',()=>void run(async()=>{
+    const r=await gate()?.checkExistingIdentityLink?.();
+    if(r?.status==='active')return '既存profileIdと参加承認を確認しました。個人設定の引継ぎも照合しました。';
+    if(r?.status==='active-migration-pending')return '参加資格は承認済みですが個人設定の引継ぎは未完了：'+r.reason;
+    if(r?.status==='approved-awaiting-access')return '既存profileIdへの紐付けを保存しました。開発者の利用承認をお待ちください。';
+    if(r?.status==='pending')return '申請中です。開発者による本人確認が必要です。';
+    return '本人引き継ぎ申請は確認できません。';
+  }));
+  const manager=$('portalIdentityLinkDeveloper'),list=$('portalIdentityLinkDeveloperList'),log=$('portalIdentityLinkDeveloperState');
+  const esc=value=>String(value||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  let cache=null;
+  const checkStaff=()=>{
+    const g=gate();
+    if(manager)manager.hidden=!(g?.role==='developer'&&g.roleVerified===true&&g.uid);
+  };
+  window.addEventListener('tr-portal-authorized',checkStaff);
+  const refresh=()=>run(async()=>{
+    const g=gate();if(!g?.getIdentityLinkReview)throw Error('共通本人モジュールが準備できていません');
+    cache=await g.getIdentityLinkReview();
+    list.replaceChildren();
+    for(const person of cache.requests){
+      const box=document.createElement('div');
+      box.style.cssText='padding:12px;border:1px solid #686d67;border-radius:10px;display:grid;gap:7px';
+      const title=document.createElement('strong');title.textContent=`申請 ${person.uid.slice(-6)} / ${person.requestedName||''} / ${person.status}`;box.append(title);
+      const select=document.createElement('select');select.style.cssText='width:100%;font-size:14px;min-height:42px';
+      const def=document.createElement('option');def.value='';def.textContent='本人確認した既存人物を選択';select.append(def);
+      for(const source of cache.candidates){const opt=document.createElement('option');opt.value=source.uid;
+        opt.textContent=`${source.name} / ${source.uid.slice(-6)} / ${source.profileId.slice(-12)}`;select.append(opt);}
+      const button=document.createElement('button');button.type='button';button.style.minHeight='42px';
+      if(person.status==='pending'){
+        button.textContent='本人確認済み：この既存profileIdを承認';box.append(select);
+        button.onclick=()=>{
+          if(!select.value)return;
+          if(!confirm('本人確認は氏名一致だけでなく別の方法で完了しましたか？ 選択した既存profileIdへ紐付けます。'))return;
+          void run(async()=>{await gate().approveIdentityLink(person.uid,select.value);setTimeout(refresh,0);return '本人引き継ぎを承認しました';},log);
+        };
+      }else{
+        button.textContent='本人の受取確認後：PORTAL利用資格を確定';
+        button.onclick=()=>void run(async()=>{await gate().finalizeIdentityLink(person.uid);setTimeout(refresh,0);return '参加承認を確定しました';},log);
+      }
+      box.append(button);list.append(box);
+    }
+    const scope=cache.eventOwnerCanReviewBindings?'既存参加者・大会管理者の候補を確認':'大会の管理者bindingは閲覧権限外です（参加承認済み候補のみ確認）';
+    return (cache.requests.length?`${cache.requests.length}件の申請を確認しました。`:'現在の申請はありません。')+' '+scope;
+  },log);
+  $('portalIdentityLinkRefresh')?.addEventListener('click',refresh);
+  const recoveredBox=document.createElement('section');recoveredBox.id='portalRecoveredPastRecordsP97';
+  recoveredBox.style.cssText='margin:15px 0;padding:15px;border:1px solid #cbb64b;border-radius:12px';
+  recoveredBox.hidden=true;
+  $('screen-mypage')?.append(recoveredBox);
+  const showPast=()=>{
+    const g=gate();if(!g?.readRecoveredPastRecords||!g.memberApproved)return;
+    void g.readRecoveredPastRecords().then(rows=>{
+      recoveredBox.replaceChildren();recoveredBox.hidden=!rows.length;
+      if(!rows.length)return;
+      const heading=document.createElement('h3');heading.textContent='引き継いだ過去記録（閲覧のみ）';recoveredBox.append(heading);
+      for(const r of rows){const line=document.createElement('p');
+        line.textContent=`${r.date} / ${r.metric} / ${r.status==='time'?r.time:r.status}`;recoveredBox.append(line);}
+    }).catch(err=>{recoveredBox.hidden=false;recoveredBox.textContent='過去記録の取得は未完了：'+String(err?.message||err);});
+  };
+  window.addEventListener('tr-portal-authorized',showPast);
+  reveal();checkStaff();
 })();
 </script>
 </body>
