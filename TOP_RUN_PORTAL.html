@@ -1,3 +1,9 @@
+<!-- 2026-10-26 PORTAL P93 SHARED ENTRY / VERIFIED ROSTER REPAIR
+PHYSICAL PARENT: GitHub main TOP_RUN_PORTAL.html (1,683,295 bytes; blob 4baa03fd59994b3315c01a593f25763def586bae)
+SCOPE: keep Firebase errors visible, restore safe existing staff-UID selection only on unique RTDB-verified role, match event.enabled default used by PORTAL UI, and recognize active approved-member requests for roster display.
+NO CHANGES: Firebase Rules, Firebase Auth issuance, existing UID/profileId/bindings, database writes, official race records, unrelated screens.
+STATUS: code-only candidate; not uploaded, field tests and live Firebase ACK not verified.
+-->
 <!-- 2026-10-26 TOP RUN PORTAL / EKIDEN NEXT P93 PRODUCTION FIELD-TEST LINK
 PHYSICAL PARENT: TOP_RUN_PORTAL(20261026-071020).html
 PARENT_SHA256: 29db943b913e321834d3503310bdb58c3304561855987ff8f26a17c96607e67c
@@ -1323,6 +1329,12 @@ body.portalParticipantPreview .portalDevPreviewActor:not([hidden]){display:block
 .portalSimpleSearch{margin:12px 0}
 @media(max-width:350px){.portalSimpleFilter{grid-template-columns:minmax(76px,105px) minmax(0,1fr);gap:6px}.portalSimpleFilter select,.portalSimpleFilter input{padding-left:6px;padding-right:5px}}
 #screen-flow-event [hidden]{display:none!important}
+</style>
+<style id="portal-p93-error-visibility-20261026">
+#portalActionToast.portalActionError{max-width:520px;z-index:13000;pointer-events:auto;max-height:55dvh;overflow:auto;border-color:#e6af61;box-shadow:0 12px 45px rgba(0,0,0,.4)}
+#portalActionToast.portalActionError #portalActionToastDetail{display:block!important;font-size:12px;line-height:1.55;font-weight:700;white-space:pre-wrap;overflow-wrap:anywhere;margin:9px 0}
+#portalActionToast #portalActionToastDismissP93{display:none}
+#portalActionToast.portalActionError #portalActionToastDismissP93:not([hidden]){display:block!important;min-height:37px;margin:7px 0 0 auto;padding:6px 18px;border:1px solid #d8be85;border-radius:10px;background:#f1dab0;color:#2e2925;font-weight:800;font-size:12px}
 </style>
 <style id="portal-official-goals-eligibility-20261010">
 /* This scope only: race creation criteria, self goal templates, official PB and entry feedback. */
@@ -6380,6 +6392,7 @@ body.trEventCommsActive #portalNoticeList{display:grid!important}
 <div class="portalActionToast" id="portalActionToast" role="status" aria-live="polite" aria-atomic="true">
   <strong id="portalActionToastTitle">保存しました</strong>
   <span id="portalActionToastDetail" hidden>このHTML内に反映しました。Firebase未保存です。</span>
+  <button type="button" id="portalActionToastDismissP93" hidden aria-label="エラーを閉じる">閉じる</button>
 </div>
 
 <div class="modal hidden" id="modal">
@@ -6902,13 +6915,23 @@ body.trEventCommsActive #portalNoticeList{display:grid!important}
   function showActionFeedback(title,detail='このHTML内に反映しました。Firebase未保存です。'){
     const box=$('portalActionToast');
     if(!box)return;
+    const serious=/(開けません|できません|不可|失敗|停止|不一致|未成立|拒否|未確認|必要です)/.test(String(title||''));
+    const detailNode=$('portalActionToastDetail');
+    const close=$('portalActionToastDismissP93');
     $('portalActionToastTitle').textContent=title;
-    $('portalActionToastDetail').textContent=detail;
+    detailNode.textContent=detail;
+    detailNode.hidden=!serious;
+    box.classList.toggle('portalActionError',serious);
+    box.setAttribute('role',serious?'alert':'status');
+    if(close)close.hidden=!serious;
     box.classList.add('show');
     clearTimeout(portalActionToastTimer);
-    portalActionToastTimer=setTimeout(()=>box.classList.remove('show'),2600);
+    if(!serious)portalActionToastTimer=setTimeout(()=>box.classList.remove('show'),2600);
     recordDeveloperUpdate(title,detail);
   }
+  $('portalActionToastDismissP93')?.addEventListener('click',()=>{
+    $('portalActionToast').classList.remove('show','portalActionError');
+  });
   function manageKindLabel(kind){
     return kind==='notice'?'お知らせ':kind==='practice'?'練習予定':kind==='event'?'イベント':kind==='resource'?'リンク／PDF':'項目';
   }
@@ -13077,7 +13100,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
         if(!invalid.has(key))proof.set(key,{uid:m.uid,profileId:key,name:m.name.trim()});
       }
       portalApprovedMemberRows=[...proof.values()];
-      portalApprovedMemberLoad=error?'承認一覧のFirebase READ不可：'+String(error).slice(0,120):
+      portalApprovedMemberLoad=error?'承認一覧を取得できません（未登録の証拠ではありません）：'+String(error).slice(0,120):
         'PORTAL承認済み '+portalApprovedMemberRows.length+'人（本人UID・profileId一致）';
       renderPortalAthleteDirectory();
       if(currentScreen()?.id==='screen-flow-manager'&&!$('flowManagerExternalArea')?.classList.contains('hidden'))flowRenderManagerExternal();
@@ -13981,10 +14004,35 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
         }catch(_){return {candidate,status:'unknown'};}
       }));
       const bound=checked.filter(x=>x.status==='bound');
-      // A denied READ is not evidence that this person has no profile.
-      if(checked.some(x=>x.status==='unknown')||bound.length!==1)
+      // A denied READ is not proof of identity absence. Do not mint or merge a UID.
+      if(checked.some(x=>x.status==='unknown'))
         throw Error('PORTAL_MULTIPLE_IDENTITY_CONFLICT');
-      return bound[0].candidate;
+      if(bound.length===1)return bound[0].candidate;
+      // Only explicit staff entry can choose between two stored, verified persons.
+      // A URL requests a role but never proves it: Firebase portalRoles does.
+      const entry=new URLSearchParams(location.search);
+      const asked=entry.has('ownerKey')?'developer':String(entry.get('role')||'').toLowerCase();
+      if(bound.length===2&&['developer','admin'].includes(asked)){
+        const roles=await Promise.all(bound.map(async x=>{
+          try{
+            const uid=x.candidate.auth.currentUser?.uid;
+            if(!uid)return {candidate:x.candidate,eligible:false,unknown:true};
+            const data=(await dbMod.get(dbMod.ref(dbMod.getDatabase(x.candidate.app),'portalRoles/'+uid))).val();
+            const eligible=asked==='developer'
+              ? data?.role==='developer'&&/^[0-9a-f]{64}$/i.test(String(data.ownerProof||''))
+              : data?.role==='admin'&&typeof data.grantedByUid==='string'&&!!data.grantedByUid;
+            return {candidate:x.candidate,eligible,unknown:false};
+          }catch(_){return {candidate:x.candidate,eligible:false,unknown:true};}
+        }));
+        if(!roles.some(x=>x.unknown)){
+          const matches=roles.filter(x=>x.eligible);
+          if(matches.length===1){
+            status('複数の保存済みUIDから正式'+(asked==='developer'?'開発者':'管理者')+'権限を持つ本人を一意に確認しました。UIDは変更していません');
+            return matches[0].candidate;
+          }
+        }
+      }
+      throw Error('PORTAL_MULTIPLE_IDENTITY_CONFLICT');
     };
     const selected=await selectPersistedPortalSession({authA,authB,appA,appB,dbMod});
     const auth=selected.auth;
@@ -14239,9 +14287,9 @@ const uid=String(gate.uid||''),profileId=String(gate.profileId||'');
         throw Error('接続先の大会が特定できません');
       const event=(await dbMod.get(ref('eventItems/'+catalogId))).val();
       const savedRoute=portalOfficialPublicLink(event?.url||'');
-      if(!event||event.enabled!==true||event.type!=='RELAY EVENT BASE'||
+      if(!event||event.enabled===false||event.type!=='RELAY EVENT BASE'||
          !savedRoute?.ekidenNext||new URL(savedRoute.url).pathname!=='/tabirun-bgm/EVENT_BASE_EKIDEN_NEXT_P93_PRODUCTION_PORTAL_INTEGRATED.html')
-        throw Error('PORTALの保存済み駅伝大会URLがP93と一致しません。管理者が接続先を保存してください');
+        throw Error(event?.enabled===false?'駅伝大会が非公開に設定されています。大会を有効化してください':'PORTALのFirebase保存済み駅伝大会URLまたは種別がP93と一致しません。既存大会の接続先を確認してください');
       const profile=(await dbMod.get(dbMod.ref(db,'profiles/'+uid))).val();
       if(!profile||profile.profileId!==profileId||!String(profile.displayName||'').trim())
         throw Error('PORTALと駅伝BASEで本人情報が一致しません');
@@ -14648,7 +14696,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         const r=reqs[uid];
         if(!/^[A-Za-z0-9_-]{6,128}$/.test(uid)||m?.active!==true||
           typeof m.profileId!=='string'||!m.profileId||m.profileId.length>120||
-          m.profileId!==r?.profileId||r?.status!=='pending'||
+          m.profileId!==r?.profileId||!['pending','approved'].includes(String(r?.status||''))||
           typeof r?.displayName!=='string'||!r.displayName.trim()||r.displayName.length>24)continue;
         rows.push({uid,profileId:m.profileId,name:r.displayName});
       }
