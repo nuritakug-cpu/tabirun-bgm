@@ -14111,6 +14111,17 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
     };
     const selected=await selectPersistedPortalSession();
     const auth=selected.auth;
+    // P99 UID read-only diagnostic: expose the already-restored Auth state. No login / Firebase reads / writes.
+    window.__TR_P99_READ_ONLY_UID__=()=>({
+      selectedApp:selected.app?.name||'',
+      selectedUid:auth.currentUser?.uid||'',
+      selectedAnonymous:auth.currentUser?.isAnonymous===true,
+      legacyUid:authA.currentUser?.uid||'',
+      v22Uid:authB.currentUser?.uid||'',
+      gateUid:gate.uid||'',
+      gateRole:gate.role||'',
+      gateVerified:gate.roleVerified===true
+    });
     if(auth.currentUser?.uid)console.log('[PORTAL Auth] 復元できた','uid='+auth.currentUser.uid);
     else console.log('[PORTAL Auth] 保存済みUIDなし。明示的な新規登録操作まで匿名認証しません');
     const db=dbMod.getDatabase(selected.app);
@@ -16978,5 +16989,71 @@ setInterval(display,1000);
   reveal();checkStaff();
 })();
 </script>
+
+<!-- P99 UID check / iPhone Safari and home-screen standalone / READ-ONLY REVIEW FILE. Not published. -->
+<style id="p99-uid-visibility-review-style">
+#p99UidCheckOnly{all:initial;position:fixed;left:8px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:2147483600;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,Meiryo,sans-serif;font-size:13px;color:#111}
+#p99UidCheckOnly button{box-sizing:border-box;min-height:38px;border:1px solid #ad9742;background:#211f1b;color:#fff5cb;border-radius:9px;padding:7px 9px;font-size:12px;font-weight:750}
+#p99UidCheckOnly .p99UidPanel{box-sizing:border-box;position:absolute;left:0;bottom:46px;width:min(360px,calc(100vw - 16px));max-height:55dvh;overflow:auto;box-shadow:0 10px 34px #0007;border:2px solid #b69f45;border-radius:12px;background:#f9f8f3;color:#222;padding:13px}
+#p99UidCheckOnly .p99UidPanel[hidden]{display:none!important}
+#p99UidCheckOnly h3{margin:0 0 8px;font-size:15px;color:#222}
+#p99UidCheckOnly p{margin:7px 0;font-size:12px;line-height:1.45;color:#333}
+#p99UidCheckOnly textarea{display:block;width:100%;min-height:172px;box-sizing:border-box;background:white;color:#111;border:1px solid #aaa;border-radius:7px;padding:9px;font:12px/1.55 ui-monospace,monospace;resize:vertical;overflow-wrap:anywhere}
+#p99UidCheckOnly .p99UidButtons{display:flex;gap:7px;margin-top:8px}
+#p99UidCheckOnly .p99UidButtons button{flex:1;min-height:41px;background:#3b4543;color:#fff}
+</style>
+<div id="p99UidCheckOnly">
+  <button type="button" id="p99UidToggle">UID確認</button>
+  <section id="p99UidPanel" class="p99UidPanel" hidden aria-label="UID確認 読み取りのみ">
+    <h3>現在の本人認証 UID（読み取りのみ）</h3>
+    <p>Safari／ホーム画面アプリでそれぞれ表示してください。新しいUIDを作成しません。</p>
+    <textarea id="p99UidResult" readonly spellcheck="false" aria-label="UID確認結果"></textarea>
+    <div class="p99UidButtons">
+      <button type="button" id="p99UidCopy">UIDをコピー</button>
+      <button type="button" id="p99UidClose">閉じる</button>
+    </div>
+    <p id="p99UidHint" aria-live="polite">※この診断用HTMLは未公開です。</p>
+  </section>
+</div>
+<script id="p99-uid-only-no-firebase">
+(()=>{
+  const root=document.getElementById('p99UidCheckOnly');
+  const panel=document.getElementById('p99UidPanel');
+  const result=document.getElementById('p99UidResult');
+  const hint=document.getElementById('p99UidHint');
+  let refreshTimer=null;
+  const get=()=>typeof window.__TR_P99_READ_ONLY_UID__==='function'?window.__TR_P99_READ_ONLY_UID__():null;
+  const render=()=>{
+    const state=get();
+    const mode=(window.matchMedia?.('(display-mode: standalone)')?.matches||navigator.standalone===true)?'ホーム画面アプリ':'Safari／ブラウザ';
+    const uid=state?.selectedUid||'(認証復元中・未取得)';
+    const lines=[
+      '表示環境: '+mode,
+      'ページ: '+location.pathname,
+      'PORTAL選択中 UID: '+uid,
+      '匿名Auth: '+(state?String(state.selectedAnonymous):'未確認'),
+      '本人ゲート UID: '+(state?.gateUid||'(まだ確定していない)'),
+      'Auth名: '+(state?.selectedApp||'(認証復元中)'),
+      'eventbase-rebuild UID: '+(state?.legacyUid||'(未認証)'),
+      'eventbase-rebuild-v22 UID: '+(state?.v22Uid||'(未認証)'),
+      '権限状態: '+(state?.gateRole||'(未確認)')+(state?.gateVerified?' [検証済み]':' [未検証]')
+    ];
+    result.value=lines.join('\n');
+  };
+  const hide=()=>{panel.hidden=true;clearInterval(refreshTimer);refreshTimer=null;};
+  document.getElementById('p99UidToggle').addEventListener('click',()=>{
+    if(!panel.hidden){hide();return;}
+    panel.hidden=false;render();refreshTimer=setInterval(render,1600);
+  });
+  document.getElementById('p99UidClose').addEventListener('click',hide);
+  document.getElementById('p99UidCopy').addEventListener('click',async()=>{
+    render();const state=get();
+    if(!state?.selectedUid){hint.textContent='UID未取得です。認証復元後にもう一度確認してください。';return;}
+    try{await navigator.clipboard.writeText(state.selectedUid);hint.textContent='UIDをコピーしました';}
+    catch(e){result.focus();result.select();hint.textContent='コピーできない場合は、選択された文字を長押ししてコピーしてください。';}
+  });
+})();
+</script>
+
 </body>
 </html>
