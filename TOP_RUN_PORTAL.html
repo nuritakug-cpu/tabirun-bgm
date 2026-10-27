@@ -15891,7 +15891,40 @@ try{
         unsubs.push(ownProfileSub);
         // Start the existing HOME image read as soon as the verified person gate is ready,
         // before slower optional past-event reads. This is a MOVE, not a new listener.
-        bind('homeImage','homeImage',value=>ui?.applyHomeImage(value));
+        // P103: the HOME image is ~2.8 MB of base64. Watch only its tiny updatedAt live and keep the
+        // image itself in IndexedDB on this device. The cache is used ONLY after the live updatedAt read
+        // succeeded (i.e. READ permission is still proven); same node, same shape, no Rules/path change.
+        {
+          const HKEY='homeImage:v1';
+          const idb=()=>new Promise((res,rej)=>{try{const r=indexedDB.open('tr-portal-cache-p103',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);}catch(e){rej(e);}});
+          const idbGet=async k=>{const d=await idb();return new Promise((res,rej)=>{const q=d.transaction('kv','readonly').objectStore('kv').get(k);q.onsuccess=()=>{d.close();res(q.result||null);};q.onerror=()=>{d.close();rej(q.error);};});};
+          const idbSet=async(k,v)=>{const d=await idb();return new Promise((res,rej)=>{const t=d.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=()=>{d.close();res();};t.onerror=()=>{d.close();rej(t.error);};});};
+          let homeRun=0;
+          const applyHome=value=>{
+            gate.homeImage=value;gate.loaded.homeImage=true;delete gate.errors.homeImage;ui?.applyHomeImage(value);
+            gate.ready=gate.hasOperationalAccess()&&gate.loaded.notices&&gate.loaded.chat&&gate.loaded.practices&&gate.loaded.eventItems;
+            if(gate.canSendChat())ui?.enableChat();
+            statusResources();
+          };
+          const homeStampSub=p94WatchValue(ref('homeImage/updatedAt'),async snap=>{
+            if(seq!==generation||auth.currentUser?.uid!==uid)return;
+            const mine=++homeRun,stamp=snap.val();
+            try{
+              let value=null;
+              if(stamp!=null){
+                let cached=null;try{cached=await idbGet(HKEY);}catch(_){}
+                if(cached&&Number(cached.updatedAt)===Number(stamp)&&cached.value&&typeof cached.value.image==='string')value=cached.value;
+              }
+              if(!value){
+                value=(await dbMod.get(ref('homeImage'))).val()||{};
+                if(value&&typeof value.image==='string'&&value.updatedAt!=null){try{await idbSet(HKEY,{updatedAt:Number(value.updatedAt),value});}catch(_){}}
+              }
+              if(mine!==homeRun||seq!==generation||auth.currentUser?.uid!==uid)return;
+              applyHome(value);
+            }catch(error){if(seq===generation)fail('homeImage',error);}
+          },error=>{if(seq===generation)fail('homeImage',error);});
+          unsubs.push(homeStampSub);
+        }
         // Read-only first-load of this exact authenticated person's staff-entered history.
         // A failed permission never changes local preview or another UID's records.
         void gate.loadPastRecordsFor(uid,gate.profileId).catch(error=>{
@@ -16924,6 +16957,7 @@ setInterval(display,1000);
 #p99UidCheckOnly .p99UidButtons{display:flex;gap:7px;margin-top:8px}
 #p99UidCheckOnly .p99UidButtons button{flex:1;min-height:41px;background:#3b4543;color:#fff}
 </style>
+<style>#p99UidCheckOnly{display:none!important}</style>
 <div id="p99UidCheckOnly">
   <button type="button" id="p99UidToggle">UID確認</button>
   <section id="p99UidPanel" class="p99UidPanel" hidden aria-label="UID確認 読み取りのみ">
