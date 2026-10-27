@@ -225,6 +225,78 @@ Candidate only: user-device verification is still required before baseline promo
 -->
 <html lang="ja">
 <head>
+<script id="tr-dl-meter-p102">
+(function(){
+  if(window.__trDl)return;
+  var P=/TOP_RUN_PORTAL/i.test(location.pathname)?'portal':'ekiden';
+  var KEY='tr-dlmeter-v1-'+P, FLAG='tr-dlmeter-on';
+  try{
+    var m=/[?&]dlmeter=([01])/.exec(location.search);
+    if(m){ if(m[1]==='1')localStorage.setItem(FLAG,'1'); else localStorage.removeItem(FLAG); }
+  }catch(e){}
+  function on(){ try{return localStorage.getItem(FLAG)==='1'}catch(e){return false} }
+  var stat={}, since=Date.now();
+  try{ var s0=JSON.parse(localStorage.getItem(KEY)||'null'); if(s0&&s0.stat){stat=s0.stat;since=s0.since||since;} }catch(e){}
+  var dirty=false;
+  function norm(q){ try{ return String(q).replace(/^https?:\/\/[^\/]+/,'').replace(/\?.*$/,function(x){return x.length>48?x.slice(0,48)+'…':x}).slice(0,150)||'/'; }catch(e){return '?'} }
+  function size(v){ try{ return v==null?0:JSON.stringify(v).length; }catch(e){return 0} }
+  function rec(path,bytes,isLoad){ var r=stat[path]||(stat[path]=[0,0,0]); if(isLoad){r[0]+=bytes;r[1]+=1;}else{r[2]+=1;} dirty=true; }
+  setInterval(function(){ if(!dirty)return; dirty=false; try{localStorage.setItem(KEY,JSON.stringify({since:since,stat:stat}))}catch(e){} },3000);
+  function wrap(kind,orig){
+    if(typeof orig!=='function')return orig;
+    if(kind==='v')return function(q,cb){
+      if(!on()||typeof cb!=='function')return orig.apply(this,arguments);
+      var a=Array.prototype.slice.call(arguments),path=norm(q),first=true;
+      a[1]=function(snap){ try{ if(first){first=false;rec(path,size(snap.val()),true);}else rec(path,0,false); }catch(e){} return cb.apply(this,arguments); };
+      return orig.apply(this,a);
+    };
+    if(kind==='c')return function(q,cb){
+      if(!on()||typeof cb!=='function')return orig.apply(this,arguments);
+      var a=Array.prototype.slice.call(arguments),path=norm(q)+' [子]';
+      a[1]=function(snap){ try{ rec(path,size(snap.val()),true); }catch(e){} return cb.apply(this,arguments); };
+      return orig.apply(this,a);
+    };
+    return function(q){
+      var p=orig.apply(this,arguments);
+      if(!on())return p;
+      var path=norm(q);
+      return p.then(function(snap){ try{rec(path,size(snap.val()),true);}catch(e){} return snap; });
+    };
+  }
+  function wrapNs(ns){
+    return Object.assign({},ns,{onValue:wrap('v',ns.onValue),onChildAdded:wrap('c',ns.onChildAdded),onChildChanged:wrap('c',ns.onChildChanged),get:wrap('g',ns.get)});
+  }
+  function report(){
+    var rows=Object.keys(stat).map(function(k){return [k].concat(stat[k]);}).sort(function(a,b){return b[1]-a[1];});
+    var tot=rows.reduce(function(t,r){return t+r[1];},0);
+    var mins=Math.max(1,Math.round((Date.now()-since)/60000));
+    var out='DL計測('+P+') 計'+(tot/1024).toFixed(0)+'KB / '+mins+'分\nKB | 読込回数 | 更新回数 | 場所\n';
+    rows.slice(0,18).forEach(function(r){ out+=(r[1]/1024).toFixed(0)+' | '+r[2]+' | '+r[3]+' | '+r[0]+'\n'; });
+    return out;
+  }
+  function ui(){
+    if(!on()||document.getElementById('trDlMeterBtn'))return;
+    var b=document.createElement('button');b.id='trDlMeterBtn';b.textContent='DL';
+    b.style.cssText='position:fixed;left:6px;bottom:calc(6px + env(safe-area-inset-bottom,0px));z-index:2147483000;opacity:.75;font:12px/1 sans-serif;padding:8px 10px;border-radius:14px;border:1px solid #888;background:#fff;color:#000';
+    var box=document.createElement('div');
+    box.style.cssText='display:none;position:fixed;left:6px;right:6px;bottom:calc(46px + env(safe-area-inset-bottom,0px));max-height:60vh;overflow:auto;z-index:2147483000;background:#fff;color:#000;border:1px solid #888;border-radius:10px;padding:8px;font:11px/1.4 monospace;white-space:pre-wrap;word-break:break-all';
+    var bar=document.createElement('div');bar.style.cssText='display:flex;gap:6px;margin-bottom:6px';
+    var pre=document.createElement('div');
+    function mk(t,f){var x=document.createElement('button');x.textContent=t;x.style.cssText='font:12px sans-serif;padding:6px 10px;border:1px solid #888;border-radius:8px;background:#eee;color:#000';x.onclick=f;bar.appendChild(x);}
+    function refresh(){pre.textContent=report();}
+    mk('更新',refresh);
+    mk('コピー',function(){try{navigator.clipboard.writeText(report());}catch(e){}});
+    mk('リセット',function(){stat={};since=Date.now();dirty=true;refresh();});
+    mk('計測OFF',function(){try{localStorage.removeItem(FLAG);}catch(e){} location.reload();});
+    box.appendChild(bar);box.appendChild(pre);
+    b.onclick=function(){box.style.display=box.style.display==='none'?'block':'none';if(box.style.display==='block')refresh();};
+    document.body.appendChild(b);document.body.appendChild(box);
+  }
+  window.__trDl={wrap:wrap,wrapNs:wrapNs};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ui);else ui();
+})();
+</script>
+
 <script id="ekiden-p3-safety-guard">
 (()=>{try{const q=new URLSearchParams(location.search);const EXPECTED='eventbase_ekiden_next_2026_38fa5537b6';window.__EKIDEN_NEXT_EVENT_ID__=EXPECTED;window.__EKIDEN_NEXT_ID_MISMATCH__=q.get('event')!==EXPECTED;}catch(e){window.__EKIDEN_NEXT_ID_MISMATCH__=true;console.error('EKIDEN NEXT event guard',e)}})();
 </script>
@@ -20957,7 +21029,9 @@ if(!window.__EVENTBASE_REBUILD_CORE__ && !STORAGE_PERSISTENT)setTimeout(()=>toas
 <script type="module" id="event-base-rebuild-v22-core">
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
-import { getDatabase, ref, set, remove, get, update, onValue, onChildAdded, onChildChanged, onChildRemoved, runTransaction, query, orderByKey, endBefore, startAfter } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js";
+import { getDatabase, ref, set, remove, get as __trGet, update, onValue as __trOnValue, onChildAdded as __trOnChildAdded, onChildChanged as __trOnChildChanged, onChildRemoved, runTransaction, query, orderByKey, endBefore, startAfter } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js";
+const __trW=(kind,fn)=>(window.__trDl?window.__trDl.wrap(kind,fn):fn);
+const onValue=__trW("v",__trOnValue),onChildAdded=__trW("c",__trOnChildAdded),onChildChanged=__trW("c",__trOnChildChanged),get=__trW("g",__trGet);
 
 const firebaseConfig={
   apiKey:"AIzaSyDthNBZk7aMzCM0kpZ5QIV39gXztVqM4L0",
