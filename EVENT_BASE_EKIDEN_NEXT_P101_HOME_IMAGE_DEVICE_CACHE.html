@@ -229,12 +229,12 @@ Candidate only: user-device verification is still required before baseline promo
 (function(){
   if(window.__trDl)return;
   var P=/TOP_RUN_PORTAL/i.test(location.pathname)?'portal':'ekiden';
-  var KEY='tr-dlmeter-v1-'+P, FLAG='tr-dlmeter-on';
+  var KEY='tr-dlmeter-v1-'+P, FLAG='tr-dlmeter-off';
   try{
     var m=/[?&]dlmeter=([01])/.exec(location.search);
-    if(m){ if(m[1]==='1')localStorage.setItem(FLAG,'1'); else localStorage.removeItem(FLAG); }
+    if(m){ if(m[1]==='0')localStorage.setItem(FLAG,'1'); else localStorage.removeItem(FLAG); }
   }catch(e){}
-  function on(){ try{return localStorage.getItem(FLAG)==='1'}catch(e){return false} }
+  function on(){ try{return localStorage.getItem(FLAG)!=='1'}catch(e){return true} }
   var stat={}, since=Date.now();
   try{ var s0=JSON.parse(localStorage.getItem(KEY)||'null'); if(s0&&s0.stat){stat=s0.stat;since=s0.since||since;} }catch(e){}
   var dirty=false;
@@ -276,10 +276,10 @@ Candidate only: user-device verification is still required before baseline promo
   }
   function ui(){
     if(!on()||document.getElementById('trDlMeterBtn'))return;
-    var b=document.createElement('button');b.id='trDlMeterBtn';b.textContent='DL';
-    b.style.cssText='position:fixed;left:6px;bottom:calc(6px + env(safe-area-inset-bottom,0px));z-index:2147483000;opacity:.75;font:12px/1 sans-serif;padding:8px 10px;border-radius:14px;border:1px solid #888;background:#fff;color:#000';
+    var b=document.createElement('button');b.id='trDlMeterBtn';b.textContent='DL計測';
+    b.style.cssText='position:fixed;right:6px;top:42%;z-index:2147483000;opacity:.95;font:bold 13px/1 sans-serif;padding:10px 12px;border-radius:14px;border:2px solid #c00;background:#ffeb3b;color:#000';
     var box=document.createElement('div');
-    box.style.cssText='display:none;position:fixed;left:6px;right:6px;bottom:calc(46px + env(safe-area-inset-bottom,0px));max-height:60vh;overflow:auto;z-index:2147483000;background:#fff;color:#000;border:1px solid #888;border-radius:10px;padding:8px;font:11px/1.4 monospace;white-space:pre-wrap;word-break:break-all';
+    box.style.cssText='display:none;position:fixed;left:6px;right:6px;top:8%;max-height:70vh;overflow:auto;z-index:2147483000;background:#fff;color:#000;border:1px solid #888;border-radius:10px;padding:8px;font:11px/1.4 monospace;white-space:pre-wrap;word-break:break-all';
     var bar=document.createElement('div');bar.style.cssText='display:flex;gap:6px;margin-bottom:6px';
     var pre=document.createElement('div');
     function mk(t,f){var x=document.createElement('button');x.textContent=t;x.style.cssText='font:12px sans-serif;padding:6px 10px;border:1px solid #888;border-radius:8px;background:#eee;color:#000';x.onclick=f;bar.appendChild(x);}
@@ -287,7 +287,7 @@ Candidate only: user-device verification is still required before baseline promo
     mk('更新',refresh);
     mk('コピー',function(){try{navigator.clipboard.writeText(report());}catch(e){}});
     mk('リセット',function(){stat={};since=Date.now();dirty=true;refresh();});
-    mk('計測OFF',function(){try{localStorage.removeItem(FLAG);}catch(e){} location.reload();});
+    mk('計測を止める',function(){try{localStorage.setItem(FLAG,'1');}catch(e){} location.reload();});
     box.appendChild(bar);box.appendChild(pre);
     b.onclick=function(){box.style.display=box.style.display==='none'?'block':'none';if(box.style.display==='block')refresh();};
     document.body.appendChild(b);document.body.appendChild(box);
