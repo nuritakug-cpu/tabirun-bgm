@@ -22467,6 +22467,46 @@ async function p102RepairStaleCatalogBinding(b,catalogId){
 }
 // P100: PORTAL approval is not a station admission and MUST NOT create
 // an EKIDEN binding. Existing station bindings retain their original checks.
+// P104: restore AUTOMATIC first entry for PORTAL-approved admin / participants.
+// CREATE-ONLY write of the user's OWN binding, with the exact proof values the P99 Rules already accept.
+// No Rules change, no new UID/profile, never overwrites an existing binding. Developer is NOT auto-enrolled.
+async function p104AutoEnrollFromPortal(){
+  const uid=S.uid,profileId=String(S.portalEntryProfileIdP100||'');
+  if(!uid||!profileId||S.auth?.currentUser?.uid!==uid)return {b:null,reason:'PORTALの本人確認が失効しています。PORTALへ戻って開き直してください'};
+  const catalogId=String(params.get('portalEvent')||'');
+  if(!/^event-[A-Za-z0-9_-]{1,80}$/.test(catalogId))return {b:null,reason:'PORTAL大会の接続情報（portalEvent）がURLにありません。PORTALから開き直してください'};
+  const item=(await p76AdmissionRead('portalCommon/topRun/eventItems/'+catalogId,'現行大会リンクREAD')).val();
+  let urlOK=false;
+  try{
+    const u=new URL(String(item?.url||''));
+    urlOK=item?.enabled===true&&item?.type==='RELAY EVENT BASE'&&u.origin===location.origin&&
+      u.pathname===location.pathname&&u.searchParams.get('event')===S.eventId;
+  }catch(_){urlOK=false;}
+  if(!urlOK)return {b:null,reason:'現行PORTAL大会の接続先が一致しません（PORTAL登録URLと開いているHTMLのファイル名を確認）'};
+  const profile=(await p76AdmissionRead('profiles/'+uid,'共通プロフィールREAD')).val();
+  const displayName=String(profile?.displayName||'');
+  if(!profile||String(profile.profileId||'')!==profileId||!displayName.trim()||displayName.length>24)
+    return {b:null,reason:'PORTALの本人プロフィールを確認できません'};
+  const roleRec=(await p76AdmissionRead('portalRoles/'+uid,'PORTAL役割READ')).val();
+  if(roleRec?.role==='developer')return {b:null,reason:''};
+  let nb=null;
+  if(roleRec?.role==='admin'&&typeof roleRec.grantedByUid==='string'&&roleRec.grantedByUid){
+    nb={role:'manager',displayName,boundAt:Date.now(),portalManaged:true,portalLinkProof:'verified-portal-admin-v1',
+      eventId:S.eventId,profileId,portalCatalogId:catalogId};
+  }else{
+    const m=(await p76AdmissionRead('portalCommon/topRun/memberAccess/'+uid,'参加資格READ')).val();
+    if(m?.active===true&&String(m.profileId||'')===profileId)
+      nb={role:'participant',displayName,boundAt:Date.now(),portalManaged:true,portalLinkProof:'approved-member-entry-v1',
+        profileId,portalCatalogId:catalogId};
+  }
+  if(!nb)return {b:null,reason:'PORTALの承認済み資格（管理者／参加資格）を確認できません'};
+  const dest=ref(S.db,`bindings/${S.eventId}/${uid}`);
+  await runTransaction(dest,prior=>prior===null?nb:undefined,{applyLocally:false});
+  const confirmed=(await get(dest)).val();
+  if(!confirmed||confirmed.role!==nb.role||confirmed.displayName!==nb.displayName||confirmed.portalLinkProof!==nb.portalLinkProof)
+    throw Error('駅伝BASEの接続保存後の確認ができませんでした');
+  return {b:confirmed,reason:''};
+}
 async function boot(){
   bindPortalHomeLogoP76();
   lock();
@@ -22552,7 +22592,23 @@ async function boot(){
         showEntry('駅伝BASEの開発者接続がまだありません。既存の開発者専用URLから認証してください。PORTALの開発者権限だけでは自動登録しません。');
         return;
       }
+      // P104: automatic first entry for PORTAL-approved admin/participant (create-only own binding).
+      let p104Reason='';
+      try{
+        const r=await p104AutoEnrollFromPortal();
+        p104Reason=r.reason||'';
+        if(r.b){
+          S.binding=r.b;S.role=r.b.role;S.displayName=r.b.displayName;
+          window.__roundtripDiag?.('P104: PORTAL承認から自動接続完了',r.b.role);
+          await activate();
+          return;
+        }
+      }catch(err){
+        console.warn('P104 auto enroll',err);
+        p104Reason='自動接続に失敗：'+String(err?.code||err?.message||err).slice(0,160);
+      }
       document.documentElement.setAttribute('data-ek-p100-station-approval','pending');
+      if(p104Reason)setTimeout(()=>entryError(p104Reason),0);
       showEntry('駅伝BASEの入場承認はPORTALと別です。未承認の方は大会管理者へ申請し、案内された管理番号／参加番号で接続してください。');
       const nameInput=$('entryGateDisplayName114');
       if(nameInput){nameInput.value=clean(S.displayName,24);nameInput.readOnly=true;}
