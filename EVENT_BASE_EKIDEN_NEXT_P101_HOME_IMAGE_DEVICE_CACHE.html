@@ -22355,6 +22355,50 @@ async function p76AdmissionBindingRead(){
   const snap=await p76AdmissionRead(`bindings/${S.eventId}/${S.uid}`,'大会接続READ');
   return snap.exists()?snap.val():null;
 }
+// P102: stale catalog pointer repair. Rules allow an own binding to be removed and
+// re-created (create-only) only when every original condition still holds. This helper
+// never creates a binding from nothing, never changes role/proof/profile, never touches
+// owner/accessHash bindings, and runs at most once per browser session.
+async function p102RepairStaleCatalogBinding(b,catalogId){
+  if(!b||b.ownerProof||b.accessHash)return null;
+  if(!(b.portalManaged===true||b.portalLinkProof==='approved-member-link-v1'))return null;
+  if(!['manager','participant'].includes(b.role))return null;
+  if(!/^event-[A-Za-z0-9_-]{1,80}$/.test(String(catalogId||'')))return null;
+  const oldId=String(b.portalCatalogId||'');
+  if(oldId===catalogId)return null;
+  // Old pointer still valid under Rules => leave the binding alone.
+  if(/^event-[A-Za-z0-9_-]{1,80}$/.test(oldId)){
+    const old=(await p76AdmissionRead('portalCommon/topRun/eventItems/'+oldId,'旧大会リンクREAD')).val();
+    if(old&&old.enabled===true&&old.type==='RELAY EVENT BASE'&&typeof old.url==='string')return null;
+  }
+  // Pre-check what Rules will demand on re-create, so a failure never removes a binding needlessly.
+  const prof=(await p76AdmissionRead(`profiles/${S.uid}`,'共通プロフィールREAD')).val()||{};
+  if(!prof.profileId||String(prof.profileId)!==String(b.profileId||'')||String(prof.displayName||'')!==String(b.displayName||''))return null;
+  if(b.role==='manager'&&b.portalManaged===true){
+    const pr=(await p76AdmissionRead(`portalRoles/${S.uid}`,'PORTAL役割READ')).val()||{};
+    if(pr.role!=='admin'||typeof pr.grantedByUid!=='string')return null;
+  }else{
+    const ma=(await p76AdmissionRead(`portalCommon/topRun/memberAccess/${S.uid}`,'参加資格READ')).val()||{};
+    if(ma.active!==true||String(ma.profileId||'')!==String(prof.profileId))return null;
+  }
+  const guard='tr-p102-repair-'+S.eventId+'-'+S.uid;
+  try{if(sessionStorage.getItem(guard)==='1')return null;sessionStorage.setItem(guard,'1');}catch(_){}
+  window.__roundtripDiag?.('P102: 旧大会リンクのbindingを修復開始',oldId+' → '+catalogId);
+  const bref=ref(S.db,`bindings/${S.eventId}/${S.uid}`);
+  const next={...b,portalCatalogId:catalogId};
+  await remove(bref);
+  try{await set(bref,next);}
+  catch(first){
+    try{await set(bref,next);}
+    catch(second){
+      throw new Error('大会接続の自動修復に失敗しました（旧接続は削除済み）。開発者へ連絡してください：'+String(second?.code||second?.message||second));
+    }
+  }
+  const after=(await p76AdmissionRead(`bindings/${S.eventId}/${S.uid}`,'修復後の大会接続READ')).val();
+  if(!after||after.portalCatalogId!==catalogId)throw new Error('大会接続の修復後確認ができませんでした。開発者へ連絡してください。');
+  window.__roundtripDiag?.('P102: bindingを修復完了');
+  return after;
+}
 // P100: PORTAL approval is not a station admission and MUST NOT create
 // an EKIDEN binding. Existing station bindings retain their original checks.
 async function boot(){
@@ -22374,7 +22418,7 @@ async function boot(){
     // A valid owner binding is never deleted merely because the user returned from PORTAL.
     const ownerKey=clean(params.get("ownerKey"),100);
     window.__roundtripDiag?.("P76: 接続情報確認中"); entryStatus("接続情報を確認しています…");
-    const b=await p76AdmissionBindingRead(); window.__roundtripDiag?.("P76: binding READ完了",b?"bindingあり":"bindingなし");
+    let b=await p76AdmissionBindingRead(); window.__roundtripDiag?.("P76: binding READ完了",b?"bindingあり":"bindingなし");
     const trustedOwner=!!b&&b.role==="owner"&&
       /^[0-9a-fA-F]{64}$/.test(String(b.ownerProof||""))&&
       typeof b.displayName==="string"&&!!b.displayName.trim()&&
@@ -22417,6 +22461,12 @@ async function boot(){
             u.searchParams.get('event')===S.eventId; /* P102: portal=1 is already required by this branch; older saved catalog URLs may lack it */
         }catch(_){urlOK=false;}
         if(!urlOK){showEntry('現行PORTAL大会の接続先が一致しません。大会情報を再確認してください。');return;}
+        // P102: an existing PORTAL-managed binding may still point at a catalog item that was
+        // copied/recreated (old ID gone). Re-point ONLY that field; all authority stays Rules-checked.
+        if(String(b.portalCatalogId||'')!==catalogId){
+          const repaired=await p102RepairStaleCatalogBinding(b,catalogId);
+          if(repaired)b=repaired;
+        }
         // Existing binding authority is still enforced server-side by RTDB Rules.
         // No identity promotion or implicit cross-UID transfer occurs here.
       }
