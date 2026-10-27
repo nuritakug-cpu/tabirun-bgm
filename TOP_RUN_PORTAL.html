@@ -1,3 +1,4 @@
+<!-- 2026-10-28 v109 UI organization: Hide obsolete CHAT STEP 1 panel (retain DOM for existing gateway); move push settings to first; show version "v109" only; developer identity review first in matching management card. No Auth, Rules, listener, CHAT message read/write, image cache, notification registration, official results or released data changed. NOT DEPLOYED. -->
 <!-- TOP RUN PORTAL v109 2026-10-28 PRODUCTION UPLOAD CANDIDATE: physical parent is user-uploaded TOP RUN PORTAL.html (v108). Scope: merge earlier verified default-theme HOME-image Blob paint/read-error reporting only, retaining Winter/Matte theme artwork, inherited P103 small updatedAt listener + IndexedDB cache, and ALL v108 participant onboarding, approval and existing unified Firebase identity/database paths. Display version updated v108 to v109. Static/browser tests only; actual Firebase/participant devices/publication not verified. -->
 <!-- TOP RUN PORTAL P100 / 2026-10-27 本番アップロード用単体HTML。P100検証用実装と同じ処理。既存Auth/UID/profileId/出走結果/RTDB Rulesおよび公開中のデータは自動変更しない。JavaScript静的検査・模擬検証済み。実Firebase、端末再入場、複数端末、通信量、本番公開は未検証。 -->
 <!-- P99 PRODUCTION HTML UPLOAD PACKAGE 2026-10-26 | physical parent: TOP_RUN_PORTAL_P99_TRAFFIC_COMMON_IDENTITY_INTEGRATED_REVIEW.html | sha256: 52a36fb6565bba1013854702b75045da44e031f758cec19cb764fdb5b2d5959d | inherited complete P99 traffic guard + P98 common identity rules alignment. STATIC PACKAGE ONLY: Requires P99 aligned Rules approval/deployment and real Firebase/iPhone/2-device tests. This file was not deployed or field-verified. -->
@@ -5400,6 +5401,18 @@ body.trEventCommsActive #portalNoticeList{display:grid!important}
  window.__TR_COMMON_AUTH_P96__=Object.freeze({resolve,appNames:APP_NAMES});
 })();
 </script>
+<style id="portal-v109-requested-ui-cleanup-20261028">
+/* CHAT tournament chooser is legacy markup; common PORTAL CHAT works independently. Keep DOM nodes for the existing event listener, but never show the obsolete STEP 1 box. */
+#screen-chat > main.chatMain > .trEventCommsScope{display:none!important}
+/* The developer approval card shares the same section and disclosure layout as other settings. */
+#screen-management-settings #portalIdentityLinkDeveloper{margin:0 0 14px!important}
+#screen-management-settings #portalIdentityLinkDeveloper .portalManageAccessDisclosure{border:1px solid var(--pc-panel-soft-border,var(--line,#528080));border-radius:12px;margin:0;overflow:hidden;color:inherit}
+#screen-management-settings #portalIdentityLinkDeveloper .portalManageAccessDisclosure>summary{cursor:pointer;padding:14px 15px;font-size:14px;line-height:1.5;font-weight:900;color:inherit;list-style-position:inside}
+#screen-management-settings #portalIdentityLinkDeveloper .portalIdentityLinkBody{padding:0 12px 12px}
+#screen-management-settings #portalIdentityLinkDeveloper .portalIdentityLinkBody p{font-size:12px;line-height:1.6;color:inherit;opacity:.9}
+#screen-management-settings #portalIdentityLinkDeveloper .portalIdentityLinkBody>strong{display:block;margin-top:10px}
+html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color="matte"]) #screen-management-settings #portalIdentityLinkDeveloper .portalManageAccessDisclosure{background:#f3f1ea;border-color:#d8d4c9;color:var(--ink,#2e3433)}
+</style>
 </head>
 <body>
 <div id="portalFirstPaintAuthOverlay" role="status" aria-live="polite" aria-label="TOP RUN PORTAL 認証中">
@@ -5893,12 +5906,6 @@ body.trEventCommsActive #portalNoticeList{display:grid!important}
 <div class="portalScreen hidden" id="screen-notification-settings" aria-hidden="true">
   <div class="portalScreenHead"><button type="button" class="portalBack" data-back>← MY PAGE</button><div><small>COMMON PERSONAL</small><b>設定</b></div><span class="portalHeadSpacer"></span></div>
   <div class="portalScreenBody">
-    <div class="portalVersionPill" aria-label="版">版 <b>v109</b><span class="portalVersionDiag"></span></div>
-    <!-- Existing handoff action (same ID / same trusted server and auth checks). -->
-      <button class="portalPanel portalPanelButton" id="portalHandoffOpen" type="button">
-        <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
-        <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
-      </button>
     <details class="trPushSettings" id="trPushSettings"><summary>通知の受け取り設定</summary>
       <!-- The published production Stage3 participant/device settings are retained here. -->
       <div id="trStage3Panel" class="trPushStage3" style="margin-top:16px;padding:13px;border:1px solid #a4aba5;border-radius:12px">
@@ -5927,6 +5934,12 @@ body.trEventCommsActive #portalNoticeList{display:grid!important}
       <p id="trPushState" role="status" aria-live="polite">端末と通知サーバーの両方が準備できるまで通知許可を求めません。</p>
           </details>
     </details>
+    <!-- Existing handoff action (same ID / same trusted server and auth checks). -->
+      <button class="portalPanel portalPanelButton" id="portalHandoffOpen" type="button">
+        <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
+        <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
+      </button>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v109</b></div>
   </div>
 </div>
 
@@ -6042,7 +6055,23 @@ body.trEventCommsActive #portalNoticeList{display:grid!important}
     <div><small>MANAGEMENT</small><b>管理画面の設定</b></div><span class="portalHeadSpacer"></span>
   </div>
   <div class="portalScreenBody">
-    <div class="portalVersionPill" aria-label="版">版 <b>v109</b><span class="portalVersionDiag"></span></div>
+    <section id="portalIdentityLinkDeveloper" class="portalManagementSettingsSection" hidden>
+      <div class="portalPanelHead"><small>IDENTITY / APPROVAL</small><b>開発者：本人引き継ぎの承認・紐付け</b></div>
+  <details id="portalIdentityLinkDeveloperDetails" class="portalManageAccessDisclosure"><summary>申請・承認の確認を開く</summary>
+    <div class="portalIdentityLinkBody">
+    <p style="font-size:13px">本人確認を別途行ってから承認してください。氏名だけで同一人物と判断しません。過去のUID・記録は削除しません。</p>
+    <button id="portalIdentityLinkRefresh" type="button" style="min-height:43px">申請と既存本人一覧を確認</button>
+    <div id="portalIdentityLinkDeveloperList" style="display:grid;gap:10px;margin-top:12px"></div>
+    <p id="portalIdentityLinkDeveloperState" role="status" style="white-space:pre-wrap;font-size:12px"></p>
+    <hr style="border:0;border-top:1px solid #686d67;margin:14px 0">
+    <strong>参加承認の申請（本人情報がある方）</strong>
+    <p style="font-size:13px">本人確認を別途行ってから承認してください。名前と確認コードを本人から聞いて照合します。</p>
+    <button id="portalMemberApprovalRefresh" type="button" style="min-height:43px">参加承認の申請を確認</button>
+    <div id="portalMemberApprovalList" style="display:grid;gap:10px;margin-top:12px"></div>
+    <p id="portalMemberApprovalDevState" role="status" style="white-space:pre-wrap;font-size:12px"></p>
+    </div>
+  </details>
+    </section>
     <section class="portalManagementSettingsSection">
       <div class="portalPanelHead"><small>STATUS / CONNECTION</small><b>接続と管理権限</b></div>
       <div class="portalRoleBadge"><i></i><span id="portalRoleLabel">MANAGEMENT</span></div>
@@ -6058,20 +6087,6 @@ body.trEventCommsActive #portalNoticeList{display:grid!important}
       <div id="portalManagementAccessBody"></div>
     </details>
     </section>
-    <section id="portalIdentityLinkDeveloper" hidden style="margin:15px;padding:14px;border:1px solid #d8bf50;border-radius:12px;background:#293430;color:#fff">
-  <details id="portalIdentityLinkDeveloperDetails"><summary style="cursor:pointer;font-weight:900">開発者：本人引き継ぎの承認・紐付け</summary>
-    <p style="font-size:13px">本人確認を別途行ってから承認してください。氏名だけで同一人物と判断しません。過去のUID・記録は削除しません。</p>
-    <button id="portalIdentityLinkRefresh" type="button" style="min-height:43px">申請と既存本人一覧を確認</button>
-    <div id="portalIdentityLinkDeveloperList" style="display:grid;gap:10px;margin-top:12px"></div>
-    <p id="portalIdentityLinkDeveloperState" role="status" style="white-space:pre-wrap;font-size:12px"></p>
-    <hr style="border:0;border-top:1px solid #686d67;margin:14px 0">
-    <strong>参加承認の申請（本人情報がある方）</strong>
-    <p style="font-size:13px">本人確認を別途行ってから承認してください。名前と確認コードを本人から聞いて照合します。</p>
-    <button id="portalMemberApprovalRefresh" type="button" style="min-height:43px">参加承認の申請を確認</button>
-    <div id="portalMemberApprovalList" style="display:grid;gap:10px;margin-top:12px"></div>
-    <p id="portalMemberApprovalDevState" role="status" style="white-space:pre-wrap;font-size:12px"></p>
-  </details>
-</section>
 
     <section class="portalManagementSettingsSection">
       <div class="portalPanelHead"><small>DEVELOPER TOOLS</small><b>その他の管理機能</b></div>
@@ -6086,6 +6101,7 @@ body.trEventCommsActive #portalNoticeList{display:grid!important}
       </div>
     </details>
     </section>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v109</b></div>
   </div>
 </div>
 
