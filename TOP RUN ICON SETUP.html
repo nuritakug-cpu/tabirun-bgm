@@ -57,6 +57,8 @@ header p{margin:0;color:var(--muted);font-size:14px}
 .modelink{margin:0 0 10px;text-align:center}
 .linkbtn{border:0;background:none;color:var(--ink);font-size:14px;font-weight:800;text-decoration:underline;text-underline-offset:3px;padding:8px 6px;min-height:40px;font-family:inherit}
 .copyrow{margin:10px 0 2px}
+.urllead{margin:12px 0 6px;font-size:13.5px;color:var(--muted)}
+.urlbox{display:block;width:100%;resize:none;padding:10px 12px;border:2px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink);font:14px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;word-break:break-all;-webkit-user-select:text;user-select:text}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -258,7 +260,7 @@ header p{margin:0;color:var(--muted);font-size:14px}
   };
 
   /* ---------- steps ---------- */
-  var COPYBTN='<div class="copyrow"><button class="btn" type="button" id="copyUrl">アドレスをコピーする</button><p class="done" id="copied" hidden></p></div>';
+  var COPYBTN='<div class="copyrow"><button class="btn" type="button" id="copyUrl">アドレスをコピーする</button><p class="done" id="copied" hidden></p><p class="urllead">ボタンで、コピーできないときは、下のアドレスを、長押しして、コピーしてください。</p><textarea class="urlbox" id="urlBox" rows="3" readonly spellcheck="false" aria-label="このページのアドレス"></textarea></div>';
   var BAND_NOTE='BANDやLINEの画面の右上の「…」の中に、「ブラウザで開く」「Safariで開く」「Chromeで開く」があれば、それを押すだけでも大丈夫です。';
   var bsteps={
     ios:[
@@ -298,10 +300,18 @@ header p{margin:0;color:var(--muted);font-size:14px}
 
   var card=$('card'),mode=inApp?'browser':'icon';
   function fallbackCopy(t){try{var ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.focus();ta.select();var ok=document.execCommand('copy');document.body.removeChild(ta);return !!ok}catch(e){return false}}
+  function pageUrl(){return (location.protocol==='http:'||location.protocol==='https:')?location.href.split('#')[0]:PORTAL_URL}
   function bindCopy(){
     var cb=$('copyUrl');if(!cb)return;
+    var box=$('urlBox');
+    if(box){
+      box.value=pageUrl();
+      var selectAll=function(){try{box.focus();box.select();box.setSelectionRange(0,box.value.length)}catch(e){}};
+      box.addEventListener('click',selectAll);
+      box.addEventListener('focus',selectAll);
+    }
     cb.addEventListener('click',function(){
-      var u=(location.protocol==='http:'||location.protocol==='https:')?location.href.split('#')[0]:PORTAL_URL;
+      var u=pageUrl();
       var done=function(ok){var d=$('copied');d.hidden=false;d.textContent=ok?'コピーしました。次へ進んでください。':'コピーできませんでした。上のアドレスを長押しして、コピーしてください。'};
       try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(u).then(function(){done(true)},function(){done(fallbackCopy(u))});return}}catch(e){}
       done(fallbackCopy(u));
