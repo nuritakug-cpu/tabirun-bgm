@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v110 2026-10-28: v109 exact physical parent; PORTAL internal event links now saved via the existing eventItems writer and visible in event list/calendar. External EVENT BASE/EKIDEN validation and all Auth/UID/profileId/Rules/RTDB subscriptions, writes, official results and theme/home image safeguards unchanged. STATIC candidate; Firebase production not tested/deployed. -->
 <!-- 2026-10-28 v109 UI organization: Hide obsolete CHAT STEP 1 panel (retain DOM for existing gateway); move push settings to first; show version "v109" only; developer identity review first in matching management card. No Auth, Rules, listener, CHAT message read/write, image cache, notification registration, official results or released data changed. NOT DEPLOYED. -->
 <!-- TOP RUN PORTAL v109 2026-10-28 PRODUCTION UPLOAD CANDIDATE: physical parent is user-uploaded TOP RUN PORTAL.html (v108). Scope: merge earlier verified default-theme HOME-image Blob paint/read-error reporting only, retaining Winter/Matte theme artwork, inherited P103 small updatedAt listener + IndexedDB cache, and ALL v108 participant onboarding, approval and existing unified Firebase identity/database paths. Display version updated v108 to v109. Static/browser tests only; actual Firebase/participant devices/publication not verified. -->
 <!-- TOP RUN PORTAL P100 / 2026-10-27 本番アップロード用単体HTML。P100検証用実装と同じ処理。既存Auth/UID/profileId/出走結果/RTDB Rulesおよび公開中のデータは自動変更しない。JavaScript静的検査・模擬検証済み。実Firebase、端末再入場、複数端末、通信量、本番公開は未検証。 -->
@@ -5939,7 +5940,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v109</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v110</b></div>
   </div>
 </div>
 
@@ -6101,7 +6102,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v109</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v110</b></div>
   </div>
 </div>
 
@@ -6323,7 +6324,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalFormRow"><label>会場（未定なら空欄）</label><select id="manageEventPlace" data-common-place></select></div>
         <div class="portalFormRow portalPlaceCustom hidden" id="manageEventCustomPlaceRow"><label>その他の会場</label><input type="text" id="manageEventCustomPlace" placeholder="会場を入力"></div>
         <div class="portalFormRow"><label for="manageEventDisplayCategory">開催区分</label><select id="manageEventDisplayCategory"><option value="competition">大会</option><option value="event">通常イベント（観戦・応援など）</option></select><p class="portalHelp">通常イベントは出走登録なし。参加・不参加・応援などの回答をカレンダーで確認します。</p></div>
-        <div class="portalFormRow" id="manageEventConnectionTypeRow"><label>大会の接続方法</label><select id="manageEventType"><option value="OTHER">通常イベント（PORTAL内）</option><option value="EVENT BASE">EVENT BASEを使用</option><option value="RELAY EVENT BASE">駅伝EVENT BASEを使用</option></select></div>
+        <div class="portalFormRow" id="manageEventConnectionTypeRow"><label>大会の接続方法</label><select id="manageEventType"><option value="OTHER">PORTAL内（リンク先指定可）</option><option value="EVENT BASE">EVENT BASEを使用</option><option value="RELAY EVENT BASE">駅伝EVENT BASEを使用</option></select></div>
         <section class="portalRulePanel" aria-label="イベントの参加受付と出走登録受付">
           <div class="portalRuleTitle">参加登録・大会当日の予定</div>
           <div class="portalEventModeChoice" role="group" aria-label="参加受付を開始するか"><label><input type="radio" name="manageEventAttendanceOpen" value="no" checked>受付前（初期設定）</label><label><input type="radio" name="manageEventAttendanceOpen" value="yes">参加受付する</label></div>
@@ -6354,11 +6355,11 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
           </div>
         </section>
         <div class="portalFormRow" id="manageEventUrlRow">
-          <label for="manageEventUrl">EVENT BASE／駅伝BASEのリンク先URL</label>
+          <label for="manageEventUrl" id="manageEventUrlLabel">リンク先URL</label>
           <input id="manageEventUrl" type="url" inputmode="url" autocomplete="off" placeholder="https://nuritakug-cpu.github.io/tabirun-bgm/…">
-          <p class="portalHelp">「EVENT BASEを使用」「駅伝EVENT BASEを使用」の場合に設定します。既存大会のURLを貼り付け、イベントを保存すると接続先を変更できます。開発者・管理者・参加者で共通のURLです。認証番号やownerKeyは貼り付けないでください。</p>
+          <p class="portalHelp" id="manageEventUrlHelp">PORTAL内は https:// で始まるリンク先を指定します。EVENT BASE／駅伝BASEは正式大会URLを指定します。リンク先URLは全員に共通です。認証番号やownerKeyは入力しないでください。</p>
         </div>
-        <p class="portalHelp" id="portalEventCreationOrderNote">EVENT BASE／駅伝BASEは上のリンク先URLを指定して保存できます。既存イベントは「修正・削除」からリンク先だけを変更できます。通常イベントはPORTAL内で完結します。</p>
+        <p class="portalHelp" id="portalEventCreationOrderNote">PORTAL内イベントはリンク先URLを指定して保存できます。未指定の場合は従来どおりPORTAL内の日付詳細を使用します。</p>
         <button class="portalPrimary" type="button" id="manageEventAdd">PORTALにイベントを保存</button>
         <div class="portalManageState" id="manageEventState" role="status" aria-live="polite"></div>
         <section class="portalRulePanel" id="portalEventCreatedConnection" hidden aria-label="保存済みイベントへのEVENT BASE接続">
@@ -7710,7 +7711,8 @@ if(prefix==='home'){
        // is saved, enter that service from this very date detail; do not make
        // users look for another screen or confuse access with race entry status.
        const hasConnectedBase=portalConnectedBase(item);
-       const baseOpen=hasConnectedBase?`<button class="portalRsvpGo portalScheduleBaseOpen" type="button" data-cal-open-base="${esc(entry.eventId)}">${item.type==='RELAY EVENT BASE'?'駅伝BASEを開く':'EVENT BASEを開く'} <span>›</span></button>`:portalMissingBaseAccessMarkup(item,true);
+       const portalHref=portalGeneralEventLink(item);
+       const baseOpen=portalHref?`<button class="portalRsvpGo portalScheduleBaseOpen" type="button" data-cal-open-portal="${esc(entry.eventId)}">リンク先を開く <span>›</span></button>`:hasConnectedBase?`<button class="portalRsvpGo portalScheduleBaseOpen" type="button" data-cal-open-base="${esc(entry.eventId)}">${item.type==='RELAY EVENT BASE'?'駅伝BASEを開く':'EVENT BASEを開く'} <span>›</span></button>`:portalMissingBaseAccessMarkup(item,true);
        const raceLink=!hasConnectedBase&&allowRace?`<button class="portalRsvpGo" type="button" data-cal-entry="${esc(entry.eventId)}">${registered?'出走内容・取消を確認':ended?'出走内容・記録を確認':'出走する（種目と目標を登録）'} <span>›</span></button>`:'';
        const answers=[['join','参加する'],['decline','参加しない'],['maybe','未定']];
        action=`${baseOpen}<div class="portalRsvpSection${ended?' portalPastLocked':''}"><b class="portalRsvpTitle">${portalEventDisplayCategory(item)==='event'?'イベントへの参加':'大会当日の予定'}</b><p class="portalRsvpCurrent">現在：<strong>${esc(state)}</strong></p>${registered?`<p class="portalHelp" role="status">${esc(portalRegisteredResponseWarning)}</p>`:''}${raceLink}${portalEventDisplayCategory(item)==='event'?'':!attendanceOpen&&!registered?'<p class="portalHelp">大会当日の予定は回答できます。出走登録の受付状態とは別です。</p>':attendanceCutoffPassed&&!ended?'<p class="portalHelp">出走登録の期日とは別に、当日の参加予定は変更できます。</p>':''}${`<div class="portalRsvpOptions portalEventResponseOptions" role="group" aria-label="${portalEventDisplayCategory(item)==='event'?'イベントへの参加':'大会当日の予定'}">${answers.map(([id,label])=>`<button type="button" data-event-response="${id}" data-event-id="${esc(entry.eventId)}" class="${(id==='join'&&answer==='support'&&portalEventDisplayCategory(item)==='event')||answer===id?'chosen':''}" aria-pressed="${(id==='join'&&answer==='support'&&portalEventDisplayCategory(item)==='event')||answer===id?'true':'false'}" ${!portalEventCanRespond(item,id)?'disabled aria-disabled="true" title="現在は変更できません"':''}>${label}</button>`).join('')}</div>${portalEventDisplayCategory(item)==='event'?'':`<div class="portalEventSupportChoice"><p>出走しない場合でも会場へ行く予定を登録できます。</p><div class="portalRsvpOptions portalRsvpOptionsSingle"><button type="button" data-event-response="support" data-event-id="${esc(entry.eventId)}" class="${answer==='support'?'chosen':''}" aria-pressed="${answer==='support'?'true':'false'}" ${!portalEventCanRespond(item,'support')?'disabled aria-disabled="true"':''}>応援・帯同として参加する</button></div></div>`}`}${rosterMarkup}</div>`;
@@ -8096,7 +8098,8 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
   function eventCardMarkup(item){
     const day=item.date ? item.date.slice(8,10) : '--';
     const mon=item.date ? monthNames[Number(item.date.slice(5,7))-1].slice(0,3) : 'DEV';
-    const state=isPastEvent(item)?'終了':portalEventDisplayCategory(item)==='event'?'開催予定':portalConnectedBase(item)?'接続済み':item.previewOnly?'試用':item.relay?'準備中':item.state==='ACCESS OPEN'?'公開中':(item.state||'イベント');
+    const portalHref=portalGeneralEventLink(item);
+    const state=isPastEvent(item)?'終了':portalHref?'リンク設定済み':portalEventDisplayCategory(item)==='event'?'開催予定':portalConnectedBase(item)?'接続済み':item.previewOnly?'試用':item.relay?'準備中':item.type==='OTHER'?'開催予定':item.state==='ACCESS OPEN'?'公開中':(item.state||'イベント');
     const relayClass=item.relay ? ' relay' : '';
     const noLinkLabel=item.relay?'駅伝EVENT BASEを開く':(item.type==='EVENT BASE'?'EVENT BASEを開く':'詳細を開く');
     const actor=flowSelfId(),registered=!!flowEntry(item.id,actor);
@@ -8111,7 +8114,7 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
     const protectedOfficialTarget=window.__TR_COMMON_PILOT_UI__?.officialTargetFor?.(item);
     const protectedEventHref=protectedOfficialTarget?portalOfficialSafeOpenUrl(protectedOfficialTarget):(item.url||'');
     const missingConnection=portalMissingBaseAccessMarkup(item);
-    const action=portalEventDisplayCategory(item)==='event' ? `<button class="openBtn" type="button" data-event-rsvp-date="${esc(portalEventDates(item).find(d=>d>=todayDateKey())||portalEventFirstDate(item))}"><span>参加予定・詳細を確認</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : portalConnectedBase(item) ? `<button type="button" class="openBtn" data-event-open-base="${esc(item.id)}"><span>${item.type==='RELAY EVENT BASE'?'駅伝BASEを開く':'EVENT BASEを開く'}</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : item.previewOnly ? `<button class="openBtn" type="button" ${item.raceEntryEnabled===false?'data-event-rsvp-date="'+esc(portalEventDates(item).find(d=>d>=todayDateKey())||portalEventFirstDate(item))+'"':'data-flow-event="'+esc(item.id)+'"'}><span>${item.raceEntryEnabled===false||isEntryClosed?'詳細を見る':'詳細・出走登録'}</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : item.url
+    const action=portalHref ? `<button class="openBtn" type="button" data-event-open-portal="${esc(item.id)}"><span>リンク先を開く</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : portalEventDisplayCategory(item)==='event' ? `<button class="openBtn" type="button" data-event-rsvp-date="${esc(portalEventDates(item).find(d=>d>=todayDateKey())||portalEventFirstDate(item))}"><span>参加予定・詳細を確認</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : portalConnectedBase(item) ? `<button type="button" class="openBtn" data-event-open-base="${esc(item.id)}"><span>${item.type==='RELAY EVENT BASE'?'駅伝BASEを開く':'EVENT BASEを開く'}</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : item.previewOnly ? `<button class="openBtn" type="button" ${item.raceEntryEnabled===false?'data-event-rsvp-date="'+esc(portalEventDates(item).find(d=>d>=todayDateKey())||portalEventFirstDate(item))+'"':'data-flow-event="'+esc(item.id)+'"'}><span>${item.raceEntryEnabled===false||isEntryClosed?'詳細を見る':'詳細・出走登録'}</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : item.type==='OTHER' ? `<button type="button" class="openBtn" data-event-rsvp-date="${esc(portalEventDates(item).find(d=>d>=todayDateKey())||portalEventFirstDate(item))}"><span>イベントの詳細を見る</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : item.url
       ? protectedEventHref?`<a class="openBtn" href="${esc(protectedEventHref)}"><span>${item.relay?'駅伝EVENT BASEを開く':'EVENT BASEを開く'}</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></a>`:`<button type="button" class="openBtn" disabled title="開発者本人の接続を確認してください">大会への接続を保護中</button>`
       : `<button class="openBtn" type="button" data-ui-event-coming="${esc(item.id)}"><span>${esc(noLinkLabel)}</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>`;
     return `<article class="event${relayClass}${isPastEvent(item)?' portalPastEvent':''}"><div class="eventTop"><div class="eventDate"><strong>${esc(day)}</strong><span>${esc(mon)}</span></div><div class="eventBody"><div class="eventState"><i></i>${esc(state)}</div><h3>${esc(item.title)}</h3><div class="eventType">${esc(portalEventDisplayCategory(item)==='event'?'通常イベント':item.type==='RELAY EVENT BASE'?'大会 ／ 駅伝 EVENT BASE':item.type==='OTHER'?'大会': '大会 ／ '+item.type)}</div><span class="portalEventCardMetrics">${esc(portalEventDateLabel(item))}${portalEventDisplayCategory(item)==='event'?' ／ 参加予定の確認':item.raceEntryEnabled===false?' ／ 開催種目：'+esc(eventRaceMetricNames(item).join(' ／ ')||'未定'):' ／ '+esc(eventRaceMetricsText(item))}</span><span class="portalEventParticipation ${responseClass}"><span class="portalAttendancePiece">${portalEventDisplayCategory(item)==='event'?'参加予定':'大会の予定'}：<b>${esc(attendanceStatus||participation)}</b></span>${item.previewOnly?`<span class="portalAttendancePiece">出走：<b>${esc(raceStatus)}</b></span>`:''}</span></div></div>${rsvpOpen}${missingConnection}${action}</article>`;
@@ -8119,6 +8122,7 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
   function bindEventCardActions(box){
     box.querySelectorAll('[data-event-connect-from-list]').forEach(b=>b.addEventListener('click',()=>portalStartEventConnectionFromList(b.dataset.eventConnectFromList)));
     box.querySelectorAll('[data-event-open-base]').forEach(b=>b.addEventListener('click',()=>portalOpenLinkedBase(flowEvent(b.dataset.eventOpenBase))));
+    box.querySelectorAll('[data-event-open-portal]').forEach(b=>b.addEventListener('click',()=>portalOpenGeneralEvent(flowEvent(b.dataset.eventOpenPortal))));
     box.querySelectorAll('[data-ui-event-coming]').forEach(b=>b.addEventListener('click',()=>{const event=eventItems.find(x=>x.id===b.dataset.uiEventComing);openModal(event?.relay?'RELAY EVENT BASE':'EVENT BASE',event?.relay?'駅伝EVENT BASE':'準備中');}));
     box.querySelectorAll('[data-event-rsvp-date]').forEach(b=>b.addEventListener('click',()=>openScheduleDetail(b.dataset.eventRsvpDate)));
   }
@@ -8471,6 +8475,17 @@ if(view==='list')portalApplyManageSearch(kind);
   $('manageNoticeMonth').addEventListener('change',()=>{noticeListMonth=$('manageNoticeMonth').value;renderManageNotices();});
   $('managePracticeMonth').addEventListener('change',()=>{practiceListMonth=$('managePracticeMonth').value;renderManagePractices();});
   function portalEventDisplayCategory(item){return item?.displayCategory==='event'?'event':'competition';}
+  function portalSyncEventLinkEditor(){
+    // One eventItems.url field for all event types; no new Firebase data source.
+    const kind=$('manageEventType').value;
+    const row=$('manageEventUrlRow');
+    if(row)row.hidden=false;
+    const label=$('manageEventUrlLabel'),help=$('manageEventUrlHelp');
+    if(label)label.textContent=kind==='OTHER'?'PORTAL内イベントのリンク先URL（未指定可）':'EVENT BASE／駅伝BASEの正式大会URL';
+    if(help)help.textContent=kind==='OTHER'
+      ?'https:// で始まる既存ページのURLを指定してください。保存するとHOME・カレンダー・イベント一覧から開けます。未指定なら従来の日付詳細を使用します。EVENT BASE／駅伝BASEは専用の接続方法を選択してください。'
+      :'既存の正式大会URLを貼り付けて保存してください。EVENT BASE／駅伝BASEは本人確認・正規URL検証を継続します。認証番号やownerKeyは指定しないでください。';
+  }
   function portalUpdateEventDisplayCategory(){
     const ordinary=$('manageEventDisplayCategory').value==='event';
     $('manageEventConnectionTypeRow').classList.toggle('hidden',ordinary);
@@ -8478,7 +8493,8 @@ if(view==='list')portalApplyManageSearch(kind);
     $('manageEventRaceEntryChoice').classList.toggle('hidden',ordinary);
     if(ordinary){$('manageEventType').value='OTHER';const no=document.querySelector('input[name="manageEventRaceEntryEnabled"][value="no"]');if(no)no.checked=true;}
     portalSyncEventRaceMode();
-    const info=$('portalEventCreationOrderNote');if(info)info.textContent=ordinary?'通常イベントは観戦・応援・交流など出走予定のない開催です。参加の回答をカレンダーで確認します。':'大会の出走条件・種目・EVENT BASE接続はこれまでどおり設定できます。';
+    portalSyncEventLinkEditor();
+    const info=$('portalEventCreationOrderNote');if(info)info.textContent=ordinary?'通常イベントは観戦・応援・交流などの開催です。リンク先を指定しても、参加の回答はPORTALのカレンダーで確認できます。':'PORTAL内イベントはリンク先だけ設定できます。EVENT BASE／駅伝BASEは既存の接続検証を使用します。';
   }
   $('manageEventDisplayCategory').addEventListener('change',portalUpdateEventDisplayCategory);
   function portalSyncEventRaceMode(){
@@ -8781,7 +8797,7 @@ if(view==='list')portalApplyManageSearch(kind);
         copyingEventFromId=null; editingEventId=id;
         $('manageEventDate').value=item.date||'';portalEventTimeSet(item.startTime); $('manageEventTitle').value=item.title||'';
         setPlaceSelectValue('manageEventPlace','manageEventCustomPlaceRow','manageEventCustomPlace',item.place||'');
-        $('manageEventDisplayCategory').value=portalEventDisplayCategory(item);$('manageEventType').value=item.type||'EVENT BASE'; $('manageEventUrl').value='';$('manageEventEntryDeadline').value=item.entryDeadline||'';document.querySelector('input[name="manageEventDeclaredRequired"][value="'+(item.requiresDeclaredTime===true?'yes':'no')+'"]').checked=true;portalRulesLoad(item);portalLoadEventDates(item);portalUpdateEventDisplayCategory();
+        $('manageEventDisplayCategory').value=portalEventDisplayCategory(item);$('manageEventType').value=item.type||'EVENT BASE'; $('manageEventUrl').value=item.type==='OTHER'?(item.url||''):(portalOfficialPublicLink(item.url||'')?.url||item.url||'');$('manageEventEntryDeadline').value=item.entryDeadline||'';document.querySelector('input[name="manageEventDeclaredRequired"][value="'+(item.requiresDeclaredTime===true?'yes':'no')+'"]').checked=true;portalRulesLoad(item);portalLoadEventDates(item);portalUpdateEventDisplayCategory();
         portalSetEventRaceMode(item);$('manageEventAdd').textContent='修正を反映'; $('manageEventState').textContent='修正中：'+item.title;
         portalSwitchEventWorkspace('new');
         $('manage-pane-event').scrollIntoView({behavior:'smooth',block:'start'});
@@ -9084,7 +9100,7 @@ if(view==='list')portalApplyManageSearch(kind);
   $('manageEventAdd').addEventListener('click',async()=>{
     if(!canManage)return;
     const displayCategory=$('manageEventDisplayCategory').value;
-    const date=$('manageEventDate').value,dates=portalReadEventDates(),title=$('manageEventTitle').value.trim(),entryDeadline=$('manageEventEntryDeadline').value; let place=placeValue('manageEventPlace','manageEventCustomPlace'); const startTime=portalEventTimeGet(),type=$('manageEventType').value;let url=['EVENT BASE','RELAY EVENT BASE'].includes(type)?String($('manageEventUrl').value||'').trim():(editingEventId?String(eventItems.find(x=>x.id===editingEventId)?.url||''):'');
+    const date=$('manageEventDate').value,dates=portalReadEventDates(),title=$('manageEventTitle').value.trim(),entryDeadline=$('manageEventEntryDeadline').value; let place=placeValue('manageEventPlace','manageEventCustomPlace'); const startTime=portalEventTimeGet(),type=$('manageEventType').value;let url=String($('manageEventUrl').value||'').trim();
     // On paste, a canonical EVENT BASE link is the whole connection setting.
     // Never persist ownerKey, PIN, admin secrets or foreign query parameters.
     if(url){
@@ -9101,8 +9117,10 @@ if(view==='list')portalApplyManageSearch(kind);
       url=target.url;
     }
     const existingEdit=editingEventId?eventItems.find(x=>x.id===editingEventId):null;
-    if(displayCategory==='event'&&existingEdit&&(portalConnectedBase(existingEdit)||String(existingEdit.url||'').trim()||flowState.entries.some(r=>r.eventId===existingEdit.id))){$('manageEventState').textContent='大会の接続先や出走登録があるため通常イベントへ変更できません。元の大会を維持してください。';return;}
-    if(displayCategory==='event')url='';
+    if(displayCategory==='event'&&existingEdit&&(['EVENT BASE','RELAY EVENT BASE'].includes(existingEdit.type)||flowState.entries.some(r=>r.eventId===existingEdit.id))){$('manageEventState').textContent='大会の接続先や出走登録があるため通常イベントへ変更できません。元の大会を維持してください。';return;}
+    if(type==='OTHER'&&url&&!portalGeneralEventLink({type,url})){
+      $('manageEventState').textContent='PORTAL内イベントには https:// の有効なページURLを指定してください。EVENT BASE／駅伝BASEは専用の接続方法を選択してください。';return;
+    }
     if(url){
       try{const parsed=new URL(url);if(parsed.protocol!=='https:'||!parsed.hostname)throw new Error('bad url');}
       catch(_){$('manageEventState').textContent='接続先は https:// で始まる有効なURLを指定してください。';return;}
@@ -9175,7 +9193,7 @@ if(view==='list')portalApplyManageSearch(kind);
     $('manageEventState').textContent=formerItem?'大会の修正をFirebaseに保存しました。':source?'コピーから新しい大会をFirebaseに保存しました。':'新しい大会をFirebaseに保存しました。';
     portalPrepareEventNotice(item,formerItem);
     editingEventId=null;copyingEventFromId=null;$('manageEventAdd').textContent='PORTALにイベントを保存';portalSwitchEventWorkspace('new');
-    $('manageEventDisplayCategory').value='competition';portalUpdateEventDisplayCategory();$('manageEventTitle').value='';$('manageEventUrl').value='';$('manageEventEntryDeadline').value='';$('manageEventPlace').value='';$('manageEventCustomPlaceRow').classList.add('hidden');$('manageEventCustomPlace').value='';portalEventExtraDateDraft=[];portalEventMetricDateDraft={};portalDrawEventDates();portalEventTimeSet('');portalRulesLoad(null);document.querySelector('input[name="manageEventDeclaredRequired"][value="no"]').checked=true;portalSetEventRaceMode(null);
+    $('manageEventDisplayCategory').value='competition';$('manageEventType').value='OTHER';portalUpdateEventDisplayCategory();$('manageEventTitle').value='';$('manageEventUrl').value='';$('manageEventEntryDeadline').value='';$('manageEventPlace').value='';$('manageEventCustomPlaceRow').classList.add('hidden');$('manageEventCustomPlace').value='';portalEventExtraDateDraft=[];portalEventMetricDateDraft={};portalDrawEventDates();portalEventTimeSet('');portalRulesLoad(null);document.querySelector('input[name="manageEventDeclaredRequired"][value="no"]').checked=true;portalSetEventRaceMode(null);
     eventListMonth=date.slice(0,7);$('manageEventMonth').value=eventListMonth;
     renderHomeCalendar();renderFullCalendar();renderEventTab();renderManagedHomeEvents();renderManageEvents();renderHomeNextEvent();
     if(['EVENT BASE','RELAY EVENT BASE'].includes(item.type)&&!item.url){
@@ -11630,6 +11648,27 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
     // PXX numbers are not authorization rules; staff edit eventItems explicitly.
     return !publicLink||publicLink.ekidenNext!==(item.type==='RELAY EVENT BASE');
   }
+  function portalGeneralEventLink(item){
+    if(!item||item.type!=='OTHER'||!String(item.url||'').trim())return '';
+    try{
+      const target=new URL(String(item.url).trim());
+      if(target.protocol!=='https:'||!target.hostname||target.username||target.password)return '';
+      // Never bypass EVENT BASE/EKIDEN's verified same-UID event entry.
+      if(target.hostname==='nuritakug-cpu.github.io'&&
+         /^\/tabirun-bgm\/EVENT_BASE[^/]*\.html$/i.test(target.pathname))return '';
+      return target.href;
+    }catch(_){return '';}
+  }
+  function portalOpenGeneralEvent(item){
+    const url=portalGeneralEventLink(item);
+    if(!url){showActionFeedback('リンク先を開けません','管理者が指定したPORTAL内イベントのURLを確認してください。');return false;}
+    // Existing same-site pages retain PORTAL navigation in the current tab.
+    // Off-site HTTPS links get a separate tab; never pass Firebase credentials.
+    const target=new URL(url);
+    if(target.origin===location.origin)window.location.assign(url);
+    else window.open(url,'_blank','noopener,noreferrer');
+    return true;
+  }
   function portalConnectedBase(item){
     if(!item||!['EVENT BASE','RELAY EVENT BASE'].includes(item.type))return false;
     const publicLink=portalOfficialPublicLink(item.url||'');
@@ -11882,7 +11921,7 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
     finally{portalOfficialHandoffBusy=false;portalOfficialHandoffRefresh();}
   }
   // Visible official destination editor; the existing eventItems Firebase writer remains canonical.
-  $('manageEventType')?.addEventListener('change',()=>{const row=$('manageEventUrlRow');if(row)row.hidden=!['EVENT BASE','RELAY EVENT BASE'].includes($('manageEventType').value);});
+  $('manageEventType')?.addEventListener('change',portalSyncEventLinkEditor);
   $('portalOfficialHandoffLinkInput')?.addEventListener('input',portalOfficialHandoffRefresh);
   $('portalOfficialHandoffExecute').addEventListener('click',portalOfficialHandoffCreate);
   // Reload preview event shells into the EXISTING eventItems catalogue; never create another event registry.
@@ -13149,6 +13188,8 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
     }
     const connectButton=e.target.closest('[data-event-connect-from-list]');
     if(connectButton){portalStartEventConnectionFromList(connectButton.dataset.eventConnectFromList);return;}
+    const portalButton=e.target.closest('[data-cal-open-portal]');
+    if(portalButton){portalOpenGeneralEvent(flowEvent(portalButton.dataset.calOpenPortal));return;}
     const baseButton=e.target.closest('[data-cal-open-base]');
     if(baseButton){portalOpenLinkedBase(flowEvent(baseButton.dataset.calOpenBase));return;}
     const target=e.target.closest('[data-cal-entry]');
