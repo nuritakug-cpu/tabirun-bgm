@@ -6067,6 +6067,12 @@ body.trEventCommsActive #portalNoticeList{display:grid!important}
     <button id="portalIdentityLinkRefresh" type="button" style="min-height:43px">申請と既存本人一覧を確認</button>
     <div id="portalIdentityLinkDeveloperList" style="display:grid;gap:10px;margin-top:12px"></div>
     <p id="portalIdentityLinkDeveloperState" role="status" style="white-space:pre-wrap;font-size:12px"></p>
+    <hr style="border:0;border-top:1px solid #686d67;margin:14px 0">
+    <strong>参加承認の申請（本人情報がある方）</strong>
+    <p style="font-size:13px">本人確認を別途行ってから承認してください。名前と確認コードを本人から聞いて照合します。</p>
+    <button id="portalMemberApprovalRefresh" type="button" style="min-height:43px">参加承認の申請を確認</button>
+    <div id="portalMemberApprovalList" style="display:grid;gap:10px;margin-top:12px"></div>
+    <p id="portalMemberApprovalDevState" role="status" style="white-space:pre-wrap;font-size:12px"></p>
   </details>
 </section>
   <div class="portalScreenHead">
@@ -13680,6 +13686,10 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
     <button id="portalExistingParticipantStart" type="button" hidden>登録済みの方：元の本人に戻る</button>
     <button id="portalNewParticipantStart" type="button" hidden>このアイコンで利用登録する（既存利用者も可）</button>
     <button id="portalIdentityLinkOpen" type="button" class="portalHandoffSecondary" hidden>以前の記録を引き継ぐ（開発者の本人確認）</button>
+    <style>#portalMemberApprovalRequest[hidden],#portalMemberApprovalCheck[hidden],#portalMemberApprovalState[hidden]{display:none!important}</style>
+    <button id="portalMemberApprovalRequest" type="button" class="portalHandoffSecondary" hidden>参加承認を申請する（本人情報はあります）</button>
+    <button id="portalMemberApprovalCheck" type="button" class="portalHandoffSecondary" hidden>開発者の承認を確認して入る</button>
+    <p id="portalMemberApprovalState" role="status" aria-live="polite" style="white-space:pre-wrap" hidden></p>
     <form id="portalIdentityLinkRequestForm" hidden style="margin:13px 0;padding:14px;border:1px solid #c4b252;border-radius:12px">
       <strong>既存データへの本人紐付け申請</strong>
       <p>以前の本人記録を探し、開発者が本人を確認してから同じprofileIdへ紐付けます。申請だけで他人の記録は閲覧できません。</p>
@@ -14214,6 +14224,82 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
       if(!verified || verified.requestedName!==name || verified.status!=='pending')
         throw Error('本人紐付け申請のFirebase保存確認ができません');
       return {uid,status:'pending',created:result.committed};
+    };
+    // P104: existing-profile participants whose PORTAL approval (memberAccess) is missing/expired.
+    // Participant side only writes memberRequests/{ownUid} (Rules: own UID, create-only, profile-matched).
+    // Developer side writes memberAccess via the same create-only transaction used by finalizeIdentityLink.
+    const p104Suffix=async uid=>{
+      const digest=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(uid)));
+      return Array.from(digest.slice(0,2),v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();
+    };
+    const p104Profile=async uid=>{
+      const prof=(await dbMod.get(dbMod.ref(db,'profiles/'+uid))).val();
+      if(!prof||typeof prof.profileId!=='string'||!prof.profileId||typeof prof.displayName!=='string'||!prof.displayName)
+        throw Error('このUIDに本人情報(profileId)がありません。「以前の記録を引き継ぐ」から本人確認を申請してください');
+      return prof;
+    };
+    gate.requestMemberApproval=async()=>{
+      const uid=auth.currentUser?.uid||'';
+      if(!uid)throw Error('この画面の認証がまだありません');
+      const prof=await p104Profile(uid);
+      const access=(await dbMod.get(ref('memberAccess/'+uid))).val();
+      if(access){
+        if(access.active===true&&access.profileId===prof.profileId){await onUser(auth.currentUser);return {uid,status:'active'};}
+        throw Error('参加承認の記録はありますが、有効でないか本人情報と一致しません。開発者に確認してください');
+      }
+      const at=ref('memberRequests/'+uid),before=(await dbMod.get(at)).val();
+      if(before){
+        if(before.profileId===prof.profileId&&before.status==='pending')return {uid,status:'pending',suffix:before.numberSuffix||''};
+        throw Error('申請の状態が一致しません。開発者に確認してください');
+      }
+      const suffix=await p104Suffix(uid);
+      const request={profileId:prof.profileId,displayName:prof.displayName,status:'pending',numberSuffix:suffix,requestedAt:Date.now()};
+      const result=await dbMod.runTransaction(at,v=>v===null?request:undefined,{applyLocally:false});
+      const verified=(await dbMod.get(at)).val();
+      if(!verified||verified.profileId!==prof.profileId||verified.status!=='pending')
+        throw Error('参加承認申請のFirebase保存確認ができません');
+      return {uid,status:'pending',suffix,created:result.committed};
+    };
+    gate.checkMemberApproval=async()=>{
+      const uid=auth.currentUser?.uid||'';
+      if(!uid)throw Error('この画面の認証がまだありません');
+      const prof=await p104Profile(uid);
+      const access=(await dbMod.get(ref('memberAccess/'+uid))).val();
+      if(access?.active===true&&access.profileId===prof.profileId){await onUser(auth.currentUser);return {uid,status:'active'};}
+      const req=(await dbMod.get(ref('memberRequests/'+uid))).val();
+      return {uid,status:req?.status==='pending'&&req.profileId===prof.profileId?'pending':'none'};
+    };
+    gate.listMemberApprovalRequests=async()=>{
+      if(!isDeveloper())throw Error('開発者の権限が必要です');
+      const [rq,ac]=await Promise.all([dbMod.get(ref('memberRequests')),dbMod.get(ref('memberAccess'))]);
+      const reqs=rq.val()||{},acc=ac.val()||{},rows=[];
+      for(const [uid,r] of Object.entries(reqs)){
+        if(!/^[A-Za-z0-9_-]{6,128}$/.test(uid)||r?.status!=='pending'||typeof r.profileId!=='string'||!r.profileId)continue;
+        const a=acc[uid];
+        if(a?.active===true&&a.profileId===r.profileId)continue;
+        rows.push({uid,profileId:r.profileId,name:String(r.displayName||'').slice(0,24),suffix:String(r.numberSuffix||''),
+          requestedAt:Number(r.requestedAt)||0,blocked:!!a});
+      }
+      rows.sort((x,y)=>y.requestedAt-x.requestedAt);
+      return rows;
+    };
+    gate.approveMemberApprovalRequest=async uid=>{
+      if(!isDeveloper())throw Error('開発者の権限が必要です');
+      uid=String(uid||'');
+      if(!/^[A-Za-z0-9_-]{6,128}$/.test(uid))throw Error('UIDの形式が不正です');
+      const r=(await dbMod.get(ref('memberRequests/'+uid))).val();
+      if(!r||r.status!=='pending'||typeof r.profileId!=='string'||!r.profileId)throw Error('承認待ちの申請がありません');
+      const at=ref('memberAccess/'+uid),old=(await dbMod.get(at)).val();
+      if(old){
+        if(old.active===true&&old.profileId===r.profileId)return {alreadyActive:true};
+        throw Error('別の参加者承認が保存されています。上書きしません');
+      }
+      const grant={profileId:r.profileId,active:true,approvedAt:Date.now(),approvedBy:gate.uid};
+      const result=await dbMod.runTransaction(at,v=>v===null?grant:undefined,{applyLocally:false});
+      const verified=(await dbMod.get(at)).val();
+      if(!result.committed||verified?.active!==true||verified?.profileId!==r.profileId)
+        throw Error('参加承認のFirebase保存確認に失敗しました');
+      return {approved:true};
     };
     gate.checkExistingIdentityLink=async()=>{
       const uid=auth.currentUser?.uid||'';
@@ -15758,6 +15844,7 @@ try{
           if(!gate.memberApproved){
             gate.roleVerified=false;
             ui?.applyVerifiedRole('unverified','');
+            try{window.dispatchEvent(new CustomEvent('tr-portal-member-approval-needed'));}catch(_){}
             window.__TR_PARTICIPANT_ENTRY__?.failed('この本人UIDの参加承認が未完了、失効、または読み取り不可です。管理者の承認後、同じ本人で再入場してください。');
             return;
           }
@@ -16926,6 +17013,50 @@ setInterval(display,1000);
     return (cache.requests.length?`${cache.requests.length}件の申請を確認しました。`:'現在の申請はありません。')+' '+scope;
   },log);
   $('portalIdentityLinkRefresh')?.addEventListener('click',refresh);
+  // P104: participant approval request / developer approval list
+  const mReq=$('portalMemberApprovalRequest'),mChk=$('portalMemberApprovalCheck'),mState=$('portalMemberApprovalState');
+  const memberEls=[mReq,mChk,mState];
+  window.addEventListener('tr-portal-member-approval-needed',()=>{
+    for(const el of memberEls)if(el)el.hidden=false;
+    if(mState&&!mState.textContent)mState.textContent='本人情報はあります。「参加承認を申請する」を押し、開発者の承認後に「開発者の承認を確認して入る」を押してください。';
+  });
+  window.addEventListener('tr-portal-authorized',()=>{for(const el of memberEls)if(el)el.hidden=true;});
+  mReq?.addEventListener('click',()=>void run(async()=>{
+    const v=await gate()?.requestMemberApproval?.();
+    if(!v)throw Error('PORTAL共通認証の接続を確認できません');
+    if(v.status==='active')return '参加承認は有効です。';
+    return '参加承認を申請しました。開発者へ名前と確認コード '+(v.suffix||'')+'（UID末尾 '+String(v.uid||'').slice(-6)+'）を伝えてください。承認後に「開発者の承認を確認して入る」を押してください。';
+  },mState));
+  mChk?.addEventListener('click',()=>void run(async()=>{
+    const r=await gate()?.checkMemberApproval?.();
+    if(r?.status==='active')return '承認を確認しました。';
+    if(r?.status==='pending')return '申請中です。開発者の承認をお待ちください。';
+    return '申請が見つかりません。「参加承認を申請する」を押してください。';
+  },mState));
+  const mList=$('portalMemberApprovalList'),mLog=$('portalMemberApprovalDevState');
+  const refreshMembers=()=>run(async()=>{
+    const g=gate();if(!g?.listMemberApprovalRequests)throw Error('共通本人モジュールが準備できていません');
+    const rows=await g.listMemberApprovalRequests();
+    mList.replaceChildren();
+    for(const row of rows){
+      const box=document.createElement('div');
+      box.style.cssText='padding:12px;border:1px solid #686d67;border-radius:10px;display:grid;gap:7px';
+      const title=document.createElement('strong');
+      title.textContent='申請 '+row.uid.slice(-6)+' / '+row.name+' / 確認コード '+row.suffix;box.append(title);
+      const button=document.createElement('button');button.type='button';button.style.minHeight='42px';
+      if(row.blocked){button.textContent='別の承認記録があるため承認できません';button.disabled=true;}
+      else{
+        button.textContent='本人確認済み：参加を承認';
+        button.onclick=()=>{
+          if(!confirm('名前と確認コードを本人に確認しましたか？ '+row.name+' のPORTAL利用を承認します。'))return;
+          void run(async()=>{await g.approveMemberApprovalRequest(row.uid);setTimeout(refreshMembers,0);return row.name+' の参加を承認しました';},mLog);
+        };
+      }
+      box.append(button);mList.append(box);
+    }
+    return rows.length?rows.length+'件の承認待ちがあります。':'承認待ちの申請はありません。';
+  },mLog);
+  $('portalMemberApprovalRefresh')?.addEventListener('click',refreshMembers);
   const recoveredBox=document.createElement('section');recoveredBox.id='portalRecoveredPastRecordsP97';
   recoveredBox.style.cssText='margin:15px 0;padding:15px;border:1px solid #cbb64b;border-radius:12px';
   recoveredBox.hidden=true;
@@ -17008,158 +17139,6 @@ setInterval(display,1000);
     try{await navigator.clipboard.writeText(state.selectedUid);hint.textContent='UIDをコピーしました';}
     catch(e){result.focus();result.select();hint.textContent='コピーできない場合は、選択された文字を長押ししてコピーしてください。';}
   });
-})();
-</script>
-
-<style id="portal-visual-only-hotfix-20261027">
-/* 2026-10-27 VISUAL ONLY HOTFIX
-   Scope limited to requested appearance adjustments.
-   No Firebase / role / save logic changes. */
-
-/* 1) Move secondary management disclosures into the gear-settings screen visually. */
-#screen-management-settings #portalManagementAccessDisclosure,
-#screen-management-settings #portalIdentityLinkDeveloper{
-  margin:0 0 14px !important;
-  padding:0 !important;
-  border:1px solid var(--pc-panel-soft-border,var(--line,#528080)) !important;
-  border-radius:17px !important;
-  background:var(--card,#12323a) !important;
-  color:#f2faf9 !important;
-  overflow:hidden;
-}
-#screen-management-settings #portalManagementAccessDisclosure>summary,
-#screen-management-settings #portalIdentityLinkDeveloper details>summary{
-  cursor:pointer;
-  padding:14px 15px;
-  font-weight:900;
-  font-size:14px;
-  line-height:1.45;
-  color:#f2faf9;
-  list-style-position:inside;
-}
-#screen-management-settings #portalManagementAccessBody{padding:0 12px 12px !important;}
-#screen-management-settings #portalIdentityLinkDeveloper details{padding:0;}
-#screen-management-settings #portalIdentityLinkDeveloper p,
-#screen-management-settings #portalIdentityLinkDeveloper button,
-#screen-management-settings #portalIdentityLinkDeveloperState,
-#screen-management-settings #portalIdentityLinkDeveloperList{margin-left:12px; margin-right:12px;}
-#screen-management-settings #portalIdentityLinkDeveloper button{margin-bottom:12px;}
-#screen-management-settings #portalIdentityLinkDeveloper[hidden]{display:none !important;}
-
-/* 2) CHAT top selector block: remove from view. */
-#screen-chat .trEventCommsScope{display:none !important;}
-
-/* 3/4/5) CHAT visibility + background color tuning (appearance only). */
-#screen-chat{
-  background:
-    radial-gradient(circle at 88% 6%, rgba(228,119,45,.26), transparent 24%),
-    linear-gradient(180deg,#07060d 0%, #110910 48%, #08070c 100%) !important;
-}
-#screen-chat>main.chatMain{background:transparent !important;}
-#screen-chat .portalSimpleFilter{
-  margin:4px 0 14px !important;
-  padding:12px;
-  border:1px solid rgba(203,123,67,.44);
-  border-radius:18px;
-  background:linear-gradient(180deg,rgba(20,12,17,.95),rgba(17,9,13,.94));
-  box-shadow:0 8px 18px rgba(0,0,0,.16);
-}
-#screen-chat .portalSimpleFilterValue{display:grid; gap:8px;}
-#screen-chat .portalSimpleFilter .portalSimpleFilterRange{gap:8px;}
-#screen-chat .portalSimpleFilter select,
-#screen-chat .portalSimpleFilter input{
-  min-height:50px !important;
-  border:1px solid #c67c4b !important;
-  background:#fff8f1 !important;
-  color:#261a12 !important;
-  font-weight:900 !important;
-  box-shadow:none !important;
-}
-#screen-chat .portalSimpleFilter select:focus,
-#screen-chat .portalSimpleFilter input:focus{outline:3px solid rgba(240,174,92,.34); outline-offset:1px;}
-#screen-chat .chatDateBand span{background:#f1ece3; border-color:#d3af7c; color:#d88642;}
-#screen-chat .chatComposer{background:linear-gradient(180deg,rgba(8,7,13,0),rgba(8,7,13,.94) 35%) !important;}
-#screen-chat .chatBox{
-  border:1px solid rgba(206,130,75,.42) !important;
-  background:rgba(15,10,15,.96) !important;
-}
-#screen-chat #portalChatInput{
-  border:1px solid #c67c4b !important;
-  background:#fffaf6 !important;
-  color:#1f1610 !important;
-}
-#screen-chat #portalChatSend{
-  border:1px solid #e7a56d !important;
-  background:#f38f43 !important;
-  color:#21150d !important;
-}
-
-/* 6) MY PAGE settings: reverse order and match notification card color. */
-#screen-notification-settings .portalScreenBody{display:flex; flex-direction:column; gap:14px;}
-#screen-notification-settings #trPushSettings{
-  order:1;
-  border:1px solid rgba(205,126,72,.58);
-  border-radius:24px;
-  background:linear-gradient(180deg,rgba(17,10,16,.97),rgba(13,9,15,.96));
-  color:#fff3ea;
-  overflow:hidden;
-}
-#screen-notification-settings #trPushSettings>summary{
-  cursor:pointer;
-  padding:18px 20px;
-  list-style-position:inside;
-  font-size:16px;
-  font-weight:900;
-  line-height:1.4;
-  color:#fff2ea;
-}
-#screen-notification-settings #trPushSettings[open]>summary{border-bottom:1px solid rgba(205,126,72,.34);}
-#screen-notification-settings #trStage3Panel{
-  margin:14px 16px 12px !important;
-  border:1px solid rgba(205,126,72,.44) !important;
-  border-radius:18px !important;
-  background:linear-gradient(180deg,rgba(24,12,17,.96),rgba(18,10,15,.97)) !important;
-  color:#fff7f2 !important;
-  box-shadow:none !important;
-}
-#screen-notification-settings #trStage3Panel strong{display:block; font-size:16px; margin-bottom:4px;}
-#screen-notification-settings #trStage3Panel p,
-#screen-notification-settings #trStage3Panel label,
-#screen-notification-settings #trPushStage2Diagnostics,
-#screen-notification-settings #trPushStage2Diagnostics summary{color:#fff3ea !important;}
-#screen-notification-settings #trStage3Panel button{
-  background:#f38f43 !important;
-  color:#23170d !important;
-  border:1px solid #e9b17d !important;
-  font-weight:900;
-}
-#screen-notification-settings #trStage3Panel button:disabled{
-  background:#6b3b1c !important;
-  color:#f4d8c1 !important;
-  border-color:#9f6a43 !important;
-  opacity:.72;
-}
-#screen-notification-settings #trPushStage2Diagnostics{margin:10px 16px 16px !important;}
-#screen-notification-settings #portalHandoffOpen{order:2;}
-</style>
-<script id="portal-visual-only-reorder-20261027">
-(function(){
-  function moveManagementVisualItems(){
-    const settingsBody=document.querySelector('#screen-management-settings .portalScreenBody');
-    const connectionSection=settingsBody?.querySelector('.portalManagementSettingsSection');
-    const access=document.getElementById('portalManagementAccessDisclosure');
-    const identity=document.getElementById('portalIdentityLinkDeveloper');
-    if(settingsBody && access && !settingsBody.contains(access)){
-      if(connectionSection) connectionSection.insertAdjacentElement('afterend', access);
-      else settingsBody.prepend(access);
-    }
-    if(settingsBody && identity && !settingsBody.contains(identity)){
-      if(access && access.parentNode===settingsBody) access.insertAdjacentElement('afterend', identity);
-      else settingsBody.appendChild(identity);
-    }
-  }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', moveManagementVisualItems, {once:true});
-  else moveManagementVisualItems();
 })();
 </script>
 
