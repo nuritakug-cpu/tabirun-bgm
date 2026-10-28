@@ -184,7 +184,12 @@ body:has(#portalParticipantIdentityGate[hidden]) #portalFirstPaintAuthOverlay,
 body:has(#portalParticipantLoginRetry:not([hidden])) #portalFirstPaintAuthOverlay,
 body:has(#portalHandoffCodeForm:not([hidden])) #portalFirstPaintAuthOverlay,
 body:has(#portalHandoffIssueButton:not([hidden])) #portalFirstPaintAuthOverlay,
-body:has(#portalHandoffCancel:not([hidden])) #portalFirstPaintAuthOverlay{
+body:has(#portalHandoffCancel:not([hidden])) #portalFirstPaintAuthOverlay,
+/* v114: entry steps after the first choice (name form / role step / link request / back) must not be covered by the splash. Display-only. */
+body:has(#portalNewParticipantForm:not([hidden])) #portalFirstPaintAuthOverlay,
+body:has(#portalParticipantRoleStep:not([hidden])) #portalFirstPaintAuthOverlay,
+body:has(#portalIdentityLinkRequestForm:not([hidden])) #portalFirstPaintAuthOverlay,
+body:has(#portalParticipantEntryBack:not([hidden])) #portalFirstPaintAuthOverlay{
   display:none!important;visibility:hidden!important;pointer-events:none!important;
 }
 /* 2026-10-18 iOS browser toolbar backing: while the authentication splash is visible,
@@ -5941,7 +5946,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v113</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v115</b></div>
   </div>
 </div>
 
@@ -6135,7 +6140,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v113</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v115</b></div>
   </div>
 </div>
 
@@ -17445,7 +17450,20 @@ setInterval(display,1000);
           void run(async()=>{await g.approveMemberApprovalRequest(row.uid);setTimeout(refreshMembers,0);return row.name+' の参加を承認しました';},mLog);
         };
       }
-      box.append(button);mList.append(box);
+      box.append(button);
+      // v115: developer-only shortcut. Uses the existing grantExistingAdmin with the UID already loaded here (no typing, no new UID/profile).
+      const adminButton=document.createElement('button');adminButton.type='button';adminButton.style.minHeight='42px';
+      adminButton.textContent='この人を管理者にする';
+      adminButton.onclick=()=>{
+        if(!confirm(row.name+'（確認コード '+row.suffix+'）を管理者にします。本人に確認しましたか？'))return;
+        void run(async()=>{
+          if(typeof g.grantExistingAdmin!=='function')throw Error('管理者付与の機能が準備できていません');
+          await g.grantExistingAdmin(row.uid);
+          adminButton.disabled=true;adminButton.textContent='管理者にしました';
+          return row.name+' を管理者にしました。続けて「本人確認済み：参加を承認」を押してください';
+        },mLog);
+      };
+      box.append(adminButton);mList.append(box);
     }
     return rows.length?rows.length+'件の承認待ちがあります。':'承認待ちの申請はありません。';
   },mLog);
