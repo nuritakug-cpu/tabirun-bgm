@@ -5949,7 +5949,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v124</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v125</b></div>
   </div>
 </div>
 
@@ -6143,7 +6143,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v124</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v125</b></div>
   </div>
 </div>
 
@@ -13097,7 +13097,13 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
   }
   // every record row (with a time) in every EVENT BASE race
   function rpAllRows(){const out=[];for(const ev of rpEvents().filter(e=>e.base)){const r=rpRoster(ev);if(Array.isArray(r))out.push(...r.filter(x=>x.time));}return out;}
-  function rpMembers(){return portalPastVerifiedChoices().map(m=>({...m,name:String(m.name||'').replace(/（本人）$/,''),at:Number(rpTimes[m.uid]?.at)||0}));}
+  // v125: ①「参加者全て」= PORTALで参加承認された人だけ（memberAccess）。EVENT BASEの古いブラウザ本人（PORTAL未承認）は
+  // マイページを持たないので紐付け先にしない。これが「同じ名前が2人」と出ていた原因。
+  let rpTimesOk=false;
+  function rpMembers(){
+    const all=portalPastVerifiedChoices().map(m=>({...m,name:String(m.name||'').replace(/（本人）$/,''),at:Number(rpTimes[m.uid]?.at)||0}));
+    return rpTimesOk?all.filter(m=>rpTimes[m.uid]):all;
+  }
   const rpDay=t=>t?new Date(t).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'}):'';
   const rpMemberByUid=uid=>rpMembers().find(m=>m.uid===uid)||null;
   // name -> members with that name (to spot PORTAL double registrations)
@@ -13256,7 +13262,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
   window.__rpOpen=async()=>{
     if(!rpIsDev()){const p=$('rpPanel');if(p)p.hidden=true;return;}
     rpWrapLegacy();rpRetry=0;rpRender();
-    try{rpSay('読み込み中…');rpTimes=await rpG().listMemberTimes?.()||{};await rpLoadClaims();rpSay('');}catch(err){rpSay('読み込めませんでした：'+String(err?.message||err).slice(0,120));}
+    try{rpSay('読み込み中…');rpTimes=await rpG().listMemberTimes?.()||{};rpTimesOk=Object.keys(rpTimes).length>0;await rpLoadClaims();rpSay('');}catch(err){rpSay('読み込めませんでした：'+String(err?.message||err).slice(0,120));}
     rpRender();
   };
   $('rpEvent')?.addEventListener('change',()=>{rpRetry=0;rpSay('');rpRender();});
