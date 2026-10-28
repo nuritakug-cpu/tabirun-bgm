@@ -1,4 +1,4 @@
-<!-- TOP RUN PORTAL v111 2026-10-28: browser guard added on top of v110 (iPhone non-icon windows show an icon-first guard; testers use ?browser=1); everything else unchanged. | previous: v110 2026-10-28: v109 exact physical parent; PORTAL internal event links now saved via the existing eventItems writer and visible in event list/calendar. External EVENT BASE/EKIDEN validation and all Auth/UID/profileId/Rules/RTDB subscriptions, writes, official results and theme/home image safeguards unchanged. STATIC candidate; Firebase production not tested/deployed. -->
+<!-- TOP RUN PORTAL v112 2026-10-28: answers written before a practice/event was (re)created are ignored (delete+re-register no longer brings back old attend/decline); | previous: v111 2026-10-28: browser guard added on top of v110 (iPhone non-icon windows show an icon-first guard; testers use ?browser=1); everything else unchanged. | previous: v110 2026-10-28: v109 exact physical parent; PORTAL internal event links now saved via the existing eventItems writer and visible in event list/calendar. External EVENT BASE/EKIDEN validation and all Auth/UID/profileId/Rules/RTDB subscriptions, writes, official results and theme/home image safeguards unchanged. STATIC candidate; Firebase production not tested/deployed. -->
 <!-- 2026-10-28 v109 UI organization: Hide obsolete CHAT STEP 1 panel (retain DOM for existing gateway); move push settings to first; show version "v109" only; developer identity review first in matching management card. No Auth, Rules, listener, CHAT message read/write, image cache, notification registration, official results or released data changed. NOT DEPLOYED. -->
 <!-- TOP RUN PORTAL v109 2026-10-28 PRODUCTION UPLOAD CANDIDATE: physical parent is user-uploaded TOP RUN PORTAL.html (v108). Scope: merge earlier verified default-theme HOME-image Blob paint/read-error reporting only, retaining Winter/Matte theme artwork, inherited P103 small updatedAt listener + IndexedDB cache, and ALL v108 participant onboarding, approval and existing unified Firebase identity/database paths. Display version updated v108 to v109. Static/browser tests only; actual Firebase/participant devices/publication not verified. -->
 <!-- TOP RUN PORTAL P100 / 2026-10-27 本番アップロード用単体HTML。P100検証用実装と同じ処理。既存Auth/UID/profileId/出走結果/RTDB Rulesおよび公開中のデータは自動変更しない。JavaScript静的検査・模擬検証済み。実Firebase、端末再入場、複数端末、通信量、本番公開は未検証。 -->
@@ -6019,7 +6019,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v111</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v112</b></div>
   </div>
 </div>
 
@@ -6181,7 +6181,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v111</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v112</b></div>
   </div>
 </div>
 
@@ -7594,7 +7594,7 @@ if(prefix==='home'){
   function schedulePracticeResponse(date,actorId){
     const gateway=window.__TR_PORTAL_SYNC__;
     if(gateway && gateway.loaded.practiceResponses){
-      const responses=gateway.practiceResponses?.[schedules[date]?._sourceKey||date]||{};
+      const responses=gateway.currentAnswers?gateway.currentAnswers('practice',schedules[date]?._sourceKey||date):(gateway.practiceResponses?.[schedules[date]?._sourceKey||date]||{});
       return Object.values(responses).find(r=>r?.profileId===actorId)?.answer||'';
     }
     // Firebase sync is the only authority in the normal connected mode.
@@ -7612,7 +7612,7 @@ if(prefix==='home'){
       const ready=gateway.loaded?.[dataKind]===true &&
         (['developer','admin'].includes(gateway.role)||gateway.sharedResponseReady?.[selectedKey]?.[key]===true);
       if(!ready)return {ready:false,error:!!gateway.errors?.[dataKind],rows:[]};
-      return {ready:true,error:false,rows:Object.entries(gateway[dataKind]?.[key]||{}).map(([uid,row])=>({
+      return {ready:true,error:false,rows:Object.entries(gateway.currentAnswers?gateway.currentAnswers(kind==='practice'?'practice':'event',key):(gateway[dataKind]?.[key]||{})).map(([uid,row])=>({
         uid,name:String(row?.name||'').trim().slice(0,24),answer:row?.answer,
         createdAt:Number(row?.createdAt||0),updatedAt:Number(row?.updatedAt||0),note:''
       })).filter(row=>/^[A-Za-z0-9_-]{6,128}$/.test(row.uid)&&!!row.name)};
@@ -7678,7 +7678,7 @@ if(prefix==='home'){
     const gateway=window.__TR_PORTAL_SYNC__;
     if(gateway){
       if(!gateway.loaded.eventResponses)return '';
-      const record=Object.values(gateway.eventResponses?.[eventId]||{}).find(v=>v?.profileId===actorId);
+      const record=Object.values(gateway.currentAnswers?gateway.currentAnswers('event',eventId):(gateway.eventResponses?.[eventId]||{})).find(v=>v?.profileId===actorId);
       return ['join','support','decline','maybe'].includes(record?.answer)?record.answer:'';
     }
     if(flowEntry(eventId,actorId))return 'join';
@@ -7727,7 +7727,7 @@ if(prefix==='home'){
     if(gateway){
       const people=new Map();
       if(gateway.loaded.eventResponses){
-        Object.entries(gateway.eventResponses?.[eventId]||{}).forEach(([uid,row])=>{
+        Object.entries(gateway.currentAnswers?gateway.currentAnswers('event',eventId):(gateway.eventResponses?.[eventId]||{})).forEach(([uid,row])=>{
           if(!['join','support'].includes(row?.answer)||typeof row?.name!=='string')return;
           if(!/^[A-Za-z0-9_-]{6,128}$/.test(uid))return;
           people.set(uid,{name:row.name.slice(0,24),note:row.answer==='support'?'応援・帯同':'参加予定'});
@@ -12213,7 +12213,7 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
     const roster=flowActorRoster();
     // Merge the real Firebase replies into the original management roster by stable profileId.
     // Local preview race entries are not a substitute for real participant registration.
-    const remote=Object.values(gateway?.loaded.eventResponses?gateway.eventResponses?.[e.id]||{}:{});
+    const remote=Object.values(gateway?.loaded.eventResponses?(gateway.currentAnswers?gateway.currentAnswers('event',e.id):(gateway.eventResponses?.[e.id]||{})):{});
     for(const row of remote){
       if(typeof row?.profileId!=='string'||!row.profileId||typeof row?.name!=='string')continue;
       if(!roster.some(p=>p.id===row.profileId))roster.push({id:row.profileId,name:row.name.slice(0,24)});
@@ -12658,7 +12658,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
     const remoteSelf=!!gateway && gateway.profileId===selfId && !portalParticipantPreviewMode;
     const actualShared=remoteSelf && !!gateway.eventItems?.[e.id];
     let sharedWritten=false;
-    const originalAnswer=actualShared?String(gateway.eventResponses?.[e.id]?.[gateway.uid]?.answer||''):'';
+    const originalAnswer=actualShared?String((gateway.currentAnswers?gateway.currentAnswers('event',e.id):(gateway.eventResponses?.[e.id]||{}))?.[gateway.uid]?.answer||''):'';
     const submit=$('flowJoin');
     if(remoteSelf&&!actualShared){
       $('flowSelfStatus').textContent='共有イベントをFirebaseから受信できません。端末だけの登録で成功扱いにはしません。';return;
@@ -15486,6 +15486,22 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       const answer=await run('practices/'+sourceKey,current=>current&&ownStamp(current)===ownStamp(original)?null:undefined);
       if(!answer.committed)throw Error('他端末の変更と競合したため削除していません');
     };
+    // v112: a practice/event that was deleted and registered again must NOT inherit the old answers.
+    // Old answers stay in Firebase (Rules do not allow deleting them), so every reader ignores answers
+    // written before the item was (re)created. Items without a creation time are left as they are.
+    gate.answerIsCurrent=(kind,key,row)=>{
+      const item=kind==='practice'?gate.practices?.[key]:gate.eventItems?.[key];
+      const born=Number(item?.createdAt)||0;
+      const at=Number(row?.updatedAt)||Number(row?.createdAt)||0;
+      if(!born||!at)return true;
+      return at>=born-120000;
+    };
+    gate.currentAnswers=(kind,key)=>{
+      const source=(kind==='practice'?gate.practiceResponses:gate.eventResponses)?.[key]||{};
+      const out={};
+      for(const [uid,row] of Object.entries(source))if(gate.answerIsCurrent(kind,key,row))out[uid]=row;
+      return out;
+    };
     // Practice participation is independent of the practice schedule document.
     // Writes ONLY the signed-in user's own UID node. No localStorage success fallback.
     gate.savePracticeResponse=async(date,answer)=>{
@@ -15498,7 +15514,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       if(practice?.kind!=='practice'||practice.enabled===false||(practice.scheduledDate||sourceKey)!==date)throw Error('有効な練習予定がありません');
       const result=await run('practiceResponses/'+sourceKey+'/'+gate.uid,current=>{
         if(current?.profileId && current.profileId!==gate.profileId)return;
-        if(current?.answer===answer)return;
+        if(current?.answer===answer&&gate.answerIsCurrent('practice',sourceKey,current))return;
         const next={answer,profileId:gate.profileId,name:gate.displayName||'参加者',
           updatedAt:dbMod.serverTimestamp()};
         if(current?.createdAt)next.createdAt=current.createdAt;
@@ -15542,7 +15558,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         if(auth.currentUser?.uid!==gate.uid||!liveEvent||liveEvent.enabled===false||liveEvent.registration==='受付前')return;
         if(ended(liveEvent)||officialLocked())return;
         if(current?.profileId && current.profileId!==gate.profileId)return;
-        if(current?.answer===answer)return;
+        if(current?.answer===answer&&gate.answerIsCurrent('event',eventId,current))return;
         const next={answer,profileId:gate.profileId,name:gate.displayName||'参加者',updatedAt:dbMod.serverTimestamp()};
         if(current?.createdAt)next.createdAt=current.createdAt;
         else if(!current)next.createdAt=dbMod.serverTimestamp();
@@ -16315,8 +16331,9 @@ try{
           if(gate.role!=='developer'||!gate.loaded.practiceResponses||!gate.loaded.eventResponses)return;
           const found=new Map();
           for(const [kind,source] of [['練習',gate.practiceResponses],['イベント',gate.eventResponses]]){
-            for(const answers of Object.values(source||{})){
-              if(!answers||typeof answers!=='object')continue;
+            for(const [respKey,rawAnswers] of Object.entries(source||{})){
+              if(!rawAnswers||typeof rawAnswers!=='object')continue;
+              const answers=gate.currentAnswers(kind==='練習'?'practice':'event',respKey);
               // Response path is /<date-or-eventId>/<auth.uid>; preserve that verified identity.
               for(const [memberUid,row] of Object.entries(answers)){
                 if(!/^[A-Za-z0-9_-]{6,128}$/.test(memberUid)||!row||typeof row!=='object')continue;
