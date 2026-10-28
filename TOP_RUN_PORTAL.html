@@ -14301,7 +14301,7 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
         }
       },true);
       document.addEventListener('submit',event=>{
-        if(window.__TR_PORTAL_VIEW_ONLY__&& !(!panel.hidden && (event.target===codeForm||event.target===newForm))){event.preventDefault();event.stopImmediatePropagation();}
+        if(window.__TR_PORTAL_VIEW_ONLY__&& !(!panel.hidden && (event.target===codeForm||event.target===newForm||event.target?.id==='portalIdentityLinkRequestForm'))){event.preventDefault();event.stopImmediatePropagation();}
       },true);
     }
     // Never open another locally-cached person's private screen while identity is unknown.
@@ -17425,7 +17425,11 @@ setInterval(display,1000);
   open?.addEventListener('click',()=>{form.hidden=false;open.hidden=true;state.textContent='申請内容を確認してください。';});
   form?.addEventListener('submit',ev=>{
     ev.preventDefault();
+    try{document.activeElement?.blur?.();}catch(_){}
     const name=$('portalIdentityLinkRequestName')?.value||'';
+    if(!name.trim()){if(state){state.textContent='名前を入れてから、押してください。';state.scrollIntoView?.({block:'center'});}return;}
+    if(busy){if(state){state.textContent='いま送っています。少し待ってください。';state.scrollIntoView?.({block:'center'});}return;}
+    if(state)state.scrollIntoView?.({block:'center'});
     if(!confirm('前の記録を残したまま、運営の本人確認を申請します。よろしいですか？'))return;
     void run(async()=>{
       const v=await gate()?.requestExistingIdentityLink?.(name);
