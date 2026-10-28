@@ -5949,7 +5949,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v120</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v121</b></div>
   </div>
 </div>
 
@@ -6143,7 +6143,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v120</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v121</b></div>
   </div>
 </div>
 
@@ -6623,6 +6623,35 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
 <div class="portalScreen hidden" id="screen-flow-manager" data-flow-active="menu" aria-hidden="true">
  <div class="portalScreenHead"><button class="portalBack" type="button" data-back>← 管理画面</button><div><small>ATHLETE MANAGEMENT</small><b>選手の出走・過去大会記録</b></div><span class="portalHeadSpacer"></span></div>
   <div class="portalScreenBody portalFlowBody">
+   <section class="portalPanel" id="rpPanel" hidden>
+    <style>
+     #rpPanel .rpTabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0}
+     #rpPanel .rpTabs button{padding:10px 4px;border-radius:12px;border:1px solid rgba(128,128,128,.45);background:transparent;color:inherit;font-weight:800;font-size:13px}
+     #rpPanel .rpTabs button.active{background:#d8b52a;color:#1b1b1b;border-color:#d8b52a}
+     #rpPanel .rpCard{border:1px solid rgba(128,128,128,.4);border-radius:14px;padding:12px;margin:8px 0}
+     #rpPanel .rpCard b{font-size:16px}
+     #rpPanel .rpSub{display:block;font-size:12px;opacity:.75;margin-top:2px}
+     #rpPanel .rpRec{font-weight:800;margin-top:6px}
+     #rpPanel .rpOk{display:inline-block;margin-top:8px;padding:4px 10px;border-radius:999px;background:rgba(216,181,42,.2);font-weight:800;font-size:13px}
+     #rpPanel .rpRow{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+     #rpPanel .rpRow select{flex:1 1 160px;min-height:40px}
+     #rpPanel .rpRow button,#rpPanel .rpBtn{min-height:40px;padding:0 12px;border-radius:10px;font-weight:800}
+     #rpPanel .rpLine{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:6px 0;border-top:1px dashed rgba(128,128,128,.35)}
+     #rpPanel summary{cursor:pointer;list-style:none}
+    </style>
+    <div class="portalPanelHead"><small>PARTICIPANTS / RECORDS</small><b>参加者・記録</b></div>
+    <label class="portalFlowLabel">大会 <select id="rpEvent"></select></label>
+    <div class="rpTabs" role="tablist">
+     <button type="button" data-rp-tab="all">① 参加者全て</button>
+     <button type="button" data-rp-tab="entry">② 出走登録あり</button>
+     <button type="button" data-rp-tab="people">③ 指定した人</button>
+    </div>
+    <p id="rpHelp" class="portalHelp"></p>
+    <label class="portalFlowLabel">名前で絞り込み <input id="rpSearch" type="search" autocomplete="off" placeholder="例：山田"></label>
+    <div id="rpTools" class="rpRow"></div>
+    <p id="rpStatus" class="portalFlowStatus" aria-live="polite" style="font-weight:800"></p>
+    <div id="rpList" aria-live="polite"></div>
+   </section>
    <details id="portalTrialResetManager" hidden aria-label="試用データのリセット"><summary>開発者用：試用データのリセット</summary><b>通し確認用の試用データのみ</b><p>イベント作成はFirebase保存、出走・結果は現在試用保存です。正式な大会記録・本人・第1回／第2回大会は削除しません。試験イベントは残し、同じイベントで繰り返し確認できます。イベント自体の削除は既存の「イベント編集・削除」から別操作で行ってください。</p><select id="portalTrialResetEvent" aria-label="リセットする試用イベント"><option value="">リセットするイベントを選択</option></select><p id="portalTrialResetCount"></p><button type="button" id="portalTrialResetExecute">選択イベントの試用登録・結果をリセット</button><p id="portalTrialResetStatus" role="status" aria-live="polite"></p></details>
    <div class="portalWorkflowTop" id="portalManagerBack"><button type="button" id="portalManagerChooseAgain">← 操作選択へ戻る</button><strong id="portalManagerStepTitle">STEP 2 / 入力対象を選ぶ</strong></div>
    <section class="portalPanel portalAuditPanel" id="portalAuditPanel">
@@ -6690,12 +6719,16 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
    <p class="portalFlowStatus" id="flowMgrExtStatus" aria-live="polite"></p>
    <div id="portalClaimPanel" class="portalRulePanel" hidden>
      <strong>この記録はあなたのです（過去2大会の記録を付ける）</strong>
-     <p class="portalHelp">上の「対象選手」を選んでから、その人の記録をタップして選び、「選んだ記録をこの選手に付ける」を押してください。開発者が入力した記録も選べます。付けた記録は、その選手のマイページに出ます。</p>
-     <button type="button" id="portalClaimLoad" class="portalFlowSecondary">過去2大会の記録を表示</button>
+     <p class="portalHelp">開発者が入力した記録も付けられます。付けた記録はFirebaseに保存され、その選手のマイページに出ます。</p>
+     <label class="portalFlowLabel"><b>① 記録を付ける選手</b> <select id="portalClaimAthlete"><option value="">選手を選ぶ</option></select></label>
+     <button type="button" id="portalClaimLoad" class="portalFlowSecondary">② 過去2大会の記録を表示</button>
      <label class="portalFlowLabel">名前で絞り込み <input id="portalClaimSearch" type="search" autocomplete="off" placeholder="例：山田"></label>
+     <p class="portalHelp">② その選手の記録をタップ（✓が付きます）</p>
      <div id="portalClaimList" class="portalPastEventRoster" aria-live="polite"></div>
-     <button type="button" id="portalClaimSave" class="portalPrimary" disabled>選んだ記録をこの選手に付ける</button>
-     <p class="portalFlowStatus" id="portalClaimStatus" aria-live="polite"></p>
+     <div style="position:sticky;bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:5;padding:8px 0;background:inherit">
+       <button type="button" id="portalClaimSave" class="portalPrimary" style="width:100%">③ 保存する</button>
+       <p class="portalFlowStatus" id="portalClaimStatus" aria-live="polite" style="font-weight:700"></p>
+     </div>
    </div>
    <div class="portalPanelHead" style="margin-top:18px"><small>REGISTERED RESULTS</small><b>登録済みの過去大会記録</b></div><div class="portalSimpleFilter" data-list-filter="managerexternal"><select data-filter-mode aria-label="絞り込み"><option value="all" selected>すべて</option><option value="day">日付</option><option value="month">月</option><option value="range">期間</option></select><div class="portalSimpleFilterValue"><input type="date" data-filter-day aria-label="指定日" hidden><input type="month" data-filter-month aria-label="表示する月"><div class="portalSimpleFilterRange" data-filter-range hidden><input type="date" data-filter-start aria-label="開始日"><input type="date" data-filter-end aria-label="終了日"></div></div></div><div id="flowMgrExtList"></div>
   </section>
@@ -7211,7 +7244,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
     if(name === 'races') flowRenderMyRaces();
     if(name === 'flow-external') flowRenderExternal();
     if(name === 'flow-event') flowRenderEvent();
-    if(name === 'flow-manager') flowRenderManagerWorkspace();    if(name === 'competition-results') renderPortalPersonalRecord();
+    if(name === 'flow-manager'){ flowRenderManagerWorkspace(); window.__rpOpen?.(); }    if(name === 'competition-results') renderPortalPersonalRecord();
     if(name === 'competition-records') renderPortalPersonalList();
     if(name === 'competition-graph-detail') renderPortalPersonalGraphDetail();
     if(name === 'athlete-directory') renderPortalAthleteDirectory();
@@ -12940,11 +12973,22 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
     }
     return rows.sort((a,b)=>a.name.localeCompare(b.name,'ja')||a.date.localeCompare(b.date));
   }
-  function portalClaimTarget(){return portalPastChoice($('flowMgrExtAthlete')?.value||'');}
+  function portalClaimTarget(){return portalPastChoice($('portalClaimAthlete')?.value||'');}
+  function portalClaimFillAthletes(){
+    const sel=$('portalClaimAthlete');if(!sel)return;
+    const keep=sel.value,list=portalPastVerifiedChoices();
+    const sig=list.map(x=>x.id+':'+x.name).join('|');
+    if(sel.dataset.sig!==sig){
+      sel.innerHTML='<option value="">選手を選ぶ</option>'+list.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('');
+      sel.dataset.sig=sig;
+      if(keep&&list.some(x=>x.id===keep))sel.value=keep;
+    }
+  }
   function portalClaimRender(){
     const panel=$('portalClaimPanel'),gate=window.__TR_PORTAL_SYNC__;if(!panel)return;
     const dev=gate?.role==='developer'&&gate?.roleVerified===true&&!portalParticipantPreviewMode;
-    panel.hidden=!dev;if(!dev)return;
+    panel.hidden=true;if(panel.hidden)return; // v121: replaced by 参加者・記録
+    portalClaimFillAthletes();
     const target=portalClaimTarget(),q=String($('portalClaimSearch')?.value||'').normalize('NFKC').replace(/\s/g,'');
     const all=portalClaimRows();
     const rows=q?all.filter(r=>r.name.normalize('NFKC').replace(/\s/g,'').includes(q)):all;
@@ -12955,8 +12999,8 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
         const on=portalClaimPicked.has(r.key);
         return `<button type="button" class="portalFlowSecondary" data-claim-key="${esc(r.key)}" ${locked?'disabled':''} aria-pressed="${on}" style="display:block;width:100%;text-align:left;margin:6px 0;${on?'outline:3px solid #d8b52a;':''}">${on?'✓ ':locked?'':'○ '}<b>${esc(r.name)}</b>｜${esc(r.eventTitle||'')}｜${esc(metricName(r.metric))}${r.leg?' 第'+esc(r.leg)+'区':''}｜${esc(r.time)}${locked?`<br><small>${mine?'この選手に付け済み':'別の選手に付け済み'}</small>`:''}</button>`;
       }).join('')||'<p class="portalHelp">該当する記録がありません。</p>';
-    $('portalClaimSave').disabled=portalClaimBusy||!target||!portalClaimPicked.size;
-    if(!target&&!portalClaimBusy)$('portalClaimStatus').textContent='先に「対象選手」を選んでください。';
+    const save=$('portalClaimSave');save.disabled=portalClaimBusy;
+    save.textContent=portalClaimBusy?'保存中…':`③ 保存する（${target?target.name+'さんに ':''}${portalClaimPicked.size}件）`;
   }
   async function portalClaimLoad(){
     const gate=window.__TR_PORTAL_SYNC__;if(!gate?.loadPastEventOverview)return;
@@ -12971,9 +13015,12 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
   }
   async function portalClaimSave(){
     const gate=window.__TR_PORTAL_SYNC__,target=portalClaimTarget();
-    if(portalClaimBusy||!target||!gate?.saveStaffPastRecord)return;
+    const say=t=>{$('portalClaimStatus').textContent=t;};
+    if(portalClaimBusy)return;
+    if(!gate?.saveStaffPastRecord)return say('Firebaseの接続を確認中です。少し待ってから押してください。');
+    if(!target)return say('① で記録を付ける選手を選んでください。');
     const rows=portalClaimRows().filter(r=>portalClaimPicked.has(r.key)&&!portalClaimTaken.has(r.key));
-    if(!rows.length)return;
+    if(!rows.length)return say('② で付ける記録をタップして✓を付けてください。');
     if(!confirm(`${rows.length}件の記録を「${target.name}」さんの記録として付けますか？`))return;
     portalClaimBusy=true;portalClaimRender();let done=0;const errors=[];
     for(const r of rows){
@@ -12983,19 +13030,239 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
       }catch(err){errors.push(r.name+'：'+String(err?.message||err).slice(0,60));}
     }
     portalClaimBusy=false;
-    $('portalClaimStatus').textContent=`${done}件を付けました。`+(errors.length?` 未完了 ${errors.length}件：`+errors.join('；'):' 選手のマイページに出ます。');
+    $('portalClaimStatus').textContent=`保存しました：${target.name}さんに ${done}件`+(errors.length?`／保存できなかった ${errors.length}件：`+errors.join('；'):'。選手のマイページに出ます。');
+    try{showActionFeedback(done?'保存しました':'保存できませんでした',`${target.name}さん：${done}件`+(errors.length?`／未完了 ${errors.length}件`:''));}catch(_){}
     try{await gate.loadPastRecordsFor(target.uid,target.profileId);}catch(_){}
     portalClaimRender();
   }
   $('portalClaimLoad')?.addEventListener('click',portalClaimLoad);
   $('portalClaimSearch')?.addEventListener('input',portalClaimRender);
   $('portalClaimSave')?.addEventListener('click',portalClaimSave);
-  $('flowMgrExtAthlete')?.addEventListener('change',()=>{portalClaimPicked.clear();$('portalClaimStatus').textContent='';portalClaimRender();});
+  $('portalClaimAthlete')?.addEventListener('change',()=>{portalClaimPicked.clear();$('portalClaimStatus').textContent='';portalClaimRender();});
+  $('portalClaimAthlete')?.addEventListener('focus',portalClaimFillAthletes);
   $('portalClaimList')?.addEventListener('click',e=>{
     const b=e.target.closest('[data-claim-key]');if(!b||b.disabled)return;
     const k=b.dataset.claimKey;if(portalClaimPicked.has(k))portalClaimPicked.delete(k);else portalClaimPicked.add(k);portalClaimRender();
   });
   setTimeout(portalClaimRender,0);
+  // ===== v121: 参加者・記録（開発者）— one screen: 大会プルダウン + ①参加者全て ②出走登録あり ③指定した人 =====
+  const RP_NAMES={'eventbase_mu4ujce3_xxx1':'第1回 EVENT BASE','eventbase_ekiden_dev_20261006':'第2回 駅伝','eventbase_ekiden_next_2026_38fa5537b6':'第3回 駅伝（接続中）'};
+  let rpTab='entry',rpPeople={},rpLoaded=false,rpBusy=false,rpWrapped=false,rpRetry=0;
+  const rpG=()=>window.__TR_PORTAL_SYNC__;
+  const rpIsDev=()=>{const g=rpG();return !!(canManage&&!portalParticipantPreviewMode&&g?.role==='developer'&&g?.roleVerified===true&&g?.rpLoad);};
+  const rpNorm=v=>String(v||'').normalize('NFKC').replace(/\s/g,'');
+  const rpTimeOk=t=>/^(?:\d+:)?\d{1,3}:\d{2}(?:\.\d{1,2})?$/.test(String(t||''));
+  const rpToday=()=>new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Tokyo'});
+  const rpRowKey=(eventId,playerId)=>(String(eventId)+'__'+String(playerId)).replace(/[^A-Za-z0-9_-]/g,'_').slice(0,140);
+  const rpNewId=()=>{const a=new Uint8Array(9);crypto.getRandomValues(a);return 'rp_'+Array.from(a,b=>(b%36).toString(36)).join('');};
+  const rpSay=t=>{const el=$('rpStatus');if(el)el.textContent=t||'';};
+  const rpMetricName=m=>m==='relay'?'駅伝':m==='other'?'その他':(m?m+'m':'');
+  function rpEvents(){
+    const ui=window.__TR_COMMON_PILOT_UI__,list=[],seen=new Set();
+    for(const t of (ui?.officialTargets?.()||[])){
+      if(!t?.id||seen.has(t.id))continue;seen.add(t.id);
+      list.push({id:t.id,base:true,date:String(t.canonicalDate||t.date||''),title:RP_NAMES[t.id]||String(t.canonicalTitle||t.title||t.id)});
+    }
+    for(const e of eventItems){
+      if(!e?.id||!e.title||e.enabled===false||ui?.officialTargetFor?.(e))continue;
+      list.push({id:'portal:'+e.id,catalogId:e.id,base:false,date:String(e.date||''),title:String(e.title)});
+    }
+    return list.sort((a,b)=>a.date.localeCompare(b.date));
+  }
+  const rpEvent=()=>rpEvents().find(e=>e.id===$('rpEvent')?.value)||null;
+  function rpRoster(ev){
+    const g=rpG();if(!ev)return null;
+    if(!ev.base){
+      const answers=g?.eventResponses?.[ev.catalogId];if(!answers)return [];
+      return Object.entries(answers).filter(([,a])=>a&&['join','support'].includes(a.answer)).map(([uid,a])=>({key:'',name:String(a.name||'参加者'),uid,self:true,time:''}));
+    }
+    const rows=g?.officialParticipantRoster?.[ev.id];if(!Array.isArray(rows))return null;
+    return rows.map(r=>({key:rpRowKey(ev.id,r.playerId),eventId:ev.id,playerId:String(r.playerId||''),name:String(r.name||''),uid:String(r.uid||''),
+      profileId:String(r.profileId||''),self:!!(r.uid&&r.profileId),time:r.hasResult&&rpTimeOk(r.resultTime)?String(r.resultTime).trim():'',
+      official:r.resultKind==='official',metric:portalClaimMetric(r.metricRaw),date:String(r.day||ev.date||'').slice(0,10),leg:String(r.leg||''),eventTitle:ev.title}))
+      .sort((a,b)=>a.name.localeCompare(b.name,'ja'));
+  }
+  function rpTaken(){const m=new Map();for(const p of Object.values(rpPeople))for(const k of Object.keys(p.rows||{}))m.set(k,p.personId);return m;}
+  function rpMembers(){return portalPastVerifiedChoices().map(m=>({...m,name:String(m.name||'').replace(/（本人）$/,'')}));}
+  function rpPeopleList(){return Object.values(rpPeople).sort((a,b)=>String(a.name).localeCompare(String(b.name),'ja'));}
+  function rpPersonOptions(onlyUnlinked){
+    return rpPeopleList().filter(p=>!onlyUnlinked||!p.linkedUid).map(p=>`<option value="${esc(p.personId)}">${esc(p.name)}${p.linkedUid?'（PORTALつながり済み）':''}</option>`).join('');
+  }
+  async function rpLoad(){
+    rpSay('読み込み中…');
+    try{rpPeople=await rpG().rpLoad();rpLoaded=true;rpSay('');}
+    catch(err){rpSay('「指定した人」を読み込めませんでした：'+String(err?.message||err).slice(0,120)+'（Rules P100が必要です）');}
+  }
+  function rpFillEvents(){
+    const sel=$('rpEvent');if(!sel)return;
+    const list=rpEvents(),keep=sel.value,sig=list.map(e=>e.id+e.title).join('|');
+    if(sel.dataset.sig!==sig){
+      sel.innerHTML=list.map(e=>`<option value="${esc(e.id)}">${esc((e.date?e.date+' ':'')+e.title)}</option>`).join('');sel.dataset.sig=sig;
+      const cur=list.find(e=>e.id==='eventbase_ekiden_next_2026_38fa5537b6')||list[list.length-1];
+      sel.value=list.some(e=>e.id===keep)?keep:(cur?.id||'');
+    }
+  }
+  function rpRender(){
+    const panel=$('rpPanel');if(!panel)return;
+    panel.hidden=!rpIsDev();if(panel.hidden)return;
+    rpFillEvents();
+    document.querySelectorAll('[data-rp-tab]').forEach(b=>b.classList.toggle('active',b.dataset.rpTab===rpTab));
+    const help={all:'PORTALで承認済みの参加者です。「指定した人」とつなぐと、その人の記録がマイページに出ます。',
+      entry:'選んだ大会に出走登録がある人です（本人登録・運営入力の両方）。各行が「誰の記録か」を指定します。',
+      people:'あなたが指定した、記録が残っていく人です。PORTALの参加者とつなぐと、記録がその人のマイページに出ます。'};
+    $('rpHelp').textContent=help[rpTab];
+    const q=rpNorm($('rpSearch')?.value),hit=n=>!q||rpNorm(n).includes(q);
+    const ev=rpEvent(),roster=rpRoster(ev),taken=rpTaken(),list=$('rpList'),tools=$('rpTools');
+    tools.innerHTML=rpTab==='people'?'<button type="button" class="rpBtn portalFlowSecondary" data-rp-act="add-person">＋ 指定する人を追加</button><button type="button" class="rpBtn portalPrimary" data-rp-act="sync-all">全員の記録をマイページへ反映</button>':'';
+    if(!rpLoaded){list.innerHTML='<p class="portalHelp">読み込み中…</p>';return;}
+    if(rpTab==='entry'){
+      if(roster===null){
+        list.innerHTML='<p class="portalHelp">この大会の出走登録を読み込み中です…</p>';
+        if(rpRetry++<6)setTimeout(rpRender,2000);return;
+      }
+      rpRetry=0;
+      if(!ev.base){list.innerHTML=(roster.length?roster.filter(r=>hit(r.name)).map(r=>`<div class="rpCard"><b>${esc(r.name)}</b><span class="rpSub">参加する（PORTALの回答）</span></div>`).join(''):'<p class="portalHelp">参加の回答はまだありません。</p>')+'<p class="portalHelp">この大会はEVENT BASEにつながっていないため、記録は付けられません。</p>';return;}
+      const rows=roster.filter(r=>hit(r.name));
+      list.innerHTML=rows.length?rows.map(r=>{
+        const pid=taken.get(r.key),p=pid?rpPeople[pid]:null;
+        const head=`<b>${esc(r.name)}</b><span class="rpSub">${r.self?'本人登録':'運営入力'}｜${esc(rpMetricName(r.metric))}${r.leg?' 第'+esc(r.leg)+'区':''}</span><div class="rpRec">${r.time?'記録 '+esc(r.time):'記録なし'}</div>`;
+        const act=p?`<span class="rpOk">指定：${esc(p.name)}</span><div class="rpRow"><button type="button" class="portalFlowSecondary" data-rp-act="unassign" data-person="${esc(p.personId)}" data-row="${esc(r.key)}">指定を外す</button></div>`:
+          `<div class="rpRow"><select data-rp-pick="${esc(r.key)}"><option value="">この記録は誰のもの？</option>${rpPersonOptions(false)}<option value="__new">＋「${esc(r.name)}」を新しく指定</option></select><button type="button" class="portalPrimary" data-rp-act="assign" data-row="${esc(r.key)}">指定する</button></div>`;
+        return `<div class="rpCard">${head}${act}</div>`;
+      }).join(''):'<p class="portalHelp">この大会の出走登録はありません。</p>';
+      return;
+    }
+    if(rpTab==='all'){
+      const linked=new Map(rpPeopleList().filter(p=>p.linkedUid).map(p=>[p.linkedUid,p]));
+      const inEvent=new Set((roster||[]).map(r=>r.uid).filter(Boolean));
+      const mem=rpMembers().filter(m=>hit(m.name));
+      list.innerHTML=mem.length?mem.map(m=>{
+        const p=linked.get(m.uid);
+        const sub=ev?`この大会：${roster===null?'確認中':inEvent.has(m.uid)?'出走登録あり':'出走登録なし'}`:'';
+        const act=p?`<span class="rpOk">指定：${esc(p.name)}（記録${Object.keys(p.rows||{}).length}件）</span>`:
+          `<div class="rpRow"><select data-rp-link="${esc(m.uid)}"><option value="">指定した人とつなぐ</option>${rpPersonOptions(true)}<option value="__new">＋「${esc(m.name)}」を新しく指定</option></select><button type="button" class="portalPrimary" data-rp-act="link" data-uid="${esc(m.uid)}">つなぐ</button></div>`;
+        return `<div class="rpCard"><b>${esc(m.name)}</b><span class="rpSub">${esc(sub)}</span>${act}</div>`;
+      }).join(''):'<p class="portalHelp">承認済みの参加者はまだいません。</p>';
+      return;
+    }
+    const mem=rpMembers(),linkedUids=new Set(rpPeopleList().map(p=>p.linkedUid).filter(Boolean));
+    const ppl=rpPeopleList().filter(p=>hit(p.name));
+    list.innerHTML=ppl.length?ppl.map(p=>{
+      const rows=Object.entries(p.rows||{}).sort((a,b)=>String(a[1].date).localeCompare(String(b[1].date)));
+      const member=p.linkedUid?mem.find(m=>m.uid===p.linkedUid):null;
+      const portal=p.linkedUid?`PORTAL：${esc(member?.name||'つながり済み')}`:'PORTAL：未接続';
+      const lines=rows.map(([k,r])=>`<div class="rpLine"><span>${esc(r.date||'')} ${esc(r.eventTitle||'')}<br><small>${esc(rpMetricName(r.metric))}${r.leg?' 第'+esc(r.leg)+'区':''} ${esc(r.time||'記録なし')}</small></span><button type="button" class="portalFlowSecondary" data-rp-act="unassign" data-person="${esc(p.personId)}" data-row="${esc(k)}">外す</button></div>`).join('')||'<p class="portalHelp">記録はまだありません。②で指定してください。</p>';
+      const link=p.linkedUid?`<div class="rpRow"><button type="button" class="portalFlowSecondary" data-rp-act="unlink" data-person="${esc(p.personId)}">PORTALとのつながりを外す</button></div>`:
+        `<div class="rpRow"><select data-rp-member="${esc(p.personId)}"><option value="">PORTALの参加者とつなぐ</option>${mem.filter(m=>!linkedUids.has(m.uid)).map(m=>`<option value="${esc(m.uid)}">${esc(m.name)}</option>`).join('')}</select><button type="button" class="portalPrimary" data-rp-act="link-member" data-person="${esc(p.personId)}">つなぐ</button></div>`;
+      const del=!rows.length&&!p.linkedUid?`<div class="rpRow"><button type="button" class="portalFlowSecondary" data-rp-act="delete" data-person="${esc(p.personId)}">この人を一覧から消す</button></div>`:'';
+      return `<details class="rpCard"><summary><b>${esc(p.name)}</b><span class="rpSub">${portal}｜記録${rows.length}件</span></summary>${lines}${link}${del}</details>`;
+    }).join(''):'<p class="portalHelp">まだ誰も指定していません。②の大会一覧から「この記録は誰のもの？」で指定するか、「＋ 指定する人を追加」で作ってください。</p>';
+  }
+  function rpRowFromRoster(eventId,playerId){
+    const ev=rpEvents().find(e=>e.id===eventId);const r=rpRoster(ev);return Array.isArray(r)?r.find(x=>x.playerId===playerId)||null:null;
+  }
+  async function rpSyncPerson(p){
+    const g=rpG(),out={written:0,pending:0,errors:[]};
+    if(!p?.linkedUid||!p.linkedProfileId)return out;
+    const target={uid:p.linkedUid,profileId:p.linkedProfileId};
+    const existing=await g.loadPastRecordsFor(target.uid,target.profileId)||{};
+    for(const r of Object.values(p.rows||{})){
+      const fresh=rpRowFromRoster(r.eventId,r.playerId);
+      const time=fresh?.time||r.time||'',date=String(r.date||fresh?.date||'').slice(0,10);
+      if(!rpTimeOk(time)||!/^\d{4}-\d{2}-\d{2}$/.test(date)||date>rpToday()){out.pending++;continue;}
+      const id=g.claimRecordId(r.eventId,r.playerId),ex=existing[id];
+      if(ex&&ex.time===time)continue;
+      try{
+        await g.saveStaffPastRecord(target,{id,name:String(r.eventTitle||'大会').slice(0,120),date,metric:fresh?.metric||r.metric||'other',time,status:'time',venue:'',official:!!(fresh?fresh.official:r.official)},ex?Number(ex.updatedAt||0):null);
+        out.written++;
+      }catch(err){out.errors.push(String(err?.message||err).slice(0,60));}
+    }
+    return out;
+  }
+  async function rpRemoveClaim(p,rowKey){
+    const r=p?.rows?.[rowKey];if(!p?.linkedUid||!r)return;
+    try{await rpG().deleteStaffPastRecord({uid:p.linkedUid,profileId:p.linkedProfileId},rpG().claimRecordId(r.eventId,r.playerId),null);}catch(_){}
+  }
+  const rpCopy=p=>JSON.parse(JSON.stringify(p||{}));
+  async function rpSave(p){const saved=await rpG().rpPut(p);rpPeople[saved.personId]=saved;return saved;}
+  async function rpAct(btn){
+    if(rpBusy)return;
+    const act=btn.dataset.rpAct,g=rpG();
+    const run=async(fn)=>{rpBusy=true;btn.disabled=true;try{await fn();}catch(err){rpSay('できませんでした：'+String(err?.message||err).slice(0,140));}finally{rpBusy=false;rpRender();}};
+    if(act==='assign'){
+      const key=btn.dataset.row,sel=document.querySelector(`[data-rp-pick="${CSS.escape(key)}"]`),choice=sel?.value||'';
+      const row=(rpRoster(rpEvent())||[]).find(r=>r.key===key);
+      if(!row)return rpSay('記録が見つかりません。');
+      if(!choice)return rpSay('「この記録は誰のもの？」で人を選んでください。');
+      if(rpTaken().has(key))return rpSay('この記録は、すでに指定されています。');
+      return run(async()=>{
+        const p=choice==='__new'?{personId:rpNewId(),name:row.name.slice(0,24),rows:{}}:rpCopy(rpPeople[choice]);
+        p.rows=p.rows||{};
+        p.rows[key]={eventId:row.eventId,playerId:row.playerId,name:row.name.slice(0,24),eventTitle:row.eventTitle.slice(0,120),date:row.date,metric:row.metric,time:row.time,official:!!row.official,leg:row.leg,assignedAt:Date.now()};
+        const saved=await rpSave(p);
+        const s=saved.linkedUid?await rpSyncPerson(saved):null;
+        rpSay(`保存しました：${row.name} の記録 → ${saved.name}`+(s?`（マイページ反映 ${s.written}件${s.pending?`／記録待ち ${s.pending}件`:''}${s.errors.length?`／失敗 ${s.errors.length}件`:''}）`:'（PORTALの参加者とつなぐとマイページに出ます）'));
+      });
+    }
+    if(act==='unassign'){
+      const p=rpPeople[btn.dataset.person],key=btn.dataset.row;if(!p)return;
+      if(!confirm(`この記録を「${p.name}」さんから外しますか？`))return;
+      return run(async()=>{await rpRemoveClaim(p,key);const c=rpCopy(p);delete c.rows[key];await rpSave(c);rpSay('外しました。');});
+    }
+    if(act==='link'){
+      const uid=btn.dataset.uid,sel=document.querySelector(`[data-rp-link="${CSS.escape(uid)}"]`),choice=sel?.value||'';
+      const m=rpMembers().find(x=>x.uid===uid);if(!m)return rpSay('参加者が見つかりません。');
+      if(!choice)return rpSay('つなぐ人を選んでください。');
+      return run(()=>rpLink(choice==='__new'?{personId:rpNewId(),name:m.name.slice(0,24),rows:{}}:rpCopy(rpPeople[choice]),m));
+    }
+    if(act==='link-member'){
+      const p=rpPeople[btn.dataset.person],sel=document.querySelector(`[data-rp-member="${CSS.escape(btn.dataset.person)}"]`);
+      const m=rpMembers().find(x=>x.uid===sel?.value);if(!p)return;
+      if(!m)return rpSay('つなぐPORTALの参加者を選んでください。');
+      return run(()=>rpLink(rpCopy(p),m));
+    }
+    if(act==='unlink'){
+      const p=rpPeople[btn.dataset.person];if(!p)return;
+      if(!confirm(`「${p.name}」さんとPORTALのつながりを外しますか？\nマイページから、この人の記録が消えます。`))return;
+      return run(async()=>{for(const k of Object.keys(p.rows||{}))await rpRemoveClaim(p,k);const c=rpCopy(p);delete c.linkedUid;delete c.linkedProfileId;delete c.linkedAt;await rpSave(c);rpSay('つながりを外しました。');});
+    }
+    if(act==='delete'){
+      const p=rpPeople[btn.dataset.person];if(!p||p.linkedUid||Object.keys(p.rows||{}).length)return;
+      if(!confirm(`「${p.name}」さんを一覧から消しますか？`))return;
+      return run(async()=>{await g.rpRemove(p.personId);delete rpPeople[p.personId];rpSay('消しました。');});
+    }
+    if(act==='add-person'){
+      const name=String(prompt('指定する人の名前（苗字と名前のあいだにスペース）')||'').trim().slice(0,24);if(!name)return;
+      return run(async()=>{await rpSave({personId:rpNewId(),name,rows:{}});rpSay(`追加しました：${name}`);});
+    }
+    if(act==='sync-all'){
+      return run(async()=>{let w=0,pend=0,e=0;for(const p of rpPeopleList().filter(x=>x.linkedUid)){const s=await rpSyncPerson(p);w+=s.written;pend+=s.pending;e+=s.errors.length;}
+        rpSay(`マイページへ反映しました：${w}件`+(pend?`／記録待ち ${pend}件`:'')+(e?`／失敗 ${e}件`:''));});
+    }
+  }
+  async function rpLink(p,m){
+    if(rpPeopleList().some(x=>x.linkedUid===m.uid&&x.personId!==p.personId))throw Error(`${m.name}さんは、すでに別の人とつながっています`);
+    p.rows=p.rows||{};p.linkedUid=m.uid;p.linkedProfileId=m.profileId;p.linkedAt=Date.now();
+    const saved=await rpSave(p),s=await rpSyncPerson(saved);
+    rpSay(`つなぎました：${m.name} ＝ ${saved.name}（マイページ反映 ${s.written}件${s.pending?`／記録待ち ${s.pending}件`:''}${s.errors.length?`／失敗 ${s.errors.length}件：`+s.errors.join('；'):''}）`);
+  }
+  function rpWrapLegacy(){
+    if(rpWrapped)return;const panel=$('rpPanel'),body=panel?.parentElement;if(!body)return;
+    const d=document.createElement('details');d.id='rpLegacy';d.style.marginTop='18px';
+    d.innerHTML='<summary class="portalFlowSecondary" style="padding:10px;border-radius:12px">以前の管理画面（帳票・個別入力など）</summary>';
+    [...body.children].forEach(c=>{if(c!==panel)d.append(c);});body.append(d);rpWrapped=true;
+    const head=document.querySelector('#screen-flow-manager .portalScreenHead b');if(head)head.textContent='参加者・記録';
+  }
+  window.__rpOpen=async()=>{
+    if(!rpIsDev()){const p=$('rpPanel');if(p)p.hidden=true;return;}
+    rpWrapLegacy();rpRender();
+    if(!rpLoaded)await rpLoad();
+    rpRender();
+  };
+  $('rpEvent')?.addEventListener('change',()=>{rpRetry=0;rpSay('');rpRender();});
+  $('rpSearch')?.addEventListener('input',rpRender);
+  document.querySelectorAll('[data-rp-tab]').forEach(b=>b.addEventListener('click',()=>{rpTab=b.dataset.rpTab;rpSay('');rpRender();}));
+  $('rpPanel')?.addEventListener('click',e=>{const b=e.target.closest('[data-rp-act]');if(b)rpAct(b);});
   // Event-first archive entry: uses only the existing PORTAL event catalog
   // and canonical staff pastRecords, never a second results database.
   let portalPastEventOverview={};
@@ -15444,6 +15711,33 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
     // v120: "この記録はあなたのです" — a developer attaches an EVENT BASE race row to a person as
     // pastRecords/<uid>/local-flow-claim-<event>-<player> (existing staff write path and Rules).
     gate.claimRecordId=(eventId,playerId)=>('local-flow-claim-'+String(eventId)+'-'+String(playerId)).replace(/[^A-Za-z0-9_-]/g,'_').slice(0,111);
+    // v121: 「指定した人」(recordPeople) — developer-only list of real participants and their race rows.
+    // portalCommon/topRun/recordPeople/<rp_...> ; read/write developer only (Rules P100). Records reach MY PAGE
+    // only through the existing pastRecords staff write (gate.saveStaffPastRecord), never from this node.
+    const rpClean=v=>JSON.parse(JSON.stringify(v,(k,x)=>x===undefined?null:x),(k,x)=>x===null?undefined:x);
+    gate.rpLoad=async()=>{
+      if(!isDeveloper())throw Error('開発者の権限が必要です');
+      return (await dbMod.get(ref('recordPeople'))).val()||{};
+    };
+    gate.rpPut=async person=>{
+      if(!isDeveloper())throw Error('開発者の権限が必要です');
+      const id=String(person?.personId||'');
+      if(!/^rp_[a-z0-9]{6,40}$/.test(id))throw Error('指定した人のIDが不正です');
+      const now=Date.now(),body=rpClean({...person});
+      const res=await dbMod.runTransaction(ref('recordPeople/'+id),before=>({...body,personId:id,
+        createdAt:Number(before?.createdAt||body.createdAt||now),updatedAt:now,updatedByUid:gate.uid}),{applyLocally:false});
+      if(!res.committed)throw Error('保存できませんでした');
+      const back=(await dbMod.get(ref('recordPeople/'+id))).val();
+      if(!back||back.updatedAt!==now)throw Error('保存後の確認ができませんでした');
+      return back;
+    };
+    gate.rpRemove=async id=>{
+      if(!isDeveloper())throw Error('開発者の権限が必要です');
+      if(!/^rp_[a-z0-9]{6,40}$/.test(String(id||'')))throw Error('指定した人のIDが不正です');
+      await dbMod.remove(ref('recordPeople/'+id));
+      if((await dbMod.get(ref('recordPeople/'+id))).exists())throw Error('削除できませんでした');
+      return true;
+    };
     gate.loadPastRecordsFor=async(uid,profileId)=>{
       uid=String(uid||'');profileId=String(profileId||'');
       if(!/^[A-Za-z0-9_-]{6,128}$/.test(uid)||!profileId||profileId.length>120)throw Error('対象者の本人IDがありません');
