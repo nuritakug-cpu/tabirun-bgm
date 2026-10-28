@@ -1,4 +1,4 @@
-<!-- TOP RUN PORTAL v111 2026-10-28: v110 (ChatGPT) + P105 integrated by Claude: EVENT BASE result correction (staff), withdrawn EKIDEN entries hidden from 参加する/RSVP lock, MY PAGE reflection diagnosis. No Auth/UID/Rules/listener change beyond P105 players handling. STATIC/simulated tests only; real Firebase not verified. -->
+<!-- TOP RUN PORTAL v112 2026-10-28: v111 + P106 duplicate guard (manual 過去大会 record hidden when EVENT BASE has same person/date/time). v111 notes:  v110 (ChatGPT) + P105 integrated by Claude: EVENT BASE result correction (staff), withdrawn EKIDEN entries hidden from 参加する/RSVP lock, MY PAGE reflection diagnosis. No Auth/UID/Rules/listener change beyond P105 players handling. STATIC/simulated tests only; real Firebase not verified. -->
 <!-- TOP RUN PORTAL v110 2026-10-28: v109 exact physical parent; PORTAL internal event links now saved via the existing eventItems writer and visible in event list/calendar. External EVENT BASE/EKIDEN validation and all Auth/UID/profileId/Rules/RTDB subscriptions, writes, official results and theme/home image safeguards unchanged. STATIC candidate; Firebase production not tested/deployed. -->
 <!-- 2026-10-28 v109 UI organization: Hide obsolete CHAT STEP 1 panel (retain DOM for existing gateway); move push settings to first; show version "v109" only; developer identity review first in matching management card. No Auth, Rules, listener, CHAT message read/write, image cache, notification registration, official results or released data changed. NOT DEPLOYED. -->
 <!-- TOP RUN PORTAL v109 2026-10-28 PRODUCTION UPLOAD CANDIDATE: physical parent is user-uploaded TOP RUN PORTAL.html (v108). Scope: merge earlier verified default-theme HOME-image Blob paint/read-error reporting only, retaining Winter/Matte theme artwork, inherited P103 small updatedAt listener + IndexedDB cache, and ALL v108 participant onboarding, approval and existing unified Firebase identity/database paths. Display version updated v108 to v109. Static/browser tests only; actual Firebase/participant devices/publication not verified. -->
@@ -5941,7 +5941,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v111</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v112</b></div>
   </div>
 </div>
 
@@ -6127,7 +6127,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v111</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v112</b></div>
   </div>
 </div>
 
@@ -11971,6 +11971,18 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
     // EVENT BASE results remain authoritative and are never written by this screen.
     for(const records of portalEventBaseReadRecords.values()){
       for(const row of records){if(row.profileId===flowBaseSelfId)portalPersonalRecords.push(row);}
+    }
+    // P106: the same race can exist twice - EVENT BASE (authoritative) and a manual 過去大会 entry. Hide ONLY the
+    // manual copy (display only; nothing is deleted) when the same person has the same date AND the same time.
+    {
+      const ebKeys=new Set(portalPersonalRecords.filter(r=>r.source==='EVENT_BASE'&&r.time).map(r=>[r.profileId,r.date,String(r.time).trim()].join('|')));
+      if(ebKeys.size){
+        for(let i=portalPersonalRecords.length-1;i>=0;i--){
+          const r=portalPersonalRecords[i];
+          if(!r||r.practiceDate||r.status!=='time'||!r.time||!['PORTAL_STAFF_PAST','PORTAL_SELF_DECLARED'].includes(r.source))continue;
+          if(ebKeys.has([r.profileId,r.date,String(r.time).trim()].join('|')))portalPersonalRecords.splice(i,1);
+        }
+      }
     }
     const local=flowActorRoster().filter(a=>a.id===flowBaseSelfId).map(a=>({profileId:a.id,name:a.name,uid:window.__TR_PORTAL_SYNC__?.uid||''}));
     // For staff, only verified canonical EVENT BASE players/timing results.
