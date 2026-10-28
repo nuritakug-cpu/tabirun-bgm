@@ -15952,7 +15952,10 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
             // P105: EVENT BASE EKIDEN keeps a removed lineup entry as players/<id> with ekidenEntryActive:false
             // (soft deactivation, never a delete). It is NOT an entry/attendance any more. Only a saved result
             // keeps the row, and then only for the result list (never entries, attendance or RSVP lock).
-            const withdrawn=!!(p&&typeof p==='object'&&p.ekidenEntryP30===true&&p.ekidenEntryActive===false);
+            // v120: a row removed in EKIDEN BASE is withdrawn whichever way it was entered (developer input included),
+            // not only P30 lineup rows. Soft-delete markers are read only; nothing is written back.
+            const withdrawn=!!(p&&typeof p==='object'&&(p.ekidenEntryActive===false||p.deleted===true||p.removed===true||p.withdrawn===true||
+              ['deleted','removed','withdrawn','cancelled','canceled'].includes(String(p.entryStatus||p.status||'').toLowerCase())));
             if(withdrawn&&!(p.officialResult||p.result||p.provisionalResult))continue;
             if(staff&&!withdrawn&&p&&typeof p==='object'&&String(p.name||'').trim()){
               registered.push({playerId,eventId:info.id,eventTitle:shownTitle,
