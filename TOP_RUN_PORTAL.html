@@ -14376,6 +14376,32 @@ const portalOfficialPublicLink=(raw)=>window.__TR_PORTAL_OFFICIAL_PUBLIC_LINK__?
 if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
   const ui=window.__TR_COMMON_PILOT_UI__;
   const gate={ready:false,uid:'',profileId:'',role:'unverified',roleVerified:false,memberApproved:false,loaded:{practices:false,practiceResponses:false,eventItems:false,eventResponses:false,notices:false,chat:false,resources:false,resourceFiles:false,homeImage:false,personal:false},practiceResponses:{},eventResponses:{},errors:{},error:'',hasOperationalAccess(){return !!this.uid&&!!this.profileId&&this.roleVerified===true&&(['developer','admin'].includes(this.role)||(this.role==='participant'&&this.memberApproved===true));},canWrite(kind){return this.hasOperationalAccess()&&['developer','admin'].includes(this.role)&&this.loaded[kind]===true;},canSendChat(){return this.hasOperationalAccess()&&this.loaded.chat===true;},canRespondPractice(){return this.hasOperationalAccess()&&this.loaded.practices===true&&this.loaded.practiceResponses===true;},canRespondEvent(){return this.hasOperationalAccess()&&this.loaded.eventItems===true&&this.loaded.eventResponses===true;}};
+  // v120: a practice deleted and re-created on the same date reuses practices/<date>.
+  // Old answers stay at practiceResponses/<date>/<UID> (no cascade delete, no Rules change),
+  // so answers saved before the practice's createdAt are hidden. Nothing is deleted from Firebase.
+  {
+    let p120Raw={};
+    const P120_TOL=120000;
+    gate.isStalePracticeResponse=(key,row)=>{
+      const c=Number(gate.practices?.[key]?.createdAt||0),u=Number(row?.updatedAt||row?.createdAt||0);
+      return !!(c&&u&&u<c-P120_TOL);
+    };
+    gate.rawPracticeResponses=()=>p120Raw;
+    Object.defineProperty(gate,'practiceResponses',{configurable:true,enumerable:true,
+      get(){
+        const out={};
+        for(const [key,rows] of Object.entries(p120Raw||{})){
+          if(!rows||typeof rows!=='object'){out[key]=rows;continue;}
+          let stale=false;for(const r of Object.values(rows))if(gate.isStalePracticeResponse(key,r)){stale=true;break;}
+          if(!stale){out[key]=rows;continue;}
+          const keep={};for(const [u,r] of Object.entries(rows))if(!gate.isStalePracticeResponse(key,r))keep[u]=r;
+          out[key]=keep;
+        }
+        return out;
+      },
+      set(v){p120Raw=(v&&typeof v==='object')?v:{};}
+    });
+  }
   window.__TR_PORTAL_SYNC__=gate;
   const status=(value)=>{
     gate.error=String(value||'');
@@ -15613,7 +15639,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       if(practice?.kind!=='practice'||practice.enabled===false||(practice.scheduledDate||sourceKey)!==date)throw Error('有効な練習予定がありません');
       const result=await run('practiceResponses/'+sourceKey+'/'+gate.uid,current=>{
         if(current?.profileId && current.profileId!==gate.profileId)return;
-        if(current?.answer===answer)return;
+        if(current?.answer===answer&&!gate.isStalePracticeResponse(sourceKey,current))return;
         const next={answer,profileId:gate.profileId,name:gate.displayName||'参加者',
           updatedAt:dbMod.serverTimestamp()};
         if(current?.createdAt)next.createdAt=current.createdAt;
@@ -15623,8 +15649,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       if(!result.committed && (result.snapshot.val()?.answer!==answer||result.snapshot.val()?.profileId!==gate.profileId))
         throw Error('参加回答が保存できませんでした（本人または更新競合）');
       // Reflect only the committed server snapshot; the shared onValue stream remains canonical.
-      if(!gate.practiceResponses[sourceKey])gate.practiceResponses[sourceKey]={};
-      gate.practiceResponses[sourceKey][gate.uid]=result.snapshot.val();
+      {const raw=gate.rawPracticeResponses();if(!raw[sourceKey])raw[sourceKey]={};raw[sourceKey][gate.uid]=result.snapshot.val();}
       ui?.applyPracticeResponses(gate.practiceResponses);
     };
     // Participant event responses are keyed by Firebase Auth UID, not by a local preview actor ID.
@@ -15855,14 +15880,14 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         const stop=p94WatchValue(ref(path+'/'+myUid),snap=>{
           if(seq!==generation||auth.currentUser?.uid!==myUid)return;
           const row=snap.val();
-          gate[kind][id]=row?{[myUid]:row}:{};
+          (kind==='practiceResponses'?gate.rawPracticeResponses():gate[kind])[id]=row?{[myUid]:row}:{};
           gate.sharedResponseReady[readyKind][id]=true;
           gate.loaded[kind]=true;delete gate.errors[kind];
           notify(gate[kind]);statusResources();
         },error=>{
           if(seq!==generation||auth.currentUser?.uid!==myUid)return;
           gate.sharedResponseReady[readyKind][id]=false;
-          gate[kind][id]={};
+          (kind==='practiceResponses'?gate.rawPracticeResponses():gate[kind])[id]={};
           notify(gate[kind]);
           fail(kind,error);
         });
@@ -16434,7 +16459,7 @@ try{
         const pushVerifiedRoster=()=>{
           if(gate.role!=='developer'||!gate.loaded.practiceResponses||!gate.loaded.eventResponses)return;
           const found=new Map();
-          for(const [kind,source] of [['練習',gate.practiceResponses],['イベント',gate.eventResponses]]){
+          for(const [kind,source] of [['練習',gate.rawPracticeResponses()],['イベント',gate.eventResponses]]){
             for(const answers of Object.values(source||{})){
               if(!answers||typeof answers!=='object')continue;
               // Response path is /<date-or-eventId>/<auth.uid>; preserve that verified identity.
