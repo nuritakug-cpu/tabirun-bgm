@@ -1,14 +1,3 @@
-<!-- TOP RUN PORTAL v131 2026-10-28: v130 + 開発者の申請一覧が自動確定と再読み込みを繰り返す不具合を修正（参加承認済みの申請は「完了」と表示し、自動確定の対象外）。 -->
-<!-- TOP RUN PORTAL v130 2026-10-28: v129 + 元管理者・出走歴なしの人の「前の登録とつなぐ」承認で止まらないよう修正（管理資格が無い元管理者は参加者としてつなぐ。管理資格の引継ぎ条件は従来どおり）。 -->
-<!-- TOP RUN PORTAL v129 2026-10-28: v128 + 「前の登録とつなぐ」承認済みの人は、前のUIDの出走登録・結果（同じprofileIdのみ）を自分のものとしてマイページに表示し、今大会の追加出走登録も「別UID」扱いで止めない。データの書き換えなし。 -->
-<!-- TOP RUN PORTAL v128 2026-10-28: v127 + 開発者の本人引継ぎ承認で「保存ACKが成立しません」になる不具合を修正（Firebaseトランザクションの最初の空読みで中止していた）。承認内容・Rules・UIDは変更なし。 -->
-<!-- TOP RUN PORTAL v127 2026-10-28: v126 + 自動で選べないとき、申請欄に各大会の読み取り結果と、申請名に近い出走登録（本人UID・本人番号の有無）を表示。読み取りのみ。 -->
-<!-- TOP RUN PORTAL v126 2026-10-28: v125 + 引継ぎ元の候補を、第1回・第2回・今大会の出走登録（events/<id>/players の subjectUid・profileId）からも作る。同名複数は出走登録がある方を自動選択。読み取りのみ。 -->
-<!-- TOP RUN PORTAL v125 2026-10-28: v124 + 過去大会の登録が読めないときに一覧の上で知らせる。profileIdを持たない過去の登録は、その人の既存profiles/<uid>/profileIdで候補にする（読み取りのみ）。 -->
-<!-- TOP RUN PORTAL v124 2026-10-28: v123 + 前の登録とつなぐ流れを止めない改修。開発者：申請名と一致する前の登録を自動選択（同名複数は今大会の登録がある方）、候補に大会登録の有無を表示、受取済みの申請は一覧を開くと自動確定。参加者：待機中は自動で承認を確認して進む（本人UIDの小さな読み取りのみ・最大15分・入場で停止）。承認処理・Rules・UIDは変更なし。 -->
-<!-- TOP RUN PORTAL v123 2026-10-28: v122 + 引継ぎ元の候補に、過去2大会と今大会の参加者bindingを追加（読み取りのみ。承認の保存可否はRulesが判断）。 -->
-<!-- TOP RUN PORTAL v122 2026-10-28: v121 + 開発者の「申請・承認」で、引継ぎ元を選ばずに押すと無反応だった箇所に理由を表示。候補人数を表示。承認処理・Rules・UIDは変更なし。 -->
-<!-- TOP RUN PORTAL v121 2026-10-28: v120 + 「前の登録とつなぐ申請」の送信が未ログイン時の安全装置で止まっていた不具合を修正（許可リストに追加・キーボードを閉じる・理由表示）。Rules/UID/他処理は変更なし。 -->
 <!-- TOP RUN PORTAL v113 2026-10-28: v112 + P107 developer re-bind for the two historical events (same write as the EVENT BASE developer entry; Rules unchanged). v112 notes:  v111 + P106 duplicate guard (manual 過去大会 record hidden when EVENT BASE has same person/date/time). v111 notes:  v110 (ChatGPT) + P105 integrated by Claude: EVENT BASE result correction (staff), withdrawn EKIDEN entries hidden from 参加する/RSVP lock, MY PAGE reflection diagnosis. No Auth/UID/Rules/listener change beyond P105 players handling. STATIC/simulated tests only; real Firebase not verified. -->
 <!-- TOP RUN PORTAL v110 2026-10-28: v109 exact physical parent; PORTAL internal event links now saved via the existing eventItems writer and visible in event list/calendar. External EVENT BASE/EKIDEN validation and all Auth/UID/profileId/Rules/RTDB subscriptions, writes, official results and theme/home image safeguards unchanged. STATIC candidate; Firebase production not tested/deployed. -->
 <!-- 2026-10-28 v109 UI organization: Hide obsolete CHAT STEP 1 panel (retain DOM for existing gateway); move push settings to first; show version "v109" only; developer identity review first in matching management card. No Auth, Rules, listener, CHAT message read/write, image cache, notification registration, official results or released data changed. NOT DEPLOYED. -->
@@ -5960,7 +5949,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v131</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v120</b></div>
   </div>
 </div>
 
@@ -6154,7 +6143,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v131</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v120</b></div>
   </div>
 </div>
 
@@ -6699,6 +6688,15 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
    <div class="portalFormRow"><label>結果区分 <select id="flowMgrExtResultStatus"><option value="time">記録タイム</option><option value="DNS">DNS（欠場・記録なし）</option><option value="RESERVE_ACCOMPANY">補欠（帯同）</option></select></label></div>
    <div class="portalFlowActions"><button type="button" class="portalPrimary" id="flowMgrExtSave">過去大会記録を登録</button><button type="button" class="portalFlowSecondary hidden" id="flowMgrExtEditCancel">修正をやめる</button></div>
    <p class="portalFlowStatus" id="flowMgrExtStatus" aria-live="polite"></p>
+   <div id="portalClaimPanel" class="portalRulePanel" hidden>
+     <strong>この記録はあなたのです（過去2大会の記録を付ける）</strong>
+     <p class="portalHelp">上の「対象選手」を選んでから、その人の記録をタップして選び、「選んだ記録をこの選手に付ける」を押してください。開発者が入力した記録も選べます。付けた記録は、その選手のマイページに出ます。</p>
+     <button type="button" id="portalClaimLoad" class="portalFlowSecondary">過去2大会の記録を表示</button>
+     <label class="portalFlowLabel">名前で絞り込み <input id="portalClaimSearch" type="search" autocomplete="off" placeholder="例：山田"></label>
+     <div id="portalClaimList" class="portalPastEventRoster" aria-live="polite"></div>
+     <button type="button" id="portalClaimSave" class="portalPrimary" disabled>選んだ記録をこの選手に付ける</button>
+     <p class="portalFlowStatus" id="portalClaimStatus" aria-live="polite"></p>
+   </div>
    <div class="portalPanelHead" style="margin-top:18px"><small>REGISTERED RESULTS</small><b>登録済みの過去大会記録</b></div><div class="portalSimpleFilter" data-list-filter="managerexternal"><select data-filter-mode aria-label="絞り込み"><option value="all" selected>すべて</option><option value="day">日付</option><option value="month">月</option><option value="range">期間</option></select><div class="portalSimpleFilterValue"><input type="date" data-filter-day aria-label="指定日" hidden><input type="month" data-filter-month aria-label="表示する月"><div class="portalSimpleFilterRange" data-filter-range hidden><input type="date" data-filter-start aria-label="開始日"><input type="date" data-filter-end aria-label="終了日"></div></div></div><div id="flowMgrExtList"></div>
   </section>
   <p class="portalHelp">※ 出走登録の一部は従来の試用機能です。上の「過去大会記録」だけは、権限のある共有Firebaseへ保存します。Firebase拒否時には端末内へ代替保存しません。</p>
@@ -12923,6 +12921,81 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
     return [...seen.values()];
   }
   function portalPastChoice(actor){return portalPastVerifiedChoices().find(x=>x.id===actor)||null;}
+  // v120: developer attaches past race rows (EVENT BASE / 駅伝) to a verified person. Writes only through
+  // gate.saveStaffPastRecord (existing staff path); a row already attached to anyone is shown and locked.
+  const portalClaimEvents=['eventbase_mu4ujce3_xxx1','eventbase_ekiden_dev_20261006'];
+  const portalClaimPicked=new Set();let portalClaimTaken=new Map(),portalClaimBusy=false;
+  const portalClaimTimeOk=t=>/^(?:\d+:)?\d{1,3}:\d{2}(?:\.\d{1,2})?$/.test(t);
+  function portalClaimMetric(raw){
+    const m=String(raw||'').match(/(?:^|[^0-9])(10000|5000|3000|1500|1000|800|400)\s*(?:m|ｍ|メートル)?(?:$|[^0-9])/i);
+    return m?m[1]:(/駅伝|リレー/.test(String(raw||''))?'relay':'other');
+  }
+  function portalClaimRows(){
+    const gate=window.__TR_PORTAL_SYNC__,rows=[];
+    if(!gate?.claimRecordId)return rows;
+    for(const ev of portalClaimEvents)for(const r of (gate.officialParticipantRoster?.[ev]||[])){
+      const time=String(r.resultTime||'').trim();
+      if(!r.hasResult||!portalClaimTimeOk(time))continue;
+      rows.push({...r,eventId:ev,time,key:gate.claimRecordId(ev,r.playerId),date:r.day||(ev===portalClaimEvents[0]?'2026-10-04':'2026-10-10'),metric:portalClaimMetric(r.metricRaw)});
+    }
+    return rows.sort((a,b)=>a.name.localeCompare(b.name,'ja')||a.date.localeCompare(b.date));
+  }
+  function portalClaimTarget(){return portalPastChoice($('flowMgrExtAthlete')?.value||'');}
+  function portalClaimRender(){
+    const panel=$('portalClaimPanel'),gate=window.__TR_PORTAL_SYNC__;if(!panel)return;
+    const dev=gate?.role==='developer'&&gate?.roleVerified===true&&!portalParticipantPreviewMode;
+    panel.hidden=!dev;if(!dev)return;
+    const target=portalClaimTarget(),q=String($('portalClaimSearch')?.value||'').normalize('NFKC').replace(/\s/g,'');
+    const all=portalClaimRows();
+    const rows=q?all.filter(r=>r.name.normalize('NFKC').replace(/\s/g,'').includes(q)):all;
+    const metricName=m=>m==='relay'?'駅伝':m==='other'?'その他':m+'m';
+    $('portalClaimList').innerHTML=!all.length?'<p class="portalHelp">「過去2大会の記録を表示」を押してください。表示されない場合は、少し待ってからもう一度押してください。</p>':
+      rows.map(r=>{
+        const owner=portalClaimTaken.get(r.key),mine=!!target&&owner===target.uid,locked=!!owner;
+        const on=portalClaimPicked.has(r.key);
+        return `<button type="button" class="portalFlowSecondary" data-claim-key="${esc(r.key)}" ${locked?'disabled':''} aria-pressed="${on}" style="display:block;width:100%;text-align:left;margin:6px 0;${on?'outline:3px solid #d8b52a;':''}">${on?'✓ ':locked?'':'○ '}<b>${esc(r.name)}</b>｜${esc(r.eventTitle||'')}｜${esc(metricName(r.metric))}${r.leg?' 第'+esc(r.leg)+'区':''}｜${esc(r.time)}${locked?`<br><small>${mine?'この選手に付け済み':'別の選手に付け済み'}</small>`:''}</button>`;
+      }).join('')||'<p class="portalHelp">該当する記録がありません。</p>';
+    $('portalClaimSave').disabled=portalClaimBusy||!target||!portalClaimPicked.size;
+    if(!target&&!portalClaimBusy)$('portalClaimStatus').textContent='先に「対象選手」を選んでください。';
+  }
+  async function portalClaimLoad(){
+    const gate=window.__TR_PORTAL_SYNC__;if(!gate?.loadPastEventOverview)return;
+    $('portalClaimStatus').textContent='記録を読み込み中…';
+    try{
+      gate.refreshOfficialRaceRead?.();
+      const all=await gate.loadPastEventOverview();portalClaimTaken=new Map();
+      for(const [uid,recs] of Object.entries(all||{}))for(const id of Object.keys(recs||{}))if(id.startsWith('local-flow-claim-'))portalClaimTaken.set(id,uid);
+      $('portalClaimStatus').textContent='';
+    }catch(err){$('portalClaimStatus').textContent='読み込めませんでした：'+String(err?.message||err).slice(0,120);}
+    portalClaimRender();setTimeout(portalClaimRender,1500);setTimeout(portalClaimRender,4000);
+  }
+  async function portalClaimSave(){
+    const gate=window.__TR_PORTAL_SYNC__,target=portalClaimTarget();
+    if(portalClaimBusy||!target||!gate?.saveStaffPastRecord)return;
+    const rows=portalClaimRows().filter(r=>portalClaimPicked.has(r.key)&&!portalClaimTaken.has(r.key));
+    if(!rows.length)return;
+    if(!confirm(`${rows.length}件の記録を「${target.name}」さんの記録として付けますか？`))return;
+    portalClaimBusy=true;portalClaimRender();let done=0;const errors=[];
+    for(const r of rows){
+      try{
+        await gate.saveStaffPastRecord(target,{id:r.key,name:String(r.eventTitle||'大会').slice(0,120),date:r.date,metric:r.metric,time:r.time,status:'time',venue:'',official:r.resultKind==='official'});
+        portalClaimTaken.set(r.key,target.uid);portalClaimPicked.delete(r.key);done++;
+      }catch(err){errors.push(r.name+'：'+String(err?.message||err).slice(0,60));}
+    }
+    portalClaimBusy=false;
+    $('portalClaimStatus').textContent=`${done}件を付けました。`+(errors.length?` 未完了 ${errors.length}件：`+errors.join('；'):' 選手のマイページに出ます。');
+    try{await gate.loadPastRecordsFor(target.uid,target.profileId);}catch(_){}
+    portalClaimRender();
+  }
+  $('portalClaimLoad')?.addEventListener('click',portalClaimLoad);
+  $('portalClaimSearch')?.addEventListener('input',portalClaimRender);
+  $('portalClaimSave')?.addEventListener('click',portalClaimSave);
+  $('flowMgrExtAthlete')?.addEventListener('change',()=>{portalClaimPicked.clear();$('portalClaimStatus').textContent='';portalClaimRender();});
+  $('portalClaimList')?.addEventListener('click',e=>{
+    const b=e.target.closest('[data-claim-key]');if(!b||b.disabled)return;
+    const k=b.dataset.claimKey;if(portalClaimPicked.has(k))portalClaimPicked.delete(k);else portalClaimPicked.add(k);portalClaimRender();
+  });
+  setTimeout(portalClaimRender,0);
   // Event-first archive entry: uses only the existing PORTAL event catalog
   // and canonical staff pastRecords, never a second results database.
   let portalPastEventOverview={};
@@ -14312,7 +14385,7 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
         }
       },true);
       document.addEventListener('submit',event=>{
-        if(window.__TR_PORTAL_VIEW_ONLY__&& !(!panel.hidden && (event.target===codeForm||event.target===newForm||event.target?.id==='portalIdentityLinkRequestForm'))){event.preventDefault();event.stopImmediatePropagation();}
+        if(window.__TR_PORTAL_VIEW_ONLY__&& !(!panel.hidden && (event.target===codeForm||event.target===newForm))){event.preventDefault();event.stopImmediatePropagation();}
       },true);
     }
     // Never open another locally-cached person's private screen while identity is unknown.
@@ -14791,9 +14864,6 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
         // the memberAccess candidate list rather than inventing profiles.
         dbMod.get(dbMod.ref(db,'bindings/eventbase_ekiden_next_2026_38fa5537b6')).then(s=>s.val()||{}).catch(()=>null)
       ]);
-      // v123: past participants of the two earlier events are also offered as the source (read-only; Rules decide the write).
-      const pastBindings=await Promise.all(['eventbase_mu4ujce3_xxx1','eventbase_ekiden_dev_20261006','eventbase_ekiden_next_2026_38fa5537b6']
-        .map(id=>dbMod.get(dbMod.ref(db,'bindings/'+id)).then(s=>s.val()||{}).catch(()=>null)));
       if(!isDeveloper()||uid!==gate.uid)throw Error('本人権限が途中で変更されました');
       const links=requests.val()||{},members=access.val()||{},joinHistory=join.val()||{};
       const candidateMap=new Map();
@@ -14811,55 +14881,10 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
           name:String(v.displayName||existing?.name||'(元の大会関係者)').slice(0,24),
           source:existing?.source||'event-'+v.role});
       }
-      const pastLabels=['第1回','第2回','今大会'];
-      const pastErr={};
-      // v126: race entries (events/<id>/players) are the record that must stay linked; their subjectUid/profileId are the source.
-      const pastPlayers=await Promise.all(['eventbase_mu4ujce3_xxx1','eventbase_ekiden_dev_20261006','eventbase_ekiden_next_2026_38fa5537b6']
-        .map(id=>dbMod.get(dbMod.ref(db,'events/'+id+'/players')).then(s=>s.val()||{}).catch(e=>{pastErr[id]=String(e?.code||e?.message||e).slice(0,60);return null;})));
-      // v125: a past binding without profileId takes the person's existing profiles/<uid>/profileId (developer read, no write).
-      const needPid=new Set();
-      pastBindings.forEach(bind=>{if(bind&&typeof bind==='object')for(const [k,v] of Object.entries(bind))
-        if(k!==uid&&v&&typeof v==='object'&&!(typeof v.profileId==='string'&&v.profileId)&&!candidateMap.has(k))needPid.add(k);});
-      const pidOf={};
-      await Promise.all([...needPid].map(k=>dbMod.get(dbMod.ref(db,'profiles/'+k+'/profileId')).then(x=>{const v=x.val();if(typeof v==='string'&&v)pidOf[k]=v;}).catch(()=>{})));
-      pastBindings.forEach((bind,idx)=>{
-        if(!bind||typeof bind!=='object')return;
-        for(const [sourceUid,v0] of Object.entries(bind)){
-          const v=(v0&&typeof v0==='object')?((typeof v0.profileId==='string'&&v0.profileId)?v0:{...v0,profileId:pidOf[sourceUid]||candidateMap.get(sourceUid)?.profileId}):null;
-          if(sourceUid===uid||typeof v?.profileId!=='string'||!v.profileId)continue;
-          let c=candidateMap.get(sourceUid);
-          if(c&&c.profileId!==v.profileId)continue;
-          if(!c){c={uid:sourceUid,profileId:v.profileId,
-            name:String(v.displayName||joinHistory[sourceUid]?.displayName||'(前の参加者)').slice(0,24),source:'event-participant'};
-            candidateMap.set(sourceUid,c);}
-          c.events=c.events||[];if(!c.events.includes(pastLabels[idx]))c.events.push(pastLabels[idx]);
-          if(idx===2)c.currentEvent=true;
-        }
-      });
-      const pastIds=['eventbase_mu4ujce3_xxx1','eventbase_ekiden_dev_20261006','eventbase_ekiden_next_2026_38fa5537b6'];
-      const diag={read:pastIds.map((id,i)=>pastLabels[i]+'：'+(pastPlayers[i]===null?'読取不可（'+(pastErr[id]||'不明')+'）':'選手'+Object.keys(pastPlayers[i]).length+'件')),rows:[]};
-      pastPlayers.forEach((players,idx)=>{if(players&&typeof players==='object')for(const p of Object.values(players))
-        if(p&&typeof p==='object')diag.rows.push({ev:pastLabels[idx],name:String(p.name||''),su:typeof p.subjectUid==='string'?p.subjectUid:'',pid:typeof p.profileId==='string'?p.profileId:'',status:String(p.status||'')});});
-      pastPlayers.forEach((players,idx)=>{
-        if(!players||typeof players!=='object')return;
-        for(const p of Object.values(players)){
-          if(!p||typeof p!=='object')continue;
-          const su=typeof p.subjectUid==='string'?p.subjectUid:'',pid=typeof p.profileId==='string'?p.profileId:'';
-          if(!/^[A-Za-z0-9_-]{6,128}$/.test(su)||!pid||su===uid)continue;
-          if(p.status==='cancelled'||p.status==='withdrawn')continue;
-          let c=candidateMap.get(su);
-          if(c&&c.profileId!==pid)continue;
-          if(!c){c={uid:su,profileId:pid,name:String(p.name||'(出走登録者)').trim().slice(0,24),source:'event-player'};candidateMap.set(su,c);}
-          const lb=pastLabels[idx]+'出走';
-          c.events=c.events||[];if(!c.events.includes(lb))c.events.push(lb);
-          c.hasRace=true;if(idx===2)c.currentEvent=true;
-        }
-      });
       return {
         requests:Object.entries(links).filter(([key,v])=>key!==uid&&v&&['pending','approved'].includes(v.status)).map(([uid,v])=>({uid,...v})),
         candidates:[...candidateMap.values()].sort((a,b)=>a.name.localeCompare(b.name,'ja')),
-        memberAccess:members,memberRequests:joinHistory,diag,
-        pastUnreadable:pastPlayers.slice(0,2).map((b,i)=>b===null?pastLabels[i]:'').filter(Boolean),
+        memberAccess:members,
         eventOwnerCanReviewBindings:ekidenBindings!==null
       };
     };
@@ -14880,18 +14905,15 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
         // A known role in a legacy event binding is NOT by itself proof of
         // authorization to transfer. Verify the existing staff grant when
         // applicable. The server Rules independently check the same source.
-        // v130: without an admin grant the person is linked as a PARTICIPANT (no role is transferred;
-        // finalize promotes only when portalRoles/<old>.role==='admin'). Do not stop the link.
-        try{await dbMod.get(dbMod.ref(db,'portalRoles/'+sourceUid));}catch(_){}
+        const sourceGrant=(await dbMod.get(dbMod.ref(db,'portalRoles/'+sourceUid))).val();
+        if(sourceGrant?.role!=='admin')
+          throw Error('元管理者のPORTAL管理資格が確認できないため承認できません');
       }
       const approved={...request};delete approved.uid;
       Object.assign(approved,{status:'approved',sourceUid,profileId:candidate.profileId,
         approvedAt:Date.now(),approvedByUid:gate.uid});
       const at=ref(identityLinks+targetUid);
       const result=await dbMod.runTransaction(at,current=>{
-        // v128: the first local call often sees null before the server value arrives.
-        // Returning null (no change) lets Firebase retry with the real pending request instead of aborting.
-        if(current===null)return null;
         if(!isDeveloper()||!current||current.status!=='pending'||current.requestedAt!==request.requestedAt||
            current.requestedName!==request.requestedName)return;
         return approved;
@@ -15118,7 +15140,7 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
       unsubs.splice(0).concat(ownSubs.splice(0),officialSubs.splice(0)).forEach(stop=>{try{stop();}catch(_){}});ownSignature='';officialSignature='';
       ui?.clearNoticeReads?.();
       ui?.applyHomeImage(null); // Never show a previous login's image while switching identity.
-      gate.ready=false;gate.uid='';gate.profileId='';gate.role='unverified';gate.roleVerified=false;gate.memberApproved=false;gate.firstEventOwnerBinding='not-applicable';gate.linkedSourceUid='';
+      gate.ready=false;gate.uid='';gate.profileId='';gate.role='unverified';gate.roleVerified=false;gate.memberApproved=false;gate.firstEventOwnerBinding='not-applicable';
       {const w=document.getElementById('portalOwnerBindingRecovery');if(w)w.hidden=true;
        const b=document.getElementById('portalOwnerBindingRecoveryButton');if(b){b.hidden=true;b.onclick=null;}}
       ui?.applyVerifiedRole('unverified','');ui?.applyVerifiedResponseRoster([]);
@@ -15278,11 +15300,10 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
           throw Error('PORTALの種目開催日がEVENT BASEの正式開催日と一致しません');
         const playersRef=dbMod.ref(db,'events/'+target.id+'/players');
         const all=(await dbMod.get(playersRef)).val()||{};
-        const sameOwner=u=>u===person.uid||(gate.linkedSourceUid&&u===gate.linkedSourceUid);
         const otherOwner=Object.values(all).some(p=>p&&p.profileId===person.profileId&&
-          p.subjectUid&&!sameOwner(p.subjectUid));
+          p.subjectUid&&p.subjectUid!==person.uid);
         if(otherOwner)throw Error('同じprofileIdが別UIDに登録されています。管理者の本人照合が必要です');
-        if(Object.values(all).some(p=>p&&sameOwner(p.subjectUid)&&p.profileId===person.profileId&&
+        if(Object.values(all).some(p=>p&&p.subjectUid===person.uid&&p.profileId===person.profileId&&
             officialMetricKey(p.event)===normalized&&p.status!=='cancelled'))
           throw Error('同じ種目は正式出走登録済みです。重複登録はできません');
         const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(person.uid+'|'+target.id+'|'+normalized));
@@ -15420,6 +15441,9 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       if(!/^[A-Za-z0-9_-]{6,128}$/.test(uid)||!pid||pid.length>120)throw Error('本人UID・profileIdが不正です');
       return {uid,pid};
     };
+    // v120: "この記録はあなたのです" — a developer attaches an EVENT BASE race row to a person as
+    // pastRecords/<uid>/local-flow-claim-<event>-<player> (existing staff write path and Rules).
+    gate.claimRecordId=(eventId,playerId)=>('local-flow-claim-'+String(eventId)+'-'+String(playerId)).replace(/[^A-Za-z0-9_-]/g,'_').slice(0,111);
     gate.loadPastRecordsFor=async(uid,profileId)=>{
       uid=String(uid||'');profileId=String(profileId||'');
       if(!/^[A-Za-z0-9_-]{6,128}$/.test(uid)||!profileId||profileId.length>120)throw Error('対象者の本人IDがありません');
@@ -15429,6 +15453,11 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       if(currentGeneration!==generation||auth.currentUser?.uid!==currentUid)throw Error('認証が切り替わったためREADを破棄しました');
       const records=Object.fromEntries(Object.entries(result).filter(([id,r])=>r&&r.subjectUid===uid&&r.profileId===profileId&&/^local-flow-[A-Za-z0-9_-]{8,100}$/.test(id)));
       ui?.applySharedPastRecords({uid,profileId,records});
+      if(uid===gate.uid&&profileId===gate.profileId){
+        const ids=new Set(Object.keys(records).filter(id=>id.startsWith('local-flow-claim-')));
+        const before=[...(gate.ownClaimIds||[])].sort().join('|');gate.ownClaimIds=ids;
+        if(before!==[...ids].sort().join('|'))gate.refreshOfficialRaceRead?.();
+      }
       return records;
     };
     gate.loadPastEventOverview=async()=>{
@@ -15962,8 +15991,24 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       statusResources();
     };
     gate.refreshOfficialRaceRead=()=>{officialSignature='';gate.watchOfficialResults();};
+    // v120: an approved "前の登録とつなぐ申請" (identityLinks/<uid>, status approved, same profileId) means the
+    // records saved under the OLD subject UID in EVENT BASE races are this person's too. Read-only; no write, no Rules change.
+    let legacyLookupKey='';
+    const loadLegacySubject=()=>{
+      const uid=gate.uid,pid=gate.profileId,key=uid+'|'+pid;
+      if(!uid||!pid||legacyLookupKey===key)return;
+      legacyLookupKey=key;
+      dbMod.get(ref(identityLinks+uid)).then(snap=>{
+        if(uid!==gate.uid||pid!==gate.profileId)return;
+        const v=snap.val();
+        const old=(v&&v.status==='approved'&&v.profileId===pid&&typeof v.sourceUid==='string'&&
+          /^[A-Za-z0-9_-]{6,128}$/.test(v.sourceUid)&&v.sourceUid!==uid)?v.sourceUid:'';
+        if(old!==(gate.legacySubjectUid||'')){gate.legacySubjectUid=old;gate.refreshOfficialRaceRead();}
+      }).catch(()=>{legacyLookupKey='';});
+    };
     gate.watchOfficialResults=()=>{
       if(!gate.uid||!gate.profileId)return;
+      loadLegacySubject();
       const targets=(ui?.officialTargets?.()||[]).filter(v=>/^[a-zA-Z0-9_-]{6,100}$/.test(v.id)).slice(0,8);
       const signature=targets.map(v=>v.id).sort().join('|');
       if(signature===officialSignature)return;
@@ -15985,7 +16030,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         ui?.applyVerifiedNumberRegistrations(available,{expected:targets.length,checked:Object.keys(gate.officialNumberPeople||{}).length,errors});
       };
       gate.officialNumberPeople={};pushOfficialRoster();pushNumberRegistrations();
-      const uid=gate.uid,profileId=gate.profileId,seq=generation;
+      const uid=gate.uid,profileId=gate.profileId,seq=generation,legacyUid=String(gate.legacySubjectUid||''),claimed=gate.ownClaimIds||new Set();
       for(const info of targets){
         // Canonical title is not a PORTAL event catalogue label. The original
         // EVENT BASE saves it under events/<id>/config/maininfo/title.
@@ -16006,8 +16051,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
           // canonical event, neither record is silently assigned to MY PAGE.
           const profileOwners=new Map();
           for(const p of Object.values(raw)){
-            const rawUid=String(p?.subjectUid||''),personProfile=String(p?.profileId||'');
-            const personUid=(gate.linkedSourceUid&&rawUid===gate.linkedSourceUid&&personProfile===profileId)?uid:rawUid;
+            const personUid=String(p?.subjectUid||''),personProfile=String(p?.profileId||'');
             if(/^[A-Za-z0-9_-]{6,128}$/.test(personUid)&&personProfile){
               if(!profileOwners.has(personProfile))profileOwners.set(personProfile,new Set());
               profileOwners.get(personProfile).add(personUid);
@@ -16025,7 +16069,8 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
             if(staff&&!withdrawn&&p&&typeof p==='object'&&String(p.name||'').trim()){
               registered.push({playerId,eventId:info.id,eventTitle:shownTitle,
                 uid:typeof p.subjectUid==='string'?p.subjectUid:'',profileId:typeof p.profileId==='string'?p.profileId:'',
-                name:String(p.name).trim().slice(0,24),source:'player',hasResult:!!(p.result||p.officialResult||p.provisionalResult||p.place||p.officialPlace),
+                name:String(p.name).trim().slice(0,24),source:'player',metricRaw:String(p.event||'').slice(0,40),
+                day:String(p.dayDate||canonicalDay||'').slice(0,10),leg:String(p.ekidenLeg||'').slice(0,4),hasResult:!!(p.result||p.officialResult||p.provisionalResult||p.place||p.officialPlace),
                 resultKind:(p.resultSource==='official'||p.resultStatus==='official'||p.officialResult)?'official':
                   (p.resultSource==='manual-corrected'||p.resultStatus==='provisional'||p.provisionalResult)?'provisional':'unverified',
                 resultTime:String(p.officialResult||p.result||p.provisionalResult||'').slice(0,40)});
@@ -16036,11 +16081,12 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
               const name=String(p.name||'出走登録者').trim().slice(0,24)||'出走登録者';
               attendance.set(p.subjectUid,{uid:p.subjectUid,name,note:'EVENT BASE出走登録'});
             }
-            if(!p||typeof p!=='object'||!(p.subjectUid===uid||(gate.linkedSourceUid&&p.subjectUid===gate.linkedSourceUid)))continue;
+            if(!p||typeof p!=='object'||!(p.subjectUid===uid||(legacyUid&&p.subjectUid===legacyUid)))continue;
             // Both independently verified identifiers must match the LOGIN
             // identity. Missing profileId is NOT equivalent to a match.
             if(!profileId||p.profileId!==profileId)continue;
-            if((profileOwners.get(profileId)?.size||0)!==1)continue;
+            // One person per profileId: only this login UID and its approved former UID may own it.
+            {const owners=profileOwners.get(profileId);if(!owners||![...owners].every(u=>u===uid||(legacyUid&&u===legacyUid)))continue;}
             // Respect the EVENT BASE official/provisional distinction; never promote a stopwatch value.
             const formallyMarked=p.resultSource==='official'||p.resultStatus==='official';
             const formalTime=String(p.officialResult||(formallyMarked?p.result:'')||'').trim().slice(0,40);
@@ -16059,6 +16105,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
               metric,metricName:sourceMetric,date:day,title:shownTitle,openUrl:info.openUrl,targetTime:String(p.targetTime||'').slice(0,30),
               official:verifiedOfficial,result:validTime?result:'',hasSavedResult:!!(p.result||p.officialResult||p.provisionalResult||p.resultStatus||p.place||p.officialPlace||p.provisionalPlace)});
             if(!validTime)continue; // Never make DNS, places, or unclear result notation into a time.
+            if(claimed.has(gate.claimRecordId(info.id,playerId)))continue; // v120: developer already attached this row as the person's record
             records.push({id:'eb-'+info.id+'-'+playerId,playerId,profileId,subjectUid:uid,metric,date:day,event:shownTitle,
               venue:info.place,label:(metric==='relay'&&p.ekidenLeg?'第'+String(p.ekidenLeg)+'区間 ／ ':'')+(verifiedOfficial?'EVENT BASE正式結果（読取専用）':'EVENT BASE大会結果（正式区分未確認・読取専用）'),
               time:result,official:false,confirmedRaceResult:verifiedOfficial,catalogId:info.catalogId,status:'time',source:'EVENT_BASE'});
@@ -16346,14 +16393,6 @@ try{
             return;
           }
         }else gate.memberApproved=true;
-        // v129: an approved "前の登録とつなぐ" link makes the OLD UID's race entries this person's own (same profileId only).
-        gate.linkedSourceUid='';
-        try{
-          const lk=(await dbMod.get(ref('identityLinks/'+uid))).val();
-          if(seq!==generation||auth.currentUser?.uid!==uid)return;
-          if(lk?.status==='approved'&&lk.profileId===gate.profileId&&/^[A-Za-z0-9_-]{6,128}$/.test(String(lk.sourceUid||''))&&lk.sourceUid!==uid)
-            gate.linkedSourceUid=lk.sourceUid;
-        }catch(_){gate.linkedSourceUid='';}
         ui?.applyVerifiedRole(gate.role,uid);
         window.dispatchEvent(new Event('tr-portal-authorized'));
         // First-event owner binding: user-initiated recovery in the EXISTING unified gate.
@@ -17497,18 +17536,14 @@ setInterval(display,1000);
   open?.addEventListener('click',()=>{form.hidden=false;open.hidden=true;state.textContent='申請内容を確認してください。';});
   form?.addEventListener('submit',ev=>{
     ev.preventDefault();
-    try{document.activeElement?.blur?.();}catch(_){}
     const name=$('portalIdentityLinkRequestName')?.value||'';
-    if(!name.trim()){if(state){state.textContent='名前を入れてから、押してください。';state.scrollIntoView?.({block:'center'});}return;}
-    if(busy){if(state){state.textContent='いま送っています。少し待ってください。';state.scrollIntoView?.({block:'center'});}return;}
-    if(state)state.scrollIntoView?.({block:'center'});
     if(!confirm('前の記録を残したまま、運営の本人確認を申請します。よろしいですか？'))return;
     void run(async()=>{
       const v=await gate()?.requestExistingIdentityLink?.(name);
       if(!v)throw Error('PORTAL共通認証の接続を確認できません');
       const tail=String(gate()?.uid||v.uid||'').slice(-6);
       contactBox(state,'申請しました。\n前に登録した名前：'+name.trim()+'\n確認番号：'+tail);
-      tips(true);startAuto();
+      tips(true);
       return v.status==='approved'?'承認されました。「承認を確認して入る」を押してください。':'申請を保存しました。運営に連絡してください。';
     });
   });
@@ -17532,73 +17567,32 @@ setInterval(display,1000);
     const g=gate();if(!g?.getIdentityLinkReview)throw Error('共通本人モジュールが準備できていません');
     cache=await g.getIdentityLinkReview();
     list.replaceChildren();
-    const autoFinalize=[];
-    if(cache.pastUnreadable?.length){
-      const warn=document.createElement('p');warn.style.cssText='margin:0;padding:10px;border:2px solid #c9a227;border-radius:10px;font-size:13px;line-height:1.7;font-weight:700;white-space:pre-wrap';
-      warn.textContent=cache.pastUnreadable.join('・')+'の登録を読めていません。このため、前の大会だけに登録がある人が一覧に出ません。\n同じ「管理画面の設定」の中の「過去大会の開発者接続を更新（開発者のみ）」に32文字の認証コードを入れて更新してから、もう一度「申請と既存本人一覧を確認」を押してください。';
-      list.append(warn);
-    }
     for(const person of cache.requests){
       const box=document.createElement('div');
       box.style.cssText='padding:12px;border:1px solid #686d67;border-radius:10px;display:grid;gap:7px';
       const title=document.createElement('strong');title.textContent=`申請 ${person.uid.slice(-6)} / ${person.requestedName||''} / ${person.status}`;box.append(title);
       const select=document.createElement('select');select.style.cssText='width:100%;font-size:14px;min-height:42px';
       const def=document.createElement('option');def.value='';def.textContent='本人確認した既存人物を選択';select.append(def);
-      const norm=t=>String(t||'').normalize('NFKC').replace(/[\s\u3000・.]/g,'');
-      const wanted=norm(person.requestedName);
       for(const source of cache.candidates){const opt=document.createElement('option');opt.value=source.uid;
-        opt.textContent=`${norm(source.name)===wanted?'★ ':''}${source.name} / ${(source.events||[]).length?(source.events.join('・')+'の登録あり'):'大会登録なし'} / ${source.uid.slice(-6)}`;select.append(opt);}
-      const same=cache.candidates.filter(c=>wanted&&norm(c.name)===wanted);
-      const sameCurrent=same.filter(c=>c.currentEvent);
-      const sameRace=same.filter(c=>c.hasRace);
-      const pick=same.length===1?same[0]:(sameRace.length===1?sameRace[0]:(sameCurrent.length===1?sameCurrent[0]:null));
-      if(pick)select.value=pick.uid;
-      let matchNote=same.length===0?'同じ名前の前の登録が見つかりません。一覧から選んでください。':
-        (pick?('★ 名前が一致する前の登録を選んであります'+(same.length>1?'（同じ名前が'+same.length+'件。出走登録がある方を選びました）':'')+'。確認して押してください。'):
-        ('同じ名前の前の登録が'+same.length+'件あります。今大会の登録がある方（★）を選んでください。'));
+        opt.textContent=`${source.name} / ${source.uid.slice(-6)} / ${source.profileId.slice(-12)}`;select.append(opt);}
       const button=document.createElement('button');button.type='button';button.style.minHeight='42px';
       if(person.status==='pending'){
         button.textContent='本人確認済み：この既存profileIdを承認';box.append(select);
-        const hint=document.createElement('p');hint.style.cssText='margin:0;font-size:12px;line-height:1.6;white-space:pre-wrap';
-        if(!pick&&cache.diag){
-          const near=cache.diag.rows.filter(r=>wanted&&(norm(r.name).includes(wanted)||wanted.includes(norm(r.name))&&norm(r.name).length>=2));
-          matchNote+='\n\n【読み取り結果】\n'+cache.diag.read.join('\n')+'\n【この名前に近い出走登録】\n'+(near.length?near.slice(0,8).map(r=>r.ev+'：'+r.name+' ／ 本人UID'+(r.su?'あり…'+r.su.slice(-6):'なし')+' ／ 本人番号'+(r.pid?'あり':'なし')+(r.status?' ／ '+r.status:'')).join('\n'):'見つかりません');
-        }
-        hint.textContent=cache.candidates.length?matchNote:'選べる引継ぎ元が0人です。前の登録が候補に入っていないため、このままでは承認できません。';
-        box.append(hint);
         button.onclick=()=>{
-          if(!select.value){hint.textContent=cache.candidates.length?'先に、上の欄で「前の登録」を選んでください。\n（一覧にこの人の名前がない場合は、前の登録が候補に入っていません）':'選べる引継ぎ元が0人のため、承認できません。';hint.scrollIntoView?.({block:'center'});return;}
-          if(busy){hint.textContent='いま処理中です。少し待ってから押してください。';return;}
+          if(!select.value)return;
           if(!confirm('本人確認は氏名一致だけでなく別の方法で完了しましたか？ 選択した既存profileIdへ紐付けます。'))return;
-          void run(async()=>{await gate().approveIdentityLink(person.uid,select.value);setTimeout(refresh,0);return '本人引き継ぎを承認しました。参加者がアイコンを開くと自動で次に進みます。そのあと、この一覧を開き直すと参加承認まで自動で確定します。';},log);
+          void run(async()=>{await gate().approveIdentityLink(person.uid,select.value);setTimeout(refresh,0);return '本人引き継ぎを承認しました';},log);
         };
       }else{
-        const acc=cache.memberAccess?.[person.uid];
-        const active=acc?.active===true&&acc.profileId===person.profileId;
-        const ready=!active&&cache.memberRequests?.[person.uid]?.status==='pending'&&cache.memberRequests[person.uid].profileId===person.profileId;
-        button.textContent=active?'完了（参加承認済み）':(ready?'参加承認を確定する':'参加者の受取待ち（アイコンを開くと自動で進みます）');
-        if(active)button.disabled=true;
-        if(ready)autoFinalize.push(person.uid);
+        button.textContent='本人の受取確認後：PORTAL利用資格を確定';
         button.onclick=()=>void run(async()=>{await gate().finalizeIdentityLink(person.uid);setTimeout(refresh,0);return '参加承認を確定しました';},log);
       }
       box.append(button);list.append(box);
     }
-    if(autoFinalize.length)setTimeout(()=>finalizeReady(autoFinalize.slice()),0);
     const scope=cache.eventOwnerCanReviewBindings?'既存参加者・大会管理者の候補を確認':'大会の管理者bindingは閲覧権限外です（参加承認済み候補のみ確認）';
     return (cache.requests.length?`${cache.requests.length}件の申請を確認しました。`:'現在の申請はありません。')+' '+scope;
   },log);
   $('portalIdentityLinkRefresh')?.addEventListener('click',refresh);
-  // v124: approved links whose participant has already accepted are finalized without another tap (same finalizeIdentityLink checks).
-  let finalizing=false;
-  const finalizeReady=async uids=>{
-    if(finalizing)return;finalizing=true;const done=[],failed=[];
-    let changed=false;
-    try{for(const u of uids){try{const r=await gate().finalizeIdentityLink(u);done.push(u.slice(-6));if(!r?.alreadyActive)changed=true;}catch(e){failed.push(u.slice(-6)+'：'+String(e?.message||e).slice(0,60));}}}
-    finally{finalizing=false;}
-    if(log)log.textContent=(done.length?'参加承認を自動で確定しました：'+done.join('、'):'')+(failed.length?'\n確定できなかった申請：\n'+failed.join('\n'):'');
-    if(changed)setTimeout(refresh,300); // v131: refresh once; an already-active link never triggers another round
-  };
-  $('portalIdentityLinkDeveloperDetails')?.addEventListener('toggle',ev=>{if(ev.target.open)refresh();});
   // P104: participant approval request / developer approval list
   const mReq=$('portalMemberApprovalRequest'),mChk=$('portalMemberApprovalCheck'),mState=$('portalMemberApprovalState');
   const memberEls=[mReq,mChk,mState];
@@ -17681,27 +17675,6 @@ setInterval(display,1000);
     }catch(_){}
   };
   window.addEventListener('tr-portal-entry-choice-for-existing-uid',()=>setTimeout(applyLinkView,0));
-  // v124: while a link request is waiting, move forward automatically (small reads of this UID only; stops when entered or after 15 minutes).
-  let autoTimer=null,autoUntil=0,autoBusy=false,authorized=false;
-  const autoStep=async()=>{
-    if(authorized||autoBusy||busy||document.hidden)return;
-    if(Date.now()>autoUntil){clearInterval(autoTimer);autoTimer=null;return;}
-    autoBusy=true;
-    try{
-      const peek=await gate()?.peekExistingIdentityLink?.();
-      if(!peek||peek.status==='none'||peek.status==='pending')return;
-      const r=await gate()?.checkExistingIdentityLink?.();
-      if(!state)return;
-      if(r?.status==='active')state.textContent='承認を確認しました。前の記録と、つながりました。';
-      else if(r?.status==='approved-awaiting-access')state.textContent='運営の本人確認は済みました。参加の承認を待っています。このまま開いておくか、あとでアイコンを開いてください。';
-      else if(r?.status==='active-migration-pending')state.textContent='承認は済みました。設定の引き継ぎ中です。少し待つと自動で進みます。';
-    }catch(_){}
-    finally{autoBusy=false;}
-  };
-  const startAuto=()=>{if(authorized)return;autoUntil=Date.now()+15*60*1000;if(!autoTimer)autoTimer=setInterval(autoStep,20000);setTimeout(autoStep,1500);};
-  window.addEventListener('tr-portal-entry-choice-for-existing-uid',startAuto);
-  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&autoTimer){autoUntil=Date.now()+15*60*1000;autoStep();}});
-  window.addEventListener('tr-portal-authorized',()=>{authorized=true;if(autoTimer){clearInterval(autoTimer);autoTimer=null;}});
   form?.addEventListener('submit',()=>{const t=setInterval(()=>{if(!busy){clearInterval(t);
     if(/申請を保存しました|承認されました/.test(state?.textContent||''))applyLinkView();}},300);
     setTimeout(()=>clearInterval(t),20000);});
