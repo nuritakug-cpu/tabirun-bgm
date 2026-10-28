@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v124 2026-10-28: v123 + 前の登録とつなぐ流れを止めない改修。開発者：申請名と一致する前の登録を自動選択（同名複数は今大会の登録がある方）、候補に大会登録の有無を表示、受取済みの申請は一覧を開くと自動確定。参加者：待機中は自動で承認を確認して進む（本人UIDの小さな読み取りのみ・最大15分・入場で停止）。承認処理・Rules・UIDは変更なし。 -->
 <!-- TOP RUN PORTAL v123 2026-10-28: v122 + 引継ぎ元の候補に、過去2大会と今大会の参加者bindingを追加（読み取りのみ。承認の保存可否はRulesが判断）。 -->
 <!-- TOP RUN PORTAL v122 2026-10-28: v121 + 開発者の「申請・承認」で、引継ぎ元を選ばずに押すと無反応だった箇所に理由を表示。候補人数を表示。承認処理・Rules・UIDは変更なし。 -->
 <!-- TOP RUN PORTAL v121 2026-10-28: v120 + 「前の登録とつなぐ申請」の送信が未ログイン時の安全装置で止まっていた不具合を修正（許可リストに追加・キーボードを閉じる・理由表示）。Rules/UID/他処理は変更なし。 -->
@@ -5952,7 +5953,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v123</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v124</b></div>
   </div>
 </div>
 
@@ -6146,7 +6147,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v123</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v124</b></div>
   </div>
 </div>
 
@@ -14803,18 +14804,24 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
           name:String(v.displayName||existing?.name||'(元の大会関係者)').slice(0,24),
           source:existing?.source||'event-'+v.role});
       }
-      for(const bind of pastBindings){
-        if(!bind||typeof bind!=='object')continue;
+      const pastLabels=['第1回','第2回','今大会'];
+      pastBindings.forEach((bind,idx)=>{
+        if(!bind||typeof bind!=='object')return;
         for(const [sourceUid,v] of Object.entries(bind)){
-          if(sourceUid===uid||candidateMap.has(sourceUid)||typeof v?.profileId!=='string'||!v.profileId)continue;
-          candidateMap.set(sourceUid,{uid:sourceUid,profileId:v.profileId,
-            name:String(v.displayName||joinHistory[sourceUid]?.displayName||'(前の参加者)').slice(0,24),source:'event-'+String(v.role||'participant')});
+          if(sourceUid===uid||typeof v?.profileId!=='string'||!v.profileId)continue;
+          let c=candidateMap.get(sourceUid);
+          if(c&&c.profileId!==v.profileId)continue;
+          if(!c){c={uid:sourceUid,profileId:v.profileId,
+            name:String(v.displayName||joinHistory[sourceUid]?.displayName||'(前の参加者)').slice(0,24),source:'event-'+String(v.role||'participant')};
+            candidateMap.set(sourceUid,c);}
+          c.events=c.events||[];if(!c.events.includes(pastLabels[idx]))c.events.push(pastLabels[idx]);
+          if(idx===2)c.currentEvent=true;
         }
-      }
+      });
       return {
         requests:Object.entries(links).filter(([key,v])=>key!==uid&&v&&['pending','approved'].includes(v.status)).map(([uid,v])=>({uid,...v})),
         candidates:[...candidateMap.values()].sort((a,b)=>a.name.localeCompare(b.name,'ja')),
-        memberAccess:members,
+        memberAccess:members,memberRequests:joinHistory,
         eventOwnerCanReviewBindings:ekidenBindings!==null
       };
     };
@@ -17450,7 +17457,7 @@ setInterval(display,1000);
       if(!v)throw Error('PORTAL共通認証の接続を確認できません');
       const tail=String(gate()?.uid||v.uid||'').slice(-6);
       contactBox(state,'申請しました。\n前に登録した名前：'+name.trim()+'\n確認番号：'+tail);
-      tips(true);
+      tips(true);startAuto();
       return v.status==='approved'?'承認されました。「承認を確認して入る」を押してください。':'申請を保存しました。運営に連絡してください。';
     });
   });
@@ -17474,36 +17481,59 @@ setInterval(display,1000);
     const g=gate();if(!g?.getIdentityLinkReview)throw Error('共通本人モジュールが準備できていません');
     cache=await g.getIdentityLinkReview();
     list.replaceChildren();
+    const autoFinalize=[];
     for(const person of cache.requests){
       const box=document.createElement('div');
       box.style.cssText='padding:12px;border:1px solid #686d67;border-radius:10px;display:grid;gap:7px';
       const title=document.createElement('strong');title.textContent=`申請 ${person.uid.slice(-6)} / ${person.requestedName||''} / ${person.status}`;box.append(title);
       const select=document.createElement('select');select.style.cssText='width:100%;font-size:14px;min-height:42px';
       const def=document.createElement('option');def.value='';def.textContent='本人確認した既存人物を選択';select.append(def);
+      const norm=t=>String(t||'').normalize('NFKC').replace(/[\s\u3000・.]/g,'');
+      const wanted=norm(person.requestedName);
       for(const source of cache.candidates){const opt=document.createElement('option');opt.value=source.uid;
-        opt.textContent=`${source.name} / ${source.uid.slice(-6)} / ${source.profileId.slice(-12)}`;select.append(opt);}
+        opt.textContent=`${norm(source.name)===wanted?'★ ':''}${source.name} / ${(source.events||[]).length?(source.events.join('・')+'の登録あり'):'大会登録なし'} / ${source.uid.slice(-6)}`;select.append(opt);}
+      const same=cache.candidates.filter(c=>wanted&&norm(c.name)===wanted);
+      const sameCurrent=same.filter(c=>c.currentEvent);
+      const pick=same.length===1?same[0]:(sameCurrent.length===1?sameCurrent[0]:null);
+      if(pick)select.value=pick.uid;
+      const matchNote=same.length===0?'同じ名前の前の登録が見つかりません。一覧から選んでください。':
+        (pick?('★ 名前が一致する前の登録を選んであります'+(same.length>1?'（同じ名前が'+same.length+'件。今大会の登録がある方を選びました）':'')+'。確認して押してください。'):
+        ('同じ名前の前の登録が'+same.length+'件あります。今大会の登録がある方（★）を選んでください。'));
       const button=document.createElement('button');button.type='button';button.style.minHeight='42px';
       if(person.status==='pending'){
         button.textContent='本人確認済み：この既存profileIdを承認';box.append(select);
         const hint=document.createElement('p');hint.style.cssText='margin:0;font-size:12px;line-height:1.6;white-space:pre-wrap';
-        hint.textContent=cache.candidates.length?('選べる引継ぎ元：'+cache.candidates.length+'人。上の欄から、この人の前の登録を選んでから押してください。'):'選べる引継ぎ元が0人です。前の登録が候補に入っていないため、このままでは承認できません。';
+        hint.textContent=cache.candidates.length?matchNote:'選べる引継ぎ元が0人です。前の登録が候補に入っていないため、このままでは承認できません。';
         box.append(hint);
         button.onclick=()=>{
           if(!select.value){hint.textContent=cache.candidates.length?'先に、上の欄で「前の登録」を選んでください。\n（一覧にこの人の名前がない場合は、前の登録が候補に入っていません）':'選べる引継ぎ元が0人のため、承認できません。';hint.scrollIntoView?.({block:'center'});return;}
           if(busy){hint.textContent='いま処理中です。少し待ってから押してください。';return;}
           if(!confirm('本人確認は氏名一致だけでなく別の方法で完了しましたか？ 選択した既存profileIdへ紐付けます。'))return;
-          void run(async()=>{await gate().approveIdentityLink(person.uid,select.value);setTimeout(refresh,0);return '本人引き継ぎを承認しました';},log);
+          void run(async()=>{await gate().approveIdentityLink(person.uid,select.value);setTimeout(refresh,0);return '本人引き継ぎを承認しました。参加者がアイコンを開くと自動で次に進みます。そのあと、この一覧を開き直すと参加承認まで自動で確定します。';},log);
         };
       }else{
-        button.textContent='本人の受取確認後：PORTAL利用資格を確定';
+        const ready=cache.memberRequests?.[person.uid]?.status==='pending'&&cache.memberRequests[person.uid].profileId===person.profileId;
+        button.textContent=ready?'参加承認を確定する':'参加者の受取待ち（アイコンを開くと自動で進みます）';
+        if(ready)autoFinalize.push(person.uid);
         button.onclick=()=>void run(async()=>{await gate().finalizeIdentityLink(person.uid);setTimeout(refresh,0);return '参加承認を確定しました';},log);
       }
       box.append(button);list.append(box);
     }
+    if(autoFinalize.length)setTimeout(()=>finalizeReady(autoFinalize.slice()),0);
     const scope=cache.eventOwnerCanReviewBindings?'既存参加者・大会管理者の候補を確認':'大会の管理者bindingは閲覧権限外です（参加承認済み候補のみ確認）';
     return (cache.requests.length?`${cache.requests.length}件の申請を確認しました。`:'現在の申請はありません。')+' '+scope;
   },log);
   $('portalIdentityLinkRefresh')?.addEventListener('click',refresh);
+  // v124: approved links whose participant has already accepted are finalized without another tap (same finalizeIdentityLink checks).
+  let finalizing=false;
+  const finalizeReady=async uids=>{
+    if(finalizing)return;finalizing=true;const done=[],failed=[];
+    try{for(const u of uids){try{await gate().finalizeIdentityLink(u);done.push(u.slice(-6));}catch(e){failed.push(u.slice(-6)+'：'+String(e?.message||e).slice(0,60));}}}
+    finally{finalizing=false;}
+    if(log)log.textContent=(done.length?'参加承認を自動で確定しました：'+done.join('、'):'')+(failed.length?'\n確定できなかった申請：\n'+failed.join('\n'):'');
+    if(done.length)setTimeout(refresh,300);
+  };
+  $('portalIdentityLinkDeveloperDetails')?.addEventListener('toggle',ev=>{if(ev.target.open)refresh();});
   // P104: participant approval request / developer approval list
   const mReq=$('portalMemberApprovalRequest'),mChk=$('portalMemberApprovalCheck'),mState=$('portalMemberApprovalState');
   const memberEls=[mReq,mChk,mState];
@@ -17586,6 +17616,27 @@ setInterval(display,1000);
     }catch(_){}
   };
   window.addEventListener('tr-portal-entry-choice-for-existing-uid',()=>setTimeout(applyLinkView,0));
+  // v124: while a link request is waiting, move forward automatically (small reads of this UID only; stops when entered or after 15 minutes).
+  let autoTimer=null,autoUntil=0,autoBusy=false,authorized=false;
+  const autoStep=async()=>{
+    if(authorized||autoBusy||busy||document.hidden)return;
+    if(Date.now()>autoUntil){clearInterval(autoTimer);autoTimer=null;return;}
+    autoBusy=true;
+    try{
+      const peek=await gate()?.peekExistingIdentityLink?.();
+      if(!peek||peek.status==='none'||peek.status==='pending')return;
+      const r=await gate()?.checkExistingIdentityLink?.();
+      if(!state)return;
+      if(r?.status==='active')state.textContent='承認を確認しました。前の記録と、つながりました。';
+      else if(r?.status==='approved-awaiting-access')state.textContent='運営の本人確認は済みました。参加の承認を待っています。このまま開いておくか、あとでアイコンを開いてください。';
+      else if(r?.status==='active-migration-pending')state.textContent='承認は済みました。設定の引き継ぎ中です。少し待つと自動で進みます。';
+    }catch(_){}
+    finally{autoBusy=false;}
+  };
+  const startAuto=()=>{if(authorized)return;autoUntil=Date.now()+15*60*1000;if(!autoTimer)autoTimer=setInterval(autoStep,20000);setTimeout(autoStep,1500);};
+  window.addEventListener('tr-portal-entry-choice-for-existing-uid',startAuto);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&autoTimer){autoUntil=Date.now()+15*60*1000;autoStep();}});
+  window.addEventListener('tr-portal-authorized',()=>{authorized=true;if(autoTimer){clearInterval(autoTimer);autoTimer=null;}});
   form?.addEventListener('submit',()=>{const t=setInterval(()=>{if(!busy){clearInterval(t);
     if(/申請を保存しました|承認されました/.test(state?.textContent||''))applyLinkView();}},300);
     setTimeout(()=>clearInterval(t),20000);});
