@@ -5950,7 +5950,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v126</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v128</b></div>
   </div>
 </div>
 
@@ -6144,7 +6144,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v126</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v128</b></div>
   </div>
 </div>
 
@@ -8416,7 +8416,7 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
       const gateway=params.get('commonPilot')==='1'?window.__TR_COMMON_PILOT__:window.__TR_PORTAL_SYNC__;
       if(!(params.get('commonPilot')==='1'?gateway?.ready:gateway?.canSendChat?.())){showActionFeedback('送信できません','本人接続が必要です。');return;}
       $('portalChatSend').disabled=true;
-      try{await gateway.sendChat(t.slice(0,1000));chatInput.value='';}
+      try{await gateway.sendChat(t.slice(0,1000));chatInput.value='';portalChatFit();}
       catch(_){showActionFeedback('送信できません','通信状態と権限を確認してください。');}
       finally{$('portalChatSend').disabled=false;}
       return;
@@ -8440,12 +8440,9 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
       $('portalChatSend').textContent='送信';
     }
   };
-  chatInput.addEventListener('keydown',e=>{
-    if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){
-      e.preventDefault();
-      $('portalChatSend').click();
-    }
-  });
+  // v128: Enter = 改行。送信は「送信」ボタンのタップだけ。入力欄は行数に合わせて広がる（上限あり）。
+  const portalChatFit=()=>{chatInput.style.height='auto';chatInput.style.height=Math.min(Math.max(chatInput.scrollHeight,46),120)+'px';chatInput.style.maxHeight='120px';};
+  chatInput.addEventListener('input',portalChatFit);
 
   // ---------------- v9 MANAGEMENT UI ----------------
   let noticeListMonth=currentMonthKey, practiceListMonth=currentMonthKey, eventListMonth=currentMonthKey, resourceListMonth=currentMonthKey;
@@ -13287,14 +13284,25 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
     box.innerHTML=`<b>同じ名前の記録が ${rows.length}件 あります</b><br>${rows.map(r=>'・'+rpRecLine(r)).join('<br>')}<br><button type="button" class="portalPrimary" id="rpPersonOk" style="width:100%;margin-top:10px;min-height:46px">この人の記録にする</button><p id="rpPersonMsg" style="margin:6px 0 0;font-weight:700"></p>`;
     $('rpPersonOk').onclick=async()=>{
       if(rpBannerBusy)return;rpBannerBusy=true;$('rpPersonOk').disabled=true;$('rpPersonMsg').textContent='保存中…';
-      let done=0;const errs=[];
+      let done=0;const errs=[];let target={uid:person.uid,profileId:person.profileId,name:person.name};
       try{await rpLoadClaims();}catch(_){}
-      for(const r of rows){if(rpClaims.has(r.id))continue;try{await rpWrite(person,r);done++;}catch(err){errs.push(String(err?.message||err).slice(0,60));}}
-      try{await rpG().loadPastRecordsFor(person.uid,person.profileId);}catch(_){}
+      try{
+        const acc=await rpG().rpCheckMember(person.uid);
+        if(!acc.active){rpBannerBusy=false;$('rpPersonOk').disabled=false;$('rpPersonMsg').textContent='この人の参加承認が確認できません。参加承認をしてから押してください。';return;}
+        target={...target,profileId:acc.profileId};
+      }catch(_){}
+      for(const r of rows){if(rpClaims.has(r.id))continue;try{await rpWrite(target,r);done++;}catch(err){errs.push(String(err?.code||err?.message||err));}}
+      let reason='';
+      if(errs.some(e=>/permission/i.test(e))){
+        const self=await rpG().rpSelfTest();
+        reason=self?'あなた（開発者）の端末に、記録を書き込む権限が確認できません。開発者の本人認証（歯車の開発者ログイン）をやり直してから、もう一度押してください。'
+          :'この参加者のFirebase上の本人情報が、参加承認のときの情報と一致しないため保存できません。（確認用：'+person.uid.slice(-6)+' / '+String(target.profileId).slice(-6)+'）この文をそのままチャットで送ってください。';
+      }
+      try{await rpG().loadPastRecordsFor(target.uid,target.profileId);}catch(_){}
       rpBannerBusy=false;
       renderPortalPersonalRecord();
       const msg=$('rpPersonMsg');
-      if(msg)msg.textContent=errs.length?`保存できなかった記録があります：${errs.join('；')}`:'';
+      if(msg)msg.textContent=errs.length?(reason||`保存できなかった記録があります：${errs.join('；')}`):'';
       try{showActionFeedback(errs.length?'一部保存できませんでした':'保存しました',`${person.name}さんの記録 ${done}件`);}catch(_){}
     };
   }
@@ -15099,6 +15107,21 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
       }
       rows.sort((x,y)=>y.requestedAt-x.requestedAt);
       return rows;
+    };
+    // v127: the approval record (memberAccess) is the canonical profileId for writing a member's records.
+    gate.rpCheckMember=async uid=>{
+      if(!isDeveloper())throw Error('開発者の権限が必要です');
+      const v=(await dbMod.get(ref('memberAccess/'+uid))).val();
+      return {active:v?.active===true,profileId:typeof v?.profileId==='string'?v.profileId:''};
+    };
+    // v127: when a write is refused, test the developer's own write permission to tell the two causes apart.
+    gate.rpSelfTest=async()=>{
+      const id='local-flow-selftest-'+Date.now().toString(36);
+      try{
+        await gate.saveStaffPastRecord({uid:gate.uid,profileId:gate.profileId},{id,name:'書き込み確認',date:new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Tokyo'}),metric:'other',time:'1:00',status:'time',venue:'',official:false},null);
+        try{await gate.deleteStaffPastRecord({uid:gate.uid,profileId:gate.profileId},id,null);}catch(_){}
+        return '';
+      }catch(err){return String(err?.code||err?.message||err);}
     };
     gate.listMemberTimes=async()=>{
       if(!isDeveloper())throw Error('開発者の権限が必要です');
