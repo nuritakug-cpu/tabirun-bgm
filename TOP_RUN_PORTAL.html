@@ -5949,7 +5949,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v119</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v120</b></div>
   </div>
 </div>
 
@@ -6143,7 +6143,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v119</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v120</b></div>
   </div>
 </div>
 
@@ -17808,6 +17808,74 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
     try{await navigator.clipboard.writeText(state.selectedUid);hint.textContent='UIDをコピーしました';}
     catch(e){result.focus();result.select();hint.textContent='コピーできない場合は、選択された文字を長押ししてコピーしてください。';}
   });
+})();
+</script>
+
+<script id="tr-icon-only-registration-v120">
+/* v120: (1) On phones, new registration / link requests only from the home-screen icon.
+   Opening in Safari, Chrome or BAND shows a notice instead. Already-registered people are not affected.
+   (2) From the icon, ask the browser to keep saved data (navigator.storage.persist).
+   Display and click guards only: no Auth, no new UID, no Firebase write. */
+(function(){'use strict';
+  const ua=navigator.userAgent||'';
+  const isPhone=/iPhone|iPad|iPod|Android/i.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  const mq=m=>window.matchMedia?.('(display-mode: '+m+')')?.matches===true;
+  const fromIcon=()=>navigator.standalone===true||mq('standalone')||mq('fullscreen')||mq('minimal-ui');
+
+  // (2) keep saved data
+  if(isPhone&&fromIcon()){
+    try{navigator.storage?.persisted?.().then(ok=>{if(!ok)return navigator.storage.persist?.();}).catch(()=>{});}catch(_){}
+  }
+  if(!isPhone||fromIcon())return;
+
+  // (1) browser on a phone: block only the actions that create a new registration or link request
+  const $=id=>document.getElementById(id);
+  const blockIds=['portalNewParticipantStart','portalLinkYes','portalNewParticipantForm','portalParticipantRoleStep','portalIdentityLinkOpen'];
+  const NOTICE_ID='portalIconOnlyNotice';
+  const notice=()=>{
+    let n=$(NOTICE_ID);
+    if(n)return n;
+    n=document.createElement('div');n.id=NOTICE_ID;n.className='portalRegistrationRoleMessage';n.setAttribute('role','status');
+    n.style.cssText='margin:12px 0;line-height:1.75;font-size:14px';
+    n.innerHTML='<b>ホーム画面のアイコンから開いてください</b><br>ここ（Safari・Chrome・BANDの中）では、登録できません。<br>アイコンがある方：アイコンから開いてください。<br>アイコンがない方：案内のとおり、先にアイコンを作ってください。<br>※ここで登録すると、あとでアイコンから入れなくなります。';
+    const msg=$('portalParticipantLoginMessage');
+    (msg||document.querySelector('#portalParticipantIdentityGate .portalParticipantGateCard'))?.insertAdjacentElement(msg?'afterend':'afterbegin',n);
+    return n;
+  };
+  const linkFormRequestMode=()=>{const f=$('portalIdentityLinkRequestForm');return f&&!f.hidden&&!$('portalApprovalBanner');};
+  const apply=()=>{
+    const gate=$('portalParticipantIdentityGate');
+    if(!gate||gate.hidden)return;
+    let blocked=false;
+    for(const id of blockIds){const el=$(id);if(el&&!el.hidden){el.hidden=true;blocked=true;}}
+    if(linkFormRequestMode()){$('portalIdentityLinkRequestForm').hidden=true;blocked=true;}
+    if(blocked||$(NOTICE_ID)){
+      notice();
+      const t=$('portalParticipantLoginTitle'),m=$('portalParticipantLoginMessage'),h=$('portalParticipantLoginHelp');
+      if(t&&t.textContent!=='アイコンから開いてください')t.textContent='アイコンから開いてください';
+      if(m&&m.textContent)m.textContent='';
+      if(h&&!h.hidden)h.hidden=true;
+    }
+  };
+  // safety: even if a button appears for a moment, a tap here does nothing
+  document.addEventListener('click',ev=>{
+    const b=ev.target?.closest?.('#portalNewParticipantStart,#portalLinkYes,#portalIdentityLinkOpen,#portalParticipantRoleNext');
+    if(!b)return;ev.preventDefault();ev.stopImmediatePropagation();apply();notice();
+  },true);
+  document.addEventListener('submit',ev=>{
+    const f=ev.target;
+    if(f?.id==='portalNewParticipantForm'||(f?.id==='portalIdentityLinkRequestForm'&&!$('portalApprovalBanner'))){
+      ev.preventDefault();ev.stopImmediatePropagation();apply();notice();
+    }
+  },true);
+  let queued=false;
+  const schedule=()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;apply();});};
+  const start=()=>{
+    const gate=$('portalParticipantIdentityGate');
+    if(gate)new MutationObserver(schedule).observe(gate,{subtree:true,attributes:true,attributeFilter:['hidden']});
+    apply();
+  };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
 </script>
 
