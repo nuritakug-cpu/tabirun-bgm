@@ -4374,7 +4374,7 @@ html:is([data-portal-personal-color="winter"],[data-portal-personal-color="matte
 #portalExistingStaffAuth,#portalExistingGrantAdmin{max-width:720px;margin:14px 0;background:var(--paper,#f6f3e8)}
 #portalExistingStaffAuth[hidden],#portalExistingGrantAdmin[hidden]{display:none!important}
 #portalExistingStaffAuth .portalAuthLabel,#portalExistingGrantAdmin .portalAuthLabel{display:block;font-size:12px;font-weight:900;margin-top:11px}
-#portalExistingDevCode,#portalGrantAdminUid{display:block;width:100%;min-height:48px;margin:8px 0;border:1px solid #a6bfc1;background:#fff;border-radius:12px;padding:10px 12px;color:#223238;font-size:16px}
+#portalExistingDevCode,#portalGrantAdminUid,#portalGrantAdminPick{display:block;width:100%;min-height:48px;margin:8px 0;border:1px solid #a6bfc1;background:#fff;border-radius:12px;padding:10px 12px;color:#223238;font-size:16px}
 #portalExistingStaffAuth .portalInlineState,#portalExistingGrantAdmin .portalInlineState{font-size:12px;line-height:1.6;overflow-wrap:anywhere}
 </style>
 
@@ -5946,7 +5946,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v115</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v117</b></div>
   </div>
 </div>
 
@@ -6140,7 +6140,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v115</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v117</b></div>
   </div>
 </div>
 
@@ -6756,6 +6756,9 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
   portalGrantPane.id='portalExistingGrantAdmin';portalGrantPane.className='portalPanel';portalGrantPane.hidden=true;
   portalGrantPane.innerHTML=`<summary>開発者専用：管理者権限の付与</summary><div class="portalPanelHead"><small>EXISTING FIREBASE UID</small><b>既存UIDへの管理者権限付与</b></div>
      <p class="portalHelp">開発者専用：すでにPORTALへ登録済みの人を管理者に指定する場合だけ使います。参加者登録・過去大会の選手選択には使いません。対象者の既存UIDが分からない場合は操作しないでください。本人UID／profileIdは作成・変更しません。</p>
+     <label for="portalGrantAdminPick" class="portalAuthLabel">承認済みの参加者から選ぶ</label>
+     <button id="portalGrantAdminLoad" class="portalPrimary" type="button">承認済みの参加者を読み込む</button>
+     <select id="portalGrantAdminPick" disabled><option value="">先に「承認済みの参加者を読み込む」を押してください</option></select>
      <label for="portalGrantAdminUid" class="portalAuthLabel">管理者の既存Firebase UID</label>
      <input id="portalGrantAdminUid" type="text" maxlength="128" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="既存のUIDを入力">
      <button id="portalGrantAdminVerify" class="portalPrimary" type="button">このUIDへ管理者権限を付与</button>
@@ -6787,10 +6790,37 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
     catch(error){message.textContent='開発者認証が成立しません：'+String(error?.code||error?.message||error).slice(0,130);}
     finally{button.disabled=false;}
   });
+  // v117: pick an approved participant by name; the UID field is filled from the already-approved list (no typing).
+  document.getElementById('portalGrantAdminLoad')?.addEventListener('click',async()=>{
+    const message=document.getElementById('portalGrantAdminStatus');const pick=document.getElementById('portalGrantAdminPick');
+    const button=document.getElementById('portalGrantAdminLoad');const gate=window.__TR_PORTAL_SYNC__;
+    if(!gate?.loadApprovedMembersForSelection){message.textContent='Firebaseの本人接続がまだ開始していません。';return;}
+    button.disabled=true;message.textContent='承認済みの参加者を読み込み中…';
+    try{
+      await gate.loadApprovedMembersForSelection();
+      const rows=(gate.lastApprovedMembers||[]).slice().sort((a,b)=>a.name.localeCompare(b.name,'ja'));
+      const count={};rows.forEach(r=>{count[r.name]=(count[r.name]||0)+1;});
+      pick.replaceChildren();
+      const first=document.createElement('option');first.value='';first.textContent=rows.length?'名前を選んでください':'承認済みの参加者がいません';pick.append(first);
+      for(const r of rows){const o=document.createElement('option');o.value=r.uid;
+        o.textContent=r.name+(count[r.name]>1?'（同じ名前あり・末尾'+r.uid.slice(-6)+'）':'');pick.append(o);}
+      pick.disabled=!rows.length;
+      message.textContent=rows.length?rows.length+'人を読み込みました。名前を選んでください。':'承認済みの参加者がいません。';
+    }catch(error){message.textContent='読み込めません：'+String(error?.code||error?.message||error).slice(0,130);}
+    finally{button.disabled=false;}
+  });
+  document.getElementById('portalGrantAdminPick')?.addEventListener('change',e=>{
+    const field=document.getElementById('portalGrantAdminUid');const message=document.getElementById('portalGrantAdminStatus');
+    if(field)field.value=e.target.value||'';
+    const text=e.target.selectedOptions[0]?.textContent||'';
+    message.textContent=e.target.value?(text.includes('同じ名前あり')?'同じ名前の人がいます。本人か分からないときは付与しないでください。':'選んだ人：'+text+'。「このUIDへ管理者権限を付与」を押してください。'):'';
+  });
   document.getElementById('portalGrantAdminVerify')?.addEventListener('click',async()=>{
     const field=document.getElementById('portalGrantAdminUid');const message=document.getElementById('portalGrantAdminStatus');
     const target=String(field?.value||'').trim();
     if(!target){message.textContent='既存管理者のUIDを入力してください。';return;}
+    const picked=(window.__TR_PORTAL_SYNC__?.lastApprovedMembers||[]).find(m=>m.uid===target);
+    if(!confirm((picked?picked.name+' さん':'UID末尾 '+target.slice(-6)+' の人')+'を管理者にします。よろしいですか？'))return;
     const gate=window.__TR_PORTAL_SYNC__;
     const button=document.getElementById('portalGrantAdminVerify');button.disabled=true;
     message.textContent='Firebaseの権限判定中…';
@@ -14326,6 +14356,9 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
   // Do not show a permanent spinner when the network stalls; no Firebase write is issued.
   setTimeout(()=>{
     if(!resolved&&!retry.hidden)return;
+    // v116: once the entry choice was shown, the connection check already finished (no saved UID).
+    // Do not replace the name form / link form the person is typing in with a network warning.
+    if(!resolved&&(zeroUidChoice||orphanRecoveryAllowed))return;
     if(!resolved)warn('接続状況を確認してください','ログインの確認に時間がかかっています。通信状態を確認してから再試行してください。');
   },15000);
 })();
@@ -15484,6 +15517,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         rows.push({uid,profileId:m.profileId,name:approvedName});
       }
       ui?.applyApprovedMemberRoster?.(rows);
+      gate.lastApprovedMembers=rows.map(r=>({uid:r.uid,name:r.name})); // v117: read-only copy for the admin picker
       return rows.length;
     };
     gate.publishAthleteSelections=async(items)=>{
