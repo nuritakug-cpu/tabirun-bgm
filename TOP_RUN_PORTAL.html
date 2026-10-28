@@ -5846,6 +5846,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       <div class="crHeroStats"><div><small>大会記録</small><b id="crRecordCount">0<em>件</em></b></div><div><small>駅伝</small><b id="crRelayCount">0<em>大会</em></b></div></div>
     </section>
     <p id="v88DeveloperMyPageNote" class="v88DeveloperNote" hidden></p>
+    <div id="rpPersonBanner" hidden style="margin:12px 0;padding:14px;border-radius:16px;border:2px solid #d8b52a;background:rgba(216,181,42,.12);line-height:1.7"></div>
     <section class="crSection" data-cr-section="pb"><div class="crSectionHead"><div><small>PERSONAL BEST</small><h3>自己ベスト</h3></div><div class="crHeadActions"><span>タップで詳細</span><button type="button" data-cr-collapse>非表示</button></div></div><div class="crSectionBody"><div class="crPbGrid" id="crPbGrid"></div><div class="v88SecondaryPb"><small>その他の種目（大会記録）</small><div class="crPbGrid" id="crSecondaryPbGrid"></div></div></div></section>
     <section class="crSection collapsed" data-cr-section="official"><div class="crSectionHead"><div><small>CERTIFIED PERSONAL BEST</small><h3>公認ベスト</h3></div><div class="crHeadActions"><span>公認記録のみ</span><button type="button" data-cr-collapse>表示</button></div></div><div class="crSectionBody"><p class="portalHelp">PORTALの大会設定が現在「公認」の大会記録だけを集計します。EVENT BASEの正式結果確定だけでは公認になりません。未紐付けの過去記録は公認対象に自動算入しません。</p><div class="portalOfficialGrid" id="crOfficialGrid"></div></div></section>
     <section class="crSection" data-cr-section="other"><div class="crSectionHead"><div><small>OTHER RECORDS</small><h3>その他の記録</h3><p class="crOtherSubtitle">TT・選考・試走</p></div><div class="crHeadActions"><span>練習の計測履歴</span><button type="button" data-cr-collapse>非表示</button></div></div><div class="crSectionBody"><div class="crOtherGrid" id="crOtherGrid"></div></div></section>
@@ -5949,7 +5950,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v125</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v126</b></div>
   </div>
 </div>
 
@@ -6143,7 +6144,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v125</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v126</b></div>
   </div>
 </div>
 
@@ -9866,6 +9867,7 @@ const gateway=window.__TR_PORTAL_SYNC__;
     const person=portalAthletes.find(x=>x.profileId===portalPersonalTargetId);
     $('crPersonName').textContent=isSelf?displayName:(person?.name||'名前未登録');
     const devInfo=$('v88DeveloperMyPageNote');if(devInfo){devInfo.hidden=!portalV88DeveloperRecordAdmin();devInfo.textContent=portalV88DeveloperRecordAdmin()?'開発者確認：'+(isSelf?'自分':person?.name||'選手')+'の個人記録です。管理登録記録のみここから修正・削除できます。参加者には管理操作を表示しません。':'';}
+    try{rpPersonBanner(isSelf?null:person);}catch(_){}
     const logo=$('crTeamLogo'),src=document.querySelector('.logoWrap img');
     if(src?.src&&!logo.querySelector('img')){logo.innerHTML='';const img=document.createElement('img');img.src=src.src;img.alt='TOP RUN';logo.appendChild(img)}
     const personal=portalRecFor();portalUpdateRecordMetricOptions();const raceRows=personal.filter(portalIsRaceRecord);$('crRecordCount').innerHTML=raceRows.length+'<em>件</em>';$('crRelayCount').innerHTML=raceRows.filter(r=>r.metric==='relay').length+'<em>大会</em>';
@@ -10171,7 +10173,14 @@ const gateway=window.__TR_PORTAL_SYNC__;
       byProfile.set(p.profileId,{profileId:p.profileId,uid:p.uid,name:p.name||'登録者'});
     }
     for(const id of bad)byProfile.delete(id);
-    return [...byProfile.values()].sort((a,b)=>a.name.localeCompare(b.name,'ja'));
+    // v126: one person = one name. If a PORTAL-approved member and an old EVENT BASE browser identity share a name,
+    // only the PORTAL member is listed (that is the person who has the MY PAGE).
+    const approved=new Set(portalApprovedMemberRows.map(m=>m.uid)),byName=new Map();
+    for(const p of byProfile.values()){
+      const k=String(p.name||'').normalize('NFKC').replace(/[\s\u3000]/g,''),prev=byName.get(k);
+      if(!prev||(!approved.has(prev.uid)&&approved.has(p.uid)))byName.set(k,p);
+    }
+    return [...byName.values()].sort((a,b)=>a.name.localeCompare(b.name,'ja'));
   }
   function refreshPortalDevVerifiedPicker(note=''){
     const sel=$('portalDevVerifiedSelector'),btn=$('portalDevVerifiedOpen'),status=$('portalDevVerifiedStatus');
@@ -13258,6 +13267,36 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
     d.innerHTML='<summary class="portalFlowSecondary" style="padding:10px;border-radius:12px">以前の管理画面（帳票・個別入力など）</summary>';
     [...body.children].forEach(c=>{if(c!==panel)d.append(c);});body.append(d);rpWrapped=true;
     const head=document.querySelector('#screen-flow-manager .portalScreenHead b');if(head)head.textContent='参加者・記録';
+  }
+  // v126: on a person's 個人記録 page the developer sees the same-name past records and presses OK once.
+  let rpBannerBusy=false,rpBannerLoading=false;
+  async function rpEnsureLoaded(){
+    if(rpBannerLoading)return;rpBannerLoading=true;
+    try{if(!Object.keys(rpTimes).length){rpTimes=await rpG().listMemberTimes?.()||{};rpTimesOk=Object.keys(rpTimes).length>0;}if(!rpLoaded)await rpLoadClaims();}
+    catch(_){}finally{rpBannerLoading=false;}
+  }
+  function rpPersonBanner(person){
+    const box=$('rpPersonBanner');if(!box)return;
+    if(!person||!rpIsDev()||!person.uid||!person.profileId){box.hidden=true;return;}
+    if(!rpLoaded||!rpTimesOk){box.hidden=true;rpEnsureLoaded().then(()=>{if(rpLoaded)rpPersonBanner(person);});return;}
+    if(!rpTimes[person.uid]){box.hidden=false;box.innerHTML='<b>この人はPORTALで参加承認されていません。</b><br>承認すると、ここに過去の記録を付けられます。';return;}
+    const name=rpNorm(person.name);
+    const rows=rpAllRows().filter(r=>rpNorm(r.name)===name&&!rpClaims.has(r.id));
+    if(!rows.length){box.hidden=true;return;}
+    box.hidden=false;
+    box.innerHTML=`<b>同じ名前の記録が ${rows.length}件 あります</b><br>${rows.map(r=>'・'+rpRecLine(r)).join('<br>')}<br><button type="button" class="portalPrimary" id="rpPersonOk" style="width:100%;margin-top:10px;min-height:46px">この人の記録にする</button><p id="rpPersonMsg" style="margin:6px 0 0;font-weight:700"></p>`;
+    $('rpPersonOk').onclick=async()=>{
+      if(rpBannerBusy)return;rpBannerBusy=true;$('rpPersonOk').disabled=true;$('rpPersonMsg').textContent='保存中…';
+      let done=0;const errs=[];
+      try{await rpLoadClaims();}catch(_){}
+      for(const r of rows){if(rpClaims.has(r.id))continue;try{await rpWrite(person,r);done++;}catch(err){errs.push(String(err?.message||err).slice(0,60));}}
+      try{await rpG().loadPastRecordsFor(person.uid,person.profileId);}catch(_){}
+      rpBannerBusy=false;
+      renderPortalPersonalRecord();
+      const msg=$('rpPersonMsg');
+      if(msg)msg.textContent=errs.length?`保存できなかった記録があります：${errs.join('；')}`:'';
+      try{showActionFeedback(errs.length?'一部保存できませんでした':'保存しました',`${person.name}さんの記録 ${done}件`);}catch(_){}
+    };
   }
   window.__rpOpen=async()=>{
     if(!rpIsDev()){const p=$('rpPanel');if(p)p.hidden=true;return;}
