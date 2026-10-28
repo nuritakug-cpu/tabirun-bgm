@@ -1,3 +1,5 @@
+<!-- TOP RUN PORTAL v130 2026-10-28: v129 + 元管理者・出走歴なしの人の「前の登録とつなぐ」承認で止まらないよう修正（管理資格が無い元管理者は参加者としてつなぐ。管理資格の引継ぎ条件は従来どおり）。 -->
+<!-- TOP RUN PORTAL v129 2026-10-28: v128 + 「前の登録とつなぐ」承認済みの人は、前のUIDの出走登録・結果（同じprofileIdのみ）を自分のものとしてマイページに表示し、今大会の追加出走登録も「別UID」扱いで止めない。データの書き換えなし。 -->
 <!-- TOP RUN PORTAL v128 2026-10-28: v127 + 開発者の本人引継ぎ承認で「保存ACKが成立しません」になる不具合を修正（Firebaseトランザクションの最初の空読みで中止していた）。承認内容・Rules・UIDは変更なし。 -->
 <!-- TOP RUN PORTAL v127 2026-10-28: v126 + 自動で選べないとき、申請欄に各大会の読み取り結果と、申請名に近い出走登録（本人UID・本人番号の有無）を表示。読み取りのみ。 -->
 <!-- TOP RUN PORTAL v126 2026-10-28: v125 + 引継ぎ元の候補を、第1回・第2回・今大会の出走登録（events/<id>/players の subjectUid・profileId）からも作る。同名複数は出走登録がある方を自動選択。読み取りのみ。 -->
@@ -5957,7 +5959,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v128</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v130</b></div>
   </div>
 </div>
 
@@ -6151,7 +6153,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v128</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v130</b></div>
   </div>
 </div>
 
@@ -14827,7 +14829,7 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
           let c=candidateMap.get(sourceUid);
           if(c&&c.profileId!==v.profileId)continue;
           if(!c){c={uid:sourceUid,profileId:v.profileId,
-            name:String(v.displayName||joinHistory[sourceUid]?.displayName||'(前の参加者)').slice(0,24),source:'event-'+String(v.role||'participant')};
+            name:String(v.displayName||joinHistory[sourceUid]?.displayName||'(前の参加者)').slice(0,24),source:'event-participant'};
             candidateMap.set(sourceUid,c);}
           c.events=c.events||[];if(!c.events.includes(pastLabels[idx]))c.events.push(pastLabels[idx]);
           if(idx===2)c.currentEvent=true;
@@ -14877,9 +14879,9 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
         // A known role in a legacy event binding is NOT by itself proof of
         // authorization to transfer. Verify the existing staff grant when
         // applicable. The server Rules independently check the same source.
-        const sourceGrant=(await dbMod.get(dbMod.ref(db,'portalRoles/'+sourceUid))).val();
-        if(sourceGrant?.role!=='admin')
-          throw Error('元管理者のPORTAL管理資格が確認できないため承認できません');
+        // v130: without an admin grant the person is linked as a PARTICIPANT (no role is transferred;
+        // finalize promotes only when portalRoles/<old>.role==='admin'). Do not stop the link.
+        try{await dbMod.get(dbMod.ref(db,'portalRoles/'+sourceUid));}catch(_){}
       }
       const approved={...request};delete approved.uid;
       Object.assign(approved,{status:'approved',sourceUid,profileId:candidate.profileId,
@@ -15115,7 +15117,7 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
       unsubs.splice(0).concat(ownSubs.splice(0),officialSubs.splice(0)).forEach(stop=>{try{stop();}catch(_){}});ownSignature='';officialSignature='';
       ui?.clearNoticeReads?.();
       ui?.applyHomeImage(null); // Never show a previous login's image while switching identity.
-      gate.ready=false;gate.uid='';gate.profileId='';gate.role='unverified';gate.roleVerified=false;gate.memberApproved=false;gate.firstEventOwnerBinding='not-applicable';
+      gate.ready=false;gate.uid='';gate.profileId='';gate.role='unverified';gate.roleVerified=false;gate.memberApproved=false;gate.firstEventOwnerBinding='not-applicable';gate.linkedSourceUid='';
       {const w=document.getElementById('portalOwnerBindingRecovery');if(w)w.hidden=true;
        const b=document.getElementById('portalOwnerBindingRecoveryButton');if(b){b.hidden=true;b.onclick=null;}}
       ui?.applyVerifiedRole('unverified','');ui?.applyVerifiedResponseRoster([]);
@@ -15275,10 +15277,11 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
           throw Error('PORTALの種目開催日がEVENT BASEの正式開催日と一致しません');
         const playersRef=dbMod.ref(db,'events/'+target.id+'/players');
         const all=(await dbMod.get(playersRef)).val()||{};
+        const sameOwner=u=>u===person.uid||(gate.linkedSourceUid&&u===gate.linkedSourceUid);
         const otherOwner=Object.values(all).some(p=>p&&p.profileId===person.profileId&&
-          p.subjectUid&&p.subjectUid!==person.uid);
+          p.subjectUid&&!sameOwner(p.subjectUid));
         if(otherOwner)throw Error('同じprofileIdが別UIDに登録されています。管理者の本人照合が必要です');
-        if(Object.values(all).some(p=>p&&p.subjectUid===person.uid&&p.profileId===person.profileId&&
+        if(Object.values(all).some(p=>p&&sameOwner(p.subjectUid)&&p.profileId===person.profileId&&
             officialMetricKey(p.event)===normalized&&p.status!=='cancelled'))
           throw Error('同じ種目は正式出走登録済みです。重複登録はできません');
         const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(person.uid+'|'+target.id+'|'+normalized));
@@ -16002,7 +16005,8 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
           // canonical event, neither record is silently assigned to MY PAGE.
           const profileOwners=new Map();
           for(const p of Object.values(raw)){
-            const personUid=String(p?.subjectUid||''),personProfile=String(p?.profileId||'');
+            const rawUid=String(p?.subjectUid||''),personProfile=String(p?.profileId||'');
+            const personUid=(gate.linkedSourceUid&&rawUid===gate.linkedSourceUid&&personProfile===profileId)?uid:rawUid;
             if(/^[A-Za-z0-9_-]{6,128}$/.test(personUid)&&personProfile){
               if(!profileOwners.has(personProfile))profileOwners.set(personProfile,new Set());
               profileOwners.get(personProfile).add(personUid);
@@ -16031,7 +16035,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
               const name=String(p.name||'出走登録者').trim().slice(0,24)||'出走登録者';
               attendance.set(p.subjectUid,{uid:p.subjectUid,name,note:'EVENT BASE出走登録'});
             }
-            if(!p||typeof p!=='object'||p.subjectUid!==uid)continue;
+            if(!p||typeof p!=='object'||!(p.subjectUid===uid||(gate.linkedSourceUid&&p.subjectUid===gate.linkedSourceUid)))continue;
             // Both independently verified identifiers must match the LOGIN
             // identity. Missing profileId is NOT equivalent to a match.
             if(!profileId||p.profileId!==profileId)continue;
@@ -16341,6 +16345,14 @@ try{
             return;
           }
         }else gate.memberApproved=true;
+        // v129: an approved "前の登録とつなぐ" link makes the OLD UID's race entries this person's own (same profileId only).
+        gate.linkedSourceUid='';
+        try{
+          const lk=(await dbMod.get(ref('identityLinks/'+uid))).val();
+          if(seq!==generation||auth.currentUser?.uid!==uid)return;
+          if(lk?.status==='approved'&&lk.profileId===gate.profileId&&/^[A-Za-z0-9_-]{6,128}$/.test(String(lk.sourceUid||''))&&lk.sourceUid!==uid)
+            gate.linkedSourceUid=lk.sourceUid;
+        }catch(_){gate.linkedSourceUid='';}
         ui?.applyVerifiedRole(gate.role,uid);
         window.dispatchEvent(new Event('tr-portal-authorized'));
         // First-event owner binding: user-initiated recovery in the EXISTING unified gate.
