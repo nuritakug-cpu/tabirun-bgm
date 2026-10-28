@@ -14458,11 +14458,27 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
     const P105_NEXT_EKIDEN='eventbase_ekiden_next_2026_38fa5537b6';
     const p105Staff=()=>gate.roleVerified===true&&['developer','admin'].includes(gate.role)&&!!gate.uid&&auth.currentUser?.uid===gate.uid;
     const p105CanEdit=eventId=>p105Staff()&&(gate.role==='developer'||eventId===P105_NEXT_EKIDEN);
+    // The two historical canonical events are built into PORTAL; their saved title is often missing, which
+    // used to show the placeholder '大会正式名称未取得' for both (so 第1回 could not be recognised in the list).
+    const P105_KNOWN={'eventbase_mu4ujce3_xxx1':'第1回大会','eventbase_ekiden_dev_20261006':'第2回大会（駅伝）'};
+    const p105Label=r=>{
+      const t=String(r.eventTitle||'').trim(),unknown=!t||t==='大会正式名称未取得',known=P105_KNOWN[r.eventId];
+      return (unknown?(known||r.eventId):(known&&!t.includes(known)?known+'｜'+t:t)).slice(0,80);
+    };
+    gate.eventBaseReadReport=()=>{
+      if(!p105Staff())throw Error('開発者・管理者の権限が必要です');
+      const ids=new Set([...Object.keys(P105_KNOWN),...Object.keys(gate.officialReadStatus||{})]);
+      return [...ids].map(id=>{
+        const v=(gate.officialReadStatus||{})[id]||{},err=String(v.playerError||(gate.errors||{})['eventBase:'+id]||'').slice(0,60);
+        return {id,label:p105Label({eventId:id,eventTitle:v.canonicalTitle}),status:err?'エラー '+err:(v.playersStatus==='ok'?'読込OK 選手'+Number(v.players||0)+'人':'未読込'),
+          editable:p105CanEdit(id)};
+      });
+    };
     gate.listEventBaseResultTargets=()=>{
       if(!p105Staff())throw Error('開発者・管理者の権限が必要です');
       return Object.values(gate.officialParticipantRoster||{}).flat()
         .filter(r=>r&&r.source==='player'&&/^[A-Za-z0-9_-]{1,120}$/.test(String(r.playerId||''))&&/^[A-Za-z0-9_-]{6,120}$/.test(String(r.eventId||''))&&p105CanEdit(r.eventId))
-        .map(r=>({eventId:r.eventId,eventTitle:String(r.eventTitle||r.eventId).slice(0,80),playerId:r.playerId,name:String(r.name||'').slice(0,24)}));
+        .map(r=>({eventId:r.eventId,eventTitle:p105Label(r),playerId:r.playerId,name:String(r.name||'').slice(0,24)}));
     };
     gate.readEventBasePlayerResult=async(eventId,playerId)=>{
       if(!p105CanEdit(eventId))throw Error('この大会の記録は修正できません');
@@ -17419,7 +17435,10 @@ setInterval(display,1000);
     ebRows=g.listEventBaseResultTargets();
     const events=[...new Map(ebRows.map(r=>[r.eventId,r.eventTitle])).entries()];
     fillSel(ebEvent,[['','大会を選択'],...events]);fillPlayers();
-    return events.length?events.length+'大会・'+ebRows.length+'人を読み込みました。':'読み込める選手がいません。少し待って、もう一度押してください。';
+    let report='';
+    try{report='\n'+g.eventBaseReadReport().map(r=>'・'+r.label+'：'+r.status+(r.editable?'':'（この権限では修正不可）')).join('\n');}catch(_){}
+    const adminNote=g.role==='admin'?'\n※管理者は次回の駅伝大会だけ表示されます。過去大会は開発者でログインしてください。':'';
+    return (events.length?events.length+'大会・'+ebRows.length+'人を読み込みました。':'読み込める選手がいません。少し待って、もう一度押してください。')+report+adminNote;
   },ebState));
   ebEvent?.addEventListener('change',fillPlayers);
   ebPlayer?.addEventListener('change',loadCurrent);
