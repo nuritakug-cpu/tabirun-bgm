@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v128 2026-10-28: v127 + 開発者の本人引継ぎ承認で「保存ACKが成立しません」になる不具合を修正（Firebaseトランザクションの最初の空読みで中止していた）。承認内容・Rules・UIDは変更なし。 -->
 <!-- TOP RUN PORTAL v127 2026-10-28: v126 + 自動で選べないとき、申請欄に各大会の読み取り結果と、申請名に近い出走登録（本人UID・本人番号の有無）を表示。読み取りのみ。 -->
 <!-- TOP RUN PORTAL v126 2026-10-28: v125 + 引継ぎ元の候補を、第1回・第2回・今大会の出走登録（events/<id>/players の subjectUid・profileId）からも作る。同名複数は出走登録がある方を自動選択。読み取りのみ。 -->
 <!-- TOP RUN PORTAL v125 2026-10-28: v124 + 過去大会の登録が読めないときに一覧の上で知らせる。profileIdを持たない過去の登録は、その人の既存profiles/<uid>/profileIdで候補にする（読み取りのみ）。 -->
@@ -5956,7 +5957,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v127</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v128</b></div>
   </div>
 </div>
 
@@ -6150,7 +6151,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v127</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v128</b></div>
   </div>
 </div>
 
@@ -14885,6 +14886,9 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
         approvedAt:Date.now(),approvedByUid:gate.uid});
       const at=ref(identityLinks+targetUid);
       const result=await dbMod.runTransaction(at,current=>{
+        // v128: the first local call often sees null before the server value arrives.
+        // Returning null (no change) lets Firebase retry with the real pending request instead of aborting.
+        if(current===null)return null;
         if(!isDeveloper()||!current||current.status!=='pending'||current.requestedAt!==request.requestedAt||
            current.requestedName!==request.requestedName)return;
         return approved;
