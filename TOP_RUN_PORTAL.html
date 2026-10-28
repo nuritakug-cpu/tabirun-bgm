@@ -1,4 +1,4 @@
-<!-- TOP RUN PORTAL v112 2026-10-28: v111 + P106 duplicate guard (manual 過去大会 record hidden when EVENT BASE has same person/date/time). v111 notes:  v110 (ChatGPT) + P105 integrated by Claude: EVENT BASE result correction (staff), withdrawn EKIDEN entries hidden from 参加する/RSVP lock, MY PAGE reflection diagnosis. No Auth/UID/Rules/listener change beyond P105 players handling. STATIC/simulated tests only; real Firebase not verified. -->
+<!-- TOP RUN PORTAL v113 2026-10-28: v112 + P107 developer re-bind for the two historical events (same write as the EVENT BASE developer entry; Rules unchanged). v112 notes:  v111 + P106 duplicate guard (manual 過去大会 record hidden when EVENT BASE has same person/date/time). v111 notes:  v110 (ChatGPT) + P105 integrated by Claude: EVENT BASE result correction (staff), withdrawn EKIDEN entries hidden from 参加する/RSVP lock, MY PAGE reflection diagnosis. No Auth/UID/Rules/listener change beyond P105 players handling. STATIC/simulated tests only; real Firebase not verified. -->
 <!-- TOP RUN PORTAL v110 2026-10-28: v109 exact physical parent; PORTAL internal event links now saved via the existing eventItems writer and visible in event list/calendar. External EVENT BASE/EKIDEN validation and all Auth/UID/profileId/Rules/RTDB subscriptions, writes, official results and theme/home image safeguards unchanged. STATIC candidate; Firebase production not tested/deployed. -->
 <!-- 2026-10-28 v109 UI organization: Hide obsolete CHAT STEP 1 panel (retain DOM for existing gateway); move push settings to first; show version "v109" only; developer identity review first in matching management card. No Auth, Rules, listener, CHAT message read/write, image cache, notification registration, official results or released data changed. NOT DEPLOYED. -->
 <!-- TOP RUN PORTAL v109 2026-10-28 PRODUCTION UPLOAD CANDIDATE: physical parent is user-uploaded TOP RUN PORTAL.html (v108). Scope: merge earlier verified default-theme HOME-image Blob paint/read-error reporting only, retaining Winter/Matte theme artwork, inherited P103 small updatedAt listener + IndexedDB cache, and ALL v108 participant onboarding, approval and existing unified Firebase identity/database paths. Display version updated v108 to v109. Static/browser tests only; actual Firebase/participant devices/publication not verified. -->
@@ -5941,7 +5941,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v112</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v113</b></div>
   </div>
 </div>
 
@@ -6095,6 +6095,14 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
             <button id="portalEbResultSave" type="button" style="min-height:43px">この内容で修正する</button>
           </div>
           <p id="portalEbResultState" role="status" style="white-space:pre-wrap;font-size:12px"></p>
+          <div id="portalEbOwnerBox" hidden>
+            <hr style="border:0;border-top:1px solid #686d67;margin:14px 0">
+            <strong>過去大会の開発者接続を更新（開発者のみ）</strong>
+            <p style="font-size:13px">第1回・第2回の読み取りが拒否されるときに使います。保管している32文字の認証コードを入力すると、開発者入口で入るのと同じ接続の更新を、この画面から行います。コードは保存せず、入力欄は実行後に消えます。</p>
+            <input id="portalEbOwnerCode" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="80" inputmode="text" aria-label="開発者の認証コード（32文字）" style="width:100%;min-height:42px;font-size:14px;box-sizing:border-box">
+            <button id="portalEbOwnerRefresh" type="button" style="min-height:43px;margin-top:8px">第1回・第2回の接続を更新して確認</button>
+            <p id="portalEbOwnerState" role="status" style="white-space:pre-wrap;font-size:12px"></p>
+          </div>
         </div>
       </details>
     </section>
@@ -6127,7 +6135,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v112</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v113</b></div>
   </div>
 </div>
 
@@ -14477,6 +14485,32 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
       const t=String(r.eventTitle||'').trim(),unknown=!t||t==='大会正式名称未取得',known=P105_KNOWN[r.eventId];
       return (unknown?(known||r.eventId):(known&&!t.includes(known)?known+'｜'+t:t)).slice(0,80);
     };
+    // P107: re-bind the DEVELOPER's own UID to the two historical events, exactly like the EVENT BASE developer
+    // entry does (bindings/<event>/<ownUid> = {role:'owner',displayName,ownerProof=sha256(code),boundAt}).
+    // Rules accept this write only when the hash equals developerAuth/credentialHash; nothing is stored locally.
+    gate.refreshOwnerBindings=async(code)=>{
+      if(!(gate.role==='developer'&&gate.roleVerified===true&&gate.uid&&auth.currentUser?.uid===gate.uid))throw Error('開発者のみ実行できます');
+      code=String(code||'').replace(/[\s-]/g,'');
+      if(!/^[0-9a-fA-F]{32}$/.test(code))throw Error('保管した32文字の認証コードを入力してください');
+      const bytes=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(code.toLowerCase())));
+      const proof=Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');
+      code='';
+      const out=[];
+      for(const id of Object.keys(P105_KNOWN)){
+        const row={id,label:P105_KNOWN[id],bind:false,bindError:'',read:false,players:0,readError:''};
+        const at=dbMod.ref(db,`bindings/${id}/${gate.uid}`);
+        let name='開発者';
+        try{const prev=(await dbMod.get(at)).val();if(typeof prev?.displayName==='string'&&prev.displayName.trim())name=prev.displayName.trim().slice(0,24);}catch(_){}
+        try{await dbMod.set(at,{role:'owner',displayName:name,ownerProof:proof,boundAt:Date.now()});row.bind=true;}
+        catch(e){row.bindError=String(e?.code||e?.message||e).slice(0,50);}
+        if(row.bind){
+          try{const pl=(await dbMod.get(dbMod.ref(db,`events/${id}/players`))).val()||{};row.read=true;row.players=Object.keys(pl).length;}
+          catch(e){row.readError=String(e?.code||e?.message||e).slice(0,50);}
+        }
+        out.push(row);
+      }
+      return out;
+    };
     gate.eventBaseReadReport=()=>{
       if(!p105Staff())throw Error('開発者・管理者の権限が必要です');
       const ids=new Set([...Object.keys(P105_KNOWN),...Object.keys(gate.officialReadStatus||{})]);
@@ -17424,7 +17458,9 @@ setInterval(display,1000);
   const range=(n,pad)=>Array.from({length:n},(_,i)=>[String(i),pad?String(i).padStart(2,'0'):String(i)]);
   fillSel(ebMin,[['','--'],...range(60,false)]);fillSel(ebSecS,[['','--'],...range(60,true)]);fillSel(ebCs,[['','--'],...range(100,true)]);
   fillSel(ebPlace,[['','未設定'],...Array.from({length:200},(_,i)=>[(i+1)+'位',(i+1)+'位'])]);
-  const showEb=()=>{const g=gate();if(ebSec)ebSec.hidden=!(g?.roleVerified===true&&['developer','admin'].includes(g.role)&&g.uid);};
+  const ownBox=$('portalEbOwnerBox'),ownCode=$('portalEbOwnerCode'),ownState=$('portalEbOwnerState');
+  const showEb=()=>{const g=gate();if(ebSec)ebSec.hidden=!(g?.roleVerified===true&&['developer','admin'].includes(g.role)&&g.uid);
+    if(ownBox)ownBox.hidden=!(g?.roleVerified===true&&g.role==='developer'&&g.uid);};
   window.addEventListener('tr-portal-authorized',showEb);
   const setTime=v=>{const m=/^(\d{1,2}):(\d{1,2})(?:[.:](\d{1,2}))?$/.exec(String(v||''));
     ebMin.value=m?String(Number(m[1])):'';ebSecS.value=m?String(Number(m[2])):'';ebCs.value=m?String(Number((m[3]||'0').padEnd(2,'0'))):'';};
@@ -17465,6 +17501,15 @@ setInterval(display,1000);
     await loadCurrent();
     return name+' の'+kind+'を保存し、Firebaseで確認しました。';
   },ebState));
+  $('portalEbOwnerRefresh')?.addEventListener('click',()=>void run(async()=>{
+    const g=gate();if(!g?.refreshOwnerBindings)throw Error('共通本人モジュールが準備できていません');
+    const code=ownCode.value;
+    if(!confirm('第1回・第2回の開発者接続を、入力した認証コードで更新します。EVENT BASEの選手データは書き換えません。よろしいですか？'))return '中止しました。';
+    let res;try{res=await g.refreshOwnerBindings(code);}finally{ownCode.value='';}
+    return res.map(r=>'・'+r.label+'：'+(r.bind?'接続更新OK':'接続を更新できません（'+(r.bindError||'不明')+'）')+
+      (r.bind?(r.read?'／読み取りOK 選手'+r.players+'人':'／読み取り不可（'+(r.readError||'不明')+'）'):''))
+      .join('\n')+'\nPORTALを一度閉じて開き直し、「大会・選手を読み込む」を押してください。';
+  },ownState));
   showEb();
   const recoveredBox=document.createElement('section');recoveredBox.id='portalRecoveredPastRecordsP97';
   recoveredBox.style.cssText='margin:15px 0;padding:15px;border:1px solid #cbb64b;border-radius:12px';
