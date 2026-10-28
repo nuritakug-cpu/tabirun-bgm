@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v131 2026-10-28: v130 + 開発者の申請一覧が自動確定と再読み込みを繰り返す不具合を修正（参加承認済みの申請は「完了」と表示し、自動確定の対象外）。 -->
 <!-- TOP RUN PORTAL v130 2026-10-28: v129 + 元管理者・出走歴なしの人の「前の登録とつなぐ」承認で止まらないよう修正（管理資格が無い元管理者は参加者としてつなぐ。管理資格の引継ぎ条件は従来どおり）。 -->
 <!-- TOP RUN PORTAL v129 2026-10-28: v128 + 「前の登録とつなぐ」承認済みの人は、前のUIDの出走登録・結果（同じprofileIdのみ）を自分のものとしてマイページに表示し、今大会の追加出走登録も「別UID」扱いで止めない。データの書き換えなし。 -->
 <!-- TOP RUN PORTAL v128 2026-10-28: v127 + 開発者の本人引継ぎ承認で「保存ACKが成立しません」になる不具合を修正（Firebaseトランザクションの最初の空読みで中止していた）。承認内容・Rules・UIDは変更なし。 -->
@@ -5959,7 +5960,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v130</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v131</b></div>
   </div>
 </div>
 
@@ -6153,7 +6154,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v130</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v131</b></div>
   </div>
 </div>
 
@@ -17572,8 +17573,11 @@ setInterval(display,1000);
           void run(async()=>{await gate().approveIdentityLink(person.uid,select.value);setTimeout(refresh,0);return '本人引き継ぎを承認しました。参加者がアイコンを開くと自動で次に進みます。そのあと、この一覧を開き直すと参加承認まで自動で確定します。';},log);
         };
       }else{
-        const ready=cache.memberRequests?.[person.uid]?.status==='pending'&&cache.memberRequests[person.uid].profileId===person.profileId;
-        button.textContent=ready?'参加承認を確定する':'参加者の受取待ち（アイコンを開くと自動で進みます）';
+        const acc=cache.memberAccess?.[person.uid];
+        const active=acc?.active===true&&acc.profileId===person.profileId;
+        const ready=!active&&cache.memberRequests?.[person.uid]?.status==='pending'&&cache.memberRequests[person.uid].profileId===person.profileId;
+        button.textContent=active?'完了（参加承認済み）':(ready?'参加承認を確定する':'参加者の受取待ち（アイコンを開くと自動で進みます）');
+        if(active)button.disabled=true;
         if(ready)autoFinalize.push(person.uid);
         button.onclick=()=>void run(async()=>{await gate().finalizeIdentityLink(person.uid);setTimeout(refresh,0);return '参加承認を確定しました';},log);
       }
@@ -17588,10 +17592,11 @@ setInterval(display,1000);
   let finalizing=false;
   const finalizeReady=async uids=>{
     if(finalizing)return;finalizing=true;const done=[],failed=[];
-    try{for(const u of uids){try{await gate().finalizeIdentityLink(u);done.push(u.slice(-6));}catch(e){failed.push(u.slice(-6)+'：'+String(e?.message||e).slice(0,60));}}}
+    let changed=false;
+    try{for(const u of uids){try{const r=await gate().finalizeIdentityLink(u);done.push(u.slice(-6));if(!r?.alreadyActive)changed=true;}catch(e){failed.push(u.slice(-6)+'：'+String(e?.message||e).slice(0,60));}}}
     finally{finalizing=false;}
     if(log)log.textContent=(done.length?'参加承認を自動で確定しました：'+done.join('、'):'')+(failed.length?'\n確定できなかった申請：\n'+failed.join('\n'):'');
-    if(done.length)setTimeout(refresh,300);
+    if(changed)setTimeout(refresh,300); // v131: refresh once; an already-active link never triggers another round
   };
   $('portalIdentityLinkDeveloperDetails')?.addEventListener('toggle',ev=>{if(ev.target.open)refresh();});
   // P104: participant approval request / developer approval list
