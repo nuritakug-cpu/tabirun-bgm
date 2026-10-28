@@ -5949,7 +5949,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v122</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v124</b></div>
   </div>
 </div>
 
@@ -6143,7 +6143,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v122</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v124</b></div>
   </div>
 </div>
 
@@ -9941,7 +9941,9 @@ const gateway=window.__TR_PORTAL_SYNC__;
       const uid=String(source?.uid||'');
       const pid=String(source?.profileId||'');
       const evidence=isUid(uid)&&!!pid&&profileOwners.get(pid)?.size===1;
-      const key=evidence?'profile:'+pid:'race:'+p.eventId+':'+p.playerId+':'+p.source;
+      // v124: rows without a verified person (developer-entered 駅伝 entry, its timing row, its 駅伝 record row)
+      // are ONE unconfirmed card per name, not one card per row/source. Identity is still never merged.
+      const key=evidence?'profile:'+pid:'name:'+String(p.name||'').normalize('NFKC').replace(/[\s\u3000]/g,'');
       const current=rows.get(key),refs=(current?.refs||[]).slice();
       if(!refs.some(r=>r.eventId===p.eventId&&r.playerId===p.playerId))refs.push({eventId:p.eventId,playerId:p.playerId,source:p.source});
       const why=(p.source==='timing'?'計測参考':'出走登録')+'：'+String(p.eventTitle||'大会')+(p.resultTime?' ／ '+p.resultTime:'');
@@ -9969,6 +9971,18 @@ const gateway=window.__TR_PORTAL_SYNC__;
           identityVerifiedForGrouping:true,reasons:['PORTAL承認済み'],
           detail:'PORTAL初回参加申請・本人承認済み（大会出走履歴不要）',refs:[]});
       }
+    }
+    // v124: an unconfirmed card whose name equals a confirmed person is shown inside that person's card
+    // (as a note), not as a second person. Display only: uid/profileId/refs of the confirmed card are untouched.
+    const nameKey=v=>String(v||'').normalize('NFKC').replace(/[\s\u3000]/g,'');
+    const confirmed=new Map();
+    for(const r of rows.values())if(r.identityVerifiedForGrouping){const k=nameKey(r.name);if(!confirmed.has(k))confirmed.set(k,r);}
+    for(const [key,r] of [...rows.entries()]){
+      if(r.identityVerifiedForGrouping)continue;
+      const owner=confirmed.get(nameKey(r.name));if(!owner)continue;
+      rows.delete(key);
+      const note='同じ名前の本人ID未確定の登録あり（'+(r.reasons||[]).filter(x=>/^(出走登録|計測参考)：/.test(x)).join(' ／ ')+'）';
+      rows.set(owner.key,{...rows.get(owner.key),detail:(rows.get(owner.key).detail||'')+' ／ '+note});
     }
     return [...rows.values()].sort((a,b)=>a.name.localeCompare(b.name,'ja'));
   }
@@ -13048,7 +13062,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
   // ===== v122: 参加者・記録（開発者）— 名前一致で自動候補 →「これでよいですか？」で一括紐付け =====
   // Writes only the existing pastRecords staff path (gate.saveStaffPastRecord / deleteStaffPastRecord).
   const RP_NAMES={'eventbase_mu4ujce3_xxx1':'第1回 EVENT BASE','eventbase_ekiden_dev_20261006':'第2回 駅伝','eventbase_ekiden_next_2026_38fa5537b6':'第3回 駅伝（接続中）'};
-  let rpTab='all',rpClaims=new Map(),rpLoaded=false,rpBusy=false,rpWrapped=false,rpRetry=0;const rpOff=new Set();
+  let rpTab='all',rpClaims=new Map(),rpLoaded=false,rpBusy=false,rpWrapped=false,rpRetry=0,rpTimes={};const rpOff=new Set();
   const rpG=()=>window.__TR_PORTAL_SYNC__;
   const rpIsDev=()=>{const g=rpG();return !!(canManage&&!portalParticipantPreviewMode&&g?.role==='developer'&&g?.roleVerified===true&&g?.loadPastEventOverview&&g?.claimRecordId);};
   const rpNorm=v=>String(v||'').normalize('NFKC').replace(/[\s\u3000]/g,'');
@@ -13083,10 +13097,18 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
   }
   // every record row (with a time) in every EVENT BASE race
   function rpAllRows(){const out=[];for(const ev of rpEvents().filter(e=>e.base)){const r=rpRoster(ev);if(Array.isArray(r))out.push(...r.filter(x=>x.time));}return out;}
-  function rpMembers(){return portalPastVerifiedChoices().map(m=>({...m,name:String(m.name||'').replace(/（本人）$/,'')}));}
+  function rpMembers(){return portalPastVerifiedChoices().map(m=>({...m,name:String(m.name||'').replace(/（本人）$/,''),at:Number(rpTimes[m.uid]?.at)||0}));}
+  const rpDay=t=>t?new Date(t).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'}):'';
   const rpMemberByUid=uid=>rpMembers().find(m=>m.uid===uid)||null;
   // name -> members with that name (to spot PORTAL double registrations)
   function rpNameIndex(){const m=new Map();for(const x of rpMembers()){const k=rpNorm(x.name);if(!m.has(k))m.set(k,[]);m.get(k).push(x);}return m;}
+  // v122: same name in PORTAL = double registration. The NEWEST approved one (the icon) is the person.
+  // If the times cannot tell them apart, nothing is chosen automatically.
+  function rpNewest(group){
+    if(!group||group.length<2)return group?.[0]||null;
+    const s=[...group].sort((a,b)=>b.at-a.at);
+    return s[0].at&&s[0].at>s[1].at?s[0]:null;
+  }
   async function rpLoadClaims(){
     const all=await rpG().loadPastEventOverview();rpClaims=new Map();
     for(const [uid,recs] of Object.entries(all||{}))for(const id of Object.keys(recs||{}))if(id.startsWith('local-flow-claim-'))rpClaims.set(id,uid);
@@ -13106,9 +13128,10 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
   function rpProposals(){
     const idx=rpNameIndex(),rows=rpAllRows(),out=[];
     for(const m of rpMembers()){
-      const same=idx.get(rpNorm(m.name))||[];
+      const same=idx.get(rpNorm(m.name))||[],newest=rpNewest(same);
       const mine=rows.filter(r=>rpNorm(r.name)===rpNorm(m.name)||rpClaims.get(r.id)===m.uid);
-      out.push({m,dup:same.length>1,rows:mine});
+      // dup: undecidable double registration / old: an older registration of the same person
+      out.push({m,dup:same.length>1&&!newest,old:same.length>1&&!!newest&&newest.uid!==m.uid,newest,rows:mine});
     }
     return out;
   }
@@ -13129,16 +13152,23 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
     if(rpTab==='all'){
       const props=rpProposals().filter(p=>hit(p.m.name));
       let todo=0;
-      const cards=props.map(({m,dup,rows})=>{
+      const cards=props.map(({m,dup,old,newest,rows})=>{
+        const sub=old?`<span class="rpSub">古い登録（${esc(rpDay(m.at)||'日付不明')}）— 記録は新しい方（${esc(rpDay(newest.at))}）へ紐付けます</span>`:
+          (newest&&newest.uid===m.uid&&(rpNameIndex().get(rpNorm(m.name))||[]).length>1)?`<span class="rpSub">新しい登録（${esc(rpDay(m.at))}）＝本人</span>`:'';
+        if(old){
+          const moved=rows.filter(r=>rpClaims.get(r.id)===m.uid);
+          return `<div class="rpCard"><b>${esc(m.name)}</b>${sub}${moved.map(r=>`<div class="rpLine"><span>${rpRecLine(r)}</span><button type="button" class="portalPrimary" data-rp-act="move" data-id="${esc(r.id)}" data-to="${esc(newest.uid)}">新しい方へ移す</button></div>`).join('')}</div>`;
+        }
         const lines=rows.map(r=>{
           const owner=rpClaims.get(r.id);
           if(owner===m.uid)return `<div class="rpLine"><span>${rpRecLine(r)}</span><span class="rpOk">紐付け済み</span></div>`;
+          if(owner&&rpNorm(rpMemberByUid(owner)?.name)===rpNorm(m.name))return `<div class="rpLine"><span>${rpRecLine(r)}</span><button type="button" class="portalPrimary" data-rp-act="move" data-id="${esc(r.id)}" data-to="${esc(m.uid)}">古い登録からこちらへ移す</button></div>`;
           if(owner)return `<div class="rpLine"><span>${rpRecLine(r)}</span><small>${esc(rpMemberByUid(owner)?.name||'別の人')}に紐付け済み</small></div>`;
           if(dup)return `<div class="rpLine"><span>${rpRecLine(r)}</span><small>同じ名前がPORTALに2人以上います。②で選んでください</small></div>`;
           const on=!rpOff.has(m.uid+'|'+r.id);if(on)todo++;
           return `<label class="rpLine" style="cursor:pointer"><span>${rpRecLine(r)}</span><input type="checkbox" data-rp-check="${esc(m.uid+'|'+r.id)}" ${on?'checked':''} style="width:24px;height:24px"></label>`;
         }).join('')||'<p class="portalHelp" style="margin:6px 0 0">名前が一致する記録はありません（名前が違う場合は②で紐付けます）</p>';
-        return `<div class="rpCard"><b>${esc(m.name)}</b>${lines}</div>`;
+        return `<div class="rpCard"><b>${esc(m.name)}</b>${sub}${lines}</div>`;
       }).join('');
       tools.innerHTML=`<button type="button" class="rpBtn portalPrimary" data-rp-act="bulk" style="width:100%" ${todo?'':'disabled'}>これでよいので紐付ける（${todo}件）</button>`;
       list.innerHTML=(missingRoster?'<p class="portalHelp">大会の記録を読み込み中です。件数が増えることがあります…</p>':'')+(cards||'<p class="portalHelp">承認済みの参加者はまだいません。</p>');
@@ -13155,8 +13185,8 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
         if(!r.time)return `<div class="rpCard">${head}<span class="rpSub">記録が入ると紐付けできます</span></div>`;
         const owner=rpClaims.get(r.id);
         if(owner)return `<div class="rpCard">${head}<span class="rpOk">紐付け：${esc(rpMemberByUid(owner)?.name||'別の人')}</span><div class="rpRow"><button type="button" class="portalFlowSecondary" data-rp-act="unlink" data-id="${esc(r.id)}">紐付けを外す</button></div></div>`;
-        const same=idx.get(rpNorm(r.name))||[],pre=same.length===1?same[0].uid:'';
-        return `<div class="rpCard">${head}<div class="rpRow"><select data-rp-pick="${esc(r.id)}"><option value="">誰の記録？（PORTALの参加者）</option>${mem.map(m=>`<option value="${esc(m.uid)}" ${m.uid===pre?'selected':''}>${esc(m.name)}</option>`).join('')}</select><button type="button" class="portalPrimary" data-rp-act="link" data-id="${esc(r.id)}">紐付ける</button></div></div>`;
+        const same=idx.get(rpNorm(r.name))||[],pre=same.length===1?same[0].uid:(rpNewest(same)?.uid||'');
+        return `<div class="rpCard">${head}<div class="rpRow"><select data-rp-pick="${esc(r.id)}"><option value="">誰の記録？（PORTALの参加者）</option>${mem.map(m=>`<option value="${esc(m.uid)}" ${m.uid===pre?'selected':''}>${esc(m.name)}${(idx.get(rpNorm(m.name))||[]).length>1?'（'+esc(rpDay(m.at)||'日付不明')+'登録）':''}</option>`).join('')}</select><button type="button" class="portalPrimary" data-rp-act="link" data-id="${esc(r.id)}">紐付ける</button></div></div>`;
       }).join('')||'<p class="portalHelp">この大会の出走登録はありません。</p>';
       return;
     }
@@ -13177,7 +13207,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
     const run=async fn=>{rpBusy=true;btn.disabled=true;try{await fn();}catch(err){rpSay('できませんでした：'+String(err?.message||err).slice(0,140));}finally{rpBusy=false;rpRender();}};
     if(act==='bulk'){
       const jobs=[];
-      for(const {m,dup,rows} of rpProposals()){if(dup)continue;for(const r of rows)if(!rpClaims.has(r.id)&&!rpOff.has(m.uid+'|'+r.id))jobs.push({m,r});}
+      for(const {m,dup,old,rows} of rpProposals()){if(dup||old)continue;for(const r of rows)if(!rpClaims.has(r.id)&&!rpOff.has(m.uid+'|'+r.id))jobs.push({m,r});}
       if(!jobs.length)return rpSay('紐付ける記録はありません。');
       if(!confirm(`${jobs.length}件の記録を紐付けます。よろしいですか？`))return;
       return run(async()=>{
@@ -13198,6 +13228,17 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
       if(!row)return rpSay('記録が見つかりません。');
       return run(async()=>{await rpLoadClaims();if(rpClaims.has(id))throw Error('すでに紐付けられています');await rpWrite(m,row);rpSay(`紐付けました：${row.name} の記録 → ${m.name}`);});
     }
+    if(act==='move'){
+      const id=btn.dataset.id,from=rpMemberByUid(rpClaims.get(id)),to=rpMemberByUid(btn.dataset.to);
+      const row=rpAllRows().find(r=>r.id===id);
+      if(!from||!to||!row)return rpSay('移す記録・参加者を確認できません。');
+      if(!confirm(`この記録を、古い登録から新しい登録（${rpDay(to.at)}）の「${to.name}」さんへ移しますか？`))return;
+      return run(async()=>{
+        await rpG().saveStaffPastRecord({uid:to.uid,profileId:to.profileId},{id,name:String(row.eventTitle||'大会').slice(0,120),date:row.date,metric:row.metric||'other',time:row.time,status:'time',venue:'',official:!!row.official},null);
+        await rpG().deleteStaffPastRecord({uid:from.uid,profileId:from.profileId},id,null);
+        rpClaims.set(id,to.uid);rpSay(`移しました：${row.eventTitle} → ${to.name}（新しい登録）`);
+      });
+    }
     if(act==='unlink'){
       const id=btn.dataset.id,uid=rpClaims.get(id),m=rpMemberByUid(uid);
       if(!uid||!m)return rpSay('紐付け先の参加者を確認できません。');
@@ -13215,7 +13256,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
   window.__rpOpen=async()=>{
     if(!rpIsDev()){const p=$('rpPanel');if(p)p.hidden=true;return;}
     rpWrapLegacy();rpRetry=0;rpRender();
-    try{rpSay('読み込み中…');await rpLoadClaims();rpSay('');}catch(err){rpSay('読み込めませんでした：'+String(err?.message||err).slice(0,120));}
+    try{rpSay('読み込み中…');rpTimes=await rpG().listMemberTimes?.()||{};await rpLoadClaims();rpSay('');}catch(err){rpSay('読み込めませんでした：'+String(err?.message||err).slice(0,120));}
     rpRender();
   };
   $('rpEvent')?.addEventListener('change',()=>{rpRetry=0;rpSay('');rpRender();});
@@ -15004,11 +15045,22 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
         if(!/^[A-Za-z0-9_-]{6,128}$/.test(uid)||r?.status!=='pending'||typeof r.profileId!=='string'||!r.profileId)continue;
         const a=acc[uid];
         if(a?.active===true&&a.profileId===r.profileId)continue;
+        // v122: same-name participants already approved = a likely double registration (old browser / new icon)
+        const key=String(r.displayName||'').normalize('NFKC').replace(/[\s\u3000]/g,'');
+        const same=Object.entries(reqs).filter(([u,x])=>u!==uid&&acc[u]?.active===true&&String(x?.displayName||'').normalize('NFKC').replace(/[\s\u3000]/g,'')===key)
+          .map(([u])=>Number(acc[u]?.approvedAt)||0);
         rows.push({uid,profileId:r.profileId,name:String(r.displayName||'').slice(0,24),suffix:String(r.numberSuffix||''),
-          requestedAt:Number(r.requestedAt)||0,blocked:!!a});
+          requestedAt:Number(r.requestedAt)||0,blocked:!!a,sameNameApproved:same.length,sameNameLatest:same.length?Math.max(...same):0});
       }
       rows.sort((x,y)=>y.requestedAt-x.requestedAt);
       return rows;
+    };
+    gate.listMemberTimes=async()=>{
+      if(!isDeveloper())throw Error('開発者の権限が必要です');
+      const [rq,ac]=await Promise.all([dbMod.get(ref('memberRequests')),dbMod.get(ref('memberAccess'))]);
+      const reqs=rq.val()||{},acc=ac.val()||{},out={};
+      for(const [uid,a] of Object.entries(acc))if(a?.active===true)out[uid]={at:Number(a.approvedAt)||Number(reqs[uid]?.requestedAt)||0};
+      return out;
     };
     gate.approveMemberApprovalRequest=async uid=>{
       if(!isDeveloper())throw Error('開発者の権限が必要です');
@@ -17936,6 +17988,12 @@ setInterval(display,1000);
       box.style.cssText='padding:12px;border:1px solid #686d67;border-radius:10px;display:grid;gap:7px';
       const title=document.createElement('strong');
       title.textContent='申請 '+row.uid.slice(-6)+' / '+row.name+' / 確認コード '+row.suffix;box.append(title);
+      if(row.sameNameApproved){
+        const warn=document.createElement('p');warn.style.cssText='margin:0;padding:8px;border-radius:8px;background:rgba(216,181,42,.18);font-weight:700;line-height:1.6';
+        const d=row.sameNameLatest?new Date(row.sameNameLatest).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'})+'承認':'';
+        warn.textContent='⚠ 同じ名前の参加者がすでに承認済みです'+(d?'（'+d+'）':'')+'。二重登録の可能性があります。承認すると、この新しい方が本人になり、過去の記録は「参加者・記録」で新しい方へ紐付けます。';
+        box.append(warn);
+      }
       const button=document.createElement('button');button.type='button';button.style.minHeight='42px';
       if(row.blocked){button.textContent='別の承認記録があるため承認できません';button.disabled=true;}
       else{
