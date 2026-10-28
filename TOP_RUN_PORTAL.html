@@ -1,3 +1,6 @@
+<!-- TOP RUN PORTAL v123 2026-10-28: v122 + 引継ぎ元の候補に、過去2大会と今大会の参加者bindingを追加（読み取りのみ。承認の保存可否はRulesが判断）。 -->
+<!-- TOP RUN PORTAL v122 2026-10-28: v121 + 開発者の「申請・承認」で、引継ぎ元を選ばずに押すと無反応だった箇所に理由を表示。候補人数を表示。承認処理・Rules・UIDは変更なし。 -->
+<!-- TOP RUN PORTAL v121 2026-10-28: v120 + 「前の登録とつなぐ申請」の送信が未ログイン時の安全装置で止まっていた不具合を修正（許可リストに追加・キーボードを閉じる・理由表示）。Rules/UID/他処理は変更なし。 -->
 <!-- TOP RUN PORTAL v113 2026-10-28: v112 + P107 developer re-bind for the two historical events (same write as the EVENT BASE developer entry; Rules unchanged). v112 notes:  v111 + P106 duplicate guard (manual 過去大会 record hidden when EVENT BASE has same person/date/time). v111 notes:  v110 (ChatGPT) + P105 integrated by Claude: EVENT BASE result correction (staff), withdrawn EKIDEN entries hidden from 参加する/RSVP lock, MY PAGE reflection diagnosis. No Auth/UID/Rules/listener change beyond P105 players handling. STATIC/simulated tests only; real Firebase not verified. -->
 <!-- TOP RUN PORTAL v110 2026-10-28: v109 exact physical parent; PORTAL internal event links now saved via the existing eventItems writer and visible in event list/calendar. External EVENT BASE/EKIDEN validation and all Auth/UID/profileId/Rules/RTDB subscriptions, writes, official results and theme/home image safeguards unchanged. STATIC candidate; Firebase production not tested/deployed. -->
 <!-- 2026-10-28 v109 UI organization: Hide obsolete CHAT STEP 1 panel (retain DOM for existing gateway); move push settings to first; show version "v109" only; developer identity review first in matching management card. No Auth, Rules, listener, CHAT message read/write, image cache, notification registration, official results or released data changed. NOT DEPLOYED. -->
@@ -5949,7 +5952,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v120</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v123</b></div>
   </div>
 </div>
 
@@ -6143,7 +6146,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v120</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v123</b></div>
   </div>
 </div>
 
@@ -14780,6 +14783,9 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
         // the memberAccess candidate list rather than inventing profiles.
         dbMod.get(dbMod.ref(db,'bindings/eventbase_ekiden_next_2026_38fa5537b6')).then(s=>s.val()||{}).catch(()=>null)
       ]);
+      // v123: past participants of the two earlier events are also offered as the source (read-only; Rules decide the write).
+      const pastBindings=await Promise.all(['eventbase_mu4ujce3_xxx1','eventbase_ekiden_dev_20261006','eventbase_ekiden_next_2026_38fa5537b6']
+        .map(id=>dbMod.get(dbMod.ref(db,'bindings/'+id)).then(s=>s.val()||{}).catch(()=>null)));
       if(!isDeveloper()||uid!==gate.uid)throw Error('本人権限が途中で変更されました');
       const links=requests.val()||{},members=access.val()||{},joinHistory=join.val()||{};
       const candidateMap=new Map();
@@ -14796,6 +14802,14 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
         candidateMap.set(sourceUid,{uid:sourceUid,profileId:v.profileId,
           name:String(v.displayName||existing?.name||'(元の大会関係者)').slice(0,24),
           source:existing?.source||'event-'+v.role});
+      }
+      for(const bind of pastBindings){
+        if(!bind||typeof bind!=='object')continue;
+        for(const [sourceUid,v] of Object.entries(bind)){
+          if(sourceUid===uid||candidateMap.has(sourceUid)||typeof v?.profileId!=='string'||!v.profileId)continue;
+          candidateMap.set(sourceUid,{uid:sourceUid,profileId:v.profileId,
+            name:String(v.displayName||joinHistory[sourceUid]?.displayName||'(前の参加者)').slice(0,24),source:'event-'+String(v.role||'participant')});
+        }
       }
       return {
         requests:Object.entries(links).filter(([key,v])=>key!==uid&&v&&['pending','approved'].includes(v.status)).map(([uid,v])=>({uid,...v})),
@@ -17471,8 +17485,12 @@ setInterval(display,1000);
       const button=document.createElement('button');button.type='button';button.style.minHeight='42px';
       if(person.status==='pending'){
         button.textContent='本人確認済み：この既存profileIdを承認';box.append(select);
+        const hint=document.createElement('p');hint.style.cssText='margin:0;font-size:12px;line-height:1.6;white-space:pre-wrap';
+        hint.textContent=cache.candidates.length?('選べる引継ぎ元：'+cache.candidates.length+'人。上の欄から、この人の前の登録を選んでから押してください。'):'選べる引継ぎ元が0人です。前の登録が候補に入っていないため、このままでは承認できません。';
+        box.append(hint);
         button.onclick=()=>{
-          if(!select.value)return;
+          if(!select.value){hint.textContent=cache.candidates.length?'先に、上の欄で「前の登録」を選んでください。\n（一覧にこの人の名前がない場合は、前の登録が候補に入っていません）':'選べる引継ぎ元が0人のため、承認できません。';hint.scrollIntoView?.({block:'center'});return;}
+          if(busy){hint.textContent='いま処理中です。少し待ってから押してください。';return;}
           if(!confirm('本人確認は氏名一致だけでなく別の方法で完了しましたか？ 選択した既存profileIdへ紐付けます。'))return;
           void run(async()=>{await gate().approveIdentityLink(person.uid,select.value);setTimeout(refresh,0);return '本人引き継ぎを承認しました';},log);
         };
