@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v127 2026-10-28: v126 + 自動で選べないとき、申請欄に各大会の読み取り結果と、申請名に近い出走登録（本人UID・本人番号の有無）を表示。読み取りのみ。 -->
 <!-- TOP RUN PORTAL v126 2026-10-28: v125 + 引継ぎ元の候補を、第1回・第2回・今大会の出走登録（events/<id>/players の subjectUid・profileId）からも作る。同名複数は出走登録がある方を自動選択。読み取りのみ。 -->
 <!-- TOP RUN PORTAL v125 2026-10-28: v124 + 過去大会の登録が読めないときに一覧の上で知らせる。profileIdを持たない過去の登録は、その人の既存profiles/<uid>/profileIdで候補にする（読み取りのみ）。 -->
 <!-- TOP RUN PORTAL v124 2026-10-28: v123 + 前の登録とつなぐ流れを止めない改修。開発者：申請名と一致する前の登録を自動選択（同名複数は今大会の登録がある方）、候補に大会登録の有無を表示、受取済みの申請は一覧を開くと自動確定。参加者：待機中は自動で承認を確認して進む（本人UIDの小さな読み取りのみ・最大15分・入場で停止）。承認処理・Rules・UIDは変更なし。 -->
@@ -5955,7 +5956,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v126</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v127</b></div>
   </div>
 </div>
 
@@ -6149,7 +6150,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v126</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v127</b></div>
   </div>
 </div>
 
@@ -14807,9 +14808,10 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
           source:existing?.source||'event-'+v.role});
       }
       const pastLabels=['第1回','第2回','今大会'];
+      const pastErr={};
       // v126: race entries (events/<id>/players) are the record that must stay linked; their subjectUid/profileId are the source.
       const pastPlayers=await Promise.all(['eventbase_mu4ujce3_xxx1','eventbase_ekiden_dev_20261006','eventbase_ekiden_next_2026_38fa5537b6']
-        .map(id=>dbMod.get(dbMod.ref(db,'events/'+id+'/players')).then(s=>s.val()||{}).catch(()=>null)));
+        .map(id=>dbMod.get(dbMod.ref(db,'events/'+id+'/players')).then(s=>s.val()||{}).catch(e=>{pastErr[id]=String(e?.code||e?.message||e).slice(0,60);return null;})));
       // v125: a past binding without profileId takes the person's existing profiles/<uid>/profileId (developer read, no write).
       const needPid=new Set();
       pastBindings.forEach(bind=>{if(bind&&typeof bind==='object')for(const [k,v] of Object.entries(bind))
@@ -14830,6 +14832,10 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
           if(idx===2)c.currentEvent=true;
         }
       });
+      const pastIds=['eventbase_mu4ujce3_xxx1','eventbase_ekiden_dev_20261006','eventbase_ekiden_next_2026_38fa5537b6'];
+      const diag={read:pastIds.map((id,i)=>pastLabels[i]+'：'+(pastPlayers[i]===null?'読取不可（'+(pastErr[id]||'不明')+'）':'選手'+Object.keys(pastPlayers[i]).length+'件')),rows:[]};
+      pastPlayers.forEach((players,idx)=>{if(players&&typeof players==='object')for(const p of Object.values(players))
+        if(p&&typeof p==='object')diag.rows.push({ev:pastLabels[idx],name:String(p.name||''),su:typeof p.subjectUid==='string'?p.subjectUid:'',pid:typeof p.profileId==='string'?p.profileId:'',status:String(p.status||'')});});
       pastPlayers.forEach((players,idx)=>{
         if(!players||typeof players!=='object')return;
         for(const p of Object.values(players)){
@@ -14848,7 +14854,7 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
       return {
         requests:Object.entries(links).filter(([key,v])=>key!==uid&&v&&['pending','approved'].includes(v.status)).map(([uid,v])=>({uid,...v})),
         candidates:[...candidateMap.values()].sort((a,b)=>a.name.localeCompare(b.name,'ja')),
-        memberAccess:members,memberRequests:joinHistory,
+        memberAccess:members,memberRequests:joinHistory,diag,
         pastUnreadable:pastPlayers.slice(0,2).map((b,i)=>b===null?pastLabels[i]:'').filter(Boolean),
         eventOwnerCanReviewBindings:ekidenBindings!==null
       };
@@ -17530,13 +17536,17 @@ setInterval(display,1000);
       const sameRace=same.filter(c=>c.hasRace);
       const pick=same.length===1?same[0]:(sameRace.length===1?sameRace[0]:(sameCurrent.length===1?sameCurrent[0]:null));
       if(pick)select.value=pick.uid;
-      const matchNote=same.length===0?'同じ名前の前の登録が見つかりません。一覧から選んでください。':
+      let matchNote=same.length===0?'同じ名前の前の登録が見つかりません。一覧から選んでください。':
         (pick?('★ 名前が一致する前の登録を選んであります'+(same.length>1?'（同じ名前が'+same.length+'件。出走登録がある方を選びました）':'')+'。確認して押してください。'):
         ('同じ名前の前の登録が'+same.length+'件あります。今大会の登録がある方（★）を選んでください。'));
       const button=document.createElement('button');button.type='button';button.style.minHeight='42px';
       if(person.status==='pending'){
         button.textContent='本人確認済み：この既存profileIdを承認';box.append(select);
         const hint=document.createElement('p');hint.style.cssText='margin:0;font-size:12px;line-height:1.6;white-space:pre-wrap';
+        if(!pick&&cache.diag){
+          const near=cache.diag.rows.filter(r=>wanted&&(norm(r.name).includes(wanted)||wanted.includes(norm(r.name))&&norm(r.name).length>=2));
+          matchNote+='\n\n【読み取り結果】\n'+cache.diag.read.join('\n')+'\n【この名前に近い出走登録】\n'+(near.length?near.slice(0,8).map(r=>r.ev+'：'+r.name+' ／ 本人UID'+(r.su?'あり…'+r.su.slice(-6):'なし')+' ／ 本人番号'+(r.pid?'あり':'なし')+(r.status?' ／ '+r.status:'')).join('\n'):'見つかりません');
+        }
         hint.textContent=cache.candidates.length?matchNote:'選べる引継ぎ元が0人です。前の登録が候補に入っていないため、このままでは承認できません。';
         box.append(hint);
         button.onclick=()=>{
