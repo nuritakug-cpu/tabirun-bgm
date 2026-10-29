@@ -215,86 +215,86 @@ jobs:
           }
           // Room-only extension. Existing signed Worker / CHAT / NOTICE / Badge helpers remain untouched.
           const roomHelpers = String.raw`
-async function stage3NotifyRoom(data,env,person,auth,c){
-  const match=typeof data?.id==='string'&&data.id.length<=130
-    ? /^(r[A-Za-z0-9_]{6,60})\/(m[A-Za-z0-9_]+)$/.exec(data.id) : null;
-  if(!match)return json({ok:false,error:'Invalid room notification id'},400,c);
-  const roomId=match[1],msgId=match[2],now=Date.now();
-  let msg,meta,members;
-  try{
-    [msg,meta,members]=await Promise.all([
-      stage3Read('portalCommon/topRun/roomMessages/'+roomId+'/'+msgId,auth.token),
-      stage3Read('portalCommon/topRun/roomMeta/'+roomId,auth.token),
-      stage3Read('portalCommon/topRun/roomMembers/'+roomId,auth.token)
-    ]);
-  }catch{
-    return json({ok:false,error:'Room canonical read denied or unavailable'},403,c);
-  }
-  const stamp=Number(msg?.ts);
-  if(!msg||msg.senderUid!==auth.uid||auth.uid!==person.uid||
-     !Number.isFinite(stamp)||stamp>now+30000||now-stamp>10*60*1000||
-     typeof msg.name!=='string'||!msg.name.trim()||
-     typeof msg.text!=='string'||!msg.text.trim()||
-     typeof meta?.name!=='string'||!meta.name.trim()||
-     !members||typeof members!=='object'||Array.isArray(members)||
-     members[auth.uid]?.status!=='joined'){
-    return json({ok:false,error:'Room message, sender or membership invalid'},403,c);
-  }
-  const memberUids=Object.entries(members)
-    .filter(([uid,item])=>uid!==auth.uid&&/^[-A-Za-z0-9_]{1,128}$/.test(uid)&&item?.status==='joined')
-    .map(([uid])=>uid);
-  if(memberUids.length>80)return json({ok:false,error:'Room audience exceeds safe limit'},503,c);
-  const recipients=new Set(memberUids);
-  let devices=[];
-  try{
-    await stage3EnsureDb(env.DB);
-    if(memberUids.length){
-      const placeholders=memberUids.map(()=>'?').join(',');
-      const sql='SELECT id,uid,raw FROM stage3_devices WHERE uid IN ('+placeholders+
-        ') AND chat_enabled=1 AND updated_at>? ORDER BY updated_at DESC LIMIT 81';
-      const rows=await env.DB.prepare(sql).bind(...memberUids,now-180*86400000).all();
-      if(!Array.isArray(rows?.results)||rows.results.length>80)
-        return json({ok:false,error:'Room device audience unavailable or too large'},503,c);
-      devices=rows.results.filter(x=>x&&recipients.has(x.uid));
-    }
-    await env.DB.prepare('CREATE TABLE IF NOT EXISTS stage3_sent_events (id TEXT PRIMARY KEY, sent_at INTEGER NOT NULL)').run();
-    const eventKey='room:'+roomId+'/'+msgId;
-    const mark=await env.DB.prepare('INSERT OR IGNORE INTO stage3_sent_events(id,sent_at) VALUES (?1,?2)')
-      .bind(eventKey,now).run();
-    if((mark?.meta?.changes??0)===0)return json({ok:true,alreadyProcessed:true},200,c);
-    const payload={web_push:8030,notification:{
-      title:meta.name.trim().slice(0,120),lang:'ja',dir:'auto',
-      body:msg.name.trim().slice(0,80)+'：'+Array.from(msg.text).slice(0,40).join(''),
-      navigate:PORTAL_URL,tag:'top-run-room-'+roomId+'-'+msgId,silent:false
-    }};
-    let accepted=0,invalid=0,failed=0;
-    for(let i=0;i<devices.length;i+=8){
-      await Promise.all(devices.slice(i,i+8).map(async row=>{
-        if(!recipients.has(row.uid)||row.uid===auth.uid)return;
-        try{
-          const sub=subscriptionFrom(JSON.parse(row.raw));
-          const result=await sendWebPush(sub,env,fetch,payload);
-          if(result.status===201||result.status===202)accepted++;
-          else if(result.status===404||result.status===410){
-            invalid++;
-            await env.DB.prepare('DELETE FROM stage3_devices WHERE id=?1').bind(row.id).run();
-          }else failed++;
-        }catch{failed++;}
-      }));
-    }
-    if(accepted===0&&devices.length>0){
-      await env.DB.prepare('DELETE FROM stage3_sent_events WHERE id=?1').bind(eventKey).run();
-    }
-    return json({
-      ok:accepted>0||devices.length===0,acceptedByPushService:accepted,
-      attemptedDevices:devices.length,staleRemoved:invalid,failedDevices:failed,
-      deliveredToDevice:'unverified'
-    },accepted>0||devices.length===0?200:502,c);
-  }catch{
-    return json({ok:false,error:'Room delivery service unavailable'},503,c);
-  }
-}
-`;
+          async function stage3NotifyRoom(data,env,person,auth,c){
+            const match=typeof data?.id==='string'&&data.id.length<=130
+              ? /^(r[A-Za-z0-9_]{6,60})\/(m[A-Za-z0-9_]+)$/.exec(data.id) : null;
+            if(!match)return json({ok:false,error:'Invalid room notification id'},400,c);
+            const roomId=match[1],msgId=match[2],now=Date.now();
+            let msg,meta,members;
+            try{
+              [msg,meta,members]=await Promise.all([
+                stage3Read('portalCommon/topRun/roomMessages/'+roomId+'/'+msgId,auth.token),
+                stage3Read('portalCommon/topRun/roomMeta/'+roomId,auth.token),
+                stage3Read('portalCommon/topRun/roomMembers/'+roomId,auth.token)
+              ]);
+            }catch{
+              return json({ok:false,error:'Room canonical read denied or unavailable'},403,c);
+            }
+            const stamp=Number(msg?.ts);
+            if(!msg||msg.senderUid!==auth.uid||auth.uid!==person.uid||
+               !Number.isFinite(stamp)||stamp>now+30000||now-stamp>10*60*1000||
+               typeof msg.name!=='string'||!msg.name.trim()||
+               typeof msg.text!=='string'||!msg.text.trim()||
+               typeof meta?.name!=='string'||!meta.name.trim()||
+               !members||typeof members!=='object'||Array.isArray(members)||
+               members[auth.uid]?.status!=='joined'){
+              return json({ok:false,error:'Room message, sender or membership invalid'},403,c);
+            }
+            const memberUids=Object.entries(members)
+              .filter(([uid,item])=>uid!==auth.uid&&/^[-A-Za-z0-9_]{1,128}$/.test(uid)&&item?.status==='joined')
+              .map(([uid])=>uid);
+            if(memberUids.length>80)return json({ok:false,error:'Room audience exceeds safe limit'},503,c);
+            const recipients=new Set(memberUids);
+            let devices=[];
+            try{
+              await stage3EnsureDb(env.DB);
+              if(memberUids.length){
+                const placeholders=memberUids.map(()=>'?').join(',');
+                const sql='SELECT id,uid,raw FROM stage3_devices WHERE uid IN ('+placeholders+
+                  ') AND chat_enabled=1 AND updated_at>? ORDER BY updated_at DESC LIMIT 81';
+                const rows=await env.DB.prepare(sql).bind(...memberUids,now-180*86400000).all();
+                if(!Array.isArray(rows?.results)||rows.results.length>80)
+                  return json({ok:false,error:'Room device audience unavailable or too large'},503,c);
+                devices=rows.results.filter(x=>x&&recipients.has(x.uid));
+              }
+              await env.DB.prepare('CREATE TABLE IF NOT EXISTS stage3_sent_events (id TEXT PRIMARY KEY, sent_at INTEGER NOT NULL)').run();
+              const eventKey='room:'+roomId+'/'+msgId;
+              const mark=await env.DB.prepare('INSERT OR IGNORE INTO stage3_sent_events(id,sent_at) VALUES (?1,?2)')
+                .bind(eventKey,now).run();
+              if((mark?.meta?.changes??0)===0)return json({ok:true,alreadyProcessed:true},200,c);
+              const payload={web_push:8030,notification:{
+                title:meta.name.trim().slice(0,120),lang:'ja',dir:'auto',
+                body:msg.name.trim().slice(0,80)+'：'+Array.from(msg.text).slice(0,40).join(''),
+                navigate:PORTAL_URL,tag:'top-run-room-'+roomId+'-'+msgId,silent:false
+              }};
+              let accepted=0,invalid=0,failed=0;
+              for(let i=0;i<devices.length;i+=8){
+                await Promise.all(devices.slice(i,i+8).map(async row=>{
+                  if(!recipients.has(row.uid)||row.uid===auth.uid)return;
+                  try{
+                    const sub=subscriptionFrom(JSON.parse(row.raw));
+                    const result=await sendWebPush(sub,env,fetch,payload);
+                    if(result.status===201||result.status===202)accepted++;
+                    else if(result.status===404||result.status===410){
+                      invalid++;
+                      await env.DB.prepare('DELETE FROM stage3_devices WHERE id=?1').bind(row.id).run();
+                    }else failed++;
+                  }catch{failed++;}
+                }));
+              }
+              if(accepted===0&&devices.length>0){
+                await env.DB.prepare('DELETE FROM stage3_sent_events WHERE id=?1').bind(eventKey).run();
+              }
+              return json({
+                ok:accepted>0||devices.length===0,acceptedByPushService:accepted,
+                attemptedDevices:devices.length,staleRemoved:invalid,failedDevices:failed,
+                deliveredToDevice:'unverified'
+              },accepted>0||devices.length===0?200:502,c);
+            }catch{
+              return json({ok:false,error:'Room delivery service unavailable'},503,c);
+            }
+          }
+          `;
           const roomAnchor = 'async function stage3Notify(request,env,person,auth,c){';
           const roomRouteBefore = "  const id=data?.id;\n  if(!['chat','notice'].includes(kind)";
           const roomRouteAfter = "  const id=data?.id;\n  if(kind==='room')return stage3NotifyRoom(data,env,person,auth,c);\n  if(!['chat','notice'].includes(kind)";
