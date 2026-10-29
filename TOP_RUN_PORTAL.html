@@ -1,3 +1,5 @@
+<!-- TOP RUN PORTAL v167 2026-10-30: v166 physical parent; compact dark/gold categorized reaction picker (QUICK/RUN/hype/feel/team), extra youth-oriented running phrases, existing common/room reaction storage, reply, copy and Firebase paths unchanged. STATIC CANDIDATE; not published or Firebase field-verified. -->
+<!-- TOP RUN PORTAL v166 2026-10-29: v165 + a room message asks the notify Worker for room push (kind room, id <room>/<message>). Works after the Worker room extension is deployed; before that nothing changes. Rules unchanged. -->
 <!-- TOP RUN PORTAL v165 2026-10-29: v164 + reaction tap shows 保存中… and the result (error explained at the top of the menu, e.g. Rules not published); team icon + emoji: emoji on a white round badge with shadow. Rules unchanged. -->
 <!-- TOP RUN PORTAL v164 2026-10-29: v163 + chat menu shown on top of the CHAT screen (it was hidden by the chat isolation and appeared later on HOME); leaving CHAT closes it. Rules unchanged. -->
 <!-- TOP RUN PORTAL v163 2026-10-29: v162 + chat menu opens by a single tap OR a long press; a touch cancelled by the phone no longer blocks the next long press. Rules unchanged. -->
@@ -5970,7 +5972,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v165</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v167</b></div>
   </div>
 </div>
 
@@ -6164,7 +6166,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v165</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v167</b></div>
   </div>
 </div>
 
@@ -16545,6 +16547,8 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
           ['roomMessages/'+id+'/'+mid]:{senderUid:gate.uid,name:gate.displayName,text,ts:dbMod.serverTimestamp(),...ex},
           ['roomMeta/'+id+'/lastAt']:dbMod.serverTimestamp()
         });
+        // v166: room push (Worker kind "room", id "<room>/<message>"). The Worker checks sender, membership and recipients.
+        void window.__TR_STAGE3_NOTIFY__?.('room',id+'/'+mid);
       };
       gate.roomReact=async(id,mid,emoji)=>{
         if(!rOk()||!rId(id)||auth.currentUser?.uid!==gate.uid)throw Error('本人認証が確認できません');
@@ -20033,54 +20037,75 @@ select.trPickSource{display:none!important}
 })();
 </script>
 <style id="v159-chat-react-style">
+/* v167: reaction picker is a compact, categorized bottom sheet; only the chat UI is restyled. */
 #portalChatThread .msg,#trRoomThread .msg{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
-.trCopyBox{width:100%;min-height:120px;font-size:16px;line-height:1.5;border:1px solid #cac4b6;border-radius:10px;padding:8px;margin:0 0 10px;background:#fff;color:#2d2f2b;-webkit-user-select:text;user-select:text}
+.trCopyBox{width:100%;min-height:125px;font-size:16px;line-height:1.55;border:1px solid #485052;border-radius:12px;padding:12px;margin:0 0 12px;background:#1b2427;color:#f5f5f2;-webkit-user-select:text;user-select:text}
 .trMentioned{box-shadow:0 0 0 2px #d8b825 inset}
 .trAt{font-weight:800;color:#2f6fb0}
 .trQuote{display:block;width:100%;text-align:left;border:0;border-left:3px solid #c5a52b;background:rgba(128,128,128,.12);border-radius:6px;padding:5px 8px;margin:4px 0 2px;font:inherit;color:inherit;cursor:pointer}
-.trQuote b{display:block;font-size:11px;opacity:.85}
-.trQuote span{display:block;font-size:12px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.trReacts{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 8px 12px;justify-content:flex-start}
-.trReacts.mine{justify-content:flex-end}
-.trReact{border:1px solid rgba(128,128,128,.45);border-radius:999px;background:#fffdf8;color:#333;font:inherit;font-size:15px;line-height:1;padding:6px 11px;min-height:34px;min-width:44px;display:inline-flex;align-items:center;justify-content:center;gap:5px;box-shadow:0 1px 3px rgba(0,0,0,.12);touch-action:manipulation}
-.trReact b{font-size:13px}
+.trQuote b{display:block;font-size:11px;opacity:.85}.trQuote span{display:block;font-size:12px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trReacts{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 8px 12px;justify-content:flex-start}.trReacts.mine{justify-content:flex-end}
+.trReact{border:1px solid rgba(203,181,104,.53);border-radius:999px;background:#202626;color:#fff; font:inherit;font-size:16px;line-height:1;padding:6px 11px;min-height:35px;min-width:44px;display:inline-flex;align-items:center;justify-content:center;gap:7px;box-shadow:0 2px 5px rgba(0,0,0,.18);touch-action:manipulation}
+.trReact b{font-size:12px;color:#ffdf78;font-weight:900}
+.trReact.mine{border-color:#e4b92d;background:#423716;box-shadow:0 0 0 1px rgba(228,185,45,.2)}
 .trTeam{position:relative;display:inline-block;width:1.35em;height:1.35em;vertical-align:middle;flex:0 0 auto}
-.trTeam img{display:block;width:100%;height:100%;border-radius:4px;object-fit:cover}
-.trTeam i{position:absolute;right:-.45em;bottom:-.4em;font-style:normal;font-size:.62em;line-height:1;width:1.45em;height:1.45em;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.45);border:1px solid #e5d27a}
-#trMsgSheet .trEmojiGrid .trTeam{width:28px;height:28px;margin:-4px -4px 0 0}
-.trReact .trTeam{width:24px;height:24px;margin-right:8px}
-.trReact .trTeam i{font-size:10px;width:15px;height:15px;right:-8px;bottom:-5px}
-#trMsgSheet .trEmojiGrid .trTeam i{font-size:13px;width:19px;height:19px;right:-9px;bottom:-8px}
-.trReact.mine{border-color:#b89a1c;background:#f3df94}
-.trFlash{animation:trFlash 1.4s ease}
-@keyframes trFlash{0%,60%{box-shadow:0 0 0 3px #d8b825}100%{box-shadow:none}}
-#trMsgSheet{position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.42);display:flex;align-items:flex-end;justify-content:center}
+.trTeam img{display:block;width:100%;height:100%;border-radius:5px;object-fit:cover}
+.trTeam i{position:absolute;right:-.42em;bottom:-.38em;font-style:normal;font-size:.64em;line-height:1;width:1.5em;height:1.5em;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.45);border:1px solid #e5d27a}
+.trReact .trTeam{width:23px;height:23px;margin-right:7px}.trReact .trTeam i{font-size:10px;width:16px;height:16px;right:-8px;bottom:-5px}
+.trFlash{animation:trFlash 1.4s ease}@keyframes trFlash{0%,60%{box-shadow:0 0 0 3px #d8b825}100%{box-shadow:none}}
+#trMsgSheet{position:fixed;inset:0;z-index:9000;background:rgba(4,7,9,.70);display:flex;align-items:flex-end;justify-content:center;-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);font-family:inherit}
 #trMsgSheet[hidden]{display:none!important}
-/* v164: the chat screen hides everything else on the page; the menu must stay visible on top of the chat */
 body.portalChatIsolated > #trMsgSheet{visibility:visible!important;opacity:1!important;pointer-events:auto!important}
-#trMsgSheet .trSheetCard{width:100%;max-width:560px;max-height:78vh;overflow-y:auto;background:#fffdf8;color:#2d2f2b;border-radius:18px 18px 0 0;padding:14px 14px calc(14px + env(safe-area-inset-bottom));box-shadow:0 -8px 24px rgba(0,0,0,.2)}
-#trMsgSheet .trSheetHead{font-size:12px;opacity:.75;margin:0 0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#trMsgSheet .trEmojiGrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin-bottom:12px}
-#trMsgSheet .trEmojiGrid button{min-height:46px;border:1px solid #e1dccd;border-radius:12px;background:#fff;font-size:22px;line-height:1}
-#trMsgSheet .trEmojiGrid button.txt{font-size:13px;font-weight:900;line-height:1.2;padding:2px;white-space:nowrap}
+#trMsgSheet .trSheetCard{box-sizing:border-box;width:100%;max-width:560px;max-height:min(85dvh,740px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;background:linear-gradient(170deg,#22292b 0%,#13181b 38%,#0e1316 100%);color:#f7f5ed;border:1px solid rgba(245,199,58,.28);border-bottom:0;border-radius:23px 23px 0 0;padding:0 17px calc(16px + env(safe-area-inset-bottom));box-shadow:0 -17px 46px rgba(0,0,0,.43);color-scheme:dark}
+#trMsgSheet .trSheetCard:before{content:"";display:block;width:38px;height:4px;border-radius:8px;background:#777e7e;margin:10px auto 12px}
+#trMsgSheet .trSheetTop{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}
+#trMsgSheet .trSheetBrand{font-size:10px;font-weight:900;letter-spacing:.20em;color:#f0c741}
+#trMsgSheet .trSheetClose{display:inline-grid;place-items:center;width:32px;height:32px;border:1px solid rgba(255,255,255,.17);background:#2a3133;border-radius:50%;font-size:18px;color:#f6f6f0;line-height:1}
+#trMsgSheet .trSheetHead{font-size:13px;line-height:1.45;margin:0 0 10px;padding:10px 12px;background:#252d30;border:1px solid #384144;border-radius:11px;white-space:normal;overflow-wrap:anywhere;color:#d4d7d8;max-height:3.4em;overflow:hidden}
+#trMsgSheet .trSheetHead strong{color:#ffe085}
+#trMsgSheet .trQuickHeading{display:flex;justify-content:space-between;align-items:center;margin:10px 1px 6px}
+#trMsgSheet .trQuickHeading b{font-size:13px;letter-spacing:.03em;color:#f6f6f0}
+#trMsgSheet .trQuickHeading span{font-size:10px;color:#9aa3a7}
+#trMsgSheet .trQuickRow{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin:0 0 12px}
+#trMsgSheet .trQuickRow button{min-width:0;min-height:49px;border:1px solid #41494b;border-radius:14px;background:linear-gradient(180deg,#343d3f,#262d30);color:#fff;font-size:25px;line-height:1;display:grid;place-items:center;box-shadow:0 2px 5px rgba(0,0,0,.25);touch-action:manipulation}
+#trMsgSheet .trQuickRow button.on{border-color:#ffdb62;background:#51451f;box-shadow:inset 0 0 0 1px #ffd76d}
+#trMsgSheet .trCategoryBar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;padding:4px;background:#0b1113;border:1px solid #333d3f;border-radius:12px;margin:0 0 10px}
+#trMsgSheet .trCategoryBar button{min-width:0;min-height:35px;border:0;background:transparent;border-radius:8px;color:#b1b8ba;font-size:12px;font-weight:900;letter-spacing:0;padding:5px 2px;white-space:nowrap}
+#trMsgSheet .trCategoryBar button.active{background:#dfb52e;color:#171b1c;box-shadow:0 2px 8px rgba(223,181,46,.2)}
+#trMsgSheet .trCategoryHeading{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:0 2px 7px}
+#trMsgSheet .trCategoryHeading strong{font-size:13px;color:#f1f2ed}
+#trMsgSheet .trCategoryHeading small{font-size:10px;color:#a7adb0}
+#trMsgSheet .trEmojiGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;max-height:min(26dvh,215px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:2px 2px 6px;margin-bottom:11px;align-content:start}
+#trMsgSheet .trEmojiGrid button{min-width:0;min-height:63px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px;border:1px solid #3c4648;border-radius:13px;background:#242c2e;color:#f9f8f2;font:inherit;padding:7px 3px;line-height:1.1;touch-action:manipulation}
+#trMsgSheet .trEmojiGrid button .trTileFace{font-size:27px;line-height:1.1;white-space:nowrap}
+#trMsgSheet .trEmojiGrid button .trTileLabel{font-size:10px;font-weight:750;color:#b9c2c3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+#trMsgSheet .trEmojiGrid button.txt .trTileFace{font-size:14px;font-weight:950;letter-spacing:-.02em}
 #trMsgSheet .trEmojiGrid button.wide{grid-column:span 2}
-#trMsgSheet .trEmojiGrid button.on{border-color:#b89a1c;background:#f3df94}
-#trMsgSheet .trSheetBtns{display:grid;gap:8px}
-#trMsgSheet .trSheetBtns button{min-height:46px;border-radius:12px;border:1px solid #cac4b6;background:#fff;font-size:15px;font-weight:800;color:#2d2f2b}
-#trMsgSheet .trWho{margin:0 0 12px}
-#trMsgSheet .trWho b{display:block;font-size:15px;margin:8px 0 4px}
-#trMsgSheet .trWho span{display:inline-block;font-size:13px;margin:0 8px 4px 0}
-#trMsgSheet .trSheetNote{font-size:13px;font-weight:800;color:#a33;margin:0 0 8px}
+#trMsgSheet .trEmojiGrid button.wide .trTileFace{font-size:16px}
+#trMsgSheet .trEmojiGrid button.on{background:#50431e;border-color:#ffda5a;box-shadow:inset 0 0 0 1px #ffda5a}
+#trMsgSheet .trEmojiGrid button.on .trTileLabel{color:#ffdf7a}
+#trMsgSheet .trEmojiGrid .trTeam{width:32px;height:32px}
+#trMsgSheet .trEmojiGrid .trTeam i{font-size:13px;width:19px;height:19px;right:-10px;bottom:-8px}
+#trMsgSheet .trSheetNote{font-size:12px;font-weight:850;color:#ff9c8e;margin:5px 0 7px;line-height:1.45}
 #trMsgSheet .trSheetNote:empty{display:none}
-#trMsgSheet .trSheetNote.wait{color:#69571d}
-#trMsgSheet .trEmojiGrid button.busy{opacity:.5}
+#trMsgSheet .trSheetNote.wait{color:#ffd974}
+#trMsgSheet .trEmojiGrid button.busy,#trMsgSheet .trQuickRow button.busy{opacity:.5}
+#trMsgSheet .trSheetBtns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:9px}
+#trMsgSheet .trSheetBtns button{min-width:0;min-height:42px;border-radius:11px;border:1px solid #414b4d;background:#263033;font-size:13px;font-weight:850;color:#eff0ee;padding:7px 4px}
+#trMsgSheet .trSheetBtns button[data-act="reply"]{background:#e6bc35;color:#101719;border-color:#e6bc35}
+#trMsgSheet .trSheetBtns button[data-act="close"]{color:#bec7c9}
+#trMsgSheet .trWho{margin:0 0 12px}
+#trMsgSheet .trWho b{display:block;font-size:15px;margin:8px 0 4px;color:#ffd86a}
+#trMsgSheet .trWho span{display:inline-block;font-size:13px;margin:0 8px 4px 0}
+#trMsgSheet button:focus-visible{outline:2px solid #ffdb70;outline-offset:2px}
+#trMsgSheet .trSheetBtns button:active,#trMsgSheet .trQuickRow button:active,#trMsgSheet .trEmojiGrid button:active{transform:scale(.97)}
 .trComposeBar{display:flex;align-items:center;gap:8px;margin:0 0 6px;padding:6px 10px;border-left:3px solid #c5a52b;background:rgba(255,253,248,.95);color:#2d2f2b;border-radius:8px;font-size:12px}
-.trComposeBar[hidden]{display:none!important}
-.trComposeBar span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trComposeBar[hidden]{display:none!important}.trComposeBar span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .trComposeBar button{border:0;background:transparent;font-size:18px;line-height:1;padding:2px 6px;color:inherit}
 .trMentionList{display:flex;gap:6px;overflow-x:auto;margin:0 0 6px;padding:2px 0}
-.trMentionList[hidden]{display:none!important}
-.trMentionList button{flex:0 0 auto;border:1px solid #cac4b6;border-radius:999px;background:#fff;color:#2d2f2b;font-size:13px;font-weight:800;padding:6px 12px}
+.trMentionList[hidden]{display:none!important}.trMentionList button{flex:0 0 auto;border:1px solid #cac4b6;border-radius:999px;background:#fff;color:#2d2b2b;font-size:13px;font-weight:800;padding:6px 12px}
+@media(max-width:370px){#trMsgSheet .trQuickRow{gap:4px}#trMsgSheet .trQuickRow button{font-size:22px;min-height:44px}#trMsgSheet .trCategoryBar button{font-size:11px}}
+@media(prefers-reduced-motion:reduce){#trMsgSheet button{transition:none!important}}
 </style>
 <script id="v159-chat-react">
 /* v159: チャットのリアクション・返信・メンション（全体チャットとルーム）。LINE / BAND と同じ使い方:
@@ -20096,8 +20121,16 @@ body.portalChatIsolated > #trMsgSheet{visibility:visible!important;opacity:1!imp
   const TEAMS=['team','team:👌','team:👍','team:🔥','team:💪','team:🏃','team:🎉','team:👏','team:❤️','team:🙏','team:✨','team:💯'];
   const isTeam=e=>/^team(:|$)/.test(String(e||''));
   const face=e=>isTeam(e)?'<span class="trTeam"><img src="'+TEAM_IMG+'" alt="TOP RUN AGUI">'+(String(e).slice(5)?'<i>'+esc(String(e).slice(5))+'</i>':'')+'</span>':esc(e);
-  const REACTS=[...TEAMS,'走！','Run!','ファイト！','ナイスラン！','ナイス！','おつかれ！','🏃','🏃‍♀️','👟','⏱️','🏁','💨','🥇','🥈','🥉','🏅',
-    '👍','❤️','😂','😊','😮','😢','🙏','👏','🎉','🔥','💪','✨','🙆','🙇','👀','💯','👌','🤝','😭','🤣','😆','🥰','😳','🤔','🎵','OK','笑','了解','ありがとう'];
+  // v167: categories change presentation only; stored reactions remain the same string in the existing Firebase path.
+  const QUICK=['🔥','💪','👏','❤️','😂','👍','🏃'];
+  const REACT_GROUPS={
+    run:{name:'RUN',hint:'走る仲間へ',items:['🏃','🏃‍♀️','⚡','💨','🏁','⏱️','👟','🚀','🥇','🥈','🥉','🏅','🎯','💪','🔥','ナイスラン！','速っ！','PB更新！','ファイト！','ラスト！','いける！','走！','Run!','次いこ！']},
+    hype:{name:'アツい',hint:'最高の瞬間に',items:['🔥','💯','🙌','🎉','✨','🤩','👏','🏆','⭐','❤️','💪','🚀','神！','激アツ！','最高！','えぐい！','やば！','ナイス！','優勝！','いいね！']},
+    feel:{name:'気持ち',hint:'いつものリアクション',items:['👍','❤️','😂','😊','😮','😢','🙏','👏','🎉','🔥','💪','✨','🙆','🙇','👀','💯','👌','🤝','😭','🤣','😆','🥰','😳','🤔','🎵','🫶','🥹','😎','🎊','OK','笑','了解','ありがとう','おつかれ！','ドンマイ！']},
+    team:{name:'チーム',hint:'TOP RUN AGUI',items:TEAMS}
+  };
+  const REACT_LABELS={'🔥':'熱い！','💪':'ファイト','👏':'ナイス','❤️':'いいね','😂':'笑','👍':'GOOD','🏃':'RUN!','🏃‍♀️':'RUN!','⚡':'速い！','💨':'スピード','🏁':'GOAL','🚀':'GO!','🥇':'1位','🥈':'2位','🥉':'3位','🏅':'メダル','🎯':'目標','⏱️':'タイム','👟':'シューズ','💯':'満点','🙌':'最高','🎉':'お祝い','✨':'キラキラ','🤩':'すごい','🏆':'優勝','⭐':'輝く','🫶':'感謝','🥹':'感動','😎':'クール','🎊':'おめでとう'};
+  const reactionLabel=e=>isTeam(e)?(e==='team'?'AGUI':(REACT_LABELS[e.slice(5)]||e.slice(5))):REACT_LABELS[e]||'';
   const isText=e=>!isTeam(e)&&!/\p{Extended_Pictographic}/u.test(e);
   const cache=new Map();
   const myUid=()=>g()?.uid||'';
@@ -20232,11 +20265,30 @@ body.portalChatIsolated > #trMsgSheet{visibility:visible!important;opacity:1!imp
   function openActions(ctx,mid){
     const m=cache.get(mid);if(!m)return;
     const mine=m.reactions?.[myUid()]?.e||'';
-    const el=sheet(`<p class="trSheetHead">${esc(m.name||'')}：${esc(String(m.text||'').slice(0,40))}</p>
-      <p class="trSheetNote" role="status"></p>
-      <div class="trEmojiGrid">${REACTS.map(e=>`<button type="button" class="${isText(e)?(e.length>=4?'txt wide ':'txt '):''}${e===mine?'on':''}" data-re="${esc(e)}" aria-label="${esc(isTeam(e)?'チームアイコン'+String(e).slice(5):e)}">${face(e)}</button>`).join('')}</div>
-      <div class="trSheetBtns"><button type="button" data-act="reply">↩ 返信</button><button type="button" data-act="copy">全文をコピー</button><button type="button" data-act="select">一部を選んでコピー</button><button type="button" data-act="close">閉じる</button></div>`);
-    el.querySelector('.trSheetCard').onclick=e=>{
+    let active=Object.keys(REACT_GROUPS).find(k=>REACT_GROUPS[k].items.includes(mine))||'run';
+    const tile=e=>`<button type="button" class="${isText(e)?'txt ':''}${isText(e)&&e.length>=4?'wide ':''}${e===mine?'on':''}" data-re="${esc(e)}" aria-label="${esc(isTeam(e)?'TOP RUN AGUI '+reactionLabel(e):e)}" aria-pressed="${e===mine}"><span class="trTileFace">${face(e)}</span>${reactionLabel(e)?`<span class="trTileLabel">${esc(reactionLabel(e))}</span>`:''}</button>`;
+    const quick=e=>`<button type="button" class="${e===mine?'on':''}" data-re="${esc(e)}" aria-label="${esc(e)}" aria-pressed="${e===mine}">${face(e)}</button>`;
+    const el=sheet(`<div class="trSheetTop"><span class="trSheetBrand">TOP RUN · REACTION</span><button class="trSheetClose" type="button" data-act="close" aria-label="閉じる">×</button></div>
+      <p class="trSheetHead"><strong>${esc(m.name||'')}</strong>　${esc(String(m.text||'').replace(/\s+/g,' ').slice(0,56))}</p>
+      <p class="trSheetNote" role="status" aria-live="polite"></p>
+      <div class="trQuickHeading"><b>QUICK REACT</b><span>タップで送信 ／ 同じものを押すと取消</span></div>
+      <div class="trQuickRow">${QUICK.map(quick).join('')}</div>
+      <div class="trCategoryBar" role="tablist" aria-label="リアクションの種類">${Object.entries(REACT_GROUPS).map(([k,v])=>`<button type="button" role="tab" data-cat="${k}" class="${k===active?'active':''}" aria-selected="${k===active}">${esc(v.name)}</button>`).join('')}</div>
+      <div class="trCategoryHeading"><strong></strong><small></small></div>
+      <div class="trEmojiGrid" role="group" aria-label="リアクションの候補"></div>
+      <div class="trSheetBtns"><button type="button" data-act="reply">↩ 返信する</button><button type="button" data-act="copy">全文コピー</button><button type="button" data-act="select">一部コピー</button><button type="button" data-act="close">閉じる</button></div>`);
+    const card=el.querySelector('.trSheetCard');
+    function draw(){
+      const group=REACT_GROUPS[active];
+      card.querySelector('.trEmojiGrid').innerHTML=group.items.map(tile).join('');
+      card.querySelector('.trCategoryHeading strong').textContent=group.name;
+      card.querySelector('.trCategoryHeading small').textContent=group.hint;
+      card.querySelectorAll('[data-cat]').forEach(b=>{const yes=b.dataset.cat===active;b.classList.toggle('active',yes);b.setAttribute('aria-selected',String(yes));});
+      card.querySelector('.trEmojiGrid').scrollTop=0;
+    }
+    draw();
+    card.onclick=e=>{
+      const tab=e.target.closest('[data-cat]');if(tab){active=tab.dataset.cat;draw();return;}
       const r=e.target.closest('[data-re]');if(r){react(ctx,mid,r.dataset.re===mine?null:r.dataset.re,r);return;}
       const a=e.target.closest('[data-act]')?.dataset.act;
       if(a==='close')closeSheet();
