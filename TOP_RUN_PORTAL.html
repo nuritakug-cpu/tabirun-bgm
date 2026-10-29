@@ -1,3 +1,6 @@
+<!-- TOP RUN PORTAL v158 2026-10-29: v157 + tournament selectors (選手メニュー, 記録の紐付け) shown as a date-ordered list with small 開催日 and a filter (年・月・期間). Rules unchanged. -->
+<!-- TOP RUN PORTAL v157 2026-10-29: v156 + EVENT BASE tournaments shown as 「大会名（N回）」 in staff selectors (選手メニュー, 記録の紐付け, 大会結果の修正). Rules unchanged. -->
+<!-- TOP RUN PORTAL v156 2026-10-29: v155 + 管理画面「選手」 menu reorganized so each title opens its own content: ①new person entry ②missing entry ③fix/cancel ④past records only ⑤directory; record linking moved to its own developer button. New gate.staffCreateEntry (create-only events/<event>/players). Rules unchanged. -->
 <!-- TOP RUN PORTAL v155 2026-10-29: v154 + participants read the whole answer list of the date (eventResponses/<id>, practiceResponses/<key>) so everyone sees the same counts/names; if the Rules refuse, falls back to own answer with a visible note. Rules unchanged. -->
 <!-- TOP RUN PORTAL v154 2026-10-29: v153 + practice gets 帯同・応援として参加 (3 buttons like 大会), counts 参加する／帯同・応援／参加しない. Rules unchanged. -->
 <!-- TOP RUN PORTAL v153 2026-10-29: v152 + normal events and practice unified: 未定 removed (参加する／参加しない), re-tap clears (saved as maybe = 未選択), small hint, counts without 未定. Rules unchanged. -->
@@ -5960,7 +5963,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v155</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v158</b></div>
   </div>
 </div>
 
@@ -6154,7 +6157,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v155</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v158</b></div>
   </div>
 </div>
 
@@ -6185,12 +6188,30 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       <section class="portalWorkflowMenu" data-workflow-menu="athletes" aria-label="選手の操作を選択">
         <div class="portalWorkflowEyebrow">STEP 1 / 操作を選ぶ</div>
         <h3>選手は何をしますか？</h3>
-        <button type="button" class="portalWorkflowChoice" data-athlete-flow-mode="new"><span><b>＋ 新しい選手を登録</b><small>選手を追加して出走登録する</small></span><strong>›</strong></button>
-        <button type="button" class="portalWorkflowChoice" data-athlete-flow-mode="missing"><span><b>＋ 既存選手を出走登録</b><small>大会にまだ登録していない選手を探す</small></span><strong>›</strong></button>
-        <button type="button" class="portalWorkflowChoice" data-athlete-flow-mode="edit"><span><b>✎ 出走登録を修正</b><small>選手と大会を選んで修正する</small></span><strong>›</strong></button>
-        <button type="button" class="portalWorkflowChoice" data-athlete-flow-mode="external"><span><b>✎ 過去大会記録を登録・修正</b><small>選手を選んで記録を管理する</small></span><strong>›</strong></button>
-        <button type="button" class="portalWorkflowChoice" data-athlete-directory-open><span><b>選手の個人記録を閲覧</b><small>登録済みの選手を一覧から探す</small></span><strong>›</strong></button>
+        <button type="button" class="portalWorkflowChoice" data-tr-work="new"><span><b>＋ 新しい選手を登録</b><small>PORTALに登録していない人を大会に出走登録する（記録を残すため）</small></span><strong>›</strong></button>
+        <button type="button" class="portalWorkflowChoice" data-tr-work="missing"><span><b>＋ 既存選手を出走登録</b><small>参加すると答えたのに出走登録がない人を登録する</small></span><strong>›</strong></button>
+        <button type="button" class="portalWorkflowChoice" data-tr-work="edit"><span><b>✎ 出走登録を修正・取り消し</b><small>登録済みの出走を確認して、修正・取り消しをする</small></span><strong>›</strong></button>
+        <button type="button" class="portalWorkflowChoice" data-athlete-flow-mode="external" data-tr-only="external"><span><b>✎ 過去大会記録を登録・修正・削除</b><small>過去の大会の記録を登録・修正・削除する</small></span><strong>›</strong></button>
+        <button type="button" class="portalWorkflowChoice" data-athlete-directory-open><span><b>選手の個人記録を閲覧</b><small>選手を選ぶと記録を一覧で確認できる</small></span><strong>›</strong></button>
+        <button type="button" class="portalWorkflowChoice trwLinkChoice" data-tr-only="link" hidden><span><b>記録の紐付け（開発者）</b><small>過去大会の記録を本人のマイページにつなぐ・二重登録の整理</small></span><strong>›</strong></button>
       </section>
+      <div class="portalWorkflowArea" data-mw-area="work">
+        <div class="portalWorkflowTop"><button type="button" data-athlete-directory-back>← 操作選択へ戻る</button><strong id="trwTitle">出走登録</strong></div>
+        <section class="portalPanel" id="trwPanel">
+          <div class="portalPanelHead"><small id="trwEyebrow">ENTRY</small><b id="trwHead">出走登録</b></div>
+          <p class="portalHelp" id="trwHelp"></p>
+          <label class="portalFlowLabel">大会 <select id="trwEvent"></select></label>
+          <div id="trwNewForm" hidden>
+            <label class="portalFlowLabel">選手名 <input id="trwNewName" maxlength="24" autocomplete="off" placeholder="例：山田 太郎"></label>
+            <label class="portalFlowLabel">種目 <select id="trwNewMetric"></select></label>
+            <label class="portalFlowLabel">目標タイム（分かる場合） <input id="trwNewGoal" inputmode="decimal" autocomplete="off" placeholder="例：10:24"></label>
+            <button type="button" class="portalPrimary" id="trwNewSave" style="width:100%;margin-top:6px">この選手を出走登録する</button>
+          </div>
+          <label class="portalFlowLabel" id="trwSearchWrap" hidden>名前で絞り込み <input id="trwSearch" type="search" autocomplete="off" placeholder="例：山田"></label>
+          <p class="portalFlowStatus" id="trwStatus" aria-live="polite" style="font-weight:800"></p>
+          <div id="trwList" aria-live="polite"></div>
+        </section>
+      </div>
       <div class="portalWorkflowArea" data-mw-area="list">
       <div class="portalWorkflowTop"><button type="button" data-athlete-directory-back>← 操作選択へ戻る</button><strong>選手一覧・個人記録</strong></div>
       <label class="portalWorkflowSearch">選手を探す<input id="portalAthleteInlineSearch" type="search" placeholder="名前で検索" autocomplete="off"></label>
@@ -13151,7 +13172,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
     const ui=window.__TR_COMMON_PILOT_UI__,list=[],seen=new Set();
     for(const t of (ui?.officialTargets?.()||[])){
       if(!t?.id||seen.has(t.id))continue;seen.add(t.id);
-      list.push({id:t.id,base:true,date:String(t.canonicalDate||t.date||''),title:RP_NAMES[t.id]||String(t.canonicalTitle||t.title||t.id)});
+      list.push({id:t.id,base:true,date:String(t.canonicalDate||t.date||''),title:(window.trEventLabel?window.trEventLabel(t.id,t.canonicalTitle||t.title):(RP_NAMES[t.id]||String(t.canonicalTitle||t.title||t.id)))});
     }
     for(const e of eventItems){
       if(!e?.id||!e.title||e.enabled===false||ui?.officialTargetFor?.(e))continue;
@@ -13222,7 +13243,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
     const sel=$('rpEvent');if(!sel)return;
     const list=rpEvents(),keep=sel.value,sig=list.map(e=>e.id+e.title).join('|');
     if(sel.dataset.sig!==sig){
-      sel.innerHTML=list.map(e=>`<option value="${esc(e.id)}">${esc((e.date?e.date+' ':'')+e.title)}</option>`).join('');sel.dataset.sig=sig;
+      sel.innerHTML=list.map(e=>`<option value="${esc(e.id)}" data-date="${esc(e.date)}">${esc(e.title)}</option>`).join('');sel.dataset.sig=sig;
       const cur=list.find(e=>e.id==='eventbase_ekiden_next_2026_38fa5537b6')||list[list.length-1];
       sel.value=list.some(e=>e.id===keep)?keep:(cur?.id||'');
     }
@@ -15114,6 +15135,7 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
     // used to show the placeholder '大会正式名称未取得' for both (so 第1回 could not be recognised in the list).
     const P105_KNOWN={'eventbase_mu4ujce3_xxx1':'第1回大会','eventbase_ekiden_dev_20261006':'第2回大会（駅伝）'};
     const p105Label=r=>{
+      if(window.trEventLabel)return window.trEventLabel(r.eventId,r.eventTitle).slice(0,80);
       const t=String(r.eventTitle||'').trim(),unknown=!t||t==='大会正式名称未取得',known=P105_KNOWN[r.eventId];
       return (unknown?(known||r.eventId):(known&&!t.includes(known)?known+'｜'+t:t)).slice(0,80);
     };
@@ -16688,7 +16710,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       // participant's own cancel period. No result: the card is deleted (same as the participant's own cancel, so the
       // person can register again). With a result: the result is kept and the card is taken off the entry list
       // (EVENT BASE / 駅伝BASE soft-removal markers, which PORTAL already treats as withdrawn).
-      const entryDevCheck=()=>{if(!isDevRole()||auth.currentUser?.uid!==gate.uid)throw Error('開発者の権限が必要です');};
+      const entryDevCheck=()=>{if(!rOk()||!['developer','admin'].includes(gate.role)||auth.currentUser?.uid!==gate.uid)throw Error('開発者・管理者の権限が必要です');};
       const entryEvOk=id=>/^[A-Za-z0-9_-]{3,100}$/.test(String(id||''));
       const entryPidOk=id=>/^[A-Za-z0-9_-]{1,120}$/.test(String(id||''));
       const entryHasResult=p=>!!(p&&['result','officialResult','provisionalResult','place','officialPlace','provisionalPlace','resultStatus','resultSource'].some(k=>String(p[k]||'').trim()));
@@ -16720,6 +16742,43 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         if(!r.committed)throw Error('別の端末で記録が入力されたため停止しました。もう一度確認してください');
         gate.refreshOfficialRaceRead?.();
         return {keptResult:keep};
+      };
+      // v156: developer/admin adds a tournament entry card for (a) a person not registered in PORTAL (records only)
+      // or (b) a PORTAL participant who answered 参加 but has no entry. Create-only; never overwrites a card.
+      gate.staffCreateEntry=async(eventId,{subject,name,metric,targetTime,date})=>{
+        if(!rOk()||!['developer','admin'].includes(gate.role)||auth.currentUser?.uid!==gate.uid)throw Error('開発者・管理者の権限が必要です');
+        if(!entryEvOk(eventId))throw Error('大会を確認できません');
+        name=String(name||'').trim().slice(0,24);if(!name)throw Error('選手名を入力してください');
+        const key=officialMetricKey(metric);if(!key)throw Error('種目を選んでください');
+        targetTime=String(targetTime||'').trim().slice(0,30);if(!entryTimeOk(targetTime))throw Error('タイムは 10:24 や 1:05:30.5 の形で入力してください');
+        date=String(date||'').slice(0,10);
+        if(subject&&(!rUid(subject.uid)||typeof subject.profileId!=='string'||!subject.profileId))throw Error('参加者の本人情報を確認できません');
+        const all=(await dbMod.get(dbMod.ref(db,'events/'+eventId+'/players'))).val()||{};
+        const norm=v=>String(v||'').normalize('NFKC').replace(/[\s\u3000]/g,'');
+        const live=p=>p&&p.status!=='cancelled'&&p.withdrawn!==true&&p.ekidenEntryActive!==false;
+        const dup=Object.values(all).some(p=>live(p)&&officialMetricKey(p.event)===key&&(subject?(p.subjectUid===subject.uid||p.profileId===subject.profileId):norm(p.name)===norm(name)));
+        if(dup)throw Error('同じ人の同じ種目の出走登録がすでにあります');
+        let playerId;
+        if(subject){
+          const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(subject.uid+'|'+eventId+'|'+key));
+          playerId='trp_'+Array.from(new Uint8Array(digest),v=>v.toString(16).padStart(2,'0')).join('').slice(0,32);
+        }else{
+          playerId='trs_'+Array.from(crypto.getRandomValues(new Uint8Array(16)),v=>v.toString(16).padStart(2,'0')).join('');
+        }
+        const now=Date.now();
+        const row={id:playerId,profileId:subject?subject.profileId:'',name,affiliation:'',grade:'',raceNo:'',lane:'',
+          result:'',place:'',resultSource:'',officialResult:'',provisionalResult:'',resultStatus:'',
+          dayDate:date,event:(key==='relay'?'駅伝':key+'m'),heat:'',call:'',start:'',targetTime,declaredTime:'',status:'active',raceComment:'',
+          ownerUid:subject?subject.uid:'',subjectUid:subject?subject.uid:'',subjectRole:subject?'participant':'',
+          createdByRole:gate.role,createdByUid:gate.uid,createdByName:gate.displayName||'',createdByLabel:'運営入力（TOP RUN PORTAL）',
+          createdAt:now,updatedAt:now,version:'PORTAL-STAFF-20261029'};
+        const at=dbMod.ref(db,'events/'+eventId+'/players/'+playerId);
+        const r=await dbMod.runTransaction(at,prior=>prior===null?row:undefined,{applyLocally:false});
+        if(!r.committed)throw Error('同じ出走登録がすでにあります。上書きしません');
+        const ok=(await dbMod.get(at)).val();
+        if(!ok||ok.name!==name||ok.event!==row.event)throw Error('保存の確認ができません。もう一度一覧を確認してください');
+        gate.refreshOfficialRaceRead?.();
+        return {playerId};
       };
       window.addEventListener('tr-portal-authorized',()=>{try{gate.roomsStart();}catch(_){}});
       if(gate.roleVerified===true){try{gate.roomsStart();}catch(_){}}
@@ -19681,5 +19740,270 @@ html[data-portal-personal-color="matte"] #screen-chat .trPickHead small{color:#d
 #screen-schedule-detail .portalPracticeResponseOptions button{display:flex;align-items:center;justify-content:center;text-align:center}
 .trRsvpUntap{margin:6px 0 0;font-size:11px;line-height:1.5;opacity:.72;text-align:right}
 </style>
+<script id="v157-event-label">
+/* v157: one label for EVENT BASE tournaments everywhere in staff screens: 「大会名（N回）」.
+   大会名 = EVENT BASE official title (or the PORTAL event title). N = order of the EVENT BASE tournaments by date. */
+window.trEventLabel=(id,fallback)=>{
+  const g=window.__TR_PORTAL_SYNC__,ui=window.__TR_COMMON_PILOT_UI__;
+  const bad=t=>!t||/^(大会|大会正式名称未取得|第\d+回大会(（駅伝）)?)$/.test(t)||/^eventbase_/.test(t);
+  const targets=(ui?.officialTargets?.()||[]).filter(t=>t&&t.id);
+  const fixed={'eventbase_mu4ujce3_xxx1':1,'eventbase_ekiden_dev_20261006':2,'eventbase_ekiden_next_2026_38fa5537b6':3};
+  const date=t=>String(g?.officialReadStatus?.[t.id]?.canonicalDate||t.canonicalDate||t.date||'');
+  const rest=targets.filter(t=>!fixed[t.id]).sort((a,b)=>date(a).localeCompare(date(b)));
+  const n=fixed[id]||(rest.findIndex(t=>t.id===id)>=0?Object.keys(fixed).length+1+rest.findIndex(t=>t.id===id):0);
+  const t=targets.find(x=>x.id===id);
+  const cands=[g?.officialReadStatus?.[id]?.canonicalTitle,t?.canonicalTitle,t&&g?.eventItems?.[t.catalogId]?.title,t?.title,fallback].map(v=>String(v||'').trim());
+  const title=cands.find(v=>!bad(v))||'大会名未取得';
+  return title.slice(0,60)+(n?'（'+n+'回）':'');
+};
+</script>
+<style id="v156-athlete-work-style">
+#screen-management .portalManagePane[data-mw-view="work"] .portalWorkflowArea[data-mw-area="work"]{display:block!important}
+#trwPanel .trwCard{border:1px solid rgba(128,128,128,.4);border-radius:12px;padding:10px 12px;margin:8px 0;display:grid;gap:6px}
+#trwPanel .trwCard b{font-size:15px}
+#trwPanel .trwSub{font-size:12px;opacity:.78;line-height:1.5}
+#trwPanel .trwRow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+#trwPanel .trwRow select,#trwPanel .trwRow input{flex:1 1 120px;min-height:40px;font-size:16px;min-width:0}
+#trwPanel .trwRow button{flex:1 1 120px;min-height:42px;border-radius:10px;font-weight:800}
+#trwPanel .trwDanger{color:#a33}
+#trwPanel [hidden],.portalWorkflowChoice.trwLinkChoice[hidden]{display:none!important}
+#screen-flow-manager[data-tr-only="external"] #rpPanel,
+#screen-flow-manager[data-tr-only="external"] #rpLegacy>summary,
+#screen-flow-manager[data-tr-only="external"] #portalTrialResetManager,
+#screen-flow-manager[data-tr-only="external"] #portalManagerBack,
+#screen-flow-manager[data-tr-only="external"] #portalAuditPanel,
+#screen-flow-manager[data-tr-only="external"] #portalManagerChoicePanel,
+#screen-flow-manager[data-tr-only="external"] #flowManagerPanel,
+#screen-flow-manager[data-tr-only="link"] #rpLegacy{display:none!important}
+</style>
+<script id="v156-athlete-work">
+/* v156: 管理画面「選手」— each menu opens what its title says.
+   ① new: a person not in PORTAL → entry card (records only)  ② missing: answered 参加 but no entry
+   ③ edit: fix / cancel any entry (also after the participant's deadline)  ④ past records only  ⑤ directory (unchanged)
+   Records linking moved to its own developer button. Writes: events/<event>/players only (gate.staffCreateEntry / staffEditEntry / staffRemoveEntry). */
+(()=>{
+  const $=id=>document.getElementById(id);
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const norm=v=>String(v||'').normalize('NFKC').replace(/[\s\u3000]/g,'');
+  const g=()=>window.__TR_PORTAL_SYNC__;
+  const ui=()=>window.__TR_COMMON_PILOT_UI__;
+  const metricKey=v=>{const t=String(v||'').normalize('NFKC').replace(/\s/g,'').toLowerCase();const m=t.match(/(10000|5000|3000|1500|1000|800|400)/);return m?m[1]:/駅伝|リレー|relay/.test(t)?'relay':t;};
+  const metricName=k=>k==='relay'?'駅伝':k==='other'?'その他':(k?k+'m':'');
+  let mode='',cards={},busy=false;
+  const TEXT={
+    new:{title:'新しい選手を登録',eyebrow:'NEW ATHLETE',help:'PORTALに登録していない人を、大会に出走登録します。記録を残すための登録です（本人のマイページとは、あとで「記録の紐付け」でつなげます）。'},
+    missing:{title:'既存選手を出走登録',eyebrow:'MISSING ENTRY',help:'この大会に「参加する」「帯同・応援」と答えたのに、出走登録がない人です。種目を選んで出走登録します。'},
+    edit:{title:'出走登録を修正・取り消し',eyebrow:'FIX / CANCEL',help:'この大会に出走登録している人です。目標タイムの修正や、出走の取り消しができます（本人の取り消し期限を過ぎていても操作できます）。種目を変える場合は、取り消してから「既存選手を出走登録」で登録し直してください。'}
+  };
+  const say=t=>{const el=$('trwStatus');if(el)el.textContent=t||'';};
+  const staff=()=>{const x=g();return !!(x?.roleVerified===true&&['developer','admin'].includes(x.role));};
+  function events(){
+    const list=[];
+    for(const t of (ui()?.officialTargets?.()||[])){
+      if(!t?.id)continue;
+      const item=g()?.eventItems?.[t.catalogId]||null;
+      list.push({id:t.id,catalogId:t.catalogId,title:window.trEventLabel?window.trEventLabel(t.id,t.title):String(t.title||t.id),date:String(t.date||''),item});
+    }
+    return list.sort((a,b)=>a.date.localeCompare(b.date));
+  }
+  const cur=()=>events().find(e=>e.id===$('trwEvent')?.value)||null;
+  function metricsOf(ev){
+    const it=ev?.item;let ms=Array.isArray(it?.raceMetrics)?it.raceMetrics.slice():[];
+    if(!ms.length)ms=['800','1000','1500','3000','relay'];
+    return ms.map(m=>[m,metricName(metricKey(m))||String(m)]);
+  }
+  const dateOf=(ev,m)=>String(ev?.item?.metricDates?.[m]||ev?.item?.date||ev?.date||'').slice(0,10);
+  const live=p=>p&&p.status!=='cancelled'&&p.withdrawn!==true&&p.ekidenEntryActive!==false;
+  async function loadCards(ev,force){
+    if(!ev)return {};
+    if(force||!cards[ev.id])cards[ev.id]=await g().staffEntryCards(ev.id);
+    return cards[ev.id]||{};
+  }
+  function fillEvents(){
+    const sel=$('trwEvent');const list=events(),keep=sel.value;
+    if(sel.dataset.sig===list.map(e=>e.id+e.title+e.date).join('|')&&list.some(e=>e.id===keep)){return;}
+    sel.dataset.sig=list.map(e=>e.id+e.title+e.date).join('|');
+    sel.innerHTML=list.length?list.map(e=>`<option value="${esc(e.id)}" data-date="${esc(e.date)}">${esc(e.title)}</option>`).join(''):'<option value="">EVENT BASEにつながった大会がありません</option>';
+    if(list.some(e=>e.id===keep))sel.value=keep;else if(list.length)sel.value=list[list.length-1].id;
+  }
+  function fillNewMetric(){
+    const ev=cur();$('trwNewMetric').innerHTML=metricsOf(ev).map(([v,t])=>`<option value="${esc(v)}">${esc(t)}</option>`).join('');
+  }
+  async function render(force){
+    const ev=cur(),list=$('trwList');
+    $('trwNewForm').hidden=mode!=='new';
+    $('trwSearchWrap').hidden=mode==='new';
+    if(mode==='new'){fillNewMetric();list.innerHTML='';return;}
+    if(!ev){list.innerHTML='<p class="portalHelp">大会を選んでください。</p>';return;}
+    list.innerHTML='<p class="portalHelp">読み込み中…</p>';
+    let all;
+    try{all=await loadCards(ev,force);}catch(e){list.innerHTML='<p class="portalHelp">出走登録を読み込めませんでした：'+esc(String(e?.message||e).slice(0,100))+'</p>';return;}
+    if(ev.id!==cur()?.id)return;
+    const q=norm($('trwSearch').value),hit=n=>!q||norm(n).includes(q);
+    const rows=Object.entries(all).filter(([,p])=>live(p));
+    if(mode==='missing'){
+      const answers=g()?.eventResponses?.[ev.catalogId]||{};
+      const has=(uid,pid,name)=>rows.some(([,p])=>p.subjectUid===uid||(pid&&p.profileId===pid)||norm(p.name)===norm(name));
+      const people=Object.entries(answers).filter(([uid,a])=>a&&['join','support'].includes(a.answer)&&a.profileId&&!has(uid,a.profileId,a.name))
+        .map(([uid,a])=>({uid,profileId:a.profileId,name:String(a.name||'参加者').slice(0,24),answer:a.answer})).filter(x=>hit(x.name))
+        .sort((a,b)=>a.name.localeCompare(b.name,'ja'));
+      const opts=metricsOf(ev).map(([v,t])=>`<option value="${esc(v)}">${esc(t)}</option>`).join('');
+      list.innerHTML=people.length?people.map(x=>`<div class="trwCard"><b>${esc(x.name)}</b><span class="trwSub">PORTALの回答：${x.answer==='support'?'帯同・応援':'参加する'}｜出走登録なし</span>
+        <div class="trwRow"><select data-trw-metric="${esc(x.uid)}">${opts}</select><input data-trw-goal="${esc(x.uid)}" inputmode="decimal" placeholder="目標（例 10:24）"></div>
+        <div class="trwRow"><button type="button" class="portalPrimary" data-trw-add="${esc(x.uid)}">出走登録する</button></div></div>`).join('')
+        :'<p class="portalHelp">出走登録が漏れている人はいません。</p>';
+      list._people=people;
+      return;
+    }
+    // edit
+    const shown=rows.filter(([,p])=>hit(p.name)).sort(([,a],[,b])=>String(a.name).localeCompare(String(b.name),'ja'));
+    const hasRes=p=>['result','officialResult','provisionalResult','place','officialPlace','provisionalPlace','resultStatus','resultSource'].some(k=>String(p[k]||'').trim());
+    list.innerHTML=shown.length?shown.map(([pid,p])=>`<div class="trwCard"><b>${esc(p.name||'')}</b>
+      <span class="trwSub">${esc(metricName(metricKey(p.event))||p.event||'')}｜目標 ${esc(p.targetTime||'なし')}${hasRes(p)?'｜記録あり':''}｜${p.subjectUid?(String(p.createdByLabel||'').includes('運営')?'運営入力（本人あり）':'本人登録'):'運営入力（PORTAL未登録の人）'}</span>
+      <div class="trwRow"><button type="button" class="portalFlowSecondary" data-trw-edit="${esc(pid)}">目標タイムを修正</button><button type="button" class="portalFlowSecondary trwDanger" data-trw-del="${esc(pid)}">出走を取り消す</button></div></div>`).join('')
+      :'<p class="portalHelp">この大会の出走登録はありません。</p>';
+  }
+  async function act(fn){
+    if(busy)return;busy=true;
+    try{await Promise.race([fn(),new Promise((_,rej)=>setTimeout(()=>rej(Error('通信に時間がかかっています。電波を確認して、もう一度押してください')),20000))]);}
+    catch(e){say('できませんでした：'+String(e?.message||e?.code||e).slice(0,140));}
+    finally{busy=false;}
+  }
+  function open(m){
+    if(!staff())return;
+    mode=m;const t=TEXT[m];
+    $('trwTitle').textContent=t.title;$('trwHead').textContent=t.title;$('trwEyebrow').textContent=t.eyebrow;$('trwHelp').textContent=t.help;
+    $('trwSearch').value='';$('trwNewName').value='';$('trwNewGoal').value='';say('');
+    fillEvents();
+    const pane=$('manage-pane-athletes');pane.dataset.mwView='work';
+    render(true);pane.scrollIntoView({behavior:'auto',block:'start'});
+  }
+  document.addEventListener('click',e=>{
+    const w=e.target.closest('[data-tr-work]');if(w){open(w.dataset.trWork);return;}
+    const only=e.target.closest('[data-tr-only]');
+    if(only){
+      const v=only.dataset.trOnly;
+      if(v==='link'){$('flowOpenManager')?.click();}
+      const scr=$('screen-flow-manager');if(!scr)return;
+      scr.dataset.trOnly=v;
+      const fix=()=>{
+        if(scr.dataset.trOnly!==v)return;
+        const head=scr.querySelector('.portalScreenHead b');if(head)head.textContent=v==='external'?'過去大会記録':'記録の紐付け';
+        const legacy=$('rpLegacy');if(legacy&&v==='external')legacy.open=true;
+      };
+      fix();[100,500,1500].forEach(t=>setTimeout(fix,t));
+      return;
+    }
+    if(e.target.closest('#trwNewSave')){
+      const ev=cur();if(!ev)return say('大会を選んでください。');
+      const name=$('trwNewName').value.trim(),metric=$('trwNewMetric').value,goal=$('trwNewGoal').value.trim();
+      if(!name)return say('選手名を入力してください。');
+      if(!confirm(`「${name}」を ${ev.title} の ${metricName(metricKey(metric))} に出走登録しますか？`))return;
+      act(async()=>{await g().staffCreateEntry(ev.id,{subject:null,name,metric,targetTime:goal,date:dateOf(ev,metric)});
+        $('trwNewName').value='';$('trwNewGoal').value='';delete cards[ev.id];
+        say(`出走登録しました：${name}（${metricName(metricKey(metric))}）`);try{showActionFeedback?.('出走登録しました',name);}catch(_){}});
+      return;
+    }
+    const add=e.target.closest('[data-trw-add]');
+    if(add){
+      const ev=cur(),uid=add.dataset.trwAdd,x=($('trwList')._people||[]).find(p=>p.uid===uid);if(!ev||!x)return;
+      const metric=document.querySelector(`[data-trw-metric="${CSS.escape(uid)}"]`)?.value||'',goal=document.querySelector(`[data-trw-goal="${CSS.escape(uid)}"]`)?.value.trim()||'';
+      if(!confirm(`「${x.name}」を ${metricName(metricKey(metric))} に出走登録しますか？`))return;
+      act(async()=>{await g().staffCreateEntry(ev.id,{subject:{uid:x.uid,profileId:x.profileId},name:x.name,metric,targetTime:goal,date:dateOf(ev,metric)});
+        say(`出走登録しました：${x.name}（${metricName(metricKey(metric))}）`);await render(true);});
+      return;
+    }
+    const ed=e.target.closest('[data-trw-edit]');
+    if(ed){
+      const ev=cur(),pid=ed.dataset.trwEdit,p=(cards[ev?.id]||{})[pid];if(!ev||!p)return;
+      const goal=prompt(`${p.name} の目標タイム（例 10:24）。空にすると目標なし`,String(p.targetTime||''));if(goal===null)return;
+      act(async()=>{await g().staffEditEntry(ev.id,pid,{targetTime:goal});say(`修正しました：${p.name}`);await render(true);});
+      return;
+    }
+    const del=e.target.closest('[data-trw-del]');
+    if(del){
+      const ev=cur(),pid=del.dataset.trwDel,p=(cards[ev?.id]||{})[pid];if(!ev||!p)return;
+      if(!confirm(`「${p.name}」の出走（${metricName(metricKey(p.event))}）を取り消しますか？\n記録が入っている場合、記録は残して出走一覧から外します。`))return;
+      act(async()=>{const r=await g().staffRemoveEntry(ev.id,pid);say(r?.keptResult?`出走一覧から外しました（記録は残しています）：${p.name}`:`出走を取り消しました：${p.name}`);await render(true);});
+    }
+  });
+  document.addEventListener('change',e=>{if(e.target.id==='trwEvent'){say('');render(false);}});
+  document.addEventListener('input',e=>{if(e.target.id==='trwSearch')render(false);});
+  // leaving the flow-manager screen clears the "only" view
+  const watch=()=>{const scr=$('screen-flow-manager');if(!scr)return;
+    new MutationObserver(()=>{if(scr.classList.contains('hidden'))delete scr.dataset.trOnly;}).observe(scr,{attributes:true,attributeFilter:['class']});};
+  const showLink=()=>{const b=document.querySelector('.trwLinkChoice');const x=g();if(b)b.hidden=!(x?.roleVerified===true&&x.role==='developer');};
+  window.addEventListener('tr-portal-authorized',showLink);
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{watch();showLink();});else{watch();showLink();}
+})();
+</script>
+<style id="v158-event-picker-style">
+.trPick{display:grid;gap:8px;margin:4px 0 12px}
+.trPick[hidden]{display:none!important}
+.trPickNow{border:1px solid #b89a1c;background:rgba(216,184,37,.16);border-radius:12px;padding:9px 12px}
+.trPickNow b{display:block;font-size:15px;line-height:1.4}
+.trPickNow small,.trPickRow small{display:block;font-size:11px;opacity:.72;margin-top:2px;font-weight:600}
+.trPickBar{display:flex;gap:6px;flex-wrap:wrap}
+.trPickBar select,.trPickBar input{flex:1 1 110px;min-width:0;min-height:40px;font-size:16px;border-radius:10px}
+.trPickBar [hidden]{display:none!important}
+.trPickList{display:grid;gap:6px;max-height:300px;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:1px}
+.trPickRow{display:block;width:100%;text-align:left;border:1px solid rgba(128,128,128,.4);border-radius:12px;padding:9px 12px;background:transparent;color:inherit;font:inherit}
+.trPickRow b{display:block;font-size:14px;line-height:1.4;font-weight:800}
+.trPickRow.on{border-color:#b89a1c;background:rgba(216,184,37,.16)}
+.trPickNone{font-size:12px;opacity:.75;margin:2px 0}
+select.trPickSource{display:none!important}
+</style>
+<script id="v158-event-picker">
+/* v158: tournament selector = list in date order (大会名（N回） + small date) with a filter (年・月・期間).
+   The original <select> stays as the single source of the value; tapping a row sets it and fires "change". */
+(()=>{
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const fmt=d=>/^\d{4}-\d{2}-\d{2}$/.test(d)?d.replace(/-/g,'/'):'開催日未設定';
+  function enhance(sel){
+    if(!sel||sel.dataset.trPick)return;sel.dataset.trPick='1';sel.classList.add('trPickSource');
+    const anchor=sel.closest('label')||sel;
+    const box=document.createElement('div');box.className='trPick';
+    box.innerHTML='<div class="trPickNow"></div><div class="trPickBar"><select data-p="mode" aria-label="絞り込み"><option value="all">すべて表示</option><option value="year">年で絞る</option><option value="month">月で絞る</option><option value="range">期間で絞る</option></select>'+
+      '<select data-p="year" aria-label="年" hidden></select><select data-p="month" aria-label="月" hidden></select>'+
+      '<input type="date" data-p="from" aria-label="期間の始め" hidden><input type="date" data-p="to" aria-label="期間の終わり" hidden></div><div class="trPickList" role="listbox"></div>';
+    anchor.insertAdjacentElement('afterend',box);
+    const q=k=>box.querySelector(`[data-p="${k}"]`);
+    const opts=()=>[...sel.options].filter(o=>o.value).map(o=>({v:o.value,t:o.textContent,d:String(o.dataset.date||'')}));
+    function fillFilters(){
+      const list=opts(),ys=[...new Set(list.map(x=>x.d.slice(0,4)).filter(y=>/^\d{4}$/.test(y)))].sort();
+      const ms=[...new Set(list.map(x=>x.d.slice(0,7)).filter(m=>/^\d{4}-\d{2}$/.test(m)))].sort();
+      const y=q('year'),m=q('month'),ky=y.value,km=m.value;
+      y.innerHTML=ys.map(v=>`<option value="${v}">${v}年</option>`).join('');if(ys.includes(ky))y.value=ky;else if(ys.length)y.value=ys[ys.length-1];
+      m.innerHTML=ms.map(v=>`<option value="${v}">${v.slice(0,4)}年${Number(v.slice(5))}月</option>`).join('');if(ms.includes(km))m.value=km;else if(ms.length)m.value=ms[ms.length-1];
+    }
+    function render(){
+      const mode=q('mode').value;
+      q('year').hidden=mode!=='year';q('month').hidden=mode!=='month';q('from').hidden=mode!=='range';q('to').hidden=mode!=='range';
+      const list=opts(),cur=list.find(x=>x.v===sel.value);
+      box.querySelector('.trPickNow').innerHTML=cur?`<b>${esc(cur.t)}</b><small>開催日 ${esc(fmt(cur.d))}｜選択中</small>`:'<b>大会を選んでください</b>';
+      const f=q('from').value,t=q('to').value;
+      const shown=list.filter(x=>mode==='year'?x.d.startsWith(q('year').value):mode==='month'?x.d.startsWith(q('month').value):mode==='range'?((!f||x.d>=f)&&(!t||x.d<=t)):true);
+      box.querySelector('.trPickList').innerHTML=shown.length?shown.map(x=>`<button type="button" class="trPickRow${x.v===sel.value?' on':''}" data-v="${esc(x.v)}" role="option" aria-selected="${x.v===sel.value}"><b>${esc(x.t)}</b><small>開催日 ${esc(fmt(x.d))}</small></button>`).join(''):'<p class="trPickNone">この条件の大会はありません。</p>';
+    }
+    box.addEventListener('click',e=>{
+      const r=e.target.closest('.trPickRow');if(!r)return;
+      e.preventDefault();
+      if(sel.value!==r.dataset.v){sel.value=r.dataset.v;sel.dispatchEvent(new Event('change',{bubbles:true}));}
+      render();
+    });
+    box.addEventListener('change',e=>{if(e.target.closest('.trPickBar')){e.stopPropagation();render();}});
+    box.addEventListener('input',e=>{if(e.target.closest('.trPickBar'))e.stopPropagation();});
+    sel.addEventListener('change',render);
+    new MutationObserver(()=>{fillFilters();render();}).observe(sel,{childList:true,subtree:true,attributes:true});
+    if(anchor!==sel)new MutationObserver(()=>{box.hidden=anchor.hidden;}).observe(anchor,{attributes:true,attributeFilter:['hidden']});
+    box.hidden=anchor.hidden;
+    fillFilters();render();
+    // the value may be set by code without a change event
+    let last=sel.value;setInterval(()=>{if(sel.value!==last){last=sel.value;render();}},800);
+  }
+  const start=()=>['trwEvent','rpEvent'].forEach(id=>enhance(document.getElementById(id)));
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+})();
+</script>
 </body>
 </html>
