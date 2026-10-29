@@ -1,4 +1,4 @@
-<!-- TOP RUN PORTAL v137 2026-10-29: v132 + PORTAL chat rooms (v133-v136) + room invite picker = 選手 (管理画面「選手」) and 参加者 (developer-curated chatPeople, chosen in 管理画面の設定) (v137); 参加者・記録 ① cards fold, same-name registrations: linked one (else newest) shown, unlinked others hidden (v137). REQUIRES Rules P103 (adds chatPeople). Room push not yet. -->
+<!-- TOP RUN PORTAL v140 2026-10-29: v139 + developer views every room (management view, no sending when not a member); staff can rename rooms; developer チャット削除 pane can target a room (全件・期間・個別). Rules P103 unchanged. -->
 <!-- TOP RUN PORTAL v113 2026-10-28: v112 + P107 developer re-bind for the two historical events (same write as the EVENT BASE developer entry; Rules unchanged). v112 notes:  v111 + P106 duplicate guard (manual 過去大会 record hidden when EVENT BASE has same person/date/time). v111 notes:  v110 (ChatGPT) + P105 integrated by Claude: EVENT BASE result correction (staff), withdrawn EKIDEN entries hidden from 参加する/RSVP lock, MY PAGE reflection diagnosis. No Auth/UID/Rules/listener change beyond P105 players handling. STATIC/simulated tests only; real Firebase not verified. -->
 <!-- TOP RUN PORTAL v110 2026-10-28: v109 exact physical parent; PORTAL internal event links now saved via the existing eventItems writer and visible in event list/calendar. External EVENT BASE/EKIDEN validation and all Auth/UID/profileId/Rules/RTDB subscriptions, writes, official results and theme/home image safeguards unchanged. STATIC candidate; Firebase production not tested/deployed. -->
 <!-- 2026-10-28 v109 UI organization: Hide obsolete CHAT STEP 1 panel (retain DOM for existing gateway); move push settings to first; show version "v109" only; developer identity review first in matching management card. No Auth, Rules, listener, CHAT message read/write, image cache, notification registration, official results or released data changed. NOT DEPLOYED. -->
@@ -5953,7 +5953,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v137</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v140</b></div>
   </div>
 </div>
 
@@ -6147,7 +6147,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v137</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v140</b></div>
   </div>
 </div>
 
@@ -16273,7 +16273,8 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       const CATS=['admin','parent','participant','personal','other'];
       const rErr=e=>String(e?.code||e?.message||e).slice(0,90);
       const emit=()=>{try{window.dispatchEvent(new CustomEvent('tr-portal-rooms'));}catch(_){}};
-      const metaOf=id=>(rDev()?RM.allMeta:RM.meta)[id]||null;
+      const isDevRole=()=>rOk()&&gate.role==='developer';
+      const metaOf=id=>RM.meta[id]||(isDevRole()?RM.allMeta[id]:null)||null; // v140: developer can view every room; admins only their own
       const stopMsg=()=>{
         if(RM.readTimer){clearTimeout(RM.readTimer);RM.readTimer=null;}
         if(RM.msg){try{RM.msg();}catch(_){}RM.msg=null;}
@@ -16286,7 +16287,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         try{await dbMod.set(ref('userRooms/'+gate.uid+'/'+id+'/readAt'),dbMod.serverTimestamp());}catch(_){}
       };
       const syncMeta=()=>{
-        const want=new Set(rDev()?[]:Object.keys(RM.mine).filter(id=>rId(id)&&['invited','joined'].includes(RM.mine[id]?.status)));
+        const want=new Set(Object.keys(RM.mine).filter(id=>rId(id)&&['invited','joined'].includes(RM.mine[id]?.status)));
         for(const [id,stop] of RM.subs){if(!want.has(id)){try{stop();}catch(_){}RM.subs.delete(id);delete RM.meta[id];}}
         for(const id of want){
           if(RM.subs.has(id))continue;
@@ -16308,34 +16309,34 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         if(RM.own&&RM.uid===gate.uid)return true;
         gate.roomsStop();
         const uid=gate.uid;RM.uid=uid;
-        RM.own=p94WatchValue(ref('userRooms/'+uid),s=>{
-          if(RM.uid!==uid)return;
-          const v=s.val();RM.mine=v&&typeof v==='object'?v:{};RM.err='';
-          syncMeta();
-          if(RM.openId&&!rDev()&&RM.mine[RM.openId]?.status!=='joined'){stopMsg();RM.openId='';}
-          emit();
-        },e=>{if(RM.uid!==uid)return;RM.err=rErr(e);emit();});
-        if(['developer','admin'].includes(gate.role)){
+        if(gate.role==='developer'){
           RM.all=p94WatchValue(ref('roomMeta'),s=>{
             if(RM.uid!==uid)return;
             const v=s.val();RM.allMeta=v&&typeof v==='object'?v:{};emit();
           },e=>{if(RM.uid!==uid)return;RM.err=rErr(e);emit();});
         }
+        RM.own=p94WatchValue(ref('userRooms/'+uid),s=>{
+          if(RM.uid!==uid)return;
+          const v=s.val();RM.mine=v&&typeof v==='object'?v:{};RM.err='';
+          syncMeta();
+          if(RM.openId&&!isDevRole()&&RM.mine[RM.openId]?.status!=='joined'){stopMsg();RM.openId='';}
+          emit();
+        },e=>{if(RM.uid!==uid)return;RM.err=rErr(e);emit();});
         return true;
       };
       gate.roomsState=()=>{
         const dev=rDev();
         const ids=new Set(Object.keys(RM.mine));
-        if(dev)Object.keys(RM.allMeta).forEach(id=>ids.add(id));
+        if(isDevRole())Object.keys(RM.allMeta).forEach(id=>ids.add(id));
         const rooms=[...ids].filter(rId).map(id=>{
           const m=metaOf(id),me=RM.mine[id]||null;
           let status=String(me?.status||'');
-          if(dev&&status!=='joined')status='staff';
+          if(isDevRole()&&status!=='joined'&&status!=='invited')status='view'; // developer: management view only
           const lastAt=Number(m?.lastAt||0),readAt=Number(me?.readAt||0);
           return {id,name:String(m?.name||''),category:CATS.includes(m?.category)?m.category:'other',status,lastAt,
             unread:status==='joined'&&lastAt>readAt&&RM.openId!==id,loaded:!!m};
-        }).filter(r=>r.loaded&&(dev||r.status==='invited'||r.status==='joined'))
-          .sort((a,b)=>(a.status==='invited'?0:1)-(b.status==='invited'?0:1)||b.lastAt-a.lastAt||a.name.localeCompare(b.name,'ja'));
+        }).filter(r=>r.loaded&&(r.status==='invited'||r.status==='joined'||r.status==='view'))
+          .sort((a,b)=>({invited:0,joined:1,view:2}[a.status]??3)-({invited:0,joined:1,view:2}[b.status]??3)||b.lastAt-a.lastAt||a.name.localeCompare(b.name,'ja'));
         return {ready:rOk()&&!!RM.own,isDev:dev,uid:gate.uid,rooms,openId:RM.openId,msgs:RM.msgs.slice(),msgErr:RM.msgErr,err:RM.err};
       };
       gate.roomsUnread=()=>{
@@ -16344,7 +16345,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       };
       gate.roomOpen=id=>{
         if(!rOk()||!rId(id))throw Error('ルームを開けません');
-        if(RM.mine[id]?.status!=='joined'&&!rDev())throw Error('このルームには入室していません');
+        if(RM.mine[id]?.status!=='joined'&&!isDevRole())throw Error('このルームには入室していません');
         if(RM.openId===id&&RM.msg)return;
         stopMsg();RM.openId=id;emit();
         const q=dbMod.query(ref('roomMessages/'+id),dbMod.orderByChild('ts'),dbMod.limitToLast(50));
@@ -16425,14 +16426,33 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         const [rq,ac,se,cp]=await Promise.all([dbMod.get(ref('memberRequests')),dbMod.get(ref('memberAccess')),dbMod.get(ref('athleteSelections')),dbMod.get(ref('chatPeople'))]);
         const reqs=rq.val()||{},acc=ac.val()||{},sel=se.val()||{},cur=cp.val()||{};
         const athleteUids=new Set(Object.values(sel.items||{}).map(it=>String(it?.uid||'')));
-        const chosen=cur.items||{},rows=[];
+        const chosen=cur.items||{},rows=[],seen=new Set();
+        const nameOf=uid=>{
+          const r=reqs[uid],m=acc[uid];
+          if(typeof r?.displayName==='string'&&r.displayName.trim())return r.displayName.trim();
+          if(typeof m?.displayName==='string'&&m.displayName.trim())return m.displayName.trim();
+          if(typeof r?.requestedName==='string'&&r.requestedName.trim())return r.requestedName.trim();
+          return typeof chosen[uid]?.name==='string'?chosen[uid].name:'';
+        };
+        const add=(uid,role,at)=>{
+          if(!rUid(uid)||uid===gate.uid||athleteUids.has(uid)||seen.has(uid))return;
+          const name=nameOf(uid)||(role!=='participant'?'登録名なし（末尾'+uid.slice(-6)+'）':'');
+          if(!name||name.length>24)return;
+          seen.add(uid);rows.push({uid,name,at,role,selected:!!chosen[uid]});
+        };
         for(const [uid,m] of Object.entries(acc)){
           const r=reqs[uid];
-          if(!rUid(uid)||uid===gate.uid||athleteUids.has(uid)||m?.active!==true||typeof m.profileId!=='string'||!m.profileId||(r?.profileId&&m.profileId!==r.profileId))continue;
-          const name=typeof r?.displayName==='string'&&r.displayName.trim()?r.displayName.trim():typeof m?.displayName==='string'?m.displayName.trim():'';
-          if(!name||name.length>24)continue;
-          rows.push({uid,name,at:Number(m.approvedAt)||Number(r?.requestedAt)||0,selected:!!chosen[uid]});
+          if(m?.active!==true||typeof m.profileId!=='string'||!m.profileId||(r?.profileId&&m.profileId!==r.profileId))continue;
+          add(uid,'participant',Number(m.approvedAt)||Number(r?.requestedAt)||0);
         }
+        // v138: staff (管理者・開発者の別端末) are authorised by portalRoles, not memberAccess, so they were missing.
+        // Check the remaining known UIDs (requests / already chosen) one by one; read-only.
+        const rest=[...new Set([...Object.keys(reqs),...Object.keys(chosen)])].filter(uid=>rUid(uid)&&!seen.has(uid)&&uid!==gate.uid&&!athleteUids.has(uid));
+        const roles=await Promise.all(rest.map(uid=>dbMod.get(dbMod.ref(db,'portalRoles/'+uid)).then(s=>s.val()).catch(()=>null)));
+        rest.forEach((uid,i)=>{
+          const role=roles[i]?.role;
+          if(role==='admin'||role==='developer')add(uid,role,Number(roles[i]?.boundAt)||Number(reqs[uid]?.requestedAt)||0);
+        });
         return {rows,revision:Number(cur.revision)||0};
       };
       gate.chatPeopleSave=async(list)=>{
@@ -16453,7 +16473,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         devOnly();
         name=String(name||'').trim();
         if(name.length<1||name.length>30)throw Error('ルーム名を1～30文字で入力してください');
-        if(!CATS.includes(category))throw Error('ルームの種類を選んでください');
+        if(!CATS.includes(category))category='other'; // v139: no room type; name is free text
         const list=(Array.isArray(members)?members:[]).filter(m=>rUid(m?.uid)&&m.uid!==gate.uid);
         if(list.length>80)throw Error('一度に招待できるのは80人までです');
         const id='r'+Date.now()+'_'+Math.random().toString(36).slice(2,9),now=Date.now();
@@ -16466,13 +16486,35 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         return id;
       };
       gate.roomInvite=async(id,members)=>{
-        devOnly();if(!rId(id)||!RM.allMeta[id])throw Error('ルームが見つかりません');
+        devOnly();if(!rId(id)||!metaOf(id))throw Error('ルームが見つかりません');
         const current=(await dbMod.get(ref('roomMembers/'+id))).val()||{};
         const list=(Array.isArray(members)?members:[]).filter(m=>rUid(m?.uid)&&!['joined','invited'].includes(current[m.uid]?.status));
         if(!list.length)return 0;
         const {u,add}=memberRows(list,Date.now());
         list.forEach(m=>add(id,m));
         await dbMod.update(dbMod.ref(db,root),u);
+        return list.length;
+      };
+      gate.roomRename=async(id,name)=>{
+        devOnly();if(!rId(id)||!metaOf(id))throw Error('ルームが見つかりません');
+        name=String(name||'').trim();
+        if(name.length<1||name.length>30)throw Error('ルーム名を1～30文字で入力してください');
+        await dbMod.set(ref('roomMeta/'+id+'/name'),name);
+      };
+      // v140: developer deletion of room messages (same idea as the common CHAT 削除). One-shot read; no listener.
+      gate.roomMessagesAll=async id=>{
+        if(!isDevRole()||!rId(id))throw Error('開発者の権限が必要です');
+        const v=(await dbMod.get(ref('roomMessages/'+id))).val()||{};
+        return Object.entries(v).map(([k,r])=>({...r,id:k})).sort((a,b)=>Number(a.ts||0)-Number(b.ts||0));
+      };
+      gate.roomDeleteMessages=async(id,ids)=>{
+        if(!isDevRole()||!rId(id)||auth.currentUser?.uid!==gate.uid)throw Error('開発者の権限が必要です');
+        const list=(Array.isArray(ids)?ids:[]).filter(m=>/^m[A-Za-z0-9_]+$/.test(String(m||'')));
+        if(!list.length)return 0;
+        for(let i=0;i<list.length;i+=200){
+          const u={};list.slice(i,i+200).forEach(m=>{u['roomMessages/'+id+'/'+m]=null;});
+          await dbMod.update(dbMod.ref(db,root),u);
+        }
         return list.length;
       };
       gate.roomRemoveMember=async(id,uid)=>{
@@ -18677,8 +18719,8 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
  });
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',watch);else watch();})();
 </script>
-<style id="v137-portal-rooms-style">
-/* v137 PORTAL ROOMS: same palette as the CHAT screen. */
+<style id="v140-portal-rooms-style">
+/* v140 PORTAL ROOMS: same palette as the CHAT screen. */
 #trRooms{margin:0 0 12px}
 #trRoomView[hidden],#trRoomComposer[hidden],#trRoomMembersBox[hidden],#trRoomsBtn[hidden],#trRoomsSheet[hidden],#trRoomsMsg[hidden],#trRoomsBadge[hidden]{display:none!important}
 .trRoomsBtn{position:relative;min-height:42px;min-width:62px;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border:1px solid rgba(255,255,255,.17);border-radius:12px;background:rgba(255,255,255,.07);color:#fff;padding:3px 8px;font-size:9px;font-weight:1000}
@@ -18695,6 +18737,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
 .trSheetItem.active{border-color:var(--gold);box-shadow:inset 4px 0 0 var(--gold)}
 .trSheetItem.add b{color:var(--gold-deep)}
 .trSheetItem .trDot{flex:0 0 auto;width:10px;height:10px;border-radius:50%;background:#d04a3a}
+.trSheetItem .trTag.trView{background:transparent;border:1px solid var(--line);color:var(--muted)}
 .trSheetItem .trTag{flex:0 0 auto;padding:2px 8px;border-radius:999px;background:var(--gold);color:#211b08;font-size:11px;font-style:normal;font-weight:900}
 .trRoomsToast{position:fixed;left:50%;top:calc(84px + env(safe-area-inset-top));transform:translateX(-50%);z-index:5001;max-width:calc(100% - 32px);margin:0;padding:9px 14px;border-radius:12px;background:var(--dark);color:#ffe367;font-size:13px;font-weight:900;box-shadow:var(--shadow2)}
 .trRoomChip{flex:0 0 auto;min-height:38px;padding:7px 13px;border:1px solid var(--line);border-radius:999px;background:var(--white);color:var(--ink2);font-size:13px;font-weight:900;white-space:nowrap}
@@ -18718,6 +18761,8 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
 .trPick input{width:20px;height:20px;flex:0 0 auto}
 .trPickHead{margin:12px 0 0;font-size:13px;font-weight:900;color:var(--ink)}
 .trPickHead small{margin-left:8px;font-size:11px;font-weight:700;color:var(--muted)}
+.trPickHead{display:flex;align-items:center;flex-wrap:wrap;gap:4px}
+.trPickAll{margin-left:auto;min-height:32px;padding:4px 10px;border:1px solid var(--line);border-radius:999px;background:var(--white);color:var(--ink2);font-size:12px;font-weight:900}
 .trSame{margin-left:auto;padding:1px 7px;border-radius:999px;border:1px solid #d9a79e;color:#a3372a;font-size:10px;font-weight:900}
 html[data-portal-personal-color="winter"] .trPickHead{color:#f5ffff}
 html[data-portal-personal-color="matte"] .trPickHead{color:#fff7f2}
@@ -18743,15 +18788,15 @@ html[data-portal-personal-color="matte"] .trRoomHead .trRoomName b{color:#fff7f2
 html[data-portal-personal-color="matte"] .trSheetItem small,html[data-portal-personal-color="matte"] .trSheetClose,html[data-portal-personal-color="matte"] .trRoomHead .trRoomName small,html[data-portal-personal-color="matte"] .trRoomNote,html[data-portal-personal-color="matte"] .trMemberRow small{color:#d9b8a8}
 html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-color="matte"] .trRoomChip.add{color:#ffb777}
 </style>
-<script id="v137-portal-rooms">
-/* v137 PORTAL ROOMS UI. Uses only window.__TR_PORTAL_SYNC__ room functions. The common CHAT is unchanged. */
+<script id="v140-portal-rooms">
+/* v140 PORTAL ROOMS UI. Uses only window.__TR_PORTAL_SYNC__ room functions. The common CHAT is unchanged. */
 (()=>{
   const $=id=>document.getElementById(id);
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const CAT={admin:'管理者',parent:'保護者',participant:'参加者',personal:'個別',other:'その他'};
   const gate=()=>window.__TR_PORTAL_SYNC__;
   const preview=()=>!!window.__TR_COMMON_PILOT_UI__?.isParticipantPreview?.();
-  let view='',busy=false,shownMsgKey='',roster=null,msgTimer=null;
+  let viewOnly=false,view='',busy=false,shownMsgKey='',roster=null,msgTimer=null;
 
   function state(){try{return gate()?.roomsState?.()||null;}catch(_){return null;}}
   function say(text){
@@ -18802,7 +18847,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
   function setOpen(on){
     document.body.classList.toggle('trRoomOpen',!!on);
     $('trRoomView').hidden=!on;
-    $('trRoomComposer').hidden=!(on&&isRoom(view));
+    $('trRoomComposer').hidden=!(on&&isRoom(view)&&!viewOnly);
     const main=document.querySelector('#screen-chat > main.chatMain');if(main)main.scrollTop=0;
   }
   function badge(){try{window.__TR_PORTAL_CHAT_BADGE__?.();}catch(_){}}
@@ -18810,9 +18855,9 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
   function renderSheet(s){
     const rows=['<button type="button" class="trSheetItem'+(view?'':' active')+'" data-room-common><span><b>共通チャット</b><small>全員</small></span></button>'];
     for(const r of s.rooms){
-      const mark=r.status==='invited'?'<em class="trTag">招待</em>':r.unread?'<em class="trDot" aria-label="未読あり"></em>':'';
+      const mark=r.status==='invited'?'<em class="trTag">招待</em>':r.status==='view'?'<em class="trTag trView">閲覧</em>':r.unread?'<em class="trDot" aria-label="未読あり"></em>':'';
       const cur=view===r.id||view==='invite:'+r.id;
-      rows.push('<button type="button" class="trSheetItem'+(cur?' active':'')+'" data-room-id="'+esc(r.id)+'"><span><b>'+esc(r.name)+'</b><small>'+esc(CAT[r.category]||'その他')+'</small></span>'+mark+'</button>');
+      rows.push('<button type="button" class="trSheetItem'+(cur?' active':'')+'" data-room-id="'+esc(r.id)+'"><span><b>'+esc(r.name)+'</b></span>'+mark+'</button>');
     }
     if(s.isDev)rows.push('<button type="button" class="trSheetItem add" data-room-create><span><b>＋ ルームを作る</b></span></button>');
     $('trSheetList').innerHTML=rows.join('');
@@ -18829,7 +18874,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
   function renderTop(s){
     const r=roomOf(s,view);if(!r)return;
     const canLeave=r.status==='joined';
-    $('trRoomTop').innerHTML='<div class="trRoomHead trRoomHeadRight"><button type="button" class="trRoomBtn" data-room-members>メンバー</button>'+
+    $('trRoomTop').innerHTML=(r.status==='view'?'<p class="trRoomNote">開発者として閲覧しています（メンバーではないため送信はできません）。</p>':'')+'<div class="trRoomHead trRoomHeadRight"><button type="button" class="trRoomBtn" data-room-members>メンバー</button>'+
       (canLeave?'<button type="button" class="trRoomBtn warn" data-room-leave>退室</button>':'')+'</div>';
   }
   function dayLabel(ts){
@@ -18871,7 +18916,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
   }
   function leaveView(){
     if(isRoom(view)){try{gate()?.roomClose?.();}catch(_){}}
-    view='';shownMsgKey='';
+    view='';viewOnly=false;shownMsgKey='';
     $('trRoomTop').innerHTML='';$('trRoomThread').innerHTML='';
     $('trRoomMembersBox').hidden=true;$('trRoomMembersBox').innerHTML='';
     setTitle();setOpen(false);
@@ -18886,9 +18931,9 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
     if(r.status==='invited'){
       view='invite:'+id;setTitle(r.name,'ROOM INVITE');setOpen(true);renderInvite(r);render();return;
     }
-    view=id;
+    view=id;viewOnly=r.status==='view';
     try{gate().roomOpen(id);}catch(e){view='';say(errText(e));render();return;}
-    setTitle(r.name,(CAT[r.category]||'その他')+'のルーム');
+    setTitle(r.name,'ROOM');
     setOpen(true);renderTop(state());
     $('trRoomThread').innerHTML='<div class="portalEmpty" role="status">メッセージを受信中です。</div>';
     render();
@@ -18906,7 +18951,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
     const count=new Map();all.forEach(m=>count.set(norm(m.name),(count.get(norm(m.name))||0)+1));
     const group=(title,note,list)=>{
       const rows=list.filter(m=>!exclude?.has(m.uid));
-      return '<p class="trPickHead">'+esc(title)+'<small>'+esc(note)+'</small></p>'+
+      return '<p class="trPickHead">'+esc(title)+'<small>'+esc(note)+'</small>'+(rows.length>1?'<button type="button" class="trPickAll" data-pick-all>全員選ぶ</button>':'')+'</p>'+
         (rows.length?'<div class="trPick">'+rows.map(m=>'<label><input type="checkbox" value="'+esc(m.uid)+'" data-name="'+esc(m.name)+'">'+esc(m.name)+
           (count.get(norm(m.name))>1?'<span class="trSame">同名あり</span>':'')+'</label>').join('')+'</div>'
         :'<p class="trRoomNote">'+(list.length?'招待できる人がいません。':title==='参加者'?'まだ選ばれていません。「管理画面の設定」→「チャットの参加者を選ぶ」で選べます。':'まだ選ばれていません。')+'</p>');
@@ -18918,9 +18963,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
   async function openCreate(){
     leaveView();view='create';setTitle('ルームを作る','ROOM');setOpen(true);render();
     $('trRoomTop').innerHTML='<div class="trRoomCard" id="trRoomCreate"><b class="trCardTitle">ルームを作る</b>'+
-      '<label class="trField" for="trRoomNewName">ルーム名</label><input type="text" id="trRoomNewName" maxlength="30" placeholder="例：保護者連絡">'+
-      '<label class="trField" for="trRoomNewCat">ルームの種類</label><select id="trRoomNewCat">'+
-        Object.entries(CAT).map(([k,v])=>'<option value="'+k+'">'+v+'</option>').join('')+'</select>'+
+      '<label class="trField" for="trRoomNewName">ルーム名</label><input type="text" id="trRoomNewName" maxlength="30" placeholder="例：1年生、選手だけ、保護者だけ">'+
       '<label class="trField">招待する人</label><div id="trRoomNewPick"><p class="trRoomNote">参加者一覧を読み込み中です。</p></div>'+
       '<p class="trRoomNote">招待された人は、チャット画面で「参加する」を押すと入室します。</p>'+
       '<div class="trRoomRow"><button type="button" class="trRoomBtn main" data-create-save>作成して招待する</button><button type="button" class="trRoomBtn" data-room-common>やめる</button></div></div>';
@@ -18937,7 +18980,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
     let html='<b class="trCardTitle">メンバー</b>'+list.map(m=>'<div class="trMemberRow"><span>'+esc(m.name||'参加者')+'<small>'+esc(label[m.status]||'')+'</small></span>'+
       (s?.isDev&&m.uid!==s.uid?'<button type="button" class="trRoomBtn warn" data-member-remove="'+esc(m.uid)+'" data-name="'+esc(m.name)+'">外す</button>':'')+'</div>').join('');
     if(s?.isDev){
-      html+='<div class="trRoomRow"><button type="button" class="trRoomBtn" data-invite-more>招待を追加</button>'+
+      html+='<div class="trRoomRow"><button type="button" class="trRoomBtn" data-room-rename>ルーム名を変更</button><button type="button" class="trRoomBtn" data-invite-more>招待を追加</button>'+
         '<button type="button" class="trRoomBtn warn" data-room-delete>このルームを削除</button></div><div id="trRoomMorePick"></div>';
     }
     html+='<div class="trRoomRow"><button type="button" class="trRoomBtn" data-members-close>閉じる</button></div>';
@@ -18962,6 +19005,11 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
   function onViewClick(ev){
     const b=ev.target.closest('button');if(!b)return;
     if(b.hasAttribute('data-room-common')){leaveView();render();return;}
+    if(b.hasAttribute('data-pick-all')){
+      const box=b.closest('.trPickHead')?.nextElementSibling;if(!box)return;
+      const inputs=[...box.querySelectorAll('input[type=checkbox]')],on=!inputs.every(i=>i.checked);
+      inputs.forEach(i=>{i.checked=on;});b.textContent=on?'全員外す':'全員選ぶ';return;
+    }
     if(b.hasAttribute('data-invite-join')){
       const id=view.slice(7);
       void run(b,async()=>{await gate().roomRespond(id,'join');say('ルームに参加しました');openRoom(id,0,true);});
@@ -18974,7 +19022,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
       return;
     }
     if(b.hasAttribute('data-create-save')){
-      const name=($('trRoomNewName')?.value||'').trim(),category=$('trRoomNewCat')?.value||'other';
+      const name=($('trRoomNewName')?.value||'').trim(),category='other';
       const members=picked($('trRoomCreate'));
       if(!name){say('ルーム名を入力してください');return;}
       if(!members.length&&!confirm('まだ誰も招待していません。このまま作りますか？'))return;
@@ -18996,6 +19044,14 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
       const id=view,uid=b.dataset.memberRemove;
       if(!confirm((b.dataset.name||'この人')+'さんをこのルームから外しますか？'))return;
       void run(b,async()=>{await gate().roomRemoveMember(id,uid);say('外しました');await renderMembers();});
+      return;
+    }
+    if(b.hasAttribute('data-room-rename')){
+      const id=view,cur=roomOf(state(),id)?.name||'';
+      const name=prompt('新しいルーム名（30文字まで）',cur);
+      if(name===null)return;
+      if(!name.trim()||name.trim()===cur)return;
+      void run(b,async()=>{await gate().roomRename(id,name);setTitle(name.trim(),'ROOM');say('ルーム名を「'+name.trim()+'」に変更しました');});
       return;
     }
     if(b.hasAttribute('data-invite-more')){
@@ -19037,7 +19093,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
 })();
 </script>
 
-<style id="v137-chat-people-style">
+<style id="v140-chat-people-style">
 #trChatPeopleSection[hidden],#trChatPeopleSave[hidden]{display:none!important}
 #trChatPeopleList{display:grid;gap:0;margin-top:12px}
 #trChatPeopleList .trCpRow{display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid rgba(128,128,128,.35);font-size:15px;font-weight:800;cursor:pointer}
@@ -19045,12 +19101,13 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
 #trChatPeopleList .trCpRow span{flex:1 1 auto;min-width:0;overflow-wrap:anywhere}
 #trChatPeopleList .trCpRow small{display:block;font-size:11px;font-weight:700;opacity:.75;margin-top:1px}
 #trChatPeopleList .trCpSame{flex:0 0 auto;padding:1px 7px;border-radius:999px;border:1px solid #d9a79e;color:#e8a196;font-size:10px;font-weight:900}
+#trChatPeopleList .trCpRole{flex:0 0 auto;padding:1px 7px;border-radius:999px;border:1px solid var(--gold,#d7b117);color:var(--gold,#d7b117);font-size:10px;font-weight:900}
 #trChatPeopleList details.trCpOlder{margin:10px 0 0;border:1px dashed rgba(128,128,128,.5);border-radius:12px;padding:0 10px}
 #trChatPeopleList details.trCpOlder>summary{cursor:pointer;padding:11px 2px;font-size:13px;font-weight:900}
 #trChatPeopleList .trCpCount{margin:10px 2px 0;font-size:13px;font-weight:900}
 </style>
-<script id="v137-chat-people">
-/* v137: developer chooses who appears as 参加者 in the room invite picker. Stored at portalCommon/topRun/chatPeople. */
+<script id="v140-chat-people">
+/* v140: developer chooses who appears as 参加者 in the room invite picker. Stored at portalCommon/topRun/chatPeople. */
 (()=>{
   const $=id=>document.getElementById(id);
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -19093,7 +19150,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
   function count(){const el=$('trCpCount');if(el)el.textContent='選んでいる人：'+rows.filter(r=>r.selected).length+'人';}
   function rowHtml(r,same){
     return '<label class="trCpRow"><input type="checkbox" data-cp="'+esc(r.uid)+'"'+(r.selected?' checked':'')+'><span>'+esc(r.name)+
-      '<small>承認 '+esc(day(r.at))+'</small></span>'+(same?'<em class="trCpSame">同名あり</em>':'')+'</label>';
+      '<small>登録 '+esc(day(r.at))+'</small></span>'+(same?'<em class="trCpSame">同名あり</em>':'')+'</label>';
   }
   function render(){
     // Same name = same person: show the newest approval; older ones go into a closed section.
@@ -19135,6 +19192,106 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
     visible();
     const screen=$('screen-management-settings');
     if(screen)new MutationObserver(()=>{if(!screen.classList.contains('hidden'))visible();}).observe(screen,{attributes:true,attributeFilter:['class']});
+  };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+})();
+</script>
+
+<style id="v140-room-delete-style">
+#trDelTargetBox{margin:0 0 12px}
+#trDelTargetBox label{display:block;font-size:12px;font-weight:900;margin:0 0 6px}
+#trDelTargetBox select{width:100%;min-height:44px;font-size:16px;border-radius:10px;padding:8px}
+#trRoomDel[hidden],.trCommonDelHidden{display:none!important}
+</style>
+<script id="v140-room-delete">
+/* v140: the developer チャット削除 pane can target the common CHAT (unchanged) or a chat room. */
+(()=>{
+  const $=id=>document.getElementById(id);
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const gate=()=>window.__TR_PORTAL_SYNC__;
+  const day=ts=>{const d=new Date(Number(ts)||0);return Number.isFinite(d.getTime())&&ts?d.toLocaleDateString('sv-SE',{timeZone:'Asia/Tokyo'}):'';};
+  let target='',msgs=[],busy=false;
+  function mount(){
+    if($('trDelTargetBox'))return true;
+    const card=document.querySelector('#manage-pane-chat-delete .portalDeveloperToolCard');
+    if(!card)return false;
+    const h3=card.querySelector('h3');
+    [...card.children].forEach(c=>{if(c!==h3)c.classList.add('trCommonDel');});
+    h3.insertAdjacentHTML('afterend',
+      '<div id="trDelTargetBox"><label for="trDelTarget">削除するチャット</label><select id="trDelTarget"><option value="">共通チャット</option></select></div>'+
+      '<div id="trRoomDel" hidden>'+
+        '<div class="portalDeveloperSummary"><b id="trRoomDelCount">メッセージ 0件</b><span>開発者専用</span></div>'+
+        '<div class="portalDeveloperToolActions"><button class="danger" id="trRoomDelAll" type="button">このルームを全件削除</button></div>'+
+        '<div class="portalChatRangeDelete"><b>期間削除</b><div class="portalChatRangeInputs">'+
+          '<label>開始日<input type="date" id="trRoomDelFrom"></label><label>終了日<input type="date" id="trRoomDelTo"></label></div>'+
+          '<button type="button" class="portalChatRangeButton" id="trRoomDelRange">指定期間を削除</button></div>'+
+        '<b class="portalChatIndivTitle">個別削除</b>'+
+        '<div class="portalDeveloperList" id="trRoomDelList"></div>'+
+        '<div class="portalDeveloperToolState" id="trRoomDelState" aria-live="polite"></div>'+
+      '</div>');
+    $('trDelTarget').addEventListener('change',()=>{target=$('trDelTarget').value;apply();});
+    $('trRoomDelAll').addEventListener('click',()=>del(msgs.map(m=>m.id),'このルームのメッセージ'+msgs.length+'件をすべて削除しますか？'));
+    $('trRoomDelRange').addEventListener('click',()=>{
+      const from=$('trRoomDelFrom').value,to=$('trRoomDelTo').value;
+      if(!from||!to||from>to){say('開始日と終了日を正しく選んでください');return;}
+      const ids=msgs.filter(m=>{const d=day(m.ts);return d&&d>=from&&d<=to;}).map(m=>m.id);
+      if(!ids.length){say('この期間のメッセージはありません');return;}
+      del(ids,from+'〜'+to+'のメッセージ'+ids.length+'件を削除しますか？');
+    });
+    $('trRoomDelList').addEventListener('click',e=>{
+      const b=e.target.closest('[data-trdel]');if(!b)return;
+      del([b.dataset.trdel],'このメッセージを削除しますか？');
+    });
+    return true;
+  }
+  const say=t=>{const el=$('trRoomDelState');if(el)el.textContent=t||'';};
+  function fillTargets(){
+    if(!mount())return;
+    const g=gate(),sel=$('trDelTarget');
+    let rooms=[];
+    try{if(g?.role==='developer')rooms=(g.roomsState?.().rooms||[]);}catch(_){}
+    const sig=rooms.map(r=>r.id+':'+r.name).join('|');
+    if(sel.dataset.sig===sig)return;
+    sel.dataset.sig=sig;
+    sel.innerHTML='<option value="">共通チャット</option>'+rooms.map(r=>'<option value="'+esc(r.id)+'">ルーム：'+esc(r.name)+'</option>').join('');
+    if(target&&!rooms.some(r=>r.id===target))target='';
+    sel.value=target;
+    $('trDelTargetBox').hidden=!rooms.length;
+    if(!rooms.length&&target){target='';apply();}
+  }
+  function apply(){
+    const card=document.querySelector('#manage-pane-chat-delete .portalDeveloperToolCard');if(!card)return;
+    card.querySelectorAll('.trCommonDel').forEach(c=>c.classList.toggle('trCommonDelHidden',!!target));
+    $('trRoomDel').hidden=!target;
+    if(target)void load();
+  }
+  function render(){
+    $('trRoomDelCount').textContent='メッセージ '+msgs.length+'件';
+    $('trRoomDelList').innerHTML=msgs.length?msgs.slice().reverse().map(m=>
+      '<div class="portalChatDeleteRow"><div><small>'+esc(day(m.ts))+'　'+esc(m.name||'参加者')+'</small><p>'+esc(m.text||'')+'</p></div>'+
+      '<button type="button" data-trdel="'+esc(m.id)+'" aria-label="このメッセージを削除">削除</button></div>').join('')
+      :'<div class="portalEmpty">メッセージはありません。</div>';
+  }
+  async function load(){
+    const id=target;say('読み込み中…');
+    try{const list=await gate().roomMessagesAll(id);if(target!==id)return;msgs=list;render();say('');}
+    catch(e){say('読み込めませんでした：'+String(e?.message||e?.code||e).slice(0,120));}
+  }
+  async function del(ids,question){
+    if(busy||!target||!ids.length)return;
+    if(!confirm(question))return;
+    busy=true;say('削除中…');
+    try{const n=await gate().roomDeleteMessages(target,ids);say(n+'件を削除しました');
+      try{window.showActionFeedback?.('ルームのチャットを削除しました',n+'件');}catch(_){}
+      await load();say(n+'件を削除しました');}
+    catch(e){say('削除できませんでした：'+String(e?.message||e?.code||e).slice(0,120));}
+    finally{busy=false;}
+  }
+  window.addEventListener('tr-portal-rooms',fillTargets);
+  const start=()=>{
+    fillTargets();
+    const pane=$('manage-pane-chat-delete');
+    if(pane)new MutationObserver(()=>{if(!pane.classList.contains('hidden')){fillTargets();if(target)void load();}}).observe(pane,{attributes:true,attributeFilter:['class']});
   };
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
