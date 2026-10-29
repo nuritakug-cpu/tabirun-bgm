@@ -1,4 +1,4 @@
-<!-- TOP RUN PORTAL v145 2026-10-29: v144 (rooms, entry 修正・削除, 参加者・記録 fixes) + developer personal-record view shows 「記録を確認中…」 and dims sections until link check / switch to the linked registration finishes; stops after 3 tries with a clear message (no endless reload). Rules unchanged (P103). -->
+<!-- TOP RUN PORTAL v147 2026-10-29: v146 + unread COUNT per room in the room list, and room totals in the ROOM icon / CHAT tab (own posts not counted; reads only unread messages, max 99). Rules unchanged (P103). Room push not yet (needs Worker). -->
 <!-- TOP RUN PORTAL v113 2026-10-28: v112 + P107 developer re-bind for the two historical events (same write as the EVENT BASE developer entry; Rules unchanged). v112 notes:  v111 + P106 duplicate guard (manual 過去大会 record hidden when EVENT BASE has same person/date/time). v111 notes:  v110 (ChatGPT) + P105 integrated by Claude: EVENT BASE result correction (staff), withdrawn EKIDEN entries hidden from 参加する/RSVP lock, MY PAGE reflection diagnosis. No Auth/UID/Rules/listener change beyond P105 players handling. STATIC/simulated tests only; real Firebase not verified. -->
 <!-- TOP RUN PORTAL v110 2026-10-28: v109 exact physical parent; PORTAL internal event links now saved via the existing eventItems writer and visible in event list/calendar. External EVENT BASE/EKIDEN validation and all Auth/UID/profileId/Rules/RTDB subscriptions, writes, official results and theme/home image safeguards unchanged. STATIC candidate; Firebase production not tested/deployed. -->
 <!-- 2026-10-28 v109 UI organization: Hide obsolete CHAT STEP 1 panel (retain DOM for existing gateway); move push settings to first; show version "v109" only; developer identity review first in matching management card. No Auth, Rules, listener, CHAT message read/write, image cache, notification registration, official results or released data changed. NOT DEPLOYED. -->
@@ -5953,7 +5953,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v145</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v147</b></div>
   </div>
 </div>
 
@@ -6147,7 +6147,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v145</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v147</b></div>
   </div>
 </div>
 
@@ -7152,6 +7152,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         day.hidden=f.mode!=='day';month.hidden=f.mode!=='month';range.hidden=f.mode!=='range';
         el.classList.toggle('portalFilterRangeMode',f.mode==='range');
         el.classList.toggle('portalFilterAllMode',f.mode==='all');
+        if(key==='chat'&&!$('screen-chat')?.classList.contains('hidden'))portalChatFilterJump=true;
         redraw[key]?.();
       }
       [mode,day,month,start,end].forEach(input=>input.addEventListener('change',refresh));
@@ -7207,6 +7208,8 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
     return qsa('.portalScreen').find(s => !s.classList.contains('hidden')) || null;
   }
   let portalChatUnreadBoundaryId='';
+  // v148: scroll to the latest only when a newer message arrives; a filter change jumps to the top of the result.
+  var portalChatLastScrolledId='',portalChatFilterJump=false,portalChatWasFiltered=false;
   let portalChatAwaitInitialLoad=false;
   let portalChatUnreadScrollPending=false;
   function capturePortalChatUnreadBoundary(){
@@ -7218,6 +7221,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
     portalChatUnreadScrollPending=!!portalChatUnreadBoundaryId||portalChatAwaitInitialLoad;
   }
   function enterPortalChat(){
+    portalChatLastScrolledId='';portalChatFilterJump=false;
     capturePortalChatUnreadBoundary();
     markPortalChatRead();renderChat();
   }
@@ -8384,19 +8388,36 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
         <p>${esc(m.text||'')}</p>
       </div>`;
     }).join('');
-    // Enter at the first unread line; after entry, new incoming/outgoing messages
-    // move the chat to the latest visible row above the composer.
+    const pcf=portalListFilterState.chat;
+    const portalChatFiltered=!!pcf&&((pcf.mode==='day'&&!!pcf.day)||(pcf.mode==='month'&&!!pcf.month)||(pcf.mode==='range'&&!!(pcf.start||pcf.end)));
+    if(!rows.length&&portalChatFiltered)box.innerHTML='<div class="portalEmpty" role="status">この日付・期間のメッセージはありません。</div>';
+    const portalChatNewest=rows.length?rows[rows.length-1].id:'';
+    // v148: a filter change shows the top of the result (the start of the chosen day/period).
+    if(portalChatFilterJump && !chatScreen.classList.contains('hidden')){
+      portalChatFilterJump=false;
+      if(portalChatFiltered){
+        portalChatLastScrolledId=portalChatNewest;portalChatWasFiltered=true;
+        requestAnimationFrame(()=>{const main=chatScreen.querySelector('main.chatMain');if(main)main.scrollTop=0;});
+        return;
+      }
+      // Back from a filter to すべて: show the latest. Only changing the choice (no date yet): stay where you are.
+      if(portalChatWasFiltered){portalChatWasFiltered=false;portalChatLastScrolledId='';}
+      else portalChatLastScrolledId=portalChatNewest;
+    }
+    // Enter at the first unread line; after entry, only a NEW message
+    // moves the chat to the latest visible row above the composer.
     if(rows.length && !chatScreen.classList.contains('hidden')){
       if(portalChatUnreadScrollPending && box.querySelector('.chatUnreadLine')){
-        portalChatUnreadScrollPending=false;
+        portalChatUnreadScrollPending=false;portalChatLastScrolledId=portalChatNewest;
         requestAnimationFrame(()=>{
           const main=chatScreen.querySelector('main.chatMain');
           const line=box.querySelector('.chatUnreadLine');
           if(!main||!line)return;
           main.scrollTop+=line.getBoundingClientRect().top-main.getBoundingClientRect().top-14;
         });
-      }else if(!portalChatUnreadScrollPending){
-        requestAnimationFrame(scrollPortalChatToLatest);
+      }else if(!portalChatUnreadScrollPending && portalChatNewest!==portalChatLastScrolledId){
+        portalChatLastScrolledId=portalChatNewest;
+        if(!portalChatFiltered)requestAnimationFrame(scrollPortalChatToLatest);
       }
     }
   }
@@ -8421,7 +8442,8 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
   chatInput.addEventListener('focus',()=>requestAnimationFrame(()=>requestAnimationFrame(scrollPortalChatToLatest)));
   if(window.visualViewport){
     window.visualViewport.addEventListener('resize',()=>{
-      if(!chatScreen.classList.contains('hidden'))requestAnimationFrame(scrollPortalChatToLatest);
+      // v148: only while the message box is being typed in (not while choosing a date).
+      if(!chatScreen.classList.contains('hidden')&&document.activeElement===chatInput)requestAnimationFrame(scrollPortalChatToLatest);
     },{passive:true});
   }
   $('portalChatSend').onclick=async()=>{
@@ -8431,7 +8453,7 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
       const gateway=params.get('commonPilot')==='1'?window.__TR_COMMON_PILOT__:window.__TR_PORTAL_SYNC__;
       if(!(params.get('commonPilot')==='1'?gateway?.ready:gateway?.canSendChat?.())){showActionFeedback('送信できません','本人接続が必要です。');return;}
       $('portalChatSend').disabled=true;
-      try{await gateway.sendChat(t.slice(0,1000));chatInput.value='';portalChatFit();}
+      try{await gateway.sendChat(t.slice(0,1000));chatInput.value='';portalChatFit();portalChatLastScrolledId='';}
       catch(_){showActionFeedback('送信できません','通信状態と権限を確認してください。');}
       finally{$('portalChatSend').disabled=false;}
       return;
@@ -10159,6 +10181,13 @@ const gateway=window.__TR_PORTAL_SYNC__;
         button?.click();
         $('flowMgrExtStatus').textContent='対象の記録を編集できます。変更後、同じ記録IDで保存してください。';
       }
+      // v146: since v122 this editor sits inside the folded 「以前の管理画面」. Open it and show the form itself,
+      // otherwise the developer only sees the top of 参加者・記録.
+      const legacy=$('rpLegacy');if(legacy)legacy.open=true;
+      $('flowManagerExternalArea')?.classList.remove('hidden');
+      const focusForm=()=>{const f=existing?$('flowMgrExtName'):$('flowManagerExternalArea');f?.scrollIntoView({behavior:'auto',block:'center'});};
+      requestAnimationFrame(()=>requestAnimationFrame(focusForm));setTimeout(focusForm,400);
+      if(!existing)$('flowMgrExtStatus').textContent='この記録を一覧で見つけられませんでした。選手を選び直してください。';
       return;
     }
     if(!window.confirm('【開発者】'+(target.name||'対象選手')+' の個人記録を削除しますか？\n'+(visible.practiceDate?'記録練習':'大会')+' ／ '+visible.date+' ／ '+portalRecordMetricLabel(visible.metric)+' ／ '+(visible.time||'—')+'\nこの1件だけをFirebaseから削除します。EVENT BASE正式結果は削除しません。'))return;
@@ -16313,7 +16342,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
     // Traffic: own userRooms + small roomMeta listeners only. Messages (last 50) are read only while a room is open.
     // Existing common CHAT, notices, push, identity and other paths are not touched.
     {
-      const RM={subs:new Map(),own:null,all:null,msg:null,openId:'',mine:{},meta:{},allMeta:{},msgs:[],msgErr:'',err:'',uid:'',readTimer:null};
+      const RM={subs:new Map(),own:null,all:null,msg:null,openId:'',mine:{},meta:{},allMeta:{},msgs:[],msgErr:'',err:'',uid:'',readTimer:null,counts:{},countKey:{}};
       const rOk=()=>gate.roleVerified===true&&!!gate.uid&&!!gate.profileId&&auth.currentUser?.uid===gate.uid&&gate.hasOperationalAccess();
       const rDev=()=>rOk()&&['developer','admin'].includes(gate.role); // v134: developer and admin manage rooms
       const rId=id=>/^r[A-Za-z0-9_]{6,60}$/.test(String(id||''));
@@ -16334,13 +16363,27 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         if(!lastAt||Number(RM.mine[id]?.readAt||0)>=lastAt)return;
         try{await dbMod.set(ref('userRooms/'+gate.uid+'/'+id+'/readAt'),dbMod.serverTimestamp());}catch(_){}
       };
+      // v147: number of unread messages per room. Read only messages newer than this person's readAt
+      // (bounded to 99), and only when the room's lastAt changed. Own posts are not counted.
+      const refreshCount=id=>{
+        const me=RM.mine[id],m=metaOf(id);
+        if(!me||me.status!=='joined'||!m)return;
+        const lastAt=Number(m.lastAt||0),readAt=Number(me.readAt||0),key=lastAt+'|'+readAt;
+        if(lastAt<=readAt||RM.openId===id){if(RM.counts[id]){RM.counts[id]=0;}RM.countKey[id]=key;return;}
+        if(RM.countKey[id]===key)return;
+        RM.countKey[id]=key;const uid=RM.uid;
+        dbMod.get(dbMod.query(ref('roomMessages/'+id),dbMod.orderByChild('ts'),dbMod.startAfter(readAt),dbMod.limitToLast(99)))
+          .then(s=>{if(RM.uid!==uid||RM.countKey[id]!==key)return;const v=s.val()||{};
+            RM.counts[id]=Object.values(v).filter(x=>x&&x.senderUid!==uid).length;emit();})
+          .catch(()=>{});
+      };
       const syncMeta=()=>{
         const want=new Set(Object.keys(RM.mine).filter(id=>rId(id)&&['invited','joined'].includes(RM.mine[id]?.status)));
         for(const [id,stop] of RM.subs){if(!want.has(id)){try{stop();}catch(_){}RM.subs.delete(id);delete RM.meta[id];}}
         for(const id of want){
           if(RM.subs.has(id))continue;
           RM.subs.set(id,p94WatchValue(ref('roomMeta/'+id),s=>{
-            const v=s.val();if(v&&typeof v==='object')RM.meta[id]=v;else delete RM.meta[id];emit();
+            const v=s.val();if(v&&typeof v==='object')RM.meta[id]=v;else delete RM.meta[id];refreshCount(id);emit();
           },()=>{delete RM.meta[id];emit();}));
         }
       };
@@ -16349,7 +16392,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         if(RM.own){try{RM.own();}catch(_){}RM.own=null;}
         if(RM.all){try{RM.all();}catch(_){}RM.all=null;}
         for(const stop of RM.subs.values()){try{stop();}catch(_){}}
-        RM.subs.clear();RM.mine={};RM.meta={};RM.allMeta={};RM.err='';RM.uid='';
+        RM.subs.clear();RM.mine={};RM.meta={};RM.allMeta={};RM.err='';RM.uid='';RM.counts={};RM.countKey={};
         emit();
       };
       gate.roomsStart=()=>{
@@ -16366,7 +16409,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         RM.own=p94WatchValue(ref('userRooms/'+uid),s=>{
           if(RM.uid!==uid)return;
           const v=s.val();RM.mine=v&&typeof v==='object'?v:{};RM.err='';
-          syncMeta();
+          syncMeta();Object.keys(RM.mine).forEach(refreshCount);
           if(RM.openId&&!isDevRole()&&RM.mine[RM.openId]?.status!=='joined'){stopMsg();RM.openId='';}
           emit();
         },e=>{if(RM.uid!==uid)return;RM.err=rErr(e);emit();});
@@ -16381,21 +16424,23 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
           let status=String(me?.status||'');
           if(isDevRole()&&status!=='joined'&&status!=='invited')status='view'; // developer: management view only
           const lastAt=Number(m?.lastAt||0),readAt=Number(me?.readAt||0);
+          const pending=status==='joined'&&lastAt>readAt&&RM.openId!==id;
+          const count=pending?(RM.counts[id]===undefined||RM.countKey[id]!==lastAt+'|'+readAt?1:RM.counts[id]):0;
           return {id,name:String(m?.name||''),category:CATS.includes(m?.category)?m.category:'other',status,lastAt,
-            unread:status==='joined'&&lastAt>readAt&&RM.openId!==id,loaded:!!m};
+            unread:count>0,count,loaded:!!m};
         }).filter(r=>r.loaded&&(r.status==='invited'||r.status==='joined'||r.status==='view'))
           .sort((a,b)=>({invited:0,joined:1,view:2}[a.status]??3)-({invited:0,joined:1,view:2}[b.status]??3)||b.lastAt-a.lastAt||a.name.localeCompare(b.name,'ja'));
         return {ready:rOk()&&!!RM.own,isDev:dev,uid:gate.uid,rooms,openId:RM.openId,msgs:RM.msgs.slice(),msgErr:RM.msgErr,err:RM.err};
       };
       gate.roomsUnread=()=>{
         if(!rOk())return 0;
-        return gate.roomsState().rooms.filter(r=>r.unread||r.status==='invited').length;
+        return gate.roomsState().rooms.reduce((n,r)=>n+(r.status==='invited'?1:r.count||0),0);
       };
       gate.roomOpen=id=>{
         if(!rOk()||!rId(id))throw Error('ルームを開けません');
         if(RM.mine[id]?.status!=='joined'&&!isDevRole())throw Error('このルームには入室していません');
         if(RM.openId===id&&RM.msg)return;
-        stopMsg();RM.openId=id;emit();
+        stopMsg();RM.openId=id;RM.counts[id]=0;emit();
         const q=dbMod.query(ref('roomMessages/'+id),dbMod.orderByChild('ts'),dbMod.limitToLast(50));
         RM.msg=p94WatchValue(q,s=>{
           if(RM.openId!==id)return;
@@ -16409,7 +16454,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       };
       gate.roomClose=()=>{
         const id=RM.openId;stopMsg();RM.openId='';
-        if(id)void markRead(id);
+        if(id){RM.counts[id]=0;RM.countKey[id]=undefined;void markRead(id);}
         emit();
       };
       gate.roomSend=async(id,value)=>{
@@ -16571,6 +16616,14 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         await dbMod.set(ref('roomMeta/'+id+'/name'),name);
       };
       // v140: developer deletion of room messages (same idea as the common CHAT 削除). One-shot read; no listener.
+      // v148: messages of one room within [from,to] (ms). One-time read, at most 500.
+      gate.roomMessagesRange=async(id,from,to)=>{
+        if(!rOk()||!rId(id))throw Error('ルームを開けません');
+        if(RM.mine[id]?.status!=='joined'&&!isDevRole())throw Error('このルームには入室していません');
+        const q=dbMod.query(ref('roomMessages/'+id),dbMod.orderByChild('ts'),dbMod.startAt(Number(from)||0),dbMod.endAt(Number(to)||Date.now()),dbMod.limitToLast(500));
+        const v=(await dbMod.get(q)).val()||{};
+        return Object.entries(v).map(([k,r])=>({...r,id:k})).sort((a,b)=>Number(a.ts||0)-Number(b.ts||0));
+      };
       gate.roomMessagesAll=async id=>{
         if(!isDevRole()||!rId(id))throw Error('開発者の権限が必要です');
         const v=(await dbMod.get(ref('roomMessages/'+id))).val()||{};
@@ -18825,8 +18878,8 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
  });
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',watch);else watch();})();
 </script>
-<style id="v145-portal-rooms-style">
-/* v145 PORTAL ROOMS: same palette as the CHAT screen. */
+<style id="v147-portal-rooms-style">
+/* v147 PORTAL ROOMS: same palette as the CHAT screen. */
 #trRooms{margin:0 0 12px}
 #trRoomView[hidden],#trRoomComposer[hidden],#trRoomMembersBox[hidden],#trRoomsBtn[hidden],#trRoomsSheet[hidden],#trRoomsMsg[hidden],#trRoomsBadge[hidden]{display:none!important}
 .trRoomsBtn{position:relative;min-height:42px;min-width:62px;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border:1px solid rgba(255,255,255,.17);border-radius:12px;background:rgba(255,255,255,.07);color:#fff;padding:3px 8px;font-size:9px;font-weight:1000}
@@ -18842,6 +18895,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
 .trSheetItem small{display:block;font-size:11px;color:var(--muted);font-weight:800;margin-top:1px}
 .trSheetItem.active{border-color:var(--gold);box-shadow:inset 4px 0 0 var(--gold)}
 .trSheetItem.add b{color:var(--gold-deep)}
+.trSheetItem .trCount{flex:0 0 auto;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:#d04a3a;color:#fff;font-size:12px;font-style:normal;font-weight:1000;line-height:22px;text-align:center}
 .trSheetItem .trDot{flex:0 0 auto;width:10px;height:10px;border-radius:50%;background:#d04a3a}
 .trSheetItem .trTag.trView{background:transparent;border:1px solid var(--line);color:var(--muted)}
 .trSheetItem .trTag{flex:0 0 auto;padding:2px 8px;border-radius:999px;background:var(--gold);color:#211b08;font-size:11px;font-style:normal;font-weight:900}
@@ -18894,8 +18948,8 @@ html[data-portal-personal-color="matte"] .trRoomHead .trRoomName b{color:#fff7f2
 html[data-portal-personal-color="matte"] .trSheetItem small,html[data-portal-personal-color="matte"] .trSheetClose,html[data-portal-personal-color="matte"] .trRoomHead .trRoomName small,html[data-portal-personal-color="matte"] .trRoomNote,html[data-portal-personal-color="matte"] .trMemberRow small{color:#d9b8a8}
 html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-color="matte"] .trRoomChip.add{color:#ffb777}
 </style>
-<script id="v145-portal-rooms">
-/* v145 PORTAL ROOMS UI. Uses only window.__TR_PORTAL_SYNC__ room functions. The common CHAT is unchanged. */
+<script id="v147-portal-rooms">
+/* v147 PORTAL ROOMS UI. Uses only window.__TR_PORTAL_SYNC__ room functions. The common CHAT is unchanged. */
 (()=>{
   const $=id=>document.getElementById(id);
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -18932,6 +18986,10 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
       '<section id="trRoomView" hidden>'+
         '<div id="trRoomTop"></div>'+
         '<div id="trRoomMembersBox" class="trRoomCard" hidden></div>'+
+        '<div class="portalSimpleFilter portalFilterAllMode" id="trRoomFilter"><select id="trRoomFilterMode" aria-label="絞り込み"><option value="all" selected>すべて</option><option value="day">日付</option><option value="month">月</option><option value="range">期間</option></select>'+
+          '<div class="portalSimpleFilterValue"><input type="date" id="trRoomFilterDay" aria-label="指定日" hidden><input type="month" id="trRoomFilterMonth" aria-label="表示する月" hidden>'+
+          '<div class="portalSimpleFilterRange" id="trRoomFilterRange" hidden><input type="date" id="trRoomFilterStart" aria-label="開始日"><input type="date" id="trRoomFilterEnd" aria-label="終了日"></div></div></div>'+
+        '<p id="trRoomFilterNote" class="trRoomNote" role="status" hidden></p>'+
         '<div id="trRoomThread" class="chatList" role="log" aria-live="polite"></div>'+
       '</section>');
     main.insertAdjacentHTML('beforeend',
@@ -18943,6 +19001,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
     $('trRoomsSheet').addEventListener('click',onSheetClick);
     $('trRoomView').addEventListener('click',onViewClick);
     $('trRoomSend').addEventListener('click',send);
+    ['trRoomFilterMode','trRoomFilterDay','trRoomFilterMonth','trRoomFilterStart','trRoomFilterEnd'].forEach(k=>$(k).addEventListener('change',onFilter));
     return true;
   }
   const isRoom=v=>!!v&&v!=='create'&&!v.startsWith('invite:');
@@ -18953,6 +19012,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
   function setOpen(on){
     document.body.classList.toggle('trRoomOpen',!!on);
     $('trRoomView').hidden=!on;
+    $('trRoomView').classList.toggle('trIsRoom',!!on&&isRoom(view));
     $('trRoomComposer').hidden=!(on&&isRoom(view)&&!viewOnly);
     const main=document.querySelector('#screen-chat > main.chatMain');if(main)main.scrollTop=0;
   }
@@ -18961,7 +19021,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
   function renderSheet(s){
     const rows=['<button type="button" class="trSheetItem'+(view?'':' active')+'" data-room-common><span><b>共通チャット</b><small>全員</small></span></button>'];
     for(const r of s.rooms){
-      const mark=r.status==='invited'?'<em class="trTag">招待</em>':r.status==='view'?'<em class="trTag trView">閲覧</em>':r.unread?'<em class="trDot" aria-label="未読あり"></em>':'';
+      const mark=r.status==='invited'?'<em class="trTag">招待</em>':r.status==='view'?'<em class="trTag trView">閲覧</em>':r.unread?'<em class="trCount" aria-label="未読'+r.count+'件">'+(r.count>99?'99+':r.count)+'</em>':'';
       const cur=view===r.id||view==='invite:'+r.id;
       rows.push('<button type="button" class="trSheetItem'+(cur?' active':'')+'" data-room-id="'+esc(r.id)+'"><span><b>'+esc(r.name)+'</b></span>'+mark+'</button>');
     }
@@ -18987,6 +19047,19 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
     const d=new Date(Number(ts)||0);if(!Number.isFinite(d.getTime())||!ts)return '';
     return d.getFullYear()+'.'+(d.getMonth()+1)+'.'+d.getDate()+'（'+'日月火水木金土'[d.getDay()]+'）';
   }
+  function msgsHtml(list,uid){
+    let last='';
+    return list.map(m=>{
+      const ts=Number(m.ts)||0,d=new Date(ts),day=dayLabel(ts);
+      const band=day&&day!==last?'<div class="chatDateBand"><span>'+esc(day)+'</span></div>':'';
+      if(day)last=day;
+      const mine=m.senderUid===uid;
+      const time=ts?d.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):'';
+      return band+'<div class="msg'+(mine?' mine':'')+'"><div class="msgHead"><span>'+esc(m.name||'参加者')+'</span><span>'+esc(time)+'</span></div><p>'+esc(m.text||'')+'</p></div>';
+    }).join('');
+  }
+  const chatMain=()=>document.querySelector('#screen-chat > main.chatMain');
+  let lastScrolledId='';
   function renderThread(s){
     const box=$('trRoomThread');
     if(s.msgErr){box.innerHTML='<div class="portalEmpty" role="status">メッセージを受信できません（'+esc(s.msgErr)+'）</div>';shownMsgKey='';return;}
@@ -18994,16 +19067,61 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
     if(key===shownMsgKey)return;
     shownMsgKey=key;
     if(!s.msgs.length){box.innerHTML='<div class="portalEmpty">まだメッセージはありません。</div>';return;}
-    let last='';
-    box.innerHTML=s.msgs.map(m=>{
-      const ts=Number(m.ts)||0,d=new Date(ts),day=dayLabel(ts);
-      const band=day&&day!==last?'<div class="chatDateBand"><span>'+esc(day)+'</span></div>':'';
-      if(day)last=day;
-      const mine=m.senderUid===s.uid;
-      const time=ts?d.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):'';
-      return band+'<div class="msg'+(mine?' mine':'')+'"><div class="msgHead"><span>'+esc(m.name||'参加者')+'</span><span>'+esc(time)+'</span></div><p>'+esc(m.text||'')+'</p></div>';
-    }).join('');
-    requestAnimationFrame(()=>{const main=document.querySelector('#screen-chat > main.chatMain');if(main)main.scrollTop=main.scrollHeight;});
+    box.innerHTML=msgsHtml(s.msgs,s.uid);
+    // v148: move to the latest only when a newer message arrived (or the room was just opened).
+    const newest=s.msgs[s.msgs.length-1].id;
+    if(newest!==lastScrolledId){lastScrolledId=newest;requestAnimationFrame(()=>{const main=chatMain();if(main)main.scrollTop=main.scrollHeight;});}
+  }
+
+  // v148: date / month / period filter for the open room. One-time read of that period only.
+  let rfActive=false,rfSeq=0;
+  const pad=n=>String(n).padStart(2,'0');
+  function dayStart(v){const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(v||'');return m?new Date(+m[1],+m[2]-1,+m[3]).getTime():NaN;}
+  function slash(v){return String(v||'').replace(/-/g,'/');}
+  function filterRange(){
+    const mode=$('trRoomFilterMode').value;
+    if(mode==='day'){const v=$('trRoomFilterDay').value,a=dayStart(v);return Number.isFinite(a)?{from:a,to:a+86400000-1,label:slash(v)}:null;}
+    if(mode==='month'){const m=/^(\d{4})-(\d{2})$/.exec($('trRoomFilterMonth').value||'');if(!m)return null;
+      return {from:new Date(+m[1],+m[2]-1,1).getTime(),to:new Date(+m[1],+m[2],1).getTime()-1,label:m[1]+'年'+(+m[2])+'月'};}
+    if(mode==='range'){const sv=$('trRoomFilterStart').value,ev=$('trRoomFilterEnd').value,a=dayStart(sv),b=dayStart(ev);
+      if(!Number.isFinite(a)&&!Number.isFinite(b))return null;
+      const from=Number.isFinite(a)?a:0,to=Number.isFinite(b)?b+86400000-1:Date.now();
+      if(from>to)return {bad:true};
+      return {from,to,label:(sv?slash(sv):'')+'〜'+(ev?slash(ev):'')};}
+    return null;
+  }
+  function filterNote(t){const el=$('trRoomFilterNote');if(!el)return;el.textContent=t||'';el.hidden=!t;}
+  function syncFilterInputs(){
+    const mode=$('trRoomFilterMode').value,f=$('trRoomFilter');
+    $('trRoomFilterDay').hidden=mode!=='day';$('trRoomFilterMonth').hidden=mode!=='month';$('trRoomFilterRange').hidden=mode!=='range';
+    f.classList.toggle('portalFilterAllMode',mode==='all');f.classList.toggle('portalFilterRangeMode',mode==='range');
+    if(mode==='month'&&!$('trRoomFilterMonth').value){const d=new Date();$('trRoomFilterMonth').value=d.getFullYear()+'-'+pad(d.getMonth()+1);}
+  }
+  function showLive(){
+    rfActive=false;rfSeq++;shownMsgKey='';lastScrolledId='';
+    const s=state();if(s&&isRoom(view))renderThread(s);
+  }
+  async function onFilter(){
+    syncFilterInputs();
+    const id=view;if(!isRoom(id))return;
+    const r=filterRange();
+    if(!r){filterNote($('trRoomFilterMode').value==='all'?'':'日付を選ぶと、そのメッセージだけを表示します。');showLive();return;}
+    if(r.bad){filterNote('開始日は終了日より前にしてください。');return;}
+    rfActive=true;const seq=++rfSeq,box=$('trRoomThread'),s=state();
+    box.innerHTML='<div class="portalEmpty" role="status">読み込み中です。</div>';filterNote('');
+    let list,partial=false;
+    try{list=await gate().roomMessagesRange(id,r.from,r.to);}
+    catch(_){partial=true;list=(s?.msgs||[]).filter(m=>{const t=Number(m.ts)||0;return t>=r.from&&t<=r.to;});}
+    if(seq!==rfSeq||view!==id)return;
+    box.innerHTML=list.length?msgsHtml(list,s?.uid):'<div class="portalEmpty" role="status">この日付・期間のメッセージはありません。</div>';
+    filterNote(r.label+'のメッセージ：'+list.length+'件'+(partial?'（最新50件の中から表示）':'')+'。「すべて」に戻すと最新のメッセージを表示します。');
+    requestAnimationFrame(()=>{const main=chatMain();if(main)main.scrollTop=0;});
+  }
+  function resetFilter(){
+    rfActive=false;rfSeq++;
+    if(!$('trRoomFilterMode'))return;
+    $('trRoomFilterMode').value='all';['trRoomFilterDay','trRoomFilterMonth','trRoomFilterStart','trRoomFilterEnd'].forEach(k=>{$(k).value='';});
+    syncFilterInputs();filterNote('');
   }
   let rendering=false,renderAgain=false;
   function render(){
@@ -19022,15 +19140,15 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
     if(isRoom(view)&&!roomOf(s,view))leaveView();
     if(isRoom(view)){const cur=roomOf(s,view);if(cur&&(cur.status==='invited'||(cur.status==='view')!==viewOnly)){openRoom(view);return;}}
     if(view.startsWith('invite:')){const r=roomOf(s,view.slice(7));if(!r||r.status!=='invited')leaveView();}
-    const n=s.rooms.filter(r=>r.unread||r.status==='invited').length,b=$('trRoomsBadge');
+    const n=s.rooms.reduce((t,r)=>t+(r.status==='invited'?1:(r.count||0)),0),b=$('trRoomsBadge');
     b.textContent=n>99?'99+':String(n);b.hidden=n===0;
     if(!$('trRoomsSheet').hidden)renderSheet(s);
-    if(isRoom(view))renderThread(s);
+    if(isRoom(view)&&!rfActive)renderThread(s);
     badge();
   }
   function leaveView(){
     const was=view;
-    view='';viewOnly=false;shownMsgKey='';   // clear first: roomClose() notifies render() synchronously
+    view='';viewOnly=false;shownMsgKey='';lastScrolledId='';resetFilter();   // clear first: roomClose() notifies render() synchronously
     if(isRoom(was)){try{gate()?.roomClose?.();}catch(_){}}
     $('trRoomTop').innerHTML='';$('trRoomThread').innerHTML='';
     $('trRoomMembersBox').hidden=true;$('trRoomMembersBox').innerHTML='';
@@ -19196,7 +19314,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
   function send(){
     const input=$('trRoomInput'),id=view,text=input.value.trim();
     if(!isRoom(id)||viewOnly||!text)return;
-    void run($('trRoomSend'),async()=>{await gate().roomSend(id,text);if(view===id)input.value='';});
+    void run($('trRoomSend'),async()=>{await gate().roomSend(id,text);if(view===id){input.value='';if(rfActive){resetFilter();showLive();}}});
   }
 
   window.__TR_ROOMS_UNREAD__=()=>{try{return preview()?0:Number(gate()?.roomsUnread?.()||0);}catch(_){return 0;}};
@@ -19211,7 +19329,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
 })();
 </script>
 
-<style id="v145-chat-people-style">
+<style id="v147-chat-people-style">
 #trChatPeopleSection[hidden],#trChatPeopleSave[hidden]{display:none!important}
 #trChatPeopleList{display:grid;gap:0;margin-top:12px}
 #trChatPeopleList .trCpRow{display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid rgba(128,128,128,.35);font-size:15px;font-weight:800;cursor:pointer}
@@ -19224,8 +19342,8 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
 #trChatPeopleList details.trCpOlder>summary{cursor:pointer;padding:11px 2px;font-size:13px;font-weight:900}
 #trChatPeopleList .trCpCount{margin:10px 2px 0;font-size:13px;font-weight:900}
 </style>
-<script id="v145-chat-people">
-/* v145: developer chooses who appears as 参加者 in the room invite picker. Stored at portalCommon/topRun/chatPeople. */
+<script id="v147-chat-people">
+/* v147: developer chooses who appears as 参加者 in the room invite picker. Stored at portalCommon/topRun/chatPeople. */
 (()=>{
   const $=id=>document.getElementById(id);
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -19316,14 +19434,14 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
 })();
 </script>
 
-<style id="v145-room-delete-style">
+<style id="v147-room-delete-style">
 #trDelTargetBox{margin:0 0 12px}
 #trDelTargetBox label{display:block;font-size:12px;font-weight:900;margin:0 0 6px}
 #trDelTargetBox select{width:100%;min-height:44px;font-size:16px;border-radius:10px;padding:8px}
 #trRoomDel[hidden],.trCommonDelHidden{display:none!important}
 </style>
-<script id="v145-room-delete">
-/* v145: the developer チャット削除 pane can target the common CHAT (unchanged) or a chat room. */
+<script id="v147-room-delete">
+/* v147: the developer チャット削除 pane can target the common CHAT (unchanged) or a chat room. */
 (()=>{
   const $=id=>document.getElementById(id);
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -19346,10 +19464,20 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
           '<label>開始日<input type="date" id="trRoomDelFrom"></label><label>終了日<input type="date" id="trRoomDelTo"></label></div>'+
           '<button type="button" class="portalChatRangeButton" id="trRoomDelRange">指定期間を削除</button></div>'+
         '<b class="portalChatIndivTitle">個別削除</b>'+
+        '<div class="portalSimpleFilter portalFilterAllMode" id="trRoomDelFilter"><select id="trRdfMode" aria-label="絞り込み"><option value="all" selected>すべて</option><option value="day">日付</option><option value="month">月</option><option value="range">期間</option></select>'+
+          '<div class="portalSimpleFilterValue"><input type="date" id="trRdfDay" aria-label="指定日" hidden><input type="month" id="trRdfMonth" aria-label="表示する月" hidden>'+
+          '<div class="portalSimpleFilterRange" id="trRdfRange" hidden><input type="date" id="trRdfStart" aria-label="開始日"><input type="date" id="trRdfEnd" aria-label="終了日"></div></div></div>'+
         '<div class="portalDeveloperList" id="trRoomDelList"></div>'+
         '<div class="portalDeveloperToolState" id="trRoomDelState" aria-live="polite"></div>'+
       '</div>');
     $('trDelTarget').addEventListener('change',()=>{target=$('trDelTarget').value;apply();});
+    ['trRdfMode','trRdfDay','trRdfMonth','trRdfStart','trRdfEnd'].forEach(k=>$(k).addEventListener('change',()=>{
+      const mode=$('trRdfMode').value,f=$('trRoomDelFilter');
+      $('trRdfDay').hidden=mode!=='day';$('trRdfMonth').hidden=mode!=='month';$('trRdfRange').hidden=mode!=='range';
+      f.classList.toggle('portalFilterAllMode',mode==='all');f.classList.toggle('portalFilterRangeMode',mode==='range');
+      if(mode==='month'&&!$('trRdfMonth').value){const d=new Date();$('trRdfMonth').value=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
+      render();
+    }));
     $('trRoomDelAll').addEventListener('click',()=>del(msgs.map(m=>m.id),'このルームのメッセージ'+msgs.length+'件をすべて削除しますか？'));
     $('trRoomDelRange').addEventListener('click',()=>{
       const from=$('trRoomDelFrom').value,to=$('trRoomDelTo').value;
@@ -19385,12 +19513,21 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
     $('trRoomDel').hidden=!target;
     if(target)void load();
   }
+  // v148: 個別削除 list filter (same choices as the common chat).
+  function accept(m){
+    const mode=$('trRdfMode')?.value||'all';if(mode==='all')return true;
+    const d=day(m.ts);if(!d)return false;
+    if(mode==='day'){const v=$('trRdfDay').value;return !v||d===v;}
+    if(mode==='month'){const v=$('trRdfMonth').value;return !v||d.startsWith(v+'-');}
+    const a=$('trRdfStart').value,b=$('trRdfEnd').value;return (!a||d>=a)&&(!b||d<=b);
+  }
   function render(){
     $('trRoomDelCount').textContent='メッセージ '+msgs.length+'件';
-    $('trRoomDelList').innerHTML=msgs.length?msgs.slice().reverse().map(m=>
+    const shown=msgs.filter(accept);
+    $('trRoomDelList').innerHTML=shown.length?shown.slice().reverse().map(m=>
       '<div class="portalChatDeleteRow"><div><small>'+esc(day(m.ts))+'　'+esc(m.name||'参加者')+'</small><p>'+esc(m.text||'')+'</p></div>'+
       '<button type="button" data-trdel="'+esc(m.id)+'" aria-label="このメッセージを削除">削除</button></div>').join('')
-      :'<div class="portalEmpty">メッセージはありません。</div>';
+      :'<div class="portalEmpty">'+(msgs.length?'この日付・期間のメッセージはありません。':'このルームのメッセージはありません。')+'</div>';
   }
   async function load(){
     const id=target;say('読み込み中…');
@@ -19417,5 +19554,47 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
 })();
 </script>
 
+<style id="v148-chat-visibility-and-room-filter">
+/* v148: 1) composer sits on the screen bottom (nothing shows below it)
+         2) date / month inputs stay inside the screen width on iPhone
+         3) room invite list (ルームを作る) is readable in every color theme
+         4) date filter inside a chat room */
+#screen-chat .chatComposer,body.portalFieldInputActive #screen-chat .chatComposer{bottom:0!important;padding-bottom:calc(10px + env(safe-area-inset-bottom))!important}
+.portalSimpleFilter input[type="date"],.portalSimpleFilter input[type="month"]{-webkit-appearance:none!important;appearance:none!important;width:100%!important;min-width:0!important;max-width:100%!important;box-sizing:border-box!important}
+.portalSimpleFilter input::-webkit-date-and-time-value{text-align:left}
+#screen-chat .portalSimpleFilter{width:100%;max-width:100%;box-sizing:border-box}
+#trRoomFilter{margin:4px 0 8px}
+#trRoomView:not(.trIsRoom) #trRoomFilter,#trRoomView:not(.trIsRoom) #trRoomFilterNote{display:none!important}
+#trRoomFilterNote{margin:0 0 8px;padding:8px 11px;border-radius:10px;border:1px solid #d6d1c5;background:#fff;color:#1f2523!important;-webkit-text-fill-color:#1f2523!important;font-size:12px;font-weight:800}
+html[data-portal-personal-color="winter"] #trRoomFilterNote{background:#0a3743;border-color:#59bfb9;color:#e7ffff!important;-webkit-text-fill-color:#e7ffff!important}
+html[data-portal-personal-color="matte"] #trRoomFilterNote{background:#292229;border-color:#aa6748;color:#fff1e7!important;-webkit-text-fill-color:#fff1e7!important}
+html[data-portal-personal-color="matte"] #screen-chat .chatDateBand span{background:#2f2024!important;border-color:#aa6748!important;color:#ffd2b5!important}
+/* matte: chat filter text was dark on dark (text-fill color) */
+html[data-portal-personal-color="matte"] #screen-chat .portalSimpleFilter :is(select,input){color:#fff4e9!important;-webkit-text-fill-color:#fff4e9!important}
+/* "no messages" boxes readable on dark themes (CHAT and チャット削除) */
+html[data-portal-personal-color="winter"] :is(#screen-chat,#manage-pane-chat-delete) .portalEmpty{background:#0a3743!important;border-color:#59bfb9!important;color:#e7ffff!important;-webkit-text-fill-color:#e7ffff!important;opacity:1!important}
+html[data-portal-personal-color="matte"] :is(#screen-chat,#manage-pane-chat-delete) .portalEmpty{background:#292229!important;border-color:#aa6748!important;color:#fff1e7!important;-webkit-text-fill-color:#fff1e7!important;opacity:1!important}
+/* invite list: light theme base */
+#screen-chat .trPick{background:#fff!important;border-color:#cfcabd!important}
+#screen-chat .trPick label{color:#1f2523!important;-webkit-text-fill-color:#1f2523!important;opacity:1!important;border-bottom-color:#e2ded4!important}
+#screen-chat .trPick input[type="checkbox"]{-webkit-appearance:none!important;appearance:none!important;width:24px!important;height:24px!important;min-width:24px!important;min-height:0!important;margin:0!important;padding:0!important;flex:0 0 24px!important;border:2px solid #8a8f8c!important;border-radius:7px!important;background:#fff!important;box-shadow:none!important;opacity:1!important}
+#screen-chat .trPick input[type="checkbox"]:checked{background:var(--gold) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23161616' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center/17px no-repeat!important;border-color:var(--gold)!important}
+#screen-chat .trPickAll{background:var(--gold)!important;border-color:var(--gold)!important;color:#211b08!important;-webkit-text-fill-color:#211b08!important;opacity:1!important}
+/* winter (blue-green) */
+html[data-portal-personal-color="winter"] #screen-chat .trPick{background:#0a3743!important;border-color:#59bfb9!important}
+html[data-portal-personal-color="winter"] #screen-chat .trPick label{color:#f5ffff!important;-webkit-text-fill-color:#f5ffff!important;border-bottom-color:rgba(89,191,185,.38)!important}
+html[data-portal-personal-color="winter"] #screen-chat .trPick input[type="checkbox"]{background:transparent!important;border-color:#6deada!important}
+html[data-portal-personal-color="winter"] #screen-chat .trPick input[type="checkbox"]:checked{background:#57e5d5 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23161616' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center/17px no-repeat!important;border-color:#57e5d5!important}
+html[data-portal-personal-color="winter"] #screen-chat .trPickAll{background:#57e5d5!important;border-color:#57e5d5!important;color:#063038!important;-webkit-text-fill-color:#063038!important}
+html[data-portal-personal-color="winter"] #screen-chat .trPickHead small{color:#a9d8d6!important}
+/* matte (orange) */
+html[data-portal-personal-color="matte"] #screen-chat .trPick{background:#292229!important;border-color:#aa6748!important}
+html[data-portal-personal-color="matte"] #screen-chat .trPick label{color:#fff7f2!important;-webkit-text-fill-color:#fff7f2!important;border-bottom-color:rgba(170,103,72,.45)!important}
+html[data-portal-personal-color="matte"] #screen-chat .trPick input[type="checkbox"]{background:transparent!important;border-color:#d9a07c!important}
+html[data-portal-personal-color="matte"] #screen-chat .trPick input[type="checkbox"]:checked{background:#ff8940 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23161616' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center/17px no-repeat!important;border-color:#ff8940!important}
+html[data-portal-personal-color="matte"] #screen-chat .trPickAll{background:#ff8940!important;border-color:#ff8940!important;color:#1c0d08!important;-webkit-text-fill-color:#1c0d08!important}
+html[data-portal-personal-color="matte"] #screen-chat .trPickHead small{color:#d9b8a8!important}
+:is(html[data-portal-personal-color="winter"],html[data-portal-personal-color="matte"]) #screen-chat .trSame{color:#ffb4a8!important;border-color:#e8a196!important}
+</style>
 </body>
 </html>
