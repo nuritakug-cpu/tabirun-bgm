@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v155 2026-10-29: v154 + participants read the whole answer list of the date (eventResponses/<id>, practiceResponses/<key>) so everyone sees the same counts/names; if the Rules refuse, falls back to own answer with a visible note. Rules unchanged. -->
 <!-- TOP RUN PORTAL v154 2026-10-29: v153 + practice gets 帯同・応援として参加 (3 buttons like 大会), counts 参加する／帯同・応援／参加しない. Rules unchanged. -->
 <!-- TOP RUN PORTAL v153 2026-10-29: v152 + normal events and practice unified: 未定 removed (参加する／参加しない), re-tap clears (saved as maybe = 未選択), small hint, counts without 未定. Rules unchanged. -->
 <!-- TOP RUN PORTAL v152 2026-10-29: v151 + 大会当日の予定: 未定 removed, 帯同・応援として参加 moved into the 3-button row, re-tap clears (saved as maybe = 未選択), small hint, counts 参加する／帯同・応援／参加しない. Normal events and practice unchanged. Rules unchanged. -->
@@ -5959,7 +5960,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v154</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v155</b></div>
   </div>
 </div>
 
@@ -6153,7 +6154,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v154</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v155</b></div>
   </div>
 </div>
 
@@ -7724,8 +7725,9 @@ if(prefix==='home'){
   function portalAttendanceRosterMarkup(kind,key,split=false){
     const snapshot=portalAttendanceGroups(kind,key,split);
     if(!snapshot.ready)return `<p class="portalAttendanceLoading" role="status">${snapshot.error?'回答一覧の読込が拒否されました。権限・接続を確認してください。':'回答一覧を読み込み中です。'}</p>`;
+    const limitedNote=window.__TR_PORTAL_SYNC__?.responseListLimited&&!['developer','admin'].includes(window.__TR_PORTAL_SYNC__?.role)?'<p class="trRsvpUntap" style="text-align:left">全員の回答を読む権限がないため、自分の回答だけを表示しています。</p>':'';
     const options=split?[['join','参加する'],['support','帯同・応援'],['decline','参加しない']]:[['join','参加する'],['decline','参加しない']];
-    return `<div class="portalParticipationGroups" aria-label="共有出欠・回答日時">${options.map(([answer,label])=>{
+    return limitedNote+`<div class="portalParticipationGroups" aria-label="共有出欠・回答日時">${options.map(([answer,label])=>{
       const rows=snapshot.groups[answer]||[];
       const identifier=kind+':'+key+':'+answer;
       return `<details class="portalRsvpRoster" data-roster-key="${esc(identifier)}"><summary><strong class="portalRsvpGroupLabel">${label}</strong><span class="portalRsvpGroupCount">${rows.length}人</span></summary>${rows.length?`<div class="portalRsvpPeople">${rows.map((row,i)=>`<div class="portalRsvpPerson"><span>${i+1}</span><div class="portalRsvpPersonMain"><b>${esc(row.name)}</b>${row.note?`<small>${esc(row.note)}</small>`:''}<small class="portalRsvpTime">${esc(portalAttendanceTimeText(row))}</small></div></div>`).join('')}</div>`:'<p class="portalRsvpEmpty">この回答の人はいません。</p>'}</details>`;
@@ -16844,6 +16846,24 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       const myUid=gate.uid,seq=generation;
       const sharedBind=(kind,id,path,notify)=>{
         const readyKind=kind==='practiceResponses'?'practice':'event';
+        // v155: everyone can see the whole answer list of the date (参加する／帯同・応援／参加しない).
+        // Read the whole event/practice node first; only if the Rules refuse it, fall back to this person's own answer.
+        let fellBack=false;
+        const allStop=p94WatchValue(ref(path),snap=>{
+          if(seq!==generation||auth.currentUser?.uid!==myUid||fellBack)return;
+          const all=snap.val();
+          (kind==='practiceResponses'?gate.rawPracticeResponses():gate[kind])[id]=all&&typeof all==='object'?all:{};
+          gate.sharedResponseReady[readyKind][id]=true;
+          gate.loaded[kind]=true;delete gate.errors[kind];
+          notify(gate[kind]);statusResources();
+        },()=>{
+          if(seq!==generation||auth.currentUser?.uid!==myUid||fellBack)return;
+          fellBack=true;gate.responseListLimited=true;
+          try{allStop();}catch(_){}
+          ownOnly();
+        });
+        ownSubs.push(allStop);
+        const ownOnly=()=>{
         const stop=p94WatchValue(ref(path+'/'+myUid),snap=>{
           if(seq!==generation||auth.currentUser?.uid!==myUid)return;
           const row=snap.val();
@@ -16859,6 +16879,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
           fail(kind,error);
         });
         ownSubs.push(stop);
+        };
       };
       sharedBind('practiceResponses',practiceKey,'practiceResponses/'+practiceKey,rows=>ui?.applyPracticeResponses(rows));
       ids.forEach(id=>sharedBind('eventResponses',id,'eventResponses/'+id,rows=>ui?.applyEventResponses(rows)));
