@@ -1,3 +1,5 @@
+<!-- TOP RUN PORTAL v169 2026-10-30: v168 direct parent; chat/room message presentation (bubble width, name/body spacing, reply preview), reaction text styling and celebratory choices only. Existing v168 mention/push, Firebase Auth/UID/Rules/database paths, notifications and other pages untouched. STATIC REVIEW / not published or real-Firebase verified. -->
+<!-- TOP RUN PORTAL v168 2026-10-30: v167 + mention coloring covers the whole name incl. spaces; room create / invite (also re-invite after leaving) asks the notify Worker for invite push (kind roomInvite, id <room>). Rules unchanged. -->
 <!-- TOP RUN PORTAL v167 2026-10-30: v166 physical parent; compact dark/gold categorized reaction picker (QUICK/RUN/hype/feel/team), extra youth-oriented running phrases, existing common/room reaction storage, reply, copy and Firebase paths unchanged. STATIC CANDIDATE; not published or Firebase field-verified. -->
 <!-- TOP RUN PORTAL v166 2026-10-29: v165 + a room message asks the notify Worker for room push (kind room, id <room>/<message>). Works after the Worker room extension is deployed; before that nothing changes. Rules unchanged. -->
 <!-- TOP RUN PORTAL v165 2026-10-29: v164 + reaction tap shows 保存中… and the result (error explained at the top of the menu, e.g. Rules not published); team icon + emoji: emoji on a white round badge with shadow. Rules unchanged. -->
@@ -5972,7 +5974,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v167</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v169</b></div>
   </div>
 </div>
 
@@ -6166,7 +6168,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v167</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v169</b></div>
   </div>
 </div>
 
@@ -16684,6 +16686,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         u['userRooms/'+gate.uid+'/'+id]={status:'joined',updatedAt:now};
         list.forEach(m=>add(id,m));
         await dbMod.update(dbMod.ref(db,root),u);
+        if(list.length)void window.__TR_STAGE3_NOTIFY__?.('roomInvite',id); // v168: invite push (Worker checks the invited members)
         return id;
       };
       gate.roomInvite=async(id,members)=>{
@@ -16694,6 +16697,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         const {u,add}=memberRows(list,Date.now());
         list.forEach(m=>add(id,m));
         await dbMod.update(dbMod.ref(db,root),u);
+        void window.__TR_STAGE3_NOTIFY__?.('roomInvite',id); // v168: invite push, also for a re-invite after leaving
         return list.length;
       };
       gate.roomRename=async(id,name)=>{
@@ -20107,6 +20111,87 @@ body.portalChatIsolated > #trMsgSheet{visibility:visible!important;opacity:1!imp
 @media(max-width:370px){#trMsgSheet .trQuickRow{gap:4px}#trMsgSheet .trQuickRow button{font-size:22px;min-height:44px}#trMsgSheet .trCategoryBar button{font-size:11px}}
 @media(prefers-reduced-motion:reduce){#trMsgSheet button{transition:none!important}}
 </style>
+<style id="v169-chat-visual-refinement">
+/* Presentation only. Applies equally to COMMON CHAT and every ROOM; no new assets or listener. */
+#screen-chat > main.chatMain {padding-left:clamp(10px,3.1vw,16px);padding-right:clamp(10px,3.1vw,16px)}
+#screen-chat :is(#portalChatThread,#trRoomThread).chatList {gap:13px;overflow:visible}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg {
+  box-sizing:border-box;width:fit-content;
+  min-width:min(176px,calc(100% - 44px));max-width:min(90%,620px);
+  padding:14px 15px 15px;
+  border-radius:19px 19px 19px 7px;
+  box-shadow:0 8px 19px rgba(20,24,22,.12),0 2px 4px rgba(20,24,22,.04);
+  overflow:visible;
+}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg.mine {border-radius:19px 19px 7px 19px}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msgHead {
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding-bottom:9px;margin-bottom:10px;
+  border-bottom:1px solid rgba(255,255,255,.14);
+  line-height:1.4;min-width:0;
+}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg.mine .msgHead {border-bottom-color:rgba(80,64,16,.15)}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msgHead span:first-child {
+  flex:1 1 auto;min-width:0;max-width:none;
+  font-size:14px;font-weight:950;letter-spacing:.02em;line-height:1.5;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msgHead span:last-child {
+  flex:0 0 auto;max-width:none;font-size:10px;font-weight:800;
+  letter-spacing:.045em;font-variant-numeric:tabular-nums;opacity:.78;
+}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg p {
+  margin:0;font-size:15px;line-height:1.7;letter-spacing:.01em;
+  white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;
+}
+#screen-chat :is(#portalChatThread,#trRoomThread) .trQuote {
+  position:relative;display:block;width:100%;text-align:left;
+  margin:0 0 10px;padding:5px 9px 7px 11px;
+  border:0;border-left:3px solid #d7b117;border-radius:0 8px 8px 0;
+  background:rgba(255,255,255,.08);color:inherit;
+  box-shadow:none;cursor:pointer;overflow:hidden;
+}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg.mine .trQuote {background:rgba(75,55,8,.075)}
+#screen-chat :is(#portalChatThread,#trRoomThread) .trQuote b {
+  display:block;font-size:11px;font-weight:900;line-height:1.4;
+  color:#f3d56d;opacity:1;letter-spacing:.015em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg.mine .trQuote b {color:#735b14}
+#screen-chat :is(#portalChatThread,#trRoomThread) .trQuote span {
+  display:block;margin-top:3px;font-size:12px;line-height:1.45;
+  opacity:.82;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;
+}
+#screen-chat :is(#portalChatThread,#trRoomThread) .trQuote:focus-visible {outline:2px solid #dcb92a;outline-offset:2px}
+#screen-chat .chatDateBand {margin:15px 0 8px}
+#screen-chat .chatDateBand span {padding:5px 12px;border-radius:999px;font-size:11px;letter-spacing:.035em}
+#screen-chat :is(#portalChatThread,#trRoomThread) .trReacts {margin:-5px 8px 5px}
+#trMsgSheet .trEmojiGrid button.txt {
+  position:relative;overflow:hidden;
+  border-color:#665526;background:linear-gradient(145deg,#3c3422,#272b2d 72%);
+}
+#trMsgSheet .trEmojiGrid button.txt .trTileFace {
+  font-family:"Arial Black","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+  color:#ffdf71;font-size:16px;font-weight:1000;
+  letter-spacing:.025em;line-height:1.25;
+  text-shadow:0 1px 1px rgba(0,0,0,.34);
+  transform:skewX(-4deg);
+}
+#trMsgSheet .trEmojiGrid button.txt.wide .trTileFace {font-size:18px}
+#trMsgSheet .trEmojiGrid button.txt .trTileFace::after {
+  content:"";display:block;height:2px;width:62%;margin:3px auto 0;
+  background:linear-gradient(90deg,transparent,#e9b93b,transparent);transform:skewX(-12deg);
+}
+#trMsgSheet .trEmojiGrid button.txt .trTileLabel {font-size:9px;letter-spacing:.08em;color:#d6c49c}
+#trMsgSheet .trEmojiGrid button.txt.on {background:#57441c;border-color:#f3ca50}
+@media (max-width:370px) {
+  #screen-chat :is(#portalChatThread,#trRoomThread) .msg {min-width:min(158px,calc(100% - 30px));max-width:92%;padding:13px 13px 14px}
+  #screen-chat :is(#portalChatThread,#trRoomThread) .msgHead span:first-child {font-size:13px}
+  #trMsgSheet .trEmojiGrid button.txt .trTileFace {font-size:14px}
+  #trMsgSheet .trEmojiGrid button.txt.wide .trTileFace {font-size:16px}
+}
+</style>
+
 <script id="v159-chat-react">
 /* v159: チャットのリアクション・返信・メンション（全体チャットとルーム）。LINE / BAND と同じ使い方:
    メッセージを長押し → リアクション／返信／コピー。リアクションの数を押すと、誰がリアクションしたかが出る。
@@ -20124,19 +20209,25 @@ body.portalChatIsolated > #trMsgSheet{visibility:visible!important;opacity:1!imp
   // v167: categories change presentation only; stored reactions remain the same string in the existing Firebase path.
   const QUICK=['🔥','💪','👏','❤️','😂','👍','🏃'];
   const REACT_GROUPS={
-    run:{name:'RUN',hint:'走る仲間へ',items:['🏃','🏃‍♀️','⚡','💨','🏁','⏱️','👟','🚀','🥇','🥈','🥉','🏅','🎯','💪','🔥','ナイスラン！','速っ！','PB更新！','ファイト！','ラスト！','いける！','走！','Run!','次いこ！']},
-    hype:{name:'アツい',hint:'最高の瞬間に',items:['🔥','💯','🙌','🎉','✨','🤩','👏','🏆','⭐','❤️','💪','🚀','神！','激アツ！','最高！','えぐい！','やば！','ナイス！','優勝！','いいね！']},
+    run:{name:'RUN',hint:'走る仲間へ',items:['🏃','🏃‍♀️','⚡','💨','🏁','⏱️','👟','🚀','🥇','🥈','🥉','🏅','🎯','💪','🔥','ナイスラン！','速っ！','PB更新！','自己ベスト！','ファイト！','ラスト！','いける！','走！','Run!','次いこ！']},
+    hype:{name:'アツい',hint:'最高の瞬間に',items:['🔥','㊗️','🎊','💐','🏆','💯','🙌','🎉','✨','🤩','👏','⭐','❤️','💪','🚀','神！','激アツ！','最高！','えぐい！','やば！','ナイス！','優勝！','おめ！','新記録！','最強！','いいね！']},
     feel:{name:'気持ち',hint:'いつものリアクション',items:['👍','❤️','😂','😊','😮','😢','🙏','👏','🎉','🔥','💪','✨','🙆','🙇','👀','💯','👌','🤝','😭','🤣','😆','🥰','😳','🤔','🎵','🫶','🥹','😎','🎊','OK','笑','了解','ありがとう','おつかれ！','ドンマイ！']},
     team:{name:'チーム',hint:'TOP RUN AGUI',items:TEAMS}
   };
-  const REACT_LABELS={'🔥':'熱い！','💪':'ファイト','👏':'ナイス','❤️':'いいね','😂':'笑','👍':'GOOD','🏃':'RUN!','🏃‍♀️':'RUN!','⚡':'速い！','💨':'スピード','🏁':'GOAL','🚀':'GO!','🥇':'1位','🥈':'2位','🥉':'3位','🏅':'メダル','🎯':'目標','⏱️':'タイム','👟':'シューズ','💯':'満点','🙌':'最高','🎉':'お祝い','✨':'キラキラ','🤩':'すごい','🏆':'優勝','⭐':'輝く','🫶':'感謝','🥹':'感動','😎':'クール','🎊':'おめでとう'};
+  const REACT_LABELS={'🔥':'熱い！','💪':'ファイト','👏':'ナイス','❤️':'いいね','😂':'笑','👍':'GOOD','🏃':'RUN!','🏃‍♀️':'RUN!','⚡':'速い！','💨':'スピード','🏁':'GOAL','🚀':'GO!','🥇':'1位','🥈':'2位','🥉':'3位','🏅':'メダル','🎯':'目標','⏱️':'タイム','👟':'シューズ','💯':'満点','🙌':'最高','🎉':'お祝い','✨':'キラキラ','🤩':'すごい','🏆':'優勝','⭐':'輝く','🫶':'感謝','🥹':'感動','😎':'クール','🎊':'おめでとう','㊗️':'祝！','💐':'おめでとう'};
   const reactionLabel=e=>isTeam(e)?(e==='team'?'AGUI':(REACT_LABELS[e.slice(5)]||e.slice(5))):REACT_LABELS[e]||'';
   const isText=e=>!isTeam(e)&&!/\p{Extended_Pictographic}/u.test(e);
   const cache=new Map();
   const myUid=()=>g()?.uid||'';
   const D={
     mentioned(m){cache.set(m.id,m);return !!(m.mentions&&myUid()&&m.mentions[myUid()]);},
-    text(m){cache.set(m.id,m);return esc(m.text||'').replace(/@([^\s@]{1,24})/g,'<span class="trAt">@$1</span>');},
+    text(m){cache.set(m.id,m);
+      // v168: the whole mentioned name is colored, including a space inside it (「@突府　欄」)
+      let t=esc(m.text||'');const marks=[];
+      const names=[...new Set(Object.values(m.mentions&&typeof m.mentions==='object'?m.mentions:{}).map(v=>String(v||'')).filter(Boolean))].sort((a,b)=>b.length-a.length);
+      for(const n of names){const k=esc('@'+n);if(t.includes(k)){t=t.split(k).join('\u0000'+marks.length+'\u0000');marks.push(k);}}
+      t=t.replace(/@([^\s@\u0000]{1,24})/g,'<span class="trAt">@$1</span>');
+      return t.replace(/\u0000(\d+)\u0000/g,(_,i)=>'<span class="trAt">'+marks[Number(i)]+'</span>');},
     quote(m){
       const r=m.replyTo;if(!r||!r.id)return '';
       return `<button type="button" class="trQuote" data-jump="${esc(r.id)}"><b>↩ ${esc(r.name||'')}</b><span>${esc(r.text||'')}</span></button>`;
