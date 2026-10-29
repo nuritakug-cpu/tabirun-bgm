@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v171 2026-10-30: v170 + room list rows get 「設定」 (members / notify all・mention・off / rename / leave / delete); member/leave bar removed from inside the room; per-room notify saved at userRooms/<uid>/<room>/notify (common: userRooms/<uid>/common/notify) and applied to in-app/home badges; home icon badge sync on chat reads (Android tray cleanup). Push filtering needs the notify Worker + Rules update. -->
 <!-- TOP RUN PORTAL v170 2026-10-30: exact parent user-uploaded TOP RUN PORTAL(1).html (v169 display, includes intervening fixes). Only chat/room visual refinement and text reaction face typography. No new image/font/network requests, database schema/auth/Rules/save calls or other screen changes. NOT DEPLOYED/field-tested. -->
 <!-- TOP RUN PORTAL v169 2026-10-30: v168 direct parent; chat/room message presentation (bubble width, name/body spacing, reply preview), reaction text styling and celebratory choices only. Existing v168 mention/push, Firebase Auth/UID/Rules/database paths, notifications and other pages untouched. STATIC REVIEW / not published or real-Firebase verified. -->
 <!-- TOP RUN PORTAL v168 2026-10-30: v167 + mention coloring covers the whole name incl. spaces; room create / invite (also re-invite after leaving) asks the notify Worker for invite push (kind roomInvite, id <room>). Rules unchanged. -->
@@ -8311,13 +8312,17 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
     return chatMessages.filter(m=>!isMyPortalChat(m) && !portalChatReadIds.has(m.id));
   }
   function renderPortalChatBadge(){
-    const commonCount=unreadPortalChatMessages().length;
+    // v171: the common chat follows its own notify setting (all / mention / off)
+    const cMode=window.__TR_PORTAL_SYNC__?.commonNotify?.()||'all',cUid=window.__TR_PORTAL_SYNC__?.uid||'';
+    const commonCount=cMode==='off'?0:cMode==='mention'?unreadPortalChatMessages().filter(m=>!!(m.mentions&&cUid&&m.mentions[cUid])).length:unreadPortalChatMessages().length;
     const count=commonCount+Number(window.__TR_ROOMS_UNREAD__?.()||0); // v133: room unread/invites added
     const badge=$('chatBottomBadge');
     if(!badge)return;
     badge.textContent=count>99?'99+':String(count);
     badge.classList.toggle('hidden',count===0);
     $('portalNotiChatCount').textContent=String(commonCount);
+    // chat reads also update the home-screen icon badge (previously only notice reads did)
+    try{window.__TR_HOME_BADGE_SCHEDULE__?.({notice:unreadNoticeCount(),chat:count});}catch(_){}
   }
   window.__TR_PORTAL_CHAT_BADGE__=renderPortalChatBadge; // v133
   function markPortalChatRead(){
@@ -16459,13 +16464,13 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       const refreshCount=id=>{
         const me=RM.mine[id],m=metaOf(id);
         if(!me||me.status!=='joined'||!m)return;
-        const lastAt=Number(m.lastAt||0),readAt=Number(me.readAt||0),key=lastAt+'|'+readAt;
+        const lastAt=Number(m.lastAt||0),readAt=Number(me.readAt||0),mode=me.notify==='mention'?'mention':'all',key=lastAt+'|'+readAt+'|'+mode;
         if(lastAt<=readAt||RM.openId===id){if(RM.counts[id]){RM.counts[id]=0;}RM.countKey[id]=key;return;}
         if(RM.countKey[id]===key)return;
         RM.countKey[id]=key;const uid=RM.uid;
         dbMod.get(dbMod.query(ref('roomMessages/'+id),dbMod.orderByChild('ts'),dbMod.startAfter(readAt),dbMod.limitToLast(99)))
           .then(s=>{if(RM.uid!==uid||RM.countKey[id]!==key)return;const v=s.val()||{};
-            RM.counts[id]=Object.values(v).filter(x=>x&&x.senderUid!==uid).length;emit();})
+            RM.counts[id]=Object.values(v).filter(x=>x&&x.senderUid!==uid&&(mode!=='mention'||!!(x.mentions&&x.mentions[uid]))).length;emit();})
           .catch(()=>{});
       };
       const syncMeta=()=>{
@@ -16516,16 +16521,30 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
           if(isDevRole()&&status!=='joined'&&status!=='invited')status='view'; // developer: management view only
           const lastAt=Number(m?.lastAt||0),readAt=Number(me?.readAt||0);
           const pending=status==='joined'&&lastAt>readAt&&RM.openId!==id;
-          const count=pending?(RM.counts[id]===undefined||RM.countKey[id]!==lastAt+'|'+readAt?1:RM.counts[id]):0;
+          const nmode=['mention','off'].includes(me?.notify)?me.notify:'all';
+          const count=pending?(RM.counts[id]===undefined||RM.countKey[id]!==lastAt+'|'+readAt+'|'+(nmode==='mention'?'mention':'all')?(nmode==='mention'?0:1):RM.counts[id]):0;
           return {id,name:String(m?.name||''),category:CATS.includes(m?.category)?m.category:'other',status,lastAt,
-            unread:count>0,count,loaded:!!m};
+            unread:count>0,count,notify:nmode,loaded:!!m};
         }).filter(r=>r.loaded&&(r.status==='invited'||r.status==='joined'||r.status==='view'))
           .sort((a,b)=>({invited:0,joined:1,view:2}[a.status]??3)-({invited:0,joined:1,view:2}[b.status]??3)||b.lastAt-a.lastAt||a.name.localeCompare(b.name,'ja'));
         return {ready:rOk()&&!!RM.own,isDev:dev,uid:gate.uid,rooms,openId:RM.openId,msgs:RM.msgs.slice(),msgErr:RM.msgErr,err:RM.err};
       };
       gate.roomsUnread=()=>{
         if(!rOk())return 0;
-        return gate.roomsState().rooms.reduce((n,r)=>n+(r.status==='invited'?1:r.count||0),0);
+        return gate.roomsState().rooms.reduce((n,r)=>n+(r.status==='invited'?1:(r.notify==='off'?0:r.count||0)),0);
+      };
+      // v171: notification setting per room (all / mention / off), saved on the member's own userRooms record.
+      gate.commonNotify=()=>{const v=RM.mine?.common?.notify;return ['mention','off'].includes(v)?v:'all';};
+      gate.roomSetNotify=async(id,mode)=>{
+        if(!rOk()||auth.currentUser?.uid!==gate.uid)throw Error('本人認証が確認できません');
+        if(!['all','mention','off'].includes(mode))throw Error('通知の設定が正しくありません');
+        if(id!=='common'){
+          if(!rId(id))throw Error('ルームが正しくありません');
+          if(RM.mine[id]?.status!=='joined')throw Error('入室しているルームだけ設定できます');
+        }
+        try{await dbMod.set(ref('userRooms/'+gate.uid+'/'+id+'/notify'),mode);}
+        catch(e){if(/permission/i.test(String(e?.code||e?.message||e)))throw Error('保存が許可されていません（Firebase Rules に notify の追加が必要です）');throw e;}
+        emit();
       };
       gate.roomOpen=id=>{
         if(!rOk()||!rId(id))throw Error('ルームを開けません');
@@ -19184,7 +19203,9 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
     ['trRoomFilterMode','trRoomFilterDay','trRoomFilterMonth','trRoomFilterStart','trRoomFilterEnd'].forEach(k=>$(k).addEventListener('change',onFilter));
     return true;
   }
-  const isRoom=v=>!!v&&v!=='create'&&!v.startsWith('invite:');
+  const isRoom=v=>!!v&&v!=='create'&&!v.startsWith('invite:')&&!v.startsWith('settings:');
+  const rid=()=>view.startsWith('settings:')?view.slice(9):view; // v171: room id also on its settings page
+  let setTab='';
   function setTitle(title,small){
     if(titleEl)titleEl.textContent=title||titleOrig;
     if(smallEl)smallEl.textContent=small||smallOrig;
@@ -19198,15 +19219,64 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
   }
   function badge(){try{window.__TR_PORTAL_CHAT_BADGE__?.();}catch(_){}}
 
+  // v171: each row = 「ルームへ移動」(left, wide) + 「設定」(right). Member/notify/leave moved into 設定.
+  const GEAR='<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
+  const notifyText=m=>m==='mention'?'メンションのみ':m==='off'?'通知オフ':'すべて通知';
+  const notifyTag=m=>m==='mention'?'🔔 メンションのみ':m==='off'?'🔕 通知オフ':'';
   function renderSheet(s){
-    const rows=['<button type="button" class="trSheetItem'+(view?'':' active')+'" data-room-common><span><b>共通チャット</b><small>全員</small></span></button>'];
+    const cn=gate()?.commonNotify?.()||'all';
+    const gearBtn=(id,name)=>'<button type="button" class="trSheetItem trSheetGear" data-room-settings="'+esc(id)+'" aria-label="'+esc(name)+'の設定">'+GEAR+'<span>設定</span></button>';
+    const cCur=!view||view==='settings:common';
+    const rows=['<div class="trSheetRow'+(cCur?' active':'')+'"><button type="button" class="trSheetItem trSheetMain" data-room-common><span><b>共通チャット</b><small>全員'+(notifyTag(cn)?'　'+notifyTag(cn):'')+'</small></span></button>'+gearBtn('common','共通チャット')+'</div>'];
     for(const r of s.rooms){
-      const mark=r.status==='invited'?'<em class="trTag">招待</em>':r.status==='view'?'<em class="trTag trView">閲覧</em>':r.unread?'<em class="trCount" aria-label="未読'+r.count+'件">'+(r.count>99?'99+':r.count)+'</em>':'';
-      const cur=view===r.id||view==='invite:'+r.id;
-      rows.push('<button type="button" class="trSheetItem'+(cur?' active':'')+'" data-room-id="'+esc(r.id)+'"><span><b>'+esc(r.name)+'</b></span>'+mark+'</button>');
+      const mark=r.status==='invited'?'<em class="trTag">招待</em>':r.status==='view'?'<em class="trTag trView">閲覧</em>':r.unread?'<em class="trCount'+(r.notify==='off'?' trMuted':'')+'" aria-label="未読'+r.count+'件">'+(r.count>99?'99+':r.count)+'</em>':'';
+      const cur=view===r.id||view==='invite:'+r.id||view==='settings:'+r.id;
+      const sub=r.status==='joined'?notifyTag(r.notify):r.status==='view'?'閲覧のみ':'';
+      rows.push('<div class="trSheetRow'+(cur?' active':'')+'"><button type="button" class="trSheetItem trSheetMain" data-room-id="'+esc(r.id)+'"><span><b>'+esc(r.name)+'</b>'+(sub?'<small>'+esc(sub)+'</small>':'')+'</span>'+mark+'</button>'+
+        (r.status==='invited'?'':gearBtn(r.id,r.name))+'</div>');
     }
     if(s.isDev)rows.push('<button type="button" class="trSheetItem add" data-room-create><span><b>＋ ルームを作る</b></span></button>');
     $('trSheetList').innerHTML=rows.join('');
+  }
+  function openSettings(id,tab=''){
+    const s=state();
+    if(id!=='common'&&!roomOf(s,id)){say('ルームが見つかりません');return;}
+    leaveView();view='settings:'+id;setTab=tab;
+    setTitle(id==='common'?'共通チャット':roomOf(s,id).name,'ROOM SETTINGS');
+    setOpen(true);renderSettings(true);render();
+  }
+  function settingsHtml(){
+    const id=rid(),s=state(),common=id==='common',r=common?null:roomOf(s,id);
+    if(!common&&!r)return '';
+    const mode=common?(gate()?.commonNotify?.()||'all'):r.notify;
+    const canNotify=common||r.status==='joined';
+    const back='<button type="button" class="trSetBack" data-set-back>‹ 設定にもどる</button>';
+    if(setTab==='notify'){
+      const opt=(v,t,d)=>'<button type="button" class="trNotifyOpt'+(mode===v?' on':'')+'" data-notify-set="'+v+'" role="radio" aria-checked="'+(mode===v)+'"><span><b>'+t+'</b><small>'+d+'</small></span><i aria-hidden="true">'+(mode===v?'✓':'')+'</i></button>';
+      return back+'<div class="trRoomCard"><b class="trCardTitle">通知</b><div class="trNotifyList" role="radiogroup" aria-label="通知の設定">'+
+        opt('all','すべて通知','新しいメッセージが来たら通知します')+
+        opt('mention','メンションのみ','自分あて（@名前）のメッセージだけ通知します')+
+        opt('off','通知オフ','通知しません。未読はルーム一覧で確認できます')+
+        '</div><p class="trRoomNote">ホーム画面アイコンのバッジ（未読数）にも同じ設定が使われます。</p></div>';
+    }
+    if(setTab==='members')return back;
+    const item=(attr,icon,title,sub,cls='')=>'<button type="button" class="trRoomBtn trSetItem'+cls+'" '+attr+'><span class="trSetIcon" aria-hidden="true">'+icon+'</span><span class="trSetText"><b>'+title+'</b>'+(sub?'<small>'+sub+'</small>':'')+'</span><span class="trSetGo" aria-hidden="true">›</span></button>';
+    let h='<div class="trRoomCard trSetCard"><b class="trCardTitle">'+esc(common?'共通チャット':r.name)+' の設定</b>';
+    if(!common)h+=item('data-set-tab="members"','👥','メンバー',s?.isDev?'確認・招待・外す':'メンバーを確認');
+    if(canNotify)h+=item('data-set-tab="notify"','🔔','通知','現在：'+notifyText(mode));
+    if(!common&&s?.isDev)h+=item('data-room-rename','✏️','ルーム名を変更','');
+    if(!common&&r.status==='joined')h+=item('data-room-leave','🚪','退室','もう一度招待されるまで入れません',' warn');
+    if(!common&&s?.isDev)h+=item('data-room-delete','🗑','このルームを削除','メッセージもすべて消えます',' warn');
+    h+='</div><div class="trRoomRow"><button type="button" class="trRoomBtn main" '+(common?'data-room-common':'data-settings-open')+'>'+(common?'共通チャットへ':'ルームを開く')+'</button></div>';
+    return h;
+  }
+  function renderSettings(force){
+    if(!view.startsWith('settings:'))return;
+    const html=settingsHtml();
+    if(!html){leaveView();render();return;}
+    const top=$('trRoomTop');
+    if(force||top.dataset.setHtml!==html){top.innerHTML=html;top.dataset.setHtml=html;}
+    if(setTab==='members'){if(force)void renderMembers();}else{$('trRoomMembersBox').hidden=true;}
   }
   function openSheet(){const s=state();if(!s)return;renderSheet(s);$('trRoomsSheet').hidden=false;}
   function closeSheet(){if($('trRoomsSheet'))$('trRoomsSheet').hidden=true;}
@@ -19219,9 +19289,8 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
   function roomOf(s,id){return s?.rooms?.find(r=>r.id===id)||null;}
   function renderTop(s){
     const r=roomOf(s,view);if(!r)return;
-    const canLeave=r.status==='joined';
-    $('trRoomTop').innerHTML=(r.status==='view'?'<p class="trRoomNote">開発者として閲覧しています（メンバーではないため送信はできません）。</p>':'')+'<div class="trRoomHead trRoomHeadRight"><button type="button" class="trRoomBtn" data-room-members>メンバー</button>'+
-      (canLeave?'<button type="button" class="trRoomBtn warn" data-room-leave>退室</button>':'')+'</div>';
+    // v171: メンバー・退室 moved to the room's 設定 (from the room list), so nothing covers the messages.
+    $('trRoomTop').innerHTML=r.status==='view'?'<p class="trRoomNote">開発者として閲覧しています（メンバーではないため送信はできません）。</p>':'';
   }
   function dayLabel(ts){
     const d=new Date(Number(ts)||0);if(!Number.isFinite(d.getTime())||!ts)return '';
@@ -19321,7 +19390,8 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
     if(isRoom(view)&&!roomOf(s,view))leaveView();
     if(isRoom(view)){const cur=roomOf(s,view);if(cur&&(cur.status==='invited'||(cur.status==='view')!==viewOnly)){openRoom(view);return;}}
     if(view.startsWith('invite:')){const r=roomOf(s,view.slice(7));if(!r||r.status!=='invited')leaveView();}
-    const n=s.rooms.reduce((t,r)=>t+(r.status==='invited'?1:(r.count||0)),0),b=$('trRoomsBadge');
+    if(view.startsWith('settings:'))renderSettings(false);
+    const n=s.rooms.reduce((t,r)=>t+(r.status==='invited'?1:(r.notify==='off'?0:(r.count||0))),0),b=$('trRoomsBadge');
     b.textContent=n>99?'99+':String(n);b.hidden=n===0;
     if(!$('trRoomsSheet').hidden)renderSheet(s);
     if(isRoom(view)&&!rfActive)renderThread(s);
@@ -19329,9 +19399,9 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
   }
   function leaveView(){
     const was=view;
-    view='';viewOnly=false;shownMsgKey='';lastScrolledId='';resetFilter();   // clear first: roomClose() notifies render() synchronously
+    view='';viewOnly=false;shownMsgKey='';lastScrolledId='';setTab='';resetFilter();   // clear first: roomClose() notifies render() synchronously
     if(isRoom(was)){try{gate()?.roomClose?.();}catch(_){}}
-    $('trRoomTop').innerHTML='';$('trRoomThread').innerHTML='';
+    $('trRoomTop').innerHTML='';delete $('trRoomTop').dataset.setHtml;$('trRoomThread').innerHTML='';
     $('trRoomMembersBox').hidden=true;$('trRoomMembersBox').innerHTML='';
     setTitle();setOpen(false);
   }
@@ -19385,19 +19455,17 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
     catch(e){if($('trRoomNewPick'))$('trRoomNewPick').innerHTML='<p class="trRoomNote">参加者一覧を読み込めません：'+esc(errText(e))+'</p>';}
   }
   async function renderMembers(){
-    const box=$('trRoomMembersBox'),id=view,s=state();
+    const box=$('trRoomMembersBox'),id=rid(),s=state();
     box.hidden=false;box.innerHTML='<p class="trRoomNote">メンバーを確認中です。</p>';
     let list=[];
-    try{list=await gate().roomMembers(id);}catch(e){if(view===id)box.innerHTML='<p class="trRoomNote">メンバーを確認できません：'+esc(errText(e))+'</p>';return;}
-    if(view!==id)return;
+    try{list=await gate().roomMembers(id);}catch(e){if(rid()===id)box.innerHTML='<p class="trRoomNote">メンバーを確認できません：'+esc(errText(e))+'</p>';return;}
+    if(rid()!==id)return;
     const label={joined:'入室中',invited:'招待中',left:'退室'};
     let html='<b class="trCardTitle">メンバー</b>'+list.map(m=>'<div class="trMemberRow"><span>'+esc(m.name||'参加者')+'<small>'+esc(label[m.status]||'')+'</small></span>'+
       (s?.isDev&&m.uid!==s.uid?'<button type="button" class="trRoomBtn warn" data-member-remove="'+esc(m.uid)+'" data-name="'+esc(m.name)+'">外す</button>':'')+'</div>').join('');
     if(s?.isDev){
-      html+='<div class="trRoomRow"><button type="button" class="trRoomBtn" data-room-rename>ルーム名を変更</button><button type="button" class="trRoomBtn" data-invite-more>招待を追加</button>'+
-        '<button type="button" class="trRoomBtn warn" data-room-delete>このルームを削除</button></div><div id="trRoomMorePick"></div>';
+      html+='<div class="trRoomRow"><button type="button" class="trRoomBtn" data-invite-more>招待を追加</button></div><div id="trRoomMorePick"></div>';
     }
-    html+='<div class="trRoomRow"><button type="button" class="trRoomBtn" data-members-close>閉じる</button></div>';
     box.innerHTML=html;
     box.dataset.current=JSON.stringify(list.filter(m=>['joined','invited'].includes(m.status)).map(m=>m.uid));
   }
@@ -19416,11 +19484,20 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
     closeSheet();
     if(b.hasAttribute('data-room-common')){leaveView();render();return;}
     if(b.hasAttribute('data-room-create')){void openCreate();return;}
+    if(b.dataset.roomSettings){openSettings(b.dataset.roomSettings);return;}
     if(b.dataset.roomId)openRoom(b.dataset.roomId);
   }
   function onViewClick(ev){
     const b=ev.target.closest('button');if(!b)return;
     if(b.hasAttribute('data-room-common')){leaveView();render();return;}
+    if(b.hasAttribute('data-set-back')){setTab='';renderSettings(true);return;}
+    if(b.dataset.setTab){setTab=b.dataset.setTab;renderSettings(true);return;}
+    if(b.hasAttribute('data-settings-open')){openRoom(rid());return;}
+    if(b.dataset.notifySet){
+      const id=rid(),mode=b.dataset.notifySet;
+      void run(b,async()=>{await gate().roomSetNotify(id,mode);say((id==='common'?'共通チャット':'このルーム')+'の通知を「'+notifyText(mode)+'」にしました');renderSettings(true);badge();});
+      return;
+    }
     if(b.hasAttribute('data-pick-all')){
       const box=b.closest('.trPickHead')?.nextElementSibling;if(!box)return;
       const inputs=[...box.querySelectorAll('input[type=checkbox]')],on=!inputs.every(i=>i.checked);
@@ -19451,23 +19528,23 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
     }
     if(b.hasAttribute('data-members-close')){$('trRoomMembersBox').hidden=true;return;}
     if(b.hasAttribute('data-room-leave')){
-      const id=view;
+      const id=rid();
       if(!confirm('このルームから退室しますか？\n退室すると、もう一度招待されるまで入れません。'+(state()?.isDev?'\n（管理者の場合、このルームの管理もできなくなります）':'')))return;
       void run(b,async()=>{await gate().roomRespond(id,'leave');leaveView();say('退室しました');render();});
       return;
     }
     if(b.dataset.memberRemove){
-      const id=view,uid=b.dataset.memberRemove;
+      const id=rid(),uid=b.dataset.memberRemove;
       if(!confirm((b.dataset.name||'この人')+'さんをこのルームから外しますか？'))return;
       void run(b,async()=>{await gate().roomRemoveMember(id,uid);say('外しました');await renderMembers();});
       return;
     }
     if(b.hasAttribute('data-room-rename')){
-      const id=view,cur=roomOf(state(),id)?.name||'';
+      const id=rid(),cur=roomOf(state(),id)?.name||'';
       const name=prompt('新しいルーム名（30文字まで）',cur);
       if(name===null)return;
       if(!name.trim()||name.trim()===cur)return;
-      void run(b,async()=>{await gate().roomRename(id,name);setTitle(name.trim(),'ROOM');say('ルーム名を「'+name.trim()+'」に変更しました');});
+      void run(b,async()=>{await gate().roomRename(id,name);setTitle(name.trim(),view.startsWith('settings:')?'ROOM SETTINGS':'ROOM');say('ルーム名を「'+name.trim()+'」に変更しました');});
       return;
     }
     if(b.hasAttribute('data-invite-more')){
@@ -19480,13 +19557,13 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
       return;
     }
     if(b.hasAttribute('data-invite-send')){
-      const id=view,members=picked($('trRoomMorePick'));
+      const id=rid(),members=picked($('trRoomMorePick'));
       if(!members.length){say('招待する人を選んでください');return;}
       void run(b,async()=>{const n=await gate().roomInvite(id,members);say(n+'人を招待しました');await renderMembers();});
       return;
     }
     if(b.hasAttribute('data-room-delete')){
-      const id=view,name=roomOf(state(),id)?.name||'このルーム';
+      const id=rid(),name=roomOf(state(),id)?.name||'このルーム';
       if(!confirm('「'+name+'」を削除しますか？\nメッセージもすべて消え、元に戻せません。'))return;
       void run(b,async()=>{await gate().roomDelete(id);leaveView();say('「'+name+'」を削除しました');render();});
     }
@@ -20588,6 +20665,75 @@ html #screen-competition-results .crPbCard b{display:block!important;white-space
     new MutationObserver(run).observe(scr,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
     window.addEventListener('resize',run);run();};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+})();
+</script>
+<style id="v171-room-settings-style">
+/* v171: room list rows with a separate 設定 button, and the room settings page */
+.trSheetRow{display:flex;align-items:stretch;gap:6px;margin:0 0 6px}
+.trSheetRow .trSheetItem{margin:0}
+.trSheetRow .trSheetMain{flex:1 1 auto;min-width:0}
+.trSheetRow.active .trSheetMain{border-color:var(--gold);box-shadow:inset 4px 0 0 var(--gold)}
+.trSheetRow .trSheetGear{flex:0 0 60px;width:60px;min-height:52px;flex-direction:column;justify-content:center;gap:2px;padding:6px 4px;text-align:center;color:var(--ink2)}
+.trSheetRow .trSheetGear span{font-size:10px;font-weight:900;line-height:1}
+.trSheetItem .trCount.trMuted{background:#8b908d}
+.trSetBack{display:inline-flex;align-items:center;min-height:40px;margin:2px 0 4px;padding:6px 4px;border:0;background:transparent;color:var(--gold-deep);font-size:14px;font-weight:900}
+.trSetCard{display:grid;gap:8px}
+.trSetCard .trCardTitle{margin-bottom:2px}
+.trRoomBtn.trSetItem{display:flex;align-items:center;gap:12px;width:100%;min-height:58px;padding:9px 12px;text-align:left}
+.trSetItem .trSetIcon{flex:0 0 26px;font-size:20px;line-height:1;text-align:center}
+.trSetItem .trSetText{flex:1 1 auto;min-width:0}
+.trSetItem .trSetText b{display:block;font-size:15px;line-height:1.3}
+.trSetItem .trSetText small{display:block;margin-top:2px;font-size:12px;font-weight:700;opacity:.78}
+.trSetItem .trSetGo{flex:0 0 auto;font-size:22px;opacity:.6}
+.trSetItem.warn .trSetText b{color:#a3372a}
+html[data-portal-personal-color="winter"] .trSetItem.warn .trSetText b,html[data-portal-personal-color="matte"] .trSetItem.warn .trSetText b{color:#ff9c8c}
+.trNotifyList{display:grid;gap:8px;margin:4px 0 8px}
+.trNotifyOpt{display:flex;align-items:center;gap:10px;width:100%;min-height:60px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--white);color:var(--ink);text-align:left}
+.trNotifyOpt span{flex:1 1 auto;min-width:0}
+.trNotifyOpt b{display:block;font-size:15px}
+.trNotifyOpt small{display:block;margin-top:2px;font-size:12px;font-weight:700;opacity:.78;line-height:1.45}
+.trNotifyOpt i{flex:0 0 22px;font-style:normal;font-size:18px;font-weight:900;color:var(--gold-deep);text-align:center}
+.trNotifyOpt.on{border:2px solid var(--gold);padding:9px 11px}
+html[data-portal-personal-color="winter"] .trNotifyOpt{background:#133f49;border-color:#59bfb9;color:#f5ffff}
+html[data-portal-personal-color="winter"] :is(.trNotifyOpt.on){border-color:#57e5d5}
+html[data-portal-personal-color="winter"] :is(.trNotifyOpt i,.trSetBack){color:#57e5d5}
+html[data-portal-personal-color="winter"] .trSheetRow.active .trSheetMain{border-color:#57e5d5;box-shadow:inset 4px 0 0 #57e5d5}
+html[data-portal-personal-color="matte"] .trNotifyOpt{background:#281e22;border-color:#aa6748;color:#fff7f2}
+html[data-portal-personal-color="matte"] .trNotifyOpt.on{border-color:#ff8940}
+html[data-portal-personal-color="matte"] :is(.trNotifyOpt i,.trSetBack){color:#ff8940}
+html[data-portal-personal-color="matte"] .trSheetRow.active .trSheetMain{border-color:#ff8940;box-shadow:inset 4px 0 0 #ff8940}
+</style>
+<script id="v171-home-badge-sync">
+/* Android keeps the launcher badge while notifications stay in the tray, and the server badge counter was only
+   re-synced after reading a NOTICE. Now every unread change (chat, rooms, notices) syncs it and clears read ones from the tray. */
+(()=>{
+  let timer=0,pending=null,lastSent=-1,lastAt=0;
+  const text=n=>[n.tag,n.title,n.body,JSON.stringify(n.data||{})].join(' ').toLowerCase();
+  const isChat=n=>/chat|room|チャット|ルーム/.test(text(n));
+  async function closeTray(filter){
+    try{
+      if(!navigator.serviceWorker?.getRegistration)return;
+      const reg=await navigator.serviceWorker.getRegistration('./TOP_RUN_PORTAL')||await navigator.serviceWorker.getRegistration();
+      if(!reg?.getNotifications)return;
+      (await reg.getNotifications()).forEach(n=>{try{if(filter(n))n.close();}catch(_){}});
+    }catch(_){}
+  }
+  async function run(){
+    const c=pending;if(!c||document.visibilityState!=='visible')return;
+    const g=window.__TR_PORTAL_SYNC__;
+    if(g?.loaded&&(g.loaded.chat!==true||g.loaded.personal!==true))return;
+    const chat=Math.max(0,Number(c.chat)||0),notice=Math.max(0,Number(c.notice)||0),total=Math.min(99,chat+notice);
+    if(total===0)await closeTray(()=>true);
+    else{if(chat===0)await closeTray(isChat);if(notice===0)await closeTray(n=>!isChat(n));}
+    if(total===lastSent&&Date.now()-lastAt<30000)return;
+    let ok=false;
+    try{ok=await window.__TR_NOTICE_BADGE_SYNC__?.(total);}catch(_){ok=false;}
+    if(!ok){try{if(total===0)await navigator.clearAppBadge?.();else await navigator.setAppBadge?.(total);}catch(_){}}
+    lastSent=total;lastAt=Date.now();
+  }
+  window.__TR_HOME_BADGE_SCHEDULE__=c=>{pending=c;clearTimeout(timer);timer=setTimeout(run,900);};
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){lastAt=0;try{window.__TR_PORTAL_CHAT_BADGE__?.();}catch(_){}}});
+  window.addEventListener('tr-portal-rooms',()=>{try{window.__TR_PORTAL_CHAT_BADGE__?.();}catch(_){}});
 })();
 </script>
 </body>
