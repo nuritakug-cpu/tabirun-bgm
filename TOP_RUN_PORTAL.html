@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v159 2026-10-29: v158 + chat reactions (who / how many), reply (quote + jump) and mentions (@name, highlighted) for the common CHAT and rooms. Long-press a message. Stored inside each message (no new listener). Needs Rules: chat/$messageId and roomMessages/$roomId/$messageId gain replyTo, mentions, reactions. -->
 <!-- TOP RUN PORTAL v158 2026-10-29: v157 + tournament selectors (選手メニュー, 記録の紐付け) shown as a date-ordered list with small 開催日 and a filter (年・月・期間). Rules unchanged. -->
 <!-- TOP RUN PORTAL v157 2026-10-29: v156 + EVENT BASE tournaments shown as 「大会名（N回）」 in staff selectors (選手メニュー, 記録の紐付け, 大会結果の修正). Rules unchanged. -->
 <!-- TOP RUN PORTAL v156 2026-10-29: v155 + 管理画面「選手」 menu reorganized so each title opens its own content: ①new person entry ②missing entry ③fix/cancel ④past records only ⑤directory; record linking moved to its own developer button. New gate.staffCreateEntry (create-only events/<event>/players). Rules unchanged. -->
@@ -5963,7 +5964,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v158</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v159</b></div>
   </div>
 </div>
 
@@ -6157,7 +6158,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v158</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v159</b></div>
   </div>
 </div>
 
@@ -8411,12 +8412,13 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
       if(dayKey)lastDay=dayKey;
       const boundary=portalChatUnreadBoundaryId&&m.id===portalChatUnreadBoundaryId?
         '<div class="chatUnreadLine" role="separator" aria-label="ここから未読"><span>ここから未読</span></div>':'';
-      return `${dayBand}${boundary}<div class="msg ${m.staff?'staff ':''}${isMyPortalChat(m)?'mine ':''}" data-chat-ts="${ts}">
+      const D=window.__trChatDecor;
+      return `${dayBand}${boundary}<div class="msg ${m.staff?'staff ':''}${isMyPortalChat(m)?'mine ':''}${D&&D.mentioned(m)?'trMentioned ':''}" data-chat-ts="${ts}" data-mid="${esc(m.id||'')}">
         <div class="msgHead">
           <span>${esc(m.name||'参加者')}</span>
           <span>${Number.isFinite(d.getTime())?d.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):''}</span>
         </div>
-        <p>${esc(m.text||'')}</p>
+        ${D?D.quote(m):''}<p>${D?D.text(m):esc(m.text||'')}</p>${D?D.reacts(m):''}
       </div>`;
     }).join('');
     const pcf=portalListFilterState.chat;
@@ -16394,8 +16396,18 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       if(!gate.canSendChat()||auth.currentUser?.uid!==gate.uid)throw Error('本人認証・利用承認またはCHAT受信が未成立です');
       const text=String(value||'').trim().slice(0,1000);if(!text)throw Error('本文を入力してください');
       const id='c'+Date.now()+'_'+Math.random().toString(36).slice(2,11);
-      await dbMod.set(ref('chat/'+id),{senderUid:gate.uid,name:gate.displayName,text,ts:dbMod.serverTimestamp(),staff:['developer','admin'].includes(gate.role)});
+      // v159: optional 返信 (replyTo) and メンション (mentions) from the composer
+      const ex=window.__trChatExtras?.take?.('common',text)||{};
+      await dbMod.set(ref('chat/'+id),{senderUid:gate.uid,name:gate.displayName,text,ts:dbMod.serverTimestamp(),staff:['developer','admin'].includes(gate.role),...ex});
       void window.__TR_STAGE3_NOTIFY__?.('chat',id);
+    };
+    // v159: one reaction per person per message (LINE / BAND style). emoji=null removes it.
+    gate.chatReact=async(id,emoji)=>{
+      if(!gate.canSendChat()||auth.currentUser?.uid!==gate.uid)throw Error('本人認証・利用承認が必要です');
+      if(!/^c[A-Za-z0-9_]+$/.test(String(id||'')))throw Error('メッセージを確認できません');
+      const at=ref('chat/'+id+'/reactions/'+gate.uid);
+      if(!emoji){await dbMod.remove(at);return;}
+      await dbMod.set(at,{e:String(emoji).slice(0,16),n:gate.displayName});
     };
     // v133 PORTAL ROOMS (invite-only). Same Auth/db/gateway; paths under portalCommon/topRun:
     // roomMeta/<room>, roomMembers/<room>/<uid>, roomMessages/<room>/<msg>, userRooms/<uid>/<room>.
@@ -16522,11 +16534,21 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         if(RM.mine[id]?.status!=='joined'&&!rDev())throw Error('このルームには入室していません');
         const text=String(value||'').trim().slice(0,1000);if(!text)throw Error('本文を入力してください');
         const mid='m'+Date.now()+'_'+Math.random().toString(36).slice(2,11);
+        const ex=window.__trChatExtras?.take?.('room:'+id,text)||{};
         await dbMod.update(dbMod.ref(db,root),{
-          ['roomMessages/'+id+'/'+mid]:{senderUid:gate.uid,name:gate.displayName,text,ts:dbMod.serverTimestamp()},
+          ['roomMessages/'+id+'/'+mid]:{senderUid:gate.uid,name:gate.displayName,text,ts:dbMod.serverTimestamp(),...ex},
           ['roomMeta/'+id+'/lastAt']:dbMod.serverTimestamp()
         });
       };
+      gate.roomReact=async(id,mid,emoji)=>{
+        if(!rOk()||!rId(id)||auth.currentUser?.uid!==gate.uid)throw Error('本人認証が確認できません');
+        if(RM.mine[id]?.status!=='joined'&&!rDev())throw Error('このルームには入室していません');
+        if(!/^m[A-Za-z0-9_]+$/.test(String(mid||'')))throw Error('メッセージを確認できません');
+        const at=ref('roomMessages/'+id+'/'+mid+'/reactions/'+gate.uid);
+        if(!emoji){await dbMod.remove(at);return;}
+        await dbMod.set(at,{e:String(emoji).slice(0,16),n:gate.displayName});
+      };
+      gate.roomReactCtx=()=>({openId:RM.openId,uid:gate.uid});
       gate.roomRespond=async(id,action)=>{
         if(!rOk()||!rId(id)||auth.currentUser?.uid!==gate.uid)throw Error('本人認証が確認できません');
         const st=RM.mine[id]?.status;
@@ -19189,7 +19211,8 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
       if(day)last=day;
       const mine=m.senderUid===uid;
       const time=ts?d.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):'';
-      return band+'<div class="msg'+(mine?' mine':'')+'"><div class="msgHead"><span>'+esc(m.name||'参加者')+'</span><span>'+esc(time)+'</span></div><p>'+esc(m.text||'')+'</p></div>';
+      const D=window.__trChatDecor;
+      return band+'<div class="msg'+(mine?' mine':'')+(D&&D.mentioned(m)?' trMentioned':'')+'" data-mid="'+esc(m.id||'')+'"><div class="msgHead"><span>'+esc(m.name||'参加者')+'</span><span>'+esc(time)+'</span></div>'+(D?D.quote(m):'')+'<p>'+(D?D.text(m):esc(m.text||''))+'</p>'+(D?D.reacts(m):'')+'</div>';
     }).join('');
   }
   const chatMain=()=>document.querySelector('#screen-chat > main.chatMain');
@@ -19197,7 +19220,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
   function renderThread(s){
     const box=$('trRoomThread');
     if(s.msgErr){box.innerHTML='<div class="portalEmpty" role="status">メッセージを受信できません（'+esc(s.msgErr)+'）</div>';shownMsgKey='';return;}
-    const key=s.msgs.map(m=>m.id+':'+(m.ts||'')).join('|');
+    const key=s.msgs.map(m=>m.id+':'+(m.ts||'')+':'+(window.__trChatDecor?.sig?.(m)||'')).join('|');
     if(key===shownMsgKey)return;
     shownMsgKey=key;
     if(!s.msgs.length){box.innerHTML='<div class="portalEmpty">まだメッセージはありません。</div>';return;}
@@ -20003,6 +20026,226 @@ select.trPickSource{display:none!important}
   }
   const start=()=>['trwEvent','rpEvent'].forEach(id=>enhance(document.getElementById(id)));
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+})();
+</script>
+<style id="v159-chat-react-style">
+#portalChatThread .msg,#trRoomThread .msg{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.trMentioned{box-shadow:0 0 0 2px #d8b825 inset}
+.trAt{font-weight:800;color:#2f6fb0}
+.trQuote{display:block;width:100%;text-align:left;border:0;border-left:3px solid #c5a52b;background:rgba(128,128,128,.12);border-radius:6px;padding:5px 8px;margin:4px 0 2px;font:inherit;color:inherit;cursor:pointer}
+.trQuote b{display:block;font-size:11px;opacity:.85}
+.trQuote span{display:block;font-size:12px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trReacts{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.trReact{border:1px solid rgba(128,128,128,.45);border-radius:999px;background:rgba(255,255,255,.75);color:#333;font:inherit;font-size:13px;line-height:1;padding:4px 9px;min-height:28px;display:inline-flex;align-items:center;gap:4px}
+.trReact b{font-size:12px}
+.trReact.mine{border-color:#b89a1c;background:#f3df94}
+.trFlash{animation:trFlash 1.4s ease}
+@keyframes trFlash{0%,60%{box-shadow:0 0 0 3px #d8b825}100%{box-shadow:none}}
+#trMsgSheet{position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.42);display:flex;align-items:flex-end;justify-content:center}
+#trMsgSheet[hidden]{display:none!important}
+#trMsgSheet .trSheetCard{width:100%;max-width:560px;max-height:78vh;overflow-y:auto;background:#fffdf8;color:#2d2f2b;border-radius:18px 18px 0 0;padding:14px 14px calc(14px + env(safe-area-inset-bottom));box-shadow:0 -8px 24px rgba(0,0,0,.2)}
+#trMsgSheet .trSheetHead{font-size:12px;opacity:.75;margin:0 0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#trMsgSheet .trEmojiGrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin-bottom:12px}
+#trMsgSheet .trEmojiGrid button{min-height:46px;border:1px solid #e1dccd;border-radius:12px;background:#fff;font-size:22px;line-height:1}
+#trMsgSheet .trEmojiGrid button.txt{font-size:14px;font-weight:900}
+#trMsgSheet .trEmojiGrid button.on{border-color:#b89a1c;background:#f3df94}
+#trMsgSheet .trSheetBtns{display:grid;gap:8px}
+#trMsgSheet .trSheetBtns button{min-height:46px;border-radius:12px;border:1px solid #cac4b6;background:#fff;font-size:15px;font-weight:800;color:#2d2f2b}
+#trMsgSheet .trWho{margin:0 0 12px}
+#trMsgSheet .trWho b{display:block;font-size:15px;margin:8px 0 4px}
+#trMsgSheet .trWho span{display:inline-block;font-size:13px;margin:0 8px 4px 0}
+#trMsgSheet .trSheetNote{font-size:12px;color:#a33;margin:6px 0 0}
+.trComposeBar{display:flex;align-items:center;gap:8px;margin:0 0 6px;padding:6px 10px;border-left:3px solid #c5a52b;background:rgba(255,253,248,.95);color:#2d2f2b;border-radius:8px;font-size:12px}
+.trComposeBar[hidden]{display:none!important}
+.trComposeBar span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trComposeBar button{border:0;background:transparent;font-size:18px;line-height:1;padding:2px 6px;color:inherit}
+.trMentionList{display:flex;gap:6px;overflow-x:auto;margin:0 0 6px;padding:2px 0}
+.trMentionList[hidden]{display:none!important}
+.trMentionList button{flex:0 0 auto;border:1px solid #cac4b6;border-radius:999px;background:#fff;color:#2d2f2b;font-size:13px;font-weight:800;padding:6px 12px}
+</style>
+<script id="v159-chat-react">
+/* v159: チャットのリアクション・返信・メンション（全体チャットとルーム）。LINE / BAND と同じ使い方:
+   メッセージを長押し → リアクション／返信／コピー。リアクションの数を押すと、誰がリアクションしたかが出る。
+   Data: <message>/reactions/<uid>={e,n}, <message>/replyTo={id,name,text}, <message>/mentions/<uid>=name. No new listener. */
+(()=>{
+  const $=id=>document.getElementById(id);
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const g=()=>window.__TR_PORTAL_SYNC__;
+  const REACTS=['👍','❤️','😂','😊','😮','😢','🙏','👏','🎉','🔥','💪','✨','🙆','🙇','👀','💯','🏃','🥇','👌','🤝','😭','🤣','😆','🥰','😳','🤔','🫡','🎵','OK','笑','了解','ありがとう'];
+  const cache=new Map();
+  const myUid=()=>g()?.uid||'';
+  const D={
+    mentioned(m){cache.set(m.id,m);return !!(m.mentions&&myUid()&&m.mentions[myUid()]);},
+    text(m){cache.set(m.id,m);return esc(m.text||'').replace(/@([^\s@]{1,24})/g,'<span class="trAt">@$1</span>');},
+    quote(m){
+      const r=m.replyTo;if(!r||!r.id)return '';
+      return `<button type="button" class="trQuote" data-jump="${esc(r.id)}"><b>↩ ${esc(r.name||'')}</b><span>${esc(r.text||'')}</span></button>`;
+    },
+    reacts(m){
+      cache.set(m.id,m);
+      const rs=m.reactions&&typeof m.reactions==='object'?Object.entries(m.reactions):[];
+      if(!rs.length)return '';
+      const groups=new Map();
+      for(const [uid,v] of rs){const e=String(v?.e||'');if(!e)continue;if(!groups.has(e))groups.set(e,[]);groups.get(e).push(uid);}
+      return '<div class="trReacts">'+[...groups.entries()].map(([e,uids])=>`<button type="button" class="trReact${uids.includes(myUid())?' mine':''}" data-who="${esc(m.id)}">${esc(e)}<b>${uids.length}</b></button>`).join('')+'</div>';
+    },
+    sig(m){const r=m.reactions||{};return Object.keys(r).sort().map(k=>k+'='+(r[k]?.e||'')).join(',');}
+  };
+  window.__trChatDecor=D;
+  // ---- context
+  const ctxOf=el=>el.closest('#trRoomThread')?'room':el.closest('#portalChatThread')?'common':'';
+  const roomId=()=>g()?.roomReactCtx?.().openId||'';
+  const key=ctx=>ctx==='room'?'room:'+roomId():'common';
+  const inputOf=ctx=>ctx==='room'?$('trRoomInput'):$('portalChatInput');
+  // ---- composer extras (返信・メンション)
+  const draft={};
+  window.__trChatExtras={
+    take(k,text){
+      const st=draft[k];if(!st)return {};
+      const out={};
+      if(st.replyTo)out.replyTo=st.replyTo;
+      const ms={};let n=0;
+      for(const [uid,name] of Object.entries(st.mentions||{})){if(n>=20)break;if(String(text||'').includes('@'+name)){ms[uid]=name;n++;}}
+      if(n)out.mentions=ms;
+      st.sentAt=Date.now();
+      return out;
+    }
+  };
+  function bars(ctx){
+    const input=inputOf(ctx);if(!input)return null;
+    const comp=input.closest('.chatComposer');if(!comp)return null;
+    let bar=comp.querySelector('.trComposeBar'),list=comp.querySelector('.trMentionList');
+    if(!bar){
+      bar=document.createElement('div');bar.className='trComposeBar';bar.hidden=true;bar.innerHTML='<span></span><button type="button" aria-label="返信をやめる">✕</button>';
+      list=document.createElement('div');list.className='trMentionList';list.hidden=true;
+      comp.prepend(list);comp.prepend(bar);
+      bar.querySelector('button').addEventListener('click',()=>{const st=draft[key(ctx)];if(st)st.replyTo=null;paintBar(ctx);});
+      list.addEventListener('click',e=>{const b=e.target.closest('[data-mu]');if(b)pickMention(ctx,b.dataset.mu,b.dataset.mn);});
+    }
+    return {bar,list,input};
+  }
+  function paintBar(ctx){
+    const b=bars(ctx);if(!b)return;const st=draft[key(ctx)];
+    if(st?.replyTo){b.bar.hidden=false;b.bar.querySelector('span').textContent='↩ '+st.replyTo.name+'：'+st.replyTo.text;}else b.bar.hidden=true;
+  }
+  setInterval(()=>{
+    for(const ctx of ['common','room']){
+      const k=key(ctx),st=draft[k],input=inputOf(ctx);
+      if(st?.sentAt&&input&&!input.value.trim()){delete draft[k];paintBar(ctx);const b=bars(ctx);if(b)b.list.hidden=true;}
+    }
+  },500);
+  // ---- mentions
+  let roomPeople={id:'',list:[]};
+  async function people(ctx){
+    const map=new Map();
+    if(ctx==='room'){
+      const id=roomId();
+      if(roomPeople.id!==id){roomPeople={id,list:[]};try{roomPeople.list=(await g().roomMembers(id)).filter(x=>x.status==='joined');}catch(_){}}
+      roomPeople.list.forEach(x=>map.set(x.uid,x.name));
+    }
+    const thread=ctx==='room'?$('trRoomThread'):$('portalChatThread');
+    thread?.querySelectorAll('.msg[data-mid]').forEach(el=>{const m=cache.get(el.dataset.mid);if(m?.senderUid&&m.name)map.set(m.senderUid,m.name);});
+    map.delete(myUid());
+    return [...map.entries()].map(([uid,name])=>({uid,name})).filter(x=>x.name).sort((a,b)=>a.name.localeCompare(b.name,'ja'));
+  }
+  async function onType(ctx){
+    const b=bars(ctx);if(!b)return;
+    const v=b.input.value,pos=b.input.selectionStart??v.length,mm=/@([^\s@]*)$/.exec(v.slice(0,pos));
+    if(!mm){b.list.hidden=true;return;}
+    const q=mm[1].normalize('NFKC'),all=await people(ctx);
+    const hit=all.filter(x=>!q||x.name.normalize('NFKC').includes(q)).slice(0,30);
+    b.list.innerHTML=hit.map(x=>`<button type="button" data-mu="${esc(x.uid)}" data-mn="${esc(x.name)}">@${esc(x.name)}</button>`).join('');
+    b.list.hidden=!hit.length;
+  }
+  function pickMention(ctx,uid,name){
+    const b=bars(ctx);if(!b)return;
+    const v=b.input.value,pos=b.input.selectionStart??v.length,before=v.slice(0,pos).replace(/@([^\s@]*)$/,'@'+name+' ');
+    b.input.value=before+v.slice(pos);b.input.focus();
+    try{b.input.setSelectionRange(before.length,before.length);}catch(_){}
+    const k=key(ctx);draft[k]=draft[k]||{};draft[k].mentions={...(draft[k].mentions||{}),[uid]:name};delete draft[k].sentAt;
+    b.list.hidden=true;b.input.dispatchEvent(new Event('input',{bubbles:true}));
+  }
+  document.addEventListener('input',e=>{
+    if(e.target.id==='portalChatInput')onType('common');
+    else if(e.target.id==='trRoomInput')onType('room');
+  });
+  // ---- sheet (taps in the first 0.5 s are ignored: the finger that long-pressed is still lifting)
+  let openedAt=0;
+  function sheet(html){
+    let el=$('trMsgSheet');
+    if(!el){el=document.createElement('div');el.id='trMsgSheet';el.hidden=true;el.innerHTML='<div class="trSheetCard" role="dialog" aria-modal="true"></div>';document.body.append(el);
+      el.addEventListener('click',e=>{if(Date.now()-openedAt<500){e.stopPropagation();return;}if(e.target===el)el.hidden=true;},true);}
+    el.querySelector('.trSheetCard').innerHTML=html;el.hidden=false;openedAt=Date.now();return el;
+  }
+  const closeSheet=()=>{const el=$('trMsgSheet');if(el)el.hidden=true;};
+  async function react(ctx,mid,emoji){
+    try{
+      if(ctx==='room')await g().roomReact(roomId(),mid,emoji);else await g().chatReact(mid,emoji);
+      closeSheet();
+    }catch(err){
+      const n=document.querySelector('#trMsgSheet .trSheetNote');
+      if(n)n.textContent='できませんでした：'+String(err?.code||err?.message||err).slice(0,80);
+    }
+  }
+  function openActions(ctx,mid){
+    const m=cache.get(mid);if(!m)return;
+    const mine=m.reactions?.[myUid()]?.e||'';
+    const el=sheet(`<p class="trSheetHead">${esc(m.name||'')}：${esc(String(m.text||'').slice(0,40))}</p>
+      <div class="trEmojiGrid">${REACTS.map(e=>`<button type="button" class="${/^[\u3040-\u30ff\u4e00-\u9fffA-Za-z]+$/.test(e)?'txt ':''}${e===mine?'on':''}" data-re="${esc(e)}" aria-label="${esc(e)}">${esc(e)}</button>`).join('')}</div>
+      <div class="trSheetBtns"><button type="button" data-act="reply">↩ 返信</button><button type="button" data-act="copy">コピー</button><button type="button" data-act="close">閉じる</button></div>
+      <p class="trSheetNote" role="status"></p>`);
+    el.querySelector('.trSheetCard').onclick=e=>{
+      const r=e.target.closest('[data-re]');if(r){react(ctx,mid,r.dataset.re===mine?null:r.dataset.re);return;}
+      const a=e.target.closest('[data-act]')?.dataset.act;
+      if(a==='close')closeSheet();
+      if(a==='copy'){try{navigator.clipboard?.writeText(String(m.text||''));}catch(_){}closeSheet();}
+      if(a==='reply'){
+        const k=key(ctx);draft[k]=draft[k]||{};delete draft[k].sentAt;
+        draft[k].replyTo={id:m.id,name:String(m.name||'').slice(0,24),text:String(m.text||'').replace(/\s+/g,' ').slice(0,60)};
+        paintBar(ctx);closeSheet();inputOf(ctx)?.focus();
+      }
+    };
+  }
+  function openWho(ctx,mid){
+    const m=cache.get(mid);if(!m)return;
+    const groups=new Map();
+    for(const [uid,v] of Object.entries(m.reactions||{})){const e=String(v?.e||'');if(!e)continue;if(!groups.has(e))groups.set(e,[]);groups.get(e).push(uid===myUid()?(v.n||'')+'（自分）':(v.n||''));}
+    const total=[...groups.values()].reduce((n,a)=>n+a.length,0);
+    const el=sheet(`<p class="trSheetHead">リアクション ${total}人｜${esc(String(m.text||'').slice(0,30))}</p>
+      <div class="trWho">${[...groups.entries()].map(([e,names])=>`<b>${esc(e)} ${names.length}</b>${names.map(n=>`<span>${esc(n)}</span>`).join('')}`).join('')}</div>
+      <div class="trSheetBtns"><button type="button" data-act="mine">自分のリアクションを選ぶ</button><button type="button" data-act="close">閉じる</button></div>`);
+    el.querySelector('.trSheetCard').onclick=e=>{
+      const a=e.target.closest('[data-act]')?.dataset.act;
+      if(a==='close')closeSheet();
+      if(a==='mine')openActions(ctx,mid);
+    };
+  }
+  function jump(thread,id){
+    const t=thread.querySelector(`.msg[data-mid="${CSS.escape(id)}"]`);
+    if(!t){try{window.showActionFeedback?.('元のメッセージ','古いメッセージのため、この画面には表示されていません。');}catch(_){}return;}
+    t.scrollIntoView({block:'center',behavior:'smooth'});t.classList.remove('trFlash');void t.offsetWidth;t.classList.add('trFlash');
+  }
+  // ---- taps / long press
+  document.addEventListener('click',e=>{
+    const who=e.target.closest('.trReact[data-who]');
+    if(who){const ctx=ctxOf(who);if(ctx){e.preventDefault();openWho(ctx,who.dataset.who);}return;}
+    const q=e.target.closest('.trQuote[data-jump]');
+    if(q){const th=q.closest('#trRoomThread,#portalChatThread');if(th){e.preventDefault();jump(th,q.dataset.jump);}}
+  });
+  let timer=null,sx=0,sy=0,fired=false;
+  const cancel=()=>{if(timer){clearTimeout(timer);timer=null;}};
+  document.addEventListener('pointerdown',e=>{
+    const msg=e.target.closest('#portalChatThread .msg[data-mid],#trRoomThread .msg[data-mid]');
+    if(!msg||e.target.closest('.trReact,.trQuote'))return;
+    sx=e.clientX;sy=e.clientY;fired=false;cancel();
+    timer=setTimeout(()=>{timer=null;fired=true;try{navigator.vibrate?.(15);}catch(_){}openActions(ctxOf(msg),msg.dataset.mid);},450);
+  },{passive:true});
+  document.addEventListener('pointermove',e=>{if(timer&&(Math.abs(e.clientX-sx)>10||Math.abs(e.clientY-sy)>10))cancel();},{passive:true});
+  ['pointerup','pointercancel','scroll'].forEach(t=>document.addEventListener(t,cancel,{passive:true,capture:true}));
+  document.addEventListener('contextmenu',e=>{
+    const msg=e.target.closest('#portalChatThread .msg[data-mid],#trRoomThread .msg[data-mid]');
+    if(!msg)return;e.preventDefault();if(!fired)openActions(ctxOf(msg),msg.dataset.mid);
+  });
 })();
 </script>
 </body>
