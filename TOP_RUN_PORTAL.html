@@ -1,4 +1,4 @@
-<!-- TOP RUN PORTAL v140 2026-10-29: v139 + developer views every room (management view, no sending when not a member); staff can rename rooms; developer チャット削除 pane can target a room (全件・期間・個別). Rules P103 unchanged. -->
+<!-- TOP RUN PORTAL v145 2026-10-29: v144 (rooms, entry 修正・削除, 参加者・記録 fixes) + developer personal-record view shows 「記録を確認中…」 and dims sections until link check / switch to the linked registration finishes; stops after 3 tries with a clear message (no endless reload). Rules unchanged (P103). -->
 <!-- TOP RUN PORTAL v113 2026-10-28: v112 + P107 developer re-bind for the two historical events (same write as the EVENT BASE developer entry; Rules unchanged). v112 notes:  v111 + P106 duplicate guard (manual 過去大会 record hidden when EVENT BASE has same person/date/time). v111 notes:  v110 (ChatGPT) + P105 integrated by Claude: EVENT BASE result correction (staff), withdrawn EKIDEN entries hidden from 参加する/RSVP lock, MY PAGE reflection diagnosis. No Auth/UID/Rules/listener change beyond P105 players handling. STATIC/simulated tests only; real Firebase not verified. -->
 <!-- TOP RUN PORTAL v110 2026-10-28: v109 exact physical parent; PORTAL internal event links now saved via the existing eventItems writer and visible in event list/calendar. External EVENT BASE/EKIDEN validation and all Auth/UID/profileId/Rules/RTDB subscriptions, writes, official results and theme/home image safeguards unchanged. STATIC candidate; Firebase production not tested/deployed. -->
 <!-- 2026-10-28 v109 UI organization: Hide obsolete CHAT STEP 1 panel (retain DOM for existing gateway); move push settings to first; show version "v109" only; developer identity review first in matching management card. No Auth, Rules, listener, CHAT message read/write, image cache, notification registration, official results or released data changed. NOT DEPLOYED. -->
@@ -5953,7 +5953,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v140</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v145</b></div>
   </div>
 </div>
 
@@ -6147,7 +6147,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v140</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v145</b></div>
   </div>
 </div>
 
@@ -6634,6 +6634,9 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
      #rpPanel .rpTabs button.active{background:#d8b52a;color:#1b1b1b;border-color:#d8b52a}
      #rpPanel .rpCard{border:1px solid rgba(128,128,128,.4);border-radius:14px;padding:12px;margin:8px 0}
      #rpPanel .rpCard b{font-size:16px}
+     #screen-competition-results.crChecking .crSection{opacity:.35;pointer-events:none;transition:opacity .2s}
+     #rpPanel .rpWarn{color:#b4462f;opacity:1;font-weight:800}
+     #rpPanel .rpDanger{color:#b4462f;border-color:#d9a79e}
      #rpPanel details.rpFold>summary{cursor:pointer;list-style:none;position:relative;padding-right:26px}
      #rpPanel details.rpFold>summary::-webkit-details-marker{display:none}
      #rpPanel details.rpFold>summary::after{content:'▼';position:absolute;right:2px;top:2px;font-size:12px;opacity:.6}
@@ -13097,7 +13100,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
   // ===== v122: 参加者・記録（開発者）— 名前一致で自動候補 →「これでよいですか？」で一括紐付け =====
   // Writes only the existing pastRecords staff path (gate.saveStaffPastRecord / deleteStaffPastRecord).
   const RP_NAMES={'eventbase_mu4ujce3_xxx1':'第1回 EVENT BASE','eventbase_ekiden_dev_20261006':'第2回 駅伝','eventbase_ekiden_next_2026_38fa5537b6':'第3回 駅伝（接続中）'};
-  let rpOpenCards=new Set(),rpTab='all',rpClaims=new Map(),rpLoaded=false,rpBusy=false,rpWrapped=false,rpRetry=0,rpTimes={};const rpOff=new Set();
+  let rpCards={},rpCardsBusy={},rpOpenCards=new Set(),rpTab='all',rpClaims=new Map(),rpLoaded=false,rpBusy=false,rpWrapped=false,rpRetry=0,rpTimes={};const rpOff=new Set();
   const rpG=()=>window.__TR_PORTAL_SYNC__;
   const rpIsDev=()=>{const g=rpG();return !!(canManage&&!portalParticipantPreviewMode&&g?.role==='developer'&&g?.roleVerified===true&&g?.loadPastEventOverview&&g?.claimRecordId);};
   const rpNorm=v=>String(v||'').normalize('NFKC').replace(/[\s\u3000]/g,'');
@@ -13163,9 +13166,9 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
   function rpLinkedCount(uid){let n=0;for(const v of rpClaims.values())if(v===uid)n++;return n;}
   function rpPrimary(group){
     if(!group||group.length<2)return group?.[0]||null;
+    const newest=rpNewest(group);if(newest)return newest; // rule: the newest approval (the icon) is the person
     const linked=group.filter(x=>rpLinkedCount(x.uid)>0);
-    if(linked.length===1)return linked[0];
-    return rpNewest(linked.length?linked:group);
+    return linked.length===1?linked[0]:null;             // dates equal/unknown: the one with records
   }
   function rpHidden(m,idx){
     const g=(idx||rpNameIndex()).get(rpNorm(m.name))||[];if(g.length<2)return false;
@@ -13246,13 +13249,25 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
       if(roster===null){list.innerHTML='<p class="portalHelp">この大会の出走登録を読み込み中です…</p>';if(rpRetry++<8)setTimeout(rpRender,2000);return;}
       if(!ev.base){list.innerHTML=(roster.length?roster.filter(r=>hit(r.name)).map(r=>`<div class="rpCard"><b>${esc(r.name)}</b><span class="rpSub">参加する（PORTALの回答）</span></div>`).join(''):'<p class="portalHelp">参加の回答はまだありません。</p>')+'<p class="portalHelp">この大会はEVENT BASEにつながっていないため、記録はありません。</p>';return;}
       const idx=rpNameIndex(),mem=rpMembers();
+      // v144: which registration made each card, and developer 修正・削除 (after the participant's own cancel period too)
+      if(!rpCards[ev.id]&&!rpCardsBusy[ev.id]){rpCardsBusy[ev.id]=true;rpG().staffEntryCards?.(ev.id).then(v=>{rpCards[ev.id]=v||{};}).catch(()=>{rpCards[ev.id]={};}).finally(()=>{rpCardsBusy[ev.id]=false;rpRender();});}
+      const cards=rpCards[ev.id]||{},myUid=rpG()?.uid||'';
+      const sameCount=new Map();roster.forEach(x=>sameCount.set(rpNorm(x.name),(sameCount.get(rpNorm(x.name))||0)+1));
+      const fmt=t=>{const d=new Date(Number(t)||0);return t&&Number.isFinite(d.getTime())?d.toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'日時不明';};
+      const origin=r=>{
+        const c=cards[r.playerId];if(!c)return rpCards[ev.id]?'':'<span class="rpSub">登録元を確認中…</span>';
+        const uid=String(c.subjectUid||c.ownerUid||'');
+        const who=!uid?'登録元UIDなし（運営入力）':uid===myUid?'あなたの登録':rpTimes[uid]?'参加承認済みの登録':'参加承認されていない登録';
+        return `<span class="rpSub${sameCount.get(rpNorm(r.name))>1?' rpWarn':''}">登録 ${esc(fmt(c.createdAt))}｜${esc(who)}${uid?'（末尾'+esc(uid.slice(-6))+'）':''}</span>`;
+      };
+      const tools=r=>`<div class="rpRow"><button type="button" class="portalFlowSecondary" data-rp-act="entry-edit" data-pid="${esc(r.playerId)}">修正</button><button type="button" class="portalFlowSecondary rpDanger" data-rp-act="entry-del" data-pid="${esc(r.playerId)}" data-name="${esc(r.name)}">削除</button></div>`;
       list.innerHTML=roster.filter(r=>hit(r.name)).map(r=>{
-        const head=`<b>${esc(r.name)}</b><span class="rpSub">${r.self?'本人登録':'運営入力'}｜${esc(rpMetricName(r.metric))}${r.leg?' 第'+esc(r.leg)+'区':''}</span><div class="rpRec">${r.time?'記録 '+esc(r.time):'記録なし'}</div>`;
-        if(!r.time)return `<div class="rpCard">${head}<span class="rpSub">記録が入ると紐付けできます</span></div>`;
+        const head=`<b>${esc(r.name)}</b><span class="rpSub">${r.self?'本人登録':'運営入力'}｜${esc(rpMetricName(r.metric))}${r.leg?' 第'+esc(r.leg)+'区':''}</span>${origin(r)}<div class="rpRec">${r.time?'記録 '+esc(r.time):'記録なし'}</div>`;
+        if(!r.time)return `<div class="rpCard">${head}<span class="rpSub">記録が入ると紐付けできます</span>${tools(r)}</div>`;
         const owner=rpClaims.get(r.id);
-        if(owner)return `<div class="rpCard">${head}<span class="rpOk">紐付け：${esc(rpMemberByUid(owner)?.name||'別の人')}</span><div class="rpRow"><button type="button" class="portalFlowSecondary" data-rp-act="unlink" data-id="${esc(r.id)}">紐付けを外す</button></div></div>`;
+        if(owner)return `<div class="rpCard">${head}<span class="rpOk">紐付け：${esc(rpMemberByUid(owner)?.name||'別の人')}</span><div class="rpRow"><button type="button" class="portalFlowSecondary" data-rp-act="unlink" data-id="${esc(r.id)}">紐付けを外す</button></div>${tools(r)}</div>`;
         const same=idx.get(rpNorm(r.name))||[],pre=same.length===1?same[0].uid:(rpPrimary(same)?.uid||'');
-        return `<div class="rpCard">${head}<div class="rpRow"><select data-rp-pick="${esc(r.id)}"><option value="">誰の記録？（PORTALの参加者）</option>${mem.filter(m=>!rpHidden(m,idx)).map(m=>`<option value="${esc(m.uid)}" ${m.uid===pre?'selected':''}>${esc(m.name)}${(idx.get(rpNorm(m.name))||[]).length>1?'（'+esc(rpDay(m.at)||'日付不明')+'登録）':''}</option>`).join('')}</select><button type="button" class="portalPrimary" data-rp-act="link" data-id="${esc(r.id)}">紐付ける</button></div></div>`;
+        return `<div class="rpCard">${head}<div class="rpRow"><select data-rp-pick="${esc(r.id)}"><option value="">誰の記録？（PORTALの参加者）</option>${mem.filter(m=>!rpHidden(m,idx)).map(m=>`<option value="${esc(m.uid)}" ${m.uid===pre?'selected':''}>${esc(m.name)}${(idx.get(rpNorm(m.name))||[]).length>1?'（'+esc(rpDay(m.at)||'日付不明')+'登録）':''}</option>`).join('')}</select><button type="button" class="portalPrimary" data-rp-act="link" data-id="${esc(r.id)}">紐付ける</button></div>${tools(r)}</div>`;
       }).join('')||'<p class="portalHelp">この大会の出走登録はありません。</p>';
       return;
     }
@@ -13270,7 +13285,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
   async function rpAct(btn){
     if(rpBusy)return;
     const act=btn.dataset.rpAct;
-    const run=async fn=>{rpBusy=true;btn.disabled=true;try{await fn();}catch(err){rpSay('できませんでした：'+String(err?.message||err).slice(0,140));}finally{rpBusy=false;rpRender();}};
+    const run=async fn=>{rpBusy=true;btn.disabled=true;let tm=null;try{await Promise.race([fn(),new Promise((_,rej)=>{tm=setTimeout(()=>rej(Error('通信に時間がかかっています。電波を確認して、もう一度押してください')),20000);})]);}catch(err){rpSay('できませんでした：'+String(err?.message||err).slice(0,140));}finally{clearTimeout(tm);rpBusy=false;rpRender();}};
     if(act==='bulk'){
       const jobs=[];
       for(const {m,dup,old,rows} of rpProposals()){if(dup||old)continue;for(const r of rows)if(!rpClaims.has(r.id)&&!rpOff.has(m.uid+'|'+r.id))jobs.push({m,r});}
@@ -13305,6 +13320,23 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
         rpClaims.set(id,to.uid);rpSay(`移しました：${row.eventTitle} → ${to.name}（新しい登録）`);
       });
     }
+    if(act==='entry-edit'||act==='entry-del'){
+      const ev=rpEvent(),pid=btn.dataset.pid,card=(rpCards[ev?.id]||{})[pid];
+      if(!ev?.base||!pid)return rpSay('出走登録を確認できません。');
+      if(!card)return rpSay('登録の内容を読み込み中です。少し待ってからもう一度押してください。');
+      const done=()=>{delete rpCards[ev.id];[1500,4000].forEach(t=>setTimeout(rpRender,t));};
+      if(act==='entry-edit'){
+        const goal=prompt('目標タイム（例 10:24）。空にすると目標なし',String(card.targetTime||''));if(goal===null)return;
+        let declared;
+        if(String(card.declaredTime||'').trim()){declared=prompt('申告タイム（例 10:30）',String(card.declaredTime||''));if(declared===null)return;}
+        return run(async()=>{await rpG().staffEditEntry(ev.id,pid,{targetTime:goal,declaredTime:declared});rpSay('修正しました：'+(card.name||'')+'の出走登録');done();});
+      }
+      const hasRes=['result','officialResult','provisionalResult','place','officialPlace','provisionalPlace','resultStatus','resultSource'].some(k=>String(card[k]||'').trim());
+      const q=hasRes?`「${btn.dataset.name}」の出走登録を一覧から外しますか？\n記録が入っているため、記録は消さずに残します（紐付け済みの記録もそのままです）。`
+        :`「${btn.dataset.name}」の出走登録を削除しますか？\n本人は、必要ならもう一度出走登録できます。`;
+      if(!confirm(q))return;
+      return run(async()=>{const r=await rpG().staffRemoveEntry(ev.id,pid);rpSay(r.keptResult?'出走登録から外しました（記録は残しています）':'出走登録を削除しました');done();});
+    }
     if(act==='unlink'){
       const id=btn.dataset.id,uid=rpClaims.get(id),m=rpMemberByUid(uid);
       if(!uid||!m)return rpSay('紐付け先の参加者を確認できません。');
@@ -13326,17 +13358,33 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
     try{if(!Object.keys(rpTimes).length){rpTimes=await rpG().listMemberTimes?.()||{};rpTimesOk=Object.keys(rpTimes).length>0;}if(!rpLoaded)await rpLoadClaims();}
     catch(_){}finally{rpBannerLoading=false;}
   }
+  // v145: while the developer's view is still checking links (or switching to the linked registration),
+  // say so and dim the record sections, so an empty page is never mistaken for "no records".
+  let rpChecking=false,rpCheckTries=0;
+  function rpSetChecking(on){
+    rpChecking=!!on;
+    const sc=$('screen-competition-results');if(sc)sc.classList.toggle('crChecking',rpChecking);
+    const box=$('rpPersonBanner');
+    if(box&&rpChecking){box.hidden=false;box.innerHTML='<b>記録を確認中…</b><br><span style="font-size:13px">紐付けの確認が終わると、この人の記録が表示されます。数秒かかることがあります。</span>';}
+  }
   function rpPersonBanner(person){
     const box=$('rpPersonBanner');if(!box)return;
-    if(!person||!rpIsDev()||!person.uid||!person.profileId){box.hidden=true;return;}
-    if(!rpLoaded||!rpTimesOk){box.hidden=true;rpEnsureLoaded().then(()=>{if(rpLoaded)rpPersonBanner(person);});return;}
-    if(!rpTimes[person.uid]){box.hidden=false;box.innerHTML='<b>この人はPORTALで参加承認されていません。</b><br>承認すると、ここに過去の記録を付けられます。';return;}
+    if(!person||!rpIsDev()||!person.uid||!person.profileId){rpSetChecking(false);box.hidden=true;return;}
+    if(!rpLoaded||!rpTimesOk){
+      if(rpCheckTries>=3){rpSetChecking(false);box.hidden=false;box.innerHTML='<b>紐付けの確認ができませんでした。</b><br>今読み込めた記録だけを表示しています。電波を確認して、開き直してください。';return;}
+      rpCheckTries++;rpSetChecking(true);
+      rpEnsureLoaded().then(()=>{if(portalPersonalTargetId===person.profileId||rpTimes[person.uid]?.profileId===portalPersonalTargetId)rpPersonBanner(person);else rpSetChecking(false);});
+      return;
+    }
+    rpCheckTries=0;
+    if(!rpTimes[person.uid]){rpSetChecking(false);box.hidden=false;box.innerHTML='<b>この人はPORTALで参加承認されていません。</b><br>承認すると、ここに過去の記録を付けられます。';return;}
     // v129: opened under an old profileId of the same person -> show the page of the approval profileId (the MY PAGE).
     const canon=rpTimes[person.uid]?.profileId;
     if(canon&&canon!==person.profileId&&portalPersonalTargetId===person.profileId&&portalAthletes.some(x=>x.profileId===canon&&x.uid===person.uid)){
-      box.hidden=true;portalPersonalTargetId=canon;
-      rpG().loadPastRecordsFor(person.uid,canon).catch(()=>{}).finally(()=>renderPortalPersonalRecord());return;
+      portalPersonalTargetId=canon;rpSetChecking(true);
+      rpG().loadPastRecordsFor(person.uid,canon).catch(()=>{}).finally(()=>{rpSetChecking(false);renderPortalPersonalRecord();});return;
     }
+    rpSetChecking(false);
     const name=rpNorm(person.name);
     const rows=rpAllRows().filter(r=>rpNorm(r.name)===name&&!rpClaims.has(r.id));
     if(!rows.length){box.hidden=true;return;}
@@ -16426,28 +16474,41 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         const [rq,ac,se,cp]=await Promise.all([dbMod.get(ref('memberRequests')),dbMod.get(ref('memberAccess')),dbMod.get(ref('athleteSelections')),dbMod.get(ref('chatPeople'))]);
         const reqs=rq.val()||{},acc=ac.val()||{},sel=se.val()||{},cur=cp.val()||{};
         const athleteUids=new Set(Object.values(sel.items||{}).map(it=>String(it?.uid||'')));
-        const chosen=cur.items||{},rows=[],seen=new Set();
+        const chosen=cur.items||{},rows=[],seen=new Set(),bindNames={};
         const nameOf=uid=>{
           const r=reqs[uid],m=acc[uid];
           if(typeof r?.displayName==='string'&&r.displayName.trim())return r.displayName.trim();
           if(typeof m?.displayName==='string'&&m.displayName.trim())return m.displayName.trim();
           if(typeof r?.requestedName==='string'&&r.requestedName.trim())return r.requestedName.trim();
-          return typeof chosen[uid]?.name==='string'?chosen[uid].name:'';
+          if(typeof chosen[uid]?.name==='string'&&chosen[uid].name)return chosen[uid].name;
+          return bindNames[uid]||'';
         };
         const add=(uid,role,at)=>{
-          if(!rUid(uid)||uid===gate.uid||athleteUids.has(uid)||seen.has(uid))return;
+          if(!rUid(uid)||athleteUids.has(uid)||seen.has(uid))return;
           const name=nameOf(uid)||(role!=='participant'?'登録名なし（末尾'+uid.slice(-6)+'）':'');
           if(!name||name.length>24)return;
           seen.add(uid);rows.push({uid,name,at,role,selected:!!chosen[uid]});
         };
+        // v142: the developer (this device) is listed too, so admins can invite the developer to their rooms.
+        if(gate.displayName){bindNames[gate.uid]=gate.displayName;add(gate.uid,'developer',0);}
         for(const [uid,m] of Object.entries(acc)){
           const r=reqs[uid];
           if(m?.active!==true||typeof m.profileId!=='string'||!m.profileId||(r?.profileId&&m.profileId!==r.profileId))continue;
           add(uid,'participant',Number(m.approvedAt)||Number(r?.requestedAt)||0);
         }
         // v138: staff (管理者・開発者の別端末) are authorised by portalRoles, not memberAccess, so they were missing.
-        // Check the remaining known UIDs (requests / already chosen) one by one; read-only.
-        const rest=[...new Set([...Object.keys(reqs),...Object.keys(chosen)])].filter(uid=>rUid(uid)&&!seen.has(uid)&&uid!==gate.uid&&!athleteUids.has(uid));
+        // v141: staff who entered 駅伝BASE/EVENT BASE have a tournament binding with their display name
+        // (developer can read bindings of events where the developer is the owner). Read-only, failures ignored.
+        const eventIds=new Set(['eventbase_ekiden_next_2026_38fa5537b6','eventbase_mu4ujce3_xxx1','eventbase_ekiden_dev_20261006']);
+        for(const e of Object.values(gate.eventItems||{})){try{const id=new URL(String(e?.url||''),location.href).searchParams.get('event');if(id&&/^[A-Za-z0-9_-]{3,100}$/.test(id))eventIds.add(id);}catch(_){}}
+        const bindSnaps=await Promise.all([...eventIds].map(id=>dbMod.get(dbMod.ref(db,'bindings/'+id)).then(s=>s.val()).catch(()=>null)));
+        for(const v of bindSnaps){
+          for(const [uid,b] of Object.entries(v||{})){
+            const n=typeof b?.displayName==='string'?b.displayName.trim():'';
+            if(rUid(uid)&&n&&n.length<=24&&!bindNames[uid])bindNames[uid]=n;
+          }
+        }
+        const rest=[...new Set([...Object.keys(reqs),...Object.keys(chosen),...Object.keys(bindNames)])].filter(uid=>rUid(uid)&&!seen.has(uid)&&uid!==gate.uid&&!athleteUids.has(uid));
         const roles=await Promise.all(rest.map(uid=>dbMod.get(dbMod.ref(db,'portalRoles/'+uid)).then(s=>s.val()).catch(()=>null)));
         rest.forEach((uid,i)=>{
           const role=roles[i]?.role;
@@ -16468,6 +16529,14 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         }),{applyLocally:false});
         if(!result.committed)throw Error('保存できませんでした');
         return Object.keys(items).length;
+      };
+      const memberRows=(list,now)=>{
+        const u={};
+        return {u,add:(id,m)=>{
+          const nm=String(m?.name||'').trim().slice(0,24)||'参加者';
+          u['roomMembers/'+id+'/'+m.uid]={status:'invited',name:nm,updatedAt:now};
+          u['userRooms/'+m.uid+'/'+id]={status:'invited',updatedAt:now};
+        }};
       };
       gate.roomCreate=async({name,category,members})=>{
         devOnly();
@@ -16528,6 +16597,43 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         Object.keys(current).filter(rUid).forEach(uid=>{u['userRooms/'+uid+'/'+id]=null;});
         if(RM.openId===id){stopMsg();RM.openId='';}
         await dbMod.update(dbMod.ref(db,root),u);
+      };
+      // v144: developer fixes or removes a tournament entry card (events/<event>/players/<id>), e.g. after the
+      // participant's own cancel period. No result: the card is deleted (same as the participant's own cancel, so the
+      // person can register again). With a result: the result is kept and the card is taken off the entry list
+      // (EVENT BASE / 駅伝BASE soft-removal markers, which PORTAL already treats as withdrawn).
+      const entryDevCheck=()=>{if(!isDevRole()||auth.currentUser?.uid!==gate.uid)throw Error('開発者の権限が必要です');};
+      const entryEvOk=id=>/^[A-Za-z0-9_-]{3,100}$/.test(String(id||''));
+      const entryPidOk=id=>/^[A-Za-z0-9_-]{1,120}$/.test(String(id||''));
+      const entryHasResult=p=>!!(p&&['result','officialResult','provisionalResult','place','officialPlace','provisionalPlace','resultStatus','resultSource'].some(k=>String(p[k]||'').trim()));
+      const entryTimeOk=t=>t===''||/^(?:\d+:)?\d{1,3}:\d{2}(?:\.\d{1,2})?$/.test(t);
+      gate.staffEntryCards=async eventId=>{
+        entryDevCheck();if(!entryEvOk(eventId))throw Error('大会を確認できません');
+        return (await dbMod.get(dbMod.ref(db,'events/'+eventId+'/players'))).val()||{};
+      };
+      gate.staffEditEntry=async(eventId,playerId,{targetTime,declaredTime})=>{
+        entryDevCheck();if(!entryEvOk(eventId)||!entryPidOk(playerId))throw Error('出走登録を確認できません');
+        targetTime=String(targetTime??'').trim().slice(0,30);declaredTime=declaredTime===undefined?undefined:String(declaredTime).trim().slice(0,30);
+        if(!entryTimeOk(targetTime)||(declaredTime!==undefined&&!entryTimeOk(declaredTime)))throw Error('タイムは 10:24 や 1:05:30.5 の形で入力してください');
+        const at=dbMod.ref(db,'events/'+eventId+'/players/'+playerId);
+        const r=await dbMod.runTransaction(at,cur=>cur&&typeof cur==='object'?{...cur,targetTime,...(declaredTime!==undefined?{declaredTime}:{}),updatedAt:Date.now(),updatedByUid:gate.uid}:undefined,{applyLocally:false});
+        if(!r.committed)throw Error('出走登録が見つからないため修正できませんでした');
+        gate.refreshOfficialRaceRead?.();
+      };
+      gate.staffRemoveEntry=async(eventId,playerId)=>{
+        entryDevCheck();if(!entryEvOk(eventId)||!entryPidOk(playerId))throw Error('出走登録を確認できません');
+        const at=dbMod.ref(db,'events/'+eventId+'/players/'+playerId);
+        const before=(await dbMod.get(at)).val();
+        if(!before)throw Error('出走登録が見つかりません');
+        const keep=entryHasResult(before);
+        const r=await dbMod.runTransaction(at,cur=>{
+          if(!cur||typeof cur!=='object')return undefined;
+          if(entryHasResult(cur)!==keep)return undefined; // a result was entered meanwhile: stop
+          return keep?{...cur,ekidenEntryActive:false,withdrawn:true,entryStatus:'withdrawn',withdrawnAt:Date.now(),withdrawnByUid:gate.uid}:null;
+        },{applyLocally:false});
+        if(!r.committed)throw Error('別の端末で記録が入力されたため停止しました。もう一度確認してください');
+        gate.refreshOfficialRaceRead?.();
+        return {keptResult:keep};
       };
       window.addEventListener('tr-portal-authorized',()=>{try{gate.roomsStart();}catch(_){}});
       if(gate.roleVerified===true){try{gate.roomsStart();}catch(_){}}
@@ -18719,8 +18825,8 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
  });
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',watch);else watch();})();
 </script>
-<style id="v140-portal-rooms-style">
-/* v140 PORTAL ROOMS: same palette as the CHAT screen. */
+<style id="v145-portal-rooms-style">
+/* v145 PORTAL ROOMS: same palette as the CHAT screen. */
 #trRooms{margin:0 0 12px}
 #trRoomView[hidden],#trRoomComposer[hidden],#trRoomMembersBox[hidden],#trRoomsBtn[hidden],#trRoomsSheet[hidden],#trRoomsMsg[hidden],#trRoomsBadge[hidden]{display:none!important}
 .trRoomsBtn{position:relative;min-height:42px;min-width:62px;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border:1px solid rgba(255,255,255,.17);border-radius:12px;background:rgba(255,255,255,.07);color:#fff;padding:3px 8px;font-size:9px;font-weight:1000}
@@ -18788,8 +18894,8 @@ html[data-portal-personal-color="matte"] .trRoomHead .trRoomName b{color:#fff7f2
 html[data-portal-personal-color="matte"] .trSheetItem small,html[data-portal-personal-color="matte"] .trSheetClose,html[data-portal-personal-color="matte"] .trRoomHead .trRoomName small,html[data-portal-personal-color="matte"] .trRoomNote,html[data-portal-personal-color="matte"] .trMemberRow small{color:#d9b8a8}
 html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-color="matte"] .trRoomChip.add{color:#ffb777}
 </style>
-<script id="v140-portal-rooms">
-/* v140 PORTAL ROOMS UI. Uses only window.__TR_PORTAL_SYNC__ room functions. The common CHAT is unchanged. */
+<script id="v145-portal-rooms">
+/* v145 PORTAL ROOMS UI. Uses only window.__TR_PORTAL_SYNC__ room functions. The common CHAT is unchanged. */
 (()=>{
   const $=id=>document.getElementById(id);
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -18899,7 +19005,14 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
     }).join('');
     requestAnimationFrame(()=>{const main=document.querySelector('#screen-chat > main.chatMain');if(main)main.scrollTop=main.scrollHeight;});
   }
+  let rendering=false,renderAgain=false;
   function render(){
+    if(rendering){renderAgain=true;return;}   // never re-enter; redraw once more afterwards
+    rendering=true;
+    try{renderNow();}finally{rendering=false;}
+    if(renderAgain){renderAgain=false;setTimeout(render,0);}
+  }
+  function renderNow(){
     if(!mount())return;
     const s=state();
     const show=!!s&&s.ready&&!preview()&&(s.isDev||s.rooms.length>0);
@@ -18907,6 +19020,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
     if(spacerEl)spacerEl.style.display=show?'none':'';
     if(!show){closeSheet();if(view)leaveView();badge();return;}
     if(isRoom(view)&&!roomOf(s,view))leaveView();
+    if(isRoom(view)){const cur=roomOf(s,view);if(cur&&(cur.status==='invited'||(cur.status==='view')!==viewOnly)){openRoom(view);return;}}
     if(view.startsWith('invite:')){const r=roomOf(s,view.slice(7));if(!r||r.status!=='invited')leaveView();}
     const n=s.rooms.filter(r=>r.unread||r.status==='invited').length,b=$('trRoomsBadge');
     b.textContent=n>99?'99+':String(n);b.hidden=n===0;
@@ -18915,8 +19029,9 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
     badge();
   }
   function leaveView(){
-    if(isRoom(view)){try{gate()?.roomClose?.();}catch(_){}}
-    view='';viewOnly=false;shownMsgKey='';
+    const was=view;
+    view='';viewOnly=false;shownMsgKey='';   // clear first: roomClose() notifies render() synchronously
+    if(isRoom(was)){try{gate()?.roomClose?.();}catch(_){}}
     $('trRoomTop').innerHTML='';$('trRoomThread').innerHTML='';
     $('trRoomMembersBox').hidden=true;$('trRoomMembersBox').innerHTML='';
     setTitle();setOpen(false);
@@ -18924,7 +19039,8 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
   function openRoom(id,tries=0,expect=false){
     const s=state(),r=roomOf(s,id);
     if(!r||(expect&&r.status==='invited')){
-      if(tries<12)setTimeout(()=>openRoom(id,tries+1,expect),300);
+      if(tries<40)setTimeout(()=>{if(!view||view===id)openRoom(id,tries+1,expect);},300);
+      else say('ルームを開けませんでした。右上の「ルーム」から選んでください');
       return;
     }
     leaveView();
@@ -18989,8 +19105,10 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
   }
   async function run(button,task){
     if(busy)return;busy=true;if(button)button.disabled=true;
-    try{await task();}catch(e){say('できませんでした：'+errText(e));}
-    finally{busy=false;if(button&&document.body.contains(button))button.disabled=false;}
+    let timer=null;
+    const limit=new Promise((_,rej)=>{timer=setTimeout(()=>rej(Error('通信に時間がかかっています。電波を確認して、もう一度押してください')),20000);});
+    try{await Promise.race([task(),limit]);}catch(e){say('できませんでした：'+errText(e));}
+    finally{clearTimeout(timer);busy=false;if(button&&document.body.contains(button))button.disabled=false;}
   }
 
   function onSheetClick(ev){
@@ -19012,7 +19130,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
     }
     if(b.hasAttribute('data-invite-join')){
       const id=view.slice(7);
-      void run(b,async()=>{await gate().roomRespond(id,'join');say('ルームに参加しました');openRoom(id,0,true);});
+      void run(b,async()=>{await gate().roomRespond(id,'join');leaveView();render();say('ルームに参加しました');openRoom(id,0,true);});
       return;
     }
     if(b.hasAttribute('data-invite-decline')){
@@ -19026,7 +19144,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
       const members=picked($('trRoomCreate'));
       if(!name){say('ルーム名を入力してください');return;}
       if(!members.length&&!confirm('まだ誰も招待していません。このまま作りますか？'))return;
-      void run(b,async()=>{const id=await gate().roomCreate({name,category,members});say('「'+name+'」を作りました');openRoom(id,0,true);});
+      void run(b,async()=>{const id=await gate().roomCreate({name,category,members});leaveView();render();say('「'+name+'」を作りました');openRoom(id,0,true);});
       return;
     }
     if(b.hasAttribute('data-room-members')){
@@ -19036,7 +19154,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
     if(b.hasAttribute('data-members-close')){$('trRoomMembersBox').hidden=true;return;}
     if(b.hasAttribute('data-room-leave')){
       const id=view;
-      if(!confirm('このルームから退室しますか？\n退室すると、もう一度招待されるまで入れません。'))return;
+      if(!confirm('このルームから退室しますか？\n退室すると、もう一度招待されるまで入れません。'+(state()?.isDev?'\n（管理者の場合、このルームの管理もできなくなります）':'')))return;
       void run(b,async()=>{await gate().roomRespond(id,'leave');leaveView();say('退室しました');render();});
       return;
     }
@@ -19058,7 +19176,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
       const area=$('trRoomMorePick'),current=new Set(JSON.parse($('trRoomMembersBox').dataset.current||'[]'));
       area.innerHTML='<p class="trRoomNote">参加者一覧を読み込み中です。</p>';
       void run(b,async()=>{
-        const list=roster||await loadRoster();
+        const list=await loadRoster();
         area.innerHTML=pickHtml(list,current)+'<div class="trRoomRow"><button type="button" class="trRoomBtn main" data-invite-send>選んだ人を招待する</button></div>';
       });
       return;
@@ -19077,7 +19195,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
   }
   function send(){
     const input=$('trRoomInput'),id=view,text=input.value.trim();
-    if(!id||id==='create'||!text)return;
+    if(!isRoom(id)||viewOnly||!text)return;
     void run($('trRoomSend'),async()=>{await gate().roomSend(id,text);if(view===id)input.value='';});
   }
 
@@ -19093,7 +19211,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
 })();
 </script>
 
-<style id="v140-chat-people-style">
+<style id="v145-chat-people-style">
 #trChatPeopleSection[hidden],#trChatPeopleSave[hidden]{display:none!important}
 #trChatPeopleList{display:grid;gap:0;margin-top:12px}
 #trChatPeopleList .trCpRow{display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid rgba(128,128,128,.35);font-size:15px;font-weight:800;cursor:pointer}
@@ -19106,8 +19224,8 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
 #trChatPeopleList details.trCpOlder>summary{cursor:pointer;padding:11px 2px;font-size:13px;font-weight:900}
 #trChatPeopleList .trCpCount{margin:10px 2px 0;font-size:13px;font-weight:900}
 </style>
-<script id="v140-chat-people">
-/* v140: developer chooses who appears as 参加者 in the room invite picker. Stored at portalCommon/topRun/chatPeople. */
+<script id="v145-chat-people">
+/* v145: developer chooses who appears as 参加者 in the room invite picker. Stored at portalCommon/topRun/chatPeople. */
 (()=>{
   const $=id=>document.getElementById(id);
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -19115,6 +19233,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
   const day=t=>t?new Date(t).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'}):'日付不明';
   const gate=()=>window.__TR_PORTAL_SYNC__;
   let rows=[],busy=false;
+  const withLimit=p=>Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(Error('通信に時間がかかっています。電波を確認して、もう一度押してください')),20000))]);
   function mount(){
     if($('trChatPeopleSection'))return true;
     const anchor=document.querySelector('#screen-management-settings #portalEventBaseResultEdit')||document.querySelector('#screen-management-settings .portalScreenBody > section');
@@ -19150,7 +19269,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
   function count(){const el=$('trCpCount');if(el)el.textContent='選んでいる人：'+rows.filter(r=>r.selected).length+'人';}
   function rowHtml(r,same){
     return '<label class="trCpRow"><input type="checkbox" data-cp="'+esc(r.uid)+'"'+(r.selected?' checked':'')+'><span>'+esc(r.name)+
-      '<small>登録 '+esc(day(r.at))+'</small></span>'+(same?'<em class="trCpSame">同名あり</em>':'')+'</label>';
+      '<small>'+(r.uid===gate()?.uid?'この端末（あなた）':'登録 '+esc(day(r.at)))+'</small></span>'+(same?'<em class="trCpSame">同名あり</em>':'')+'</label>';
   }
   function render(){
     // Same name = same person: show the newest approval; older ones go into a closed section.
@@ -19173,7 +19292,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
   }
   async function load(){
     if(busy)return;busy=true;$('trChatPeopleLoad').disabled=true;say('読み込み中…');
-    try{const res=await gate().chatPeopleCandidates();rows=res.rows;render();say('');}
+    try{const res=await withLimit(gate().chatPeopleCandidates());rows=res.rows;render();say('読み込みました：'+rows.length+'人');}
     catch(e){say('読み込めませんでした：'+String(e?.message||e?.code||e).slice(0,120));}
     finally{busy=false;$('trChatPeopleLoad').disabled=false;}
   }
@@ -19182,7 +19301,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
     const list=rows.filter(r=>r.selected);
     if(!confirm(list.length+'人をチャットの参加者として保存しますか？'))return;
     busy=true;$('trChatPeopleSave').disabled=true;say('保存中…');
-    try{const n=await gate().chatPeopleSave(list.map(r=>({uid:r.uid,name:r.name})));say('保存しました：'+n+'人');
+    try{const n=await withLimit(gate().chatPeopleSave(list.map(r=>({uid:r.uid,name:r.name}))));say('保存しました：'+n+'人');
       try{window.showActionFeedback?.('チャットの参加者を保存しました',n+'人');}catch(_){}}
     catch(e){say('保存できませんでした：'+String(e?.message||e?.code||e).slice(0,120));}
     finally{busy=false;$('trChatPeopleSave').disabled=false;}
@@ -19197,20 +19316,21 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
 })();
 </script>
 
-<style id="v140-room-delete-style">
+<style id="v145-room-delete-style">
 #trDelTargetBox{margin:0 0 12px}
 #trDelTargetBox label{display:block;font-size:12px;font-weight:900;margin:0 0 6px}
 #trDelTargetBox select{width:100%;min-height:44px;font-size:16px;border-radius:10px;padding:8px}
 #trRoomDel[hidden],.trCommonDelHidden{display:none!important}
 </style>
-<script id="v140-room-delete">
-/* v140: the developer チャット削除 pane can target the common CHAT (unchanged) or a chat room. */
+<script id="v145-room-delete">
+/* v145: the developer チャット削除 pane can target the common CHAT (unchanged) or a chat room. */
 (()=>{
   const $=id=>document.getElementById(id);
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const gate=()=>window.__TR_PORTAL_SYNC__;
   const day=ts=>{const d=new Date(Number(ts)||0);return Number.isFinite(d.getTime())&&ts?d.toLocaleDateString('sv-SE',{timeZone:'Asia/Tokyo'}):'';};
   let target='',msgs=[],busy=false;
+  const withLimit=p=>Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(Error('通信に時間がかかっています。電波を確認して、もう一度押してください')),20000))]);
   function mount(){
     if($('trDelTargetBox'))return true;
     const card=document.querySelector('#manage-pane-chat-delete .portalDeveloperToolCard');
@@ -19274,14 +19394,14 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
   }
   async function load(){
     const id=target;say('読み込み中…');
-    try{const list=await gate().roomMessagesAll(id);if(target!==id)return;msgs=list;render();say('');}
+    try{const list=await withLimit(gate().roomMessagesAll(id));if(target!==id)return;msgs=list;render();say('');}
     catch(e){say('読み込めませんでした：'+String(e?.message||e?.code||e).slice(0,120));}
   }
   async function del(ids,question){
     if(busy||!target||!ids.length)return;
     if(!confirm(question))return;
     busy=true;say('削除中…');
-    try{const n=await gate().roomDeleteMessages(target,ids);say(n+'件を削除しました');
+    try{const n=await withLimit(gate().roomDeleteMessages(target,ids));say(n+'件を削除しました');
       try{window.showActionFeedback?.('ルームのチャットを削除しました',n+'件');}catch(_){}
       await load();say(n+'件を削除しました');}
     catch(e){say('削除できませんでした：'+String(e?.message||e?.code||e).slice(0,120));}
