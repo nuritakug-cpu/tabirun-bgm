@@ -1,3 +1,7 @@
+<!-- TOP RUN PORTAL v163 2026-10-29: v162 + chat menu opens by a single tap OR a long press; a touch cancelled by the phone no longer blocks the next long press. Rules unchanged. -->
+<!-- TOP RUN PORTAL v162 2026-10-29: v161 + chat long press made reliable (touch events, 0.4 s, 14px tolerance, no ghost tap), text copy restored (全文をコピー with fallback / 一部を選んでコピー), reactions shown under the bubble (outside), bigger reaction chips, periodic timers removed. Rules unchanged. -->
+<!-- TOP RUN PORTAL v161 2026-10-29: v160 + TOP RUN AGUI team icon reactions (icon alone and icon + 👌👍🔥💪🏃🎉👏❤️🙏✨💯), image embedded in this file (about 5 KB, no Firebase traffic). Rules unchanged. -->
+<!-- TOP RUN PORTAL v160 2026-10-29: v159 + running reactions (走！ Run! ファイト！ ナイスラン！ ナイス！ おつかれ！ 🏃 🏃‍♀️ 👟 ⏱️ 🏁 💨 🥈 🥉 🏅) shown first; 🫡 removed (not shown on older phones). Rules unchanged. -->
 <!-- TOP RUN PORTAL v159 2026-10-29: v158 + chat reactions (who / how many), reply (quote + jump) and mentions (@name, highlighted) for the common CHAT and rooms. Long-press a message. Stored inside each message (no new listener). Needs Rules: chat/$messageId and roomMessages/$roomId/$messageId gain replyTo, mentions, reactions. -->
 <!-- TOP RUN PORTAL v158 2026-10-29: v157 + tournament selectors (選手メニュー, 記録の紐付け) shown as a date-ordered list with small 開催日 and a filter (年・月・期間). Rules unchanged. -->
 <!-- TOP RUN PORTAL v157 2026-10-29: v156 + EVENT BASE tournaments shown as 「大会名（N回）」 in staff selectors (選手メニュー, 記録の紐付け, 大会結果の修正). Rules unchanged. -->
@@ -5964,7 +5968,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v159</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v163</b></div>
   </div>
 </div>
 
@@ -6158,7 +6162,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v159</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v163</b></div>
   </div>
 </div>
 
@@ -8418,8 +8422,8 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
           <span>${esc(m.name||'参加者')}</span>
           <span>${Number.isFinite(d.getTime())?d.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):''}</span>
         </div>
-        ${D?D.quote(m):''}<p>${D?D.text(m):esc(m.text||'')}</p>${D?D.reacts(m):''}
-      </div>`;
+        ${D?D.quote(m):''}<p>${D?D.text(m):esc(m.text||'')}</p>
+      </div>${D?D.reacts(m,isMyPortalChat(m)):''}`;
     }).join('');
     const pcf=portalListFilterState.chat;
     const portalChatFiltered=!!pcf&&((pcf.mode==='day'&&!!pcf.day)||(pcf.mode==='month'&&!!pcf.month)||(pcf.mode==='range'&&!!(pcf.start||pcf.end)));
@@ -19212,7 +19216,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
       const mine=m.senderUid===uid;
       const time=ts?d.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):'';
       const D=window.__trChatDecor;
-      return band+'<div class="msg'+(mine?' mine':'')+(D&&D.mentioned(m)?' trMentioned':'')+'" data-mid="'+esc(m.id||'')+'"><div class="msgHead"><span>'+esc(m.name||'参加者')+'</span><span>'+esc(time)+'</span></div>'+(D?D.quote(m):'')+'<p>'+(D?D.text(m):esc(m.text||''))+'</p>'+(D?D.reacts(m):'')+'</div>';
+      return band+'<div class="msg'+(mine?' mine':'')+(D&&D.mentioned(m)?' trMentioned':'')+'" data-mid="'+esc(m.id||'')+'"><div class="msgHead"><span>'+esc(m.name||'参加者')+'</span><span>'+esc(time)+'</span></div>'+(D?D.quote(m):'')+'<p>'+(D?D.text(m):esc(m.text||''))+'</p></div>'+(D?D.reacts(m,mine):'');
     }).join('');
   }
   const chatMain=()=>document.querySelector('#screen-chat > main.chatMain');
@@ -20021,8 +20025,6 @@ select.trPickSource{display:none!important}
     if(anchor!==sel)new MutationObserver(()=>{box.hidden=anchor.hidden;}).observe(anchor,{attributes:true,attributeFilter:['hidden']});
     box.hidden=anchor.hidden;
     fillFilters();render();
-    // the value may be set by code without a change event
-    let last=sel.value;setInterval(()=>{if(sel.value!==last){last=sel.value;render();}},800);
   }
   const start=()=>['trwEvent','rpEvent'].forEach(id=>enhance(document.getElementById(id)));
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
@@ -20030,14 +20032,21 @@ select.trPickSource{display:none!important}
 </script>
 <style id="v159-chat-react-style">
 #portalChatThread .msg,#trRoomThread .msg{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.trCopyBox{width:100%;min-height:120px;font-size:16px;line-height:1.5;border:1px solid #cac4b6;border-radius:10px;padding:8px;margin:0 0 10px;background:#fff;color:#2d2f2b;-webkit-user-select:text;user-select:text}
 .trMentioned{box-shadow:0 0 0 2px #d8b825 inset}
 .trAt{font-weight:800;color:#2f6fb0}
 .trQuote{display:block;width:100%;text-align:left;border:0;border-left:3px solid #c5a52b;background:rgba(128,128,128,.12);border-radius:6px;padding:5px 8px;margin:4px 0 2px;font:inherit;color:inherit;cursor:pointer}
 .trQuote b{display:block;font-size:11px;opacity:.85}
 .trQuote span{display:block;font-size:12px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.trReacts{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
-.trReact{border:1px solid rgba(128,128,128,.45);border-radius:999px;background:rgba(255,255,255,.75);color:#333;font:inherit;font-size:13px;line-height:1;padding:4px 9px;min-height:28px;display:inline-flex;align-items:center;gap:4px}
-.trReact b{font-size:12px}
+.trReacts{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 8px 12px;justify-content:flex-start}
+.trReacts.mine{justify-content:flex-end}
+.trReact{border:1px solid rgba(128,128,128,.45);border-radius:999px;background:#fffdf8;color:#333;font:inherit;font-size:15px;line-height:1;padding:6px 11px;min-height:34px;min-width:44px;display:inline-flex;align-items:center;justify-content:center;gap:5px;box-shadow:0 1px 3px rgba(0,0,0,.12);touch-action:manipulation}
+.trReact b{font-size:13px}
+.trTeam{position:relative;display:inline-block;width:1.35em;height:1.35em;vertical-align:middle;flex:0 0 auto}
+.trTeam img{display:block;width:100%;height:100%;border-radius:4px;object-fit:cover}
+.trTeam i{position:absolute;right:-.4em;bottom:-.35em;font-style:normal;font-size:.68em;line-height:1}
+#trMsgSheet .trEmojiGrid .trTeam{width:30px;height:30px}
+#trMsgSheet .trEmojiGrid .trTeam i{font-size:16px;right:-6px;bottom:-5px}
 .trReact.mine{border-color:#b89a1c;background:#f3df94}
 .trFlash{animation:trFlash 1.4s ease}
 @keyframes trFlash{0%,60%{box-shadow:0 0 0 3px #d8b825}100%{box-shadow:none}}
@@ -20047,7 +20056,7 @@ select.trPickSource{display:none!important}
 #trMsgSheet .trSheetHead{font-size:12px;opacity:.75;margin:0 0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #trMsgSheet .trEmojiGrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin-bottom:12px}
 #trMsgSheet .trEmojiGrid button{min-height:46px;border:1px solid #e1dccd;border-radius:12px;background:#fff;font-size:22px;line-height:1}
-#trMsgSheet .trEmojiGrid button.txt{font-size:14px;font-weight:900}
+#trMsgSheet .trEmojiGrid button.txt{font-size:12px;font-weight:900;line-height:1.2;padding:2px;word-break:keep-all}
 #trMsgSheet .trEmojiGrid button.on{border-color:#b89a1c;background:#f3df94}
 #trMsgSheet .trSheetBtns{display:grid;gap:8px}
 #trMsgSheet .trSheetBtns button{min-height:46px;border-radius:12px;border:1px solid #cac4b6;background:#fff;font-size:15px;font-weight:800;color:#2d2f2b}
@@ -20071,7 +20080,15 @@ select.trPickSource{display:none!important}
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const g=()=>window.__TR_PORTAL_SYNC__;
-  const REACTS=['👍','❤️','😂','😊','😮','😢','🙏','👏','🎉','🔥','💪','✨','🙆','🙇','👀','💯','🏃','🥇','👌','🤝','😭','🤣','😆','🥰','😳','🤔','🫡','🎵','OK','笑','了解','ありがとう'];
+  // v160: running reactions first. Text ones (走！ Run! …) look the same on every phone.
+  // v161: TOP RUN AGUI team icon (alone, and with an emoji on its corner). Stored as "team" / "team:👌".
+  const TEAM_IMG='data:image/jpeg;base64,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';
+  const TEAMS=['team','team:👌','team:👍','team:🔥','team:💪','team:🏃','team:🎉','team:👏','team:❤️','team:🙏','team:✨','team:💯'];
+  const isTeam=e=>/^team(:|$)/.test(String(e||''));
+  const face=e=>isTeam(e)?'<span class="trTeam"><img src="'+TEAM_IMG+'" alt="TOP RUN AGUI">'+(String(e).slice(5)?'<i>'+esc(String(e).slice(5))+'</i>':'')+'</span>':esc(e);
+  const REACTS=[...TEAMS,'走！','Run!','ファイト！','ナイスラン！','ナイス！','おつかれ！','🏃','🏃‍♀️','👟','⏱️','🏁','💨','🥇','🥈','🥉','🏅',
+    '👍','❤️','😂','😊','😮','😢','🙏','👏','🎉','🔥','💪','✨','🙆','🙇','👀','💯','👌','🤝','😭','🤣','😆','🥰','😳','🤔','🎵','OK','笑','了解','ありがとう'];
+  const isText=e=>!isTeam(e)&&!/\p{Extended_Pictographic}/u.test(e);
   const cache=new Map();
   const myUid=()=>g()?.uid||'';
   const D={
@@ -20081,13 +20098,13 @@ select.trPickSource{display:none!important}
       const r=m.replyTo;if(!r||!r.id)return '';
       return `<button type="button" class="trQuote" data-jump="${esc(r.id)}"><b>↩ ${esc(r.name||'')}</b><span>${esc(r.text||'')}</span></button>`;
     },
-    reacts(m){
+    reacts(m,mine){
       cache.set(m.id,m);
       const rs=m.reactions&&typeof m.reactions==='object'?Object.entries(m.reactions):[];
       if(!rs.length)return '';
       const groups=new Map();
       for(const [uid,v] of rs){const e=String(v?.e||'');if(!e)continue;if(!groups.has(e))groups.set(e,[]);groups.get(e).push(uid);}
-      return '<div class="trReacts">'+[...groups.entries()].map(([e,uids])=>`<button type="button" class="trReact${uids.includes(myUid())?' mine':''}" data-who="${esc(m.id)}">${esc(e)}<b>${uids.length}</b></button>`).join('')+'</div>';
+      return '<div class="trReacts'+(mine?' mine':'')+'">'+[...groups.entries()].map(([e,uids])=>`<button type="button" class="trReact${uids.includes(myUid())?' mine':''}" data-who="${esc(m.id)}">${face(e)}<b>${uids.length}</b></button>`).join('')+'</div>';
     },
     sig(m){const r=m.reactions||{};return Object.keys(r).sort().map(k=>k+'='+(r[k]?.e||'')).join(',');}
   };
@@ -20107,7 +20124,7 @@ select.trPickSource{display:none!important}
       const ms={};let n=0;
       for(const [uid,name] of Object.entries(st.mentions||{})){if(n>=20)break;if(String(text||'').includes('@'+name)){ms[uid]=name;n++;}}
       if(n)out.mentions=ms;
-      st.sentAt=Date.now();
+      st.sentAt=Date.now();afterSend();
       return out;
     }
   };
@@ -20128,12 +20145,15 @@ select.trPickSource{display:none!important}
     const b=bars(ctx);if(!b)return;const st=draft[key(ctx)];
     if(st?.replyTo){b.bar.hidden=false;b.bar.querySelector('span').textContent='↩ '+st.replyTo.name+'：'+st.replyTo.text;}else b.bar.hidden=true;
   }
-  setInterval(()=>{
-    for(const ctx of ['common','room']){
-      const k=key(ctx),st=draft[k],input=inputOf(ctx);
-      if(st?.sentAt&&input&&!input.value.trim()){delete draft[k];paintBar(ctx);const b=bars(ctx);if(b)b.list.hidden=true;}
-    }
-  },500);
+  // after sending: the composer is cleared on success → clear 返信・メンション (checked a few times, no endless timer)
+  function afterSend(){
+    [300,1200,3000,6000].forEach(t=>setTimeout(()=>{
+      for(const ctx of ['common','room']){
+        const k=key(ctx),st=draft[k],input=inputOf(ctx);
+        if(st?.sentAt&&input&&!input.value.trim()){delete draft[k];paintBar(ctx);const b=bars(ctx);if(b)b.list.hidden=true;}
+      }
+    },t));
+  }
   // ---- mentions
   let roomPeople={id:'',list:[]};
   async function people(ctx){
@@ -20169,13 +20189,12 @@ select.trPickSource{display:none!important}
     if(e.target.id==='portalChatInput')onType('common');
     else if(e.target.id==='trRoomInput')onType('room');
   });
-  // ---- sheet (taps in the first 0.5 s are ignored: the finger that long-pressed is still lifting)
-  let openedAt=0;
+  // ---- sheet
   function sheet(html){
     let el=$('trMsgSheet');
     if(!el){el=document.createElement('div');el.id='trMsgSheet';el.hidden=true;el.innerHTML='<div class="trSheetCard" role="dialog" aria-modal="true"></div>';document.body.append(el);
-      el.addEventListener('click',e=>{if(Date.now()-openedAt<500){e.stopPropagation();return;}if(e.target===el)el.hidden=true;},true);}
-    el.querySelector('.trSheetCard').innerHTML=html;el.hidden=false;openedAt=Date.now();return el;
+      el.addEventListener('click',e=>{if(e.target===el)el.hidden=true;});}
+    el.querySelector('.trSheetCard').innerHTML=html;el.hidden=false;return el;
   }
   const closeSheet=()=>{const el=$('trMsgSheet');if(el)el.hidden=true;};
   async function react(ctx,mid,emoji){
@@ -20191,14 +20210,18 @@ select.trPickSource{display:none!important}
     const m=cache.get(mid);if(!m)return;
     const mine=m.reactions?.[myUid()]?.e||'';
     const el=sheet(`<p class="trSheetHead">${esc(m.name||'')}：${esc(String(m.text||'').slice(0,40))}</p>
-      <div class="trEmojiGrid">${REACTS.map(e=>`<button type="button" class="${/^[\u3040-\u30ff\u4e00-\u9fffA-Za-z]+$/.test(e)?'txt ':''}${e===mine?'on':''}" data-re="${esc(e)}" aria-label="${esc(e)}">${esc(e)}</button>`).join('')}</div>
-      <div class="trSheetBtns"><button type="button" data-act="reply">↩ 返信</button><button type="button" data-act="copy">コピー</button><button type="button" data-act="close">閉じる</button></div>
+      <div class="trEmojiGrid">${REACTS.map(e=>`<button type="button" class="${isText(e)?'txt ':''}${e===mine?'on':''}" data-re="${esc(e)}" aria-label="${esc(isTeam(e)?'チームアイコン'+String(e).slice(5):e)}">${face(e)}</button>`).join('')}</div>
+      <div class="trSheetBtns"><button type="button" data-act="reply">↩ 返信</button><button type="button" data-act="copy">全文をコピー</button><button type="button" data-act="select">一部を選んでコピー</button><button type="button" data-act="close">閉じる</button></div>
       <p class="trSheetNote" role="status"></p>`);
     el.querySelector('.trSheetCard').onclick=e=>{
       const r=e.target.closest('[data-re]');if(r){react(ctx,mid,r.dataset.re===mine?null:r.dataset.re);return;}
       const a=e.target.closest('[data-act]')?.dataset.act;
       if(a==='close')closeSheet();
-      if(a==='copy'){try{navigator.clipboard?.writeText(String(m.text||''));}catch(_){}closeSheet();}
+      if(a==='copy'){copyText(String(m.text||''));closeSheet();}
+      if(a==='select'){
+        const el2=sheet(`<p class="trSheetHead">コピーしたい部分を長押しで選んでください</p><textarea class="trCopyBox" readonly>${esc(m.text||'')}</textarea><div class="trSheetBtns"><button type="button" data-act="close">閉じる</button></div>`);
+        el2.querySelector('.trSheetCard').onclick=ev=>{if(ev.target.closest('[data-act="close"]'))closeSheet();};
+      }
       if(a==='reply'){
         const k=key(ctx);draft[k]=draft[k]||{};delete draft[k].sentAt;
         draft[k].replyTo={id:m.id,name:String(m.name||'').slice(0,24),text:String(m.text||'').replace(/\s+/g,' ').slice(0,60)};
@@ -20206,13 +20229,20 @@ select.trPickSource{display:none!important}
       }
     };
   }
+  function copyText(t){
+    let ok=false;
+    try{const ta=document.createElement('textarea');ta.value=t;ta.setAttribute('readonly','');ta.style.cssText='position:fixed;top:0;left:0;opacity:0;font-size:16px';
+      document.body.append(ta);ta.select();ta.setSelectionRange(0,t.length);ok=document.execCommand('copy');ta.remove();}catch(_){}
+    if(!ok){try{navigator.clipboard?.writeText(t);ok=true;}catch(_){}}
+    try{window.showActionFeedback?.(ok?'コピーしました':'コピーできませんでした',ok?'':'「一部を選んでコピー」を使ってください');}catch(_){}
+  }
   function openWho(ctx,mid){
     const m=cache.get(mid);if(!m)return;
     const groups=new Map();
     for(const [uid,v] of Object.entries(m.reactions||{})){const e=String(v?.e||'');if(!e)continue;if(!groups.has(e))groups.set(e,[]);groups.get(e).push(uid===myUid()?(v.n||'')+'（自分）':(v.n||''));}
     const total=[...groups.values()].reduce((n,a)=>n+a.length,0);
     const el=sheet(`<p class="trSheetHead">リアクション ${total}人｜${esc(String(m.text||'').slice(0,30))}</p>
-      <div class="trWho">${[...groups.entries()].map(([e,names])=>`<b>${esc(e)} ${names.length}</b>${names.map(n=>`<span>${esc(n)}</span>`).join('')}`).join('')}</div>
+      <div class="trWho">${[...groups.entries()].map(([e,names])=>`<b>${face(e)} ${names.length}</b>${names.map(n=>`<span>${esc(n)}</span>`).join('')}`).join('')}</div>
       <div class="trSheetBtns"><button type="button" data-act="mine">自分のリアクションを選ぶ</button><button type="button" data-act="close">閉じる</button></div>`);
     el.querySelector('.trSheetCard').onclick=e=>{
       const a=e.target.closest('[data-act]')?.dataset.act;
@@ -20230,21 +20260,32 @@ select.trPickSource{display:none!important}
     const who=e.target.closest('.trReact[data-who]');
     if(who){const ctx=ctxOf(who);if(ctx){e.preventDefault();openWho(ctx,who.dataset.who);}return;}
     const q=e.target.closest('.trQuote[data-jump]');
-    if(q){const th=q.closest('#trRoomThread,#portalChatThread');if(th){e.preventDefault();jump(th,q.dataset.jump);}}
+    if(q){const th=q.closest('#trRoomThread,#portalChatThread');if(th){e.preventDefault();jump(th,q.dataset.jump);}return;}
+    // v163: a single tap on a message opens the same menu (long press also works)
+    const msg=e.target.closest('#portalChatThread .msg[data-mid],#trRoomThread .msg[data-mid]');
+    if(msg&&Date.now()-lpAt>700&&!(window.getSelection&&String(window.getSelection())))openActions(ctxOf(msg),msg.dataset.mid);
   });
+  // long press: 0.4 s, finger may move up to 14px. The tap that ends the long press is swallowed,
+  // so it never hits a button of the sheet that just opened.
   let timer=null,sx=0,sy=0,fired=false;
   const cancel=()=>{if(timer){clearTimeout(timer);timer=null;}};
-  document.addEventListener('pointerdown',e=>{
-    const msg=e.target.closest('#portalChatThread .msg[data-mid],#trRoomThread .msg[data-mid]');
-    if(!msg||e.target.closest('.trReact,.trQuote'))return;
-    sx=e.clientX;sy=e.clientY;fired=false;cancel();
-    timer=setTimeout(()=>{timer=null;fired=true;try{navigator.vibrate?.(15);}catch(_){}openActions(ctxOf(msg),msg.dataset.mid);},450);
-  },{passive:true});
-  document.addEventListener('pointermove',e=>{if(timer&&(Math.abs(e.clientX-sx)>10||Math.abs(e.clientY-sy)>10))cancel();},{passive:true});
-  ['pointerup','pointercancel','scroll'].forEach(t=>document.addEventListener(t,cancel,{passive:true,capture:true}));
+  const target=e=>{const msg=e.target.closest?.('#portalChatThread .msg[data-mid],#trRoomThread .msg[data-mid]');return msg&&!e.target.closest('.trQuote,.trReact')?msg:null;};
+  let lpAt=0;
+  const start=(msg,x,y)=>{sx=x;sy=y;cancel();
+    const ctx=ctxOf(msg),mid=msg.dataset.mid;
+    timer=setTimeout(()=>{timer=null;fired=true;lpAt=Date.now();try{navigator.vibrate?.(12);}catch(_){}try{window.getSelection()?.removeAllRanges();}catch(_){}openActions(ctx,mid);},400);};
+  // every new touch starts clean (a touch that was cancelled by the phone must not block the next one)
+  document.addEventListener('touchstart',e=>{fired=false;const msg=target(e);if(!msg||e.touches.length>1){cancel();return;}start(msg,e.touches[0].clientX,e.touches[0].clientY);},{passive:true,capture:true});
+  document.addEventListener('touchmove',e=>{if(timer&&e.touches[0]&&(Math.abs(e.touches[0].clientX-sx)>14||Math.abs(e.touches[0].clientY-sy)>14))cancel();},{passive:true});
+  document.addEventListener('touchend',e=>{cancel();if(fired){fired=false;if(e.cancelable)e.preventDefault();}},{passive:false,capture:true});
+  document.addEventListener('touchcancel',()=>{cancel();},{passive:true,capture:true});
+  // mouse (PC)
+  document.addEventListener('mousedown',e=>{if(e.button!==0)return;const msg=target(e);if(msg)start(msg,e.clientX,e.clientY);});
+  document.addEventListener('mousemove',e=>{if(timer&&(Math.abs(e.clientX-sx)>14||Math.abs(e.clientY-sy)>14))cancel();});
+  document.addEventListener('mouseup',()=>{cancel();setTimeout(()=>{fired=false;},0);});
   document.addEventListener('contextmenu',e=>{
     const msg=e.target.closest('#portalChatThread .msg[data-mid],#trRoomThread .msg[data-mid]');
-    if(!msg)return;e.preventDefault();if(!fired)openActions(ctxOf(msg),msg.dataset.mid);
+    if(!msg)return;e.preventDefault();if(!fired&&!timer)openActions(ctxOf(msg),msg.dataset.mid);
   });
 })();
 </script>
