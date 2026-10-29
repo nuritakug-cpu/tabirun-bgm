@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v154 2026-10-29: v153 + practice gets 帯同・応援として参加 (3 buttons like 大会), counts 参加する／帯同・応援／参加しない. Rules unchanged. -->
 <!-- TOP RUN PORTAL v153 2026-10-29: v152 + normal events and practice unified: 未定 removed (参加する／参加しない), re-tap clears (saved as maybe = 未選択), small hint, counts without 未定. Rules unchanged. -->
 <!-- TOP RUN PORTAL v152 2026-10-29: v151 + 大会当日の予定: 未定 removed, 帯同・応援として参加 moved into the 3-button row, re-tap clears (saved as maybe = 未選択), small hint, counts 参加する／帯同・応援／参加しない. Normal events and practice unchanged. Rules unchanged. -->
 <!-- TOP RUN PORTAL v151 2026-10-29: v150 + developer can delete an unneeded pending participant request (memberRequests/<uid>, only while pending and not approved). Rules unchanged. -->
@@ -5958,7 +5959,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v153</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v154</b></div>
   </div>
 </div>
 
@@ -6152,7 +6153,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v153</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v154</b></div>
   </div>
 </div>
 
@@ -7404,7 +7405,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
     Object.entries(schedules).forEach(([key,p])=>{
       if(!/^\d{4}-\d{2}-\d{2}$/.test(key)||key<today||p?.kind!=='practice'||p.enabled===false)return;
       const answer=schedulePracticeResponse(key,actor);
-      rows.push({date:key,kind:'practice',practiceMode:p.practiceMode,recordKind:p.recordKind,title:p.other||'練習',time:p.start||'',place:p.place||'',status:answer==='join'?'参加する':answer==='decline'?'参加しない':'未回答',answer:answer==='join'?'join':answer==='decline'?'decline':'maybe'});
+      rows.push({date:key,kind:'practice',practiceMode:p.practiceMode,recordKind:p.recordKind,title:p.other||'練習',time:p.start||'',place:p.place||'',status:answer==='join'?'参加する':answer==='support'?'帯同・応援':answer==='decline'?'参加しない':'未回答',answer:answer==='join'||answer==='support'?'join':answer==='decline'?'decline':'maybe'});
     });
     eventItems.forEach(e=>{
       if(e.enabled===false)return;
@@ -7835,9 +7836,9 @@ if(prefix==='home'){
     let action='';
     if(entry.kind==='practice'){
       const answer=schedulePracticeResponse(entry.date,flowSelfId());
-      const rosterMarkup=portalAttendanceRosterMarkup('practice',entry.date);
+      const rosterMarkup=portalAttendanceRosterMarkup('practice',entry.date,true);
       const pastPractice=portalPracticeIsPast(entry.date);
-      action=`<div class="portalRsvpSection${pastPractice?' portalPastLocked':''}"><b class="portalRsvpTitle">練習への参加</b><p class="portalRsvpCurrent">自分の回答：<strong>${esc(answer==='join'?'参加する':answer==='decline'?'参加しない':'未選択')}</strong></p>${pastPractice?'<p class="portalHelp">開催済みの練習は回答を変更できません。変更が必要な場合は管理者に連絡してください。</p>':''}<div class="portalRsvpOptions trRsvpCols2" role="group" aria-label="練習への参加回答">${[['join','参加する'],['decline','参加しない']].map(([id,label])=>`<button type="button" data-practice-response="${id}" data-practice-date="${esc(entry.date)}" class="${answer===id?'chosen':''}" aria-pressed="${answer===id?'true':'false'}" ${pastPractice?'aria-disabled="true" data-rsvp-locked="開催済みの練習のため変更できません。"':''}>${label}</button>`).join('')}</div>${pastPractice?'':'<p class="trRsvpUntap">再タップで解除できます</p>'}${rosterMarkup}</div>`;
+      action=`<div class="portalRsvpSection${pastPractice?' portalPastLocked':''}"><b class="portalRsvpTitle">練習への参加</b><p class="portalRsvpCurrent">自分の回答：<strong>${esc(answer==='join'?'参加する':answer==='support'?'帯同・応援として参加':answer==='decline'?'参加しない':'未選択')}</strong></p>${pastPractice?'<p class="portalHelp">開催済みの練習は回答を変更できません。変更が必要な場合は管理者に連絡してください。</p>':''}<div class="portalRsvpOptions portalPracticeResponseOptions" role="group" aria-label="練習への参加回答">${[['join','参加する'],['decline','参加しない'],['support','<span class="trRsvpTwo"><span>帯同・応援</span><span>として参加</span></span>']].map(([id,label])=>`<button type="button" data-practice-response="${id}" data-practice-date="${esc(entry.date)}" class="${answer===id?'chosen':''}" aria-pressed="${answer===id?'true':'false'}" ${pastPractice?'aria-disabled="true" data-rsvp-locked="開催済みの練習のため変更できません。"':''}>${label}</button>`).join('')}</div>${pastPractice?'':'<p class="trRsvpUntap">再タップで解除できます</p>'}${rosterMarkup}</div>`;
     }else{
              const item=eventItems.find(x=>x.id===entry.eventId),locallyRecorded=!!flowEntry(entry.eventId,flowSelfId()),registered=portalHasOwnRaceEntry(entry.eventId),rosterMarkup=portalAttendanceRosterMarkup('event',entry.eventId,portalEventDisplayCategory(item)!=='event');
        const answer=scheduleEventAnswer(entry.eventId,flowSelfId()),allowRace=portalEventDisplayCategory(item)!=='event'&&item?.raceEntryEnabled!==false,attendanceOpen=portalEventAttendanceOpen(item),attendanceCutoffPassed=flowIsRegistrationClosed(item);
@@ -13778,7 +13779,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
       buttons.forEach(b=>b.disabled=true);
       try{
         await portalTimeout(gateway.savePracticeResponse(date,answer));
-        showActionFeedback(clearing?'選択を解除しました':'参加回答を保存しました',clearing?'もう一度選ぶこともできます':answer==='join'?'参加する':answer==='decline'?'参加しない':'未選択');
+        showActionFeedback(clearing?'選択を解除しました':'参加回答を保存しました',clearing?'もう一度選ぶこともできます':answer==='join'?'参加する':answer==='support'?'帯同・応援として参加':answer==='decline'?'参加しない':'未選択');
         renderScheduleDetailBody(date);
       }catch(error){
         buttons.forEach(b=>b.disabled=false);
@@ -16251,7 +16252,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       if(auth.currentUser?.uid!==gate.uid)throw Error('本人UIDが一致しません');
       if(!/^\d{4}-\d{2}-\d{2}$/.test(date))throw Error('日付形式が不正です');
       if(date<new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Tokyo'}))throw Error('開催済みの練習には参加回答を変更できません');
-      if(!['join','decline','maybe'].includes(answer))throw Error('回答値が不正です');
+      if(!['join','support','decline','maybe'].includes(answer))throw Error('回答値が不正です');
       const sourceKey=gate.practiceStorageKey(date),practice=gate.practices?.[sourceKey];
       if(practice?.kind!=='practice'||practice.enabled===false||(practice.scheduledDate||sourceKey)!==date)throw Error('有効な練習予定がありません');
       const result=await run('practiceResponses/'+sourceKey+'/'+gate.uid,current=>{
@@ -19655,6 +19656,8 @@ html[data-portal-personal-color="matte"] #screen-chat .trPickHead small{color:#d
 .trRsvpTwo{display:block;line-height:1.3}
 .trRsvpTwo>span{display:block;white-space:nowrap}
 #screen-schedule-detail .portalRsvpOptions.trRsvpCols2,#screen-schedule-detail .portalScheduleEntry .portalRsvpOptions.trRsvpCols2{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+#screen-schedule-detail .portalPracticeResponseOptions{align-items:stretch}
+#screen-schedule-detail .portalPracticeResponseOptions button{display:flex;align-items:center;justify-content:center;text-align:center}
 .trRsvpUntap{margin:6px 0 0;font-size:11px;line-height:1.5;opacity:.72;text-align:right}
 </style>
 </body>
