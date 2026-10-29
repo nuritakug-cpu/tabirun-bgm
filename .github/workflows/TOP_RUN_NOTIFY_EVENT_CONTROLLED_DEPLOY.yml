@@ -1,6 +1,10 @@
 name: TOP RUN Event Notification Deploy
 
 on:
+  push:
+    paths:
+      - 'cloudflare/top-run-notify/NOTIFY_V3_VALIDATE_20261030.txt'
+      - 'cloudflare/top-run-notify/NOTIFY_V3_RELEASE_20261030.txt'
   workflow_dispatch:
     inputs:
       publish:
@@ -246,7 +250,7 @@ jobs:
               await stage3EnsureDb(env.DB);
               if(memberUids.length){
                 const placeholders=memberUids.map(()=>'?').join(',');
-                const sql='SELECT id,uid,raw FROM stage3_devices WHERE uid IN ('+placeholders+
+                const sql='SELECT id,uid,raw,mention_only FROM stage3_devices WHERE uid IN ('+placeholders+
                   ') AND chat_enabled=1 AND updated_at>? ORDER BY updated_at DESC LIMIT 81';
                 const rows=await env.DB.prepare(sql).bind(...memberUids,now-180*86400000).all();
                 if(!Array.isArray(rows?.results)||rows.results.length>80)
@@ -258,10 +262,84 @@ jobs:
               const mark=await env.DB.prepare('INSERT OR IGNORE INTO stage3_sent_events(id,sent_at) VALUES (?1,?2)')
                 .bind(eventKey,now).run();
               if((mark?.meta?.changes??0)===0)return json({ok:true,alreadyProcessed:true},200,c);
-              const payload={web_push:8030,notification:{
-                title:meta.name.trim().slice(0,120),lang:'ja',dir:'auto',
-                body:msg.name.trim().slice(0,80)+'：'+Array.from(msg.text).slice(0,40).join(''),
+              const mentions=msg.mentions&&typeof msg.mentions==='object'&&!Array.isArray(msg.mentions)?msg.mentions:{};
+              const deliverable=devices.filter(row=>row.mention_only!==1||Object.prototype.hasOwnProperty.call(mentions,row.uid));
+              const baseBody=msg.name.trim().slice(0,80)+'：'+Array.from(msg.text).slice(0,40).join('');
+              const payloadFor=uid=>({web_push:8030,notification:{
+                title:(mentions[uid]?'📣 あなたへのメンション｜':'')+meta.name.trim().slice(0,100),lang:'ja',dir:'auto',
+                body:baseBody,
                 navigate:PORTAL_URL,tag:'top-run-room-'+roomId+'-'+msgId,silent:false
+              }});
+              let accepted=0,invalid=0,failed=0;
+              for(let i=0;i<deliverable.length;i+=8){
+                await Promise.all(deliverable.slice(i,i+8).map(async row=>{
+                  if(!recipients.has(row.uid)||row.uid===auth.uid)return;
+                  try{
+                    const sub=subscriptionFrom(JSON.parse(row.raw));
+                    const result=await sendWebPush(sub,env,fetch,payloadFor(row.uid));
+                    if(result.status===201||result.status===202)accepted++;
+                    else if(result.status===404||result.status===410){
+                      invalid++;
+                      await env.DB.prepare('DELETE FROM stage3_devices WHERE id=?1').bind(row.id).run();
+                    }else failed++;
+                  }catch{failed++;}
+                }));
+              }
+              if(accepted===0&&deliverable.length>0){
+                await env.DB.prepare('DELETE FROM stage3_sent_events WHERE id=?1').bind(eventKey).run();
+              }
+              return json({
+                ok:accepted>0||deliverable.length===0,acceptedByPushService:accepted,
+                attemptedDevices:deliverable.length,staleRemoved:invalid,failedDevices:failed,
+                deliveredToDevice:'unverified'
+              },accepted>0||deliverable.length===0?200:502,c);
+            }catch{
+              return json({ok:false,error:'Room delivery service unavailable'},503,c);
+            }
+          }
+          
+          
+          async function stage3NotifyRoomInvite(data,env,person,auth,c){
+            const roomId=typeof data?.id==='string'&&/^r[A-Za-z0-9_]{6,60}$/.test(data.id)?data.id:'';
+            if(!roomId)return json({ok:false,error:'Invalid room id'},400,c);
+            if(auth.uid!==person.uid)return json({ok:false,error:'Sender invalid'},403,c);
+            const now=Date.now();
+            let meta,members;
+            try{
+              [meta,members]=await Promise.all([
+                stage3Read('portalCommon/topRun/roomMeta/'+roomId,auth.token),
+                stage3Read('portalCommon/topRun/roomMembers/'+roomId,auth.token)
+              ]);
+            }catch{
+              return json({ok:false,error:'Room canonical read denied or unavailable'},403,c);
+            }
+            if(typeof meta?.name!=='string'||!meta.name.trim()||!members||typeof members!=='object'||Array.isArray(members))
+              return json({ok:false,error:'Room invalid'},403,c);
+            const invited=Object.entries(members).filter(([uid,m])=>uid!==auth.uid&&/^[-A-Za-z0-9_]{1,128}$/.test(uid)&&
+              m?.status==='invited'&&Number.isFinite(Number(m.updatedAt))&&Math.abs(now-Number(m.updatedAt))<=5*60*1000);
+            if(!invited.length)return json({ok:true,invited:0},200,c);
+            if(invited.length>80)return json({ok:false,error:'Room audience exceeds safe limit'},503,c);
+            try{
+              await stage3EnsureDb(env.DB);
+              await env.DB.prepare('CREATE TABLE IF NOT EXISTS stage3_sent_events (id TEXT PRIMARY KEY, sent_at INTEGER NOT NULL)').run();
+              const fresh=[],keys=[];
+              for(const [uid,m] of invited){
+                const key='roomInvite:'+roomId+'/'+uid+'/'+Number(m.updatedAt);
+                const mark=await env.DB.prepare('INSERT OR IGNORE INTO stage3_sent_events(id,sent_at) VALUES (?1,?2)').bind(key,now).run();
+                if((mark?.meta?.changes??0)>0){fresh.push(uid);keys.push(key);}
+              }
+              if(!fresh.length)return json({ok:true,alreadyProcessed:true},200,c);
+              const recipients=new Set(fresh);
+              const placeholders=fresh.map(()=>'?').join(',');
+              const rows=await env.DB.prepare('SELECT id,uid,raw FROM stage3_devices WHERE uid IN ('+placeholders+
+                ') AND chat_enabled=1 AND updated_at>? ORDER BY updated_at DESC LIMIT 81').bind(...fresh,now-180*86400000).all();
+              if(!Array.isArray(rows?.results)||rows.results.length>80)
+                return json({ok:false,error:'Room device audience unavailable or too large'},503,c);
+              const devices=rows.results.filter(x=>x&&recipients.has(x.uid));
+              const payload={web_push:8030,notification:{
+                title:'ルームに招待されました',lang:'ja',dir:'auto',
+                body:'「'+meta.name.trim().slice(0,60)+'」に招待されました。PORTALのチャットから入室できます。',
+                navigate:PORTAL_URL,tag:'top-run-room-invite-'+roomId,silent:false
               }};
               let accepted=0,invalid=0,failed=0;
               for(let i=0;i<devices.length;i+=8){
@@ -279,21 +357,20 @@ jobs:
                 }));
               }
               if(accepted===0&&devices.length>0){
-                await env.DB.prepare('DELETE FROM stage3_sent_events WHERE id=?1').bind(eventKey).run();
+                for(const key of keys)await env.DB.prepare('DELETE FROM stage3_sent_events WHERE id=?1').bind(key).run();
               }
               return json({
-                ok:accepted>0||devices.length===0,acceptedByPushService:accepted,
-                attemptedDevices:devices.length,staleRemoved:invalid,failedDevices:failed,
-                deliveredToDevice:'unverified'
+                ok:accepted>0||devices.length===0,acceptedByPushService:accepted,invited:fresh.length,
+                attemptedDevices:devices.length,staleRemoved:invalid,failedDevices:failed,deliveredToDevice:'unverified'
               },accepted>0||devices.length===0?200:502,c);
             }catch{
-              return json({ok:false,error:'Room delivery service unavailable'},503,c);
+              return json({ok:false,error:'Room invite delivery service unavailable'},503,c);
             }
           }
           `;
           const roomAnchor = 'async function stage3Notify(request,env,person,auth,c){';
           const roomRouteBefore = "  const id=data?.id;\n  if(!['chat','notice'].includes(kind)";
-          const roomRouteAfter = "  const id=data?.id;\n  if(kind==='room')return stage3NotifyRoom(data,env,person,auth,c);\n  if(!['chat','notice'].includes(kind)";
+          const roomRouteAfter = "  const id=data?.id;\n  if(kind==='room')return stage3NotifyRoom(data,env,person,auth,c);\n  if(kind==='roomInvite')return stage3NotifyRoomInvite(data,env,person,auth,c);\n  if(!['chat','notice'].includes(kind)";
           if(patched.split(roomAnchor).length!==2||patched.split(roomRouteBefore).length!==2)
             throw Error('Room patch anchor mismatch. Stop deploy.');
           const beforeRoom=patched;
@@ -304,6 +381,68 @@ jobs:
             'roomMembers/'+"'",'stage3_sent_events','chat_enabled=1','ROOM_NOTIFY_20261030']){
             if(marker==='ROOM_NOTIFY_20261030')continue;
             if(!patched.includes(marker))throw Error('Room integration marker missing: '+marker);
+          }
+
+          const moReplace=(label,a,b)=>{
+            if(patched.split(a).length!==2)throw Error('Mention-only patch anchor: '+label);
+            patched=patched.replace(a,b);
+          };
+          moReplace('D1 migration',
+            "  await db.prepare('CREATE INDEX IF NOT EXISTS stage3_devices_uid_idx ON stage3_devices(uid)').run();\n  stage3SchemaReady=true;",
+            "  await db.prepare('CREATE INDEX IF NOT EXISTS stage3_devices_uid_idx ON stage3_devices(uid)').run();\n"+
+            "  const cols=await db.prepare('PRAGMA table_info(stage3_devices)').all();\n"+
+            "  if(!Array.isArray(cols?.results))throw Error('Stage3 schema read unavailable');\n"+
+            "  if(!cols.results.some(x=>x.name==='mention_only')){\n"+
+            "    try{await db.prepare('ALTER TABLE stage3_devices ADD COLUMN mention_only INTEGER NOT NULL DEFAULT 0').run();}\n"+
+            "    catch(e){const again=await db.prepare('PRAGMA table_info(stage3_devices)').all();\n"+
+            "      if(!again?.results?.some(x=>x.name==='mention_only'))throw e;}\n"+
+            "  }\n  stage3SchemaReady=true;");
+          moReplace('register backward compatible input',
+            "if(data?.consent!==true||typeof data?.noticeEnabled!=='boolean'||typeof data?.chatEnabled!=='boolean')",
+            "if(data?.consent!==true||typeof data?.noticeEnabled!=='boolean'||typeof data?.chatEnabled!=='boolean'||"+
+            "(data.mentionOnly!==undefined&&typeof data.mentionOnly!=='boolean'))");
+          moReplace('register add column',
+            "(id,uid,profile_id,raw,notice_enabled,chat_enabled,updated_at)\n      VALUES (?1,?2,?3,?4,?5,?6,?7)",
+            "(id,uid,profile_id,raw,notice_enabled,chat_enabled,mention_only,updated_at)\n      VALUES (?1,?2,?3,?4,?5,?6,?7,?8)");
+          moReplace('register upsert',
+            "chat_enabled=excluded.chat_enabled,updated_at=excluded.updated_at",
+            "chat_enabled=excluded.chat_enabled,mention_only=excluded.mention_only,updated_at=excluded.updated_at");
+          moReplace('register binder',
+            ".bind(id,person.uid,person.profileId,JSON.stringify(sub),Number(data.noticeEnabled),Number(data.chatEnabled),Date.now()).run();",
+            ".bind(id,person.uid,person.profileId,JSON.stringify(sub),Number(data.noticeEnabled),Number(data.chatEnabled),Number(data.mentionOnly===true),Date.now()).run();");
+          moReplace('status select',
+            "SELECT notice_enabled,chat_enabled FROM stage3_devices",
+            "SELECT notice_enabled,chat_enabled,mention_only FROM stage3_devices");
+          moReplace('status response',
+            "chatEnabled:row?.chat_enabled===1,formalDeliveryEnabled:true",
+            "chatEnabled:row?.chat_enabled===1,mentionOnly:row?.mention_only===1,formalDeliveryEnabled:true");
+          moReplace('send list extra columns',
+            "const rows=await env.DB.prepare(`SELECT id,raw FROM stage3_devices",
+            "const rows=await env.DB.prepare(`SELECT id,uid,raw,mention_only FROM stage3_devices");
+          moReplace('filter CHAT only and mention title',
+            "  const devices=rows?.results||[];\n  for(let i=0;i<devices.length;i+=8){\n    await Promise.all(devices.slice(i,i+8).map(async row=>{\n      try{\n        const sub=subscriptionFrom(JSON.parse(row.raw));\n        const result=await sendWebPush(sub,env,fetch,stage3FormalPayload(kind));",
+            "  const devices=rows?.results||[];\n"+
+            "  const mentions=kind==='chat'&&saved?.mentions&&typeof saved.mentions==='object'&&!Array.isArray(saved.mentions)?saved.mentions:{};\n"+
+            "  const hasMention=uid=>Object.prototype.hasOwnProperty.call(mentions,uid);\n"+
+            "  const eligible=kind==='chat'?devices.filter(row=>row.mention_only!==1||hasMention(row.uid)):devices;\n"+
+            "  for(let i=0;i<eligible.length;i+=8){\n"+
+            "    await Promise.all(eligible.slice(i,i+8).map(async row=>{\n"+
+            "      try{\n"+
+            "        const sub=subscriptionFrom(JSON.parse(row.raw));\n"+
+            "        const payload=stage3FormalPayload(kind);\n"+
+            "        if(kind==='chat'&&hasMention(row.uid))payload.notification.title='📣 あなたへのメンション｜'+payload.notification.title;\n"+
+            "        const result=await sendWebPush(sub,env,fetch,payload);");
+          moReplace('chat delivery retry',
+            "if(accepted===0&&devices.length>0){\n    // No provider accepted it",
+            "if(accepted===0&&eligible.length>0){\n    // No provider accepted it");
+          moReplace('chat response count',
+            "return json({ok:accepted>0||devices.length===0,acceptedByPushService:accepted,attemptedDevices:devices.length,staleRemoved:invalid,",
+            "return json({ok:accepted>0||eligible.length===0,acceptedByPushService:accepted,attemptedDevices:eligible.length,staleRemoved:invalid,");
+          moReplace('chat HTTP status',
+            "deliveredToDevice:'unverified'},accepted>0||devices.length===0?200:502,c);",
+            "deliveredToDevice:'unverified'},accepted>0||eligible.length===0?200:502,c);");
+          for(const marker of ["stage3NotifyRoomInvite(data,env,person,auth,c)","mentionOnly:row?.mention_only===1","ALTER TABLE stage3_devices ADD COLUMN mention_only","const deliverable=devices.filter","const eligible=kind==='chat'?devices.filter"]){
+            if(!patched.includes(marker))throw Error('Worker patch missing: '+marker);
           }
           fs.writeFileSync(dir + 'worker.js', patched, 'utf8');
           fs.writeFileSync(dir + 'package.json', JSON.stringify({
@@ -337,7 +476,7 @@ jobs:
         run: test "$PUBLISH" = "true" && test "$CONFIRM" = "ENABLE_EVENT_PUSH"
 
       - name: Deploy to Cloudflare
-        if: ${{ inputs.publish }}
+        if: ${{ inputs.publish || (github.event_name == 'push' && github.event.head_commit.message == 'NOTIFY_V3_RELEASE_20261030') }}
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
