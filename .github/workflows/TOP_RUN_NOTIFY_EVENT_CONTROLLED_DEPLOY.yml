@@ -1,10 +1,6 @@
 name: TOP RUN Event Notification Deploy
 
 on:
-  push:
-    paths:
-      - 'cloudflare/top-run-notify/ROOM_NOTIFY_VALIDATE_20261030.txt'
-      - 'cloudflare/top-run-notify/ROOM_NOTIFY_PUBLISH_20261030.txt'
   workflow_dispatch:
     inputs:
       publish:
@@ -341,7 +337,7 @@ jobs:
         run: test "$PUBLISH" = "true" && test "$CONFIRM" = "ENABLE_EVENT_PUSH"
 
       - name: Deploy to Cloudflare
-        if: ${{ inputs.publish || (github.event_name == 'push' && github.event.head_commit.message == 'ROOM_NOTIFY_PUBLISH_20261030') }}
+        if: ${{ inputs.publish }}
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
