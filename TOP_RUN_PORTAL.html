@@ -1,3 +1,7 @@
+<!-- TOP RUN PORTAL v153 2026-10-29: v152 + normal events and practice unified: 未定 removed (参加する／参加しない), re-tap clears (saved as maybe = 未選択), small hint, counts without 未定. Rules unchanged. -->
+<!-- TOP RUN PORTAL v152 2026-10-29: v151 + 大会当日の予定: 未定 removed, 帯同・応援として参加 moved into the 3-button row, re-tap clears (saved as maybe = 未選択), small hint, counts 参加する／帯同・応援／参加しない. Normal events and practice unchanged. Rules unchanged. -->
+<!-- TOP RUN PORTAL v151 2026-10-29: v150 + developer can delete an unneeded pending participant request (memberRequests/<uid>, only while pending and not approved). Rules unchanged. -->
+<!-- TOP RUN PORTAL v150 2026-10-29: v149 + chat room invite is ONE list (no 選手/参加者 groups); everyone incl. athletes is chosen in 管理画面の設定「チャットの参加者を選ぶ」. Rules unchanged. -->
 <!-- TOP RUN PORTAL v149 2026-10-29: v148 + developer identity-link list hides requests already confirmed (same profileId active), shows a note for requests whose person is active under another approval, and finalize treats already-active as done. Rules unchanged. -->
 <!-- TOP RUN PORTAL v147 2026-10-29: v146 + unread COUNT per room in the room list, and room totals in the ROOM icon / CHAT tab (own posts not counted; reads only unread messages, max 99). Rules unchanged (P103). Room push not yet (needs Worker). -->
 <!-- TOP RUN PORTAL v113 2026-10-28: v112 + P107 developer re-bind for the two historical events (same write as the EVENT BASE developer entry; Rules unchanged). v112 notes:  v111 + P106 duplicate guard (manual 過去大会 record hidden when EVENT BASE has same person/date/time). v111 notes:  v110 (ChatGPT) + P105 integrated by Claude: EVENT BASE result correction (staff), withdrawn EKIDEN entries hidden from 参加する/RSVP lock, MY PAGE reflection diagnosis. No Auth/UID/Rules/listener change beyond P105 players handling. STATIC/simulated tests only; real Firebase not verified. -->
@@ -5954,7 +5958,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v149</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v153</b></div>
   </div>
 </div>
 
@@ -6148,7 +6152,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v149</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v153</b></div>
   </div>
 </div>
 
@@ -7400,14 +7404,14 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
     Object.entries(schedules).forEach(([key,p])=>{
       if(!/^\d{4}-\d{2}-\d{2}$/.test(key)||key<today||p?.kind!=='practice'||p.enabled===false)return;
       const answer=schedulePracticeResponse(key,actor);
-      rows.push({date:key,kind:'practice',practiceMode:p.practiceMode,recordKind:p.recordKind,title:p.other||'練習',time:p.start||'',place:p.place||'',status:answer==='join'?'参加する':answer==='decline'?'参加しない':'未定',answer:answer==='join'?'join':answer==='decline'?'decline':'maybe'});
+      rows.push({date:key,kind:'practice',practiceMode:p.practiceMode,recordKind:p.recordKind,title:p.other||'練習',time:p.start||'',place:p.place||'',status:answer==='join'?'参加する':answer==='decline'?'参加しない':'未回答',answer:answer==='join'?'join':answer==='decline'?'decline':'maybe'});
     });
     eventItems.forEach(e=>{
       if(e.enabled===false)return;
       const answer=scheduleEventAnswer(e.id,actor);
       const entry=flowEntry(e.id,actor);
       const joined=!e.previewOnly&&e.registration==='registered';
-      const attendance=answer==='join'||joined?'参加希望':answer==='support'?'応援・帯同':answer==='decline'?'参加しない':answer==='maybe'?'未定':!portalEventAttendanceOpen(e)?'受付前':flowIsRegistrationClosed(e)?'受付終了':'未回答';
+      const attendance=answer==='join'||joined?'参加希望':answer==='support'?'帯同・応援':answer==='decline'?'参加しない':!portalEventAttendanceOpen(e)?'受付前':flowIsRegistrationClosed(e)?'受付終了':'未回答';
       const status=e.previewOnly?`参加：${attendance} / ${entry?'出走：登録あり':e.raceEntryEnabled===false?'出走：受付前':flowIsRegistrationClosed(e)?'出走登録締切':'出走：登録なし'}`:attendance;
       portalEventDates(e).filter(date=>date>=today).forEach(date=>rows.push({date,kind:'event',displayCategory:portalEventDisplayCategory(e),title:e.title||'イベント',time:e.startTime||'',place:e.place||'',status,answer:attendance==='参加する'?'join':answer==='decline'?'decline':'maybe'}));
     });
@@ -7617,7 +7621,7 @@ if(prefix==='home'){
     $('homeNextEventTitle').textContent=item.title; $('homeNextEventType').textContent=(portalEventDisplayCategory(item)==='event'?'通常イベント':item.type==='RELAY EVENT BASE'?'大会 ／ 駅伝 EVENT BASE':'大会')+(item.startTime?' / '+item.startTime+'開始':' / 開始時間未定');
     const entry=typeof flowEntry==='function'?flowEntry(item.id,flowSelfId()):null;
     const answer=typeof scheduleEventAnswer==='function'?scheduleEventAnswer(item.id,flowSelfId()):'';
-    const status=item.previewOnly?('参加：'+(answer==='join'?'参加希望':answer==='support'?'応援・帯同':answer==='decline'?'参加しない':answer==='maybe'?'未定':!portalEventAttendanceOpen(item)?'受付前':flowIsRegistrationClosed(item)?'受付終了':'未回答')+' ／ '+(entry?'出走：登録あり':item.raceEntryEnabled===false?'出走：受付前':flowIsRegistrationClosed(item)?'出走登録締切':'出走：登録なし')):
+    const status=item.previewOnly?('参加：'+(answer==='join'?'参加希望':answer==='support'?'帯同・応援':answer==='decline'?'参加しない':!portalEventAttendanceOpen(item)?'受付前':flowIsRegistrationClosed(item)?'受付終了':'未回答')+' ／ '+(entry?'出走：登録あり':item.raceEntryEnabled===false?'出走：受付前':flowIsRegistrationClosed(item)?'出走登録締切':'出走：登録なし')):
        item.registration==='registered'?'登録済み':item.registration==='unregistered'?'未登録':'';
     $('homeNextEventRegistration').textContent=status;
     $('homeNextEventRegistration').classList.toggle('hidden',!status);    card.disabled=false;
@@ -7678,15 +7682,15 @@ if(prefix==='home'){
       name:flowActorName(row.actorId),answer:row.answer,createdAt:Number(row.createdAt||0),
       updatedAt:Number(row.updatedAt||0),note:''}))};
   }
-  function portalAttendanceGroups(kind,key){
+  function portalAttendanceGroups(kind,key,split=false){
     const view=portalAttendanceSnapshot(kind,key);
-    const groups={join:[],decline:[],maybe:[]};
+    const groups={join:[],support:[],decline:[],maybe:[]};
     if(!view.ready)return {...view,groups};
     const records=new Map();
     view.rows.forEach(row=>{
       if(!['join','support','decline','maybe'].includes(row.answer))return;
-      const answer=row.answer==='support'?'join':row.answer;
-      records.set(row.uid,{...row,answer,note:row.answer==='support'?'応援・帯同':''});
+      const answer=row.answer==='support'&&!split?'join':row.answer;
+      records.set(row.uid,{...row,answer,note:row.answer==='support'&&!split?'応援・帯同':''});
     });
     if(kind==='event'){
       // Only verified EVENT BASE subjectUid entries; local trial races do not count as real entries.
@@ -7716,10 +7720,10 @@ if(prefix==='home'){
     if(last)return '初回登録時刻：旧データにつき記録なし ／ 最終更新 '+last;
     return '回答日時は記録されていません';
   }
-  function portalAttendanceRosterMarkup(kind,key){
-    const snapshot=portalAttendanceGroups(kind,key);
+  function portalAttendanceRosterMarkup(kind,key,split=false){
+    const snapshot=portalAttendanceGroups(kind,key,split);
     if(!snapshot.ready)return `<p class="portalAttendanceLoading" role="status">${snapshot.error?'回答一覧の読込が拒否されました。権限・接続を確認してください。':'回答一覧を読み込み中です。'}</p>`;
-    const options=[['join','参加する'],['decline','参加しない'],['maybe','未定']];
+    const options=split?[['join','参加する'],['support','帯同・応援'],['decline','参加しない']]:[['join','参加する'],['decline','参加しない']];
     return `<div class="portalParticipationGroups" aria-label="共有出欠・回答日時">${options.map(([answer,label])=>{
       const rows=snapshot.groups[answer]||[];
       const identifier=kind+':'+key+':'+answer;
@@ -7833,11 +7837,11 @@ if(prefix==='home'){
       const answer=schedulePracticeResponse(entry.date,flowSelfId());
       const rosterMarkup=portalAttendanceRosterMarkup('practice',entry.date);
       const pastPractice=portalPracticeIsPast(entry.date);
-      action=`<div class="portalRsvpSection${pastPractice?' portalPastLocked':''}"><b class="portalRsvpTitle">練習への参加</b><p class="portalRsvpCurrent">自分の回答：<strong>${esc(answer==='join'?'参加する':answer==='decline'?'参加しない':answer==='maybe'?'未定':'未回答')}</strong></p>${pastPractice?'<p class="portalHelp">開催済みの練習は回答を変更できません。変更が必要な場合は管理者に連絡してください。</p>':''}<div class="portalRsvpOptions" role="group" aria-label="練習への参加回答">${[['join','参加する'],['decline','参加しない'],['maybe','未定']].map(([id,label])=>`<button type="button" data-practice-response="${id}" data-practice-date="${esc(entry.date)}" class="${answer===id?'chosen':''}" aria-pressed="${answer===id?'true':'false'}" ${pastPractice?'aria-disabled="true" data-rsvp-locked="開催済みの練習のため変更できません。"':''}>${label}</button>`).join('')}</div>${rosterMarkup}</div>`;
+      action=`<div class="portalRsvpSection${pastPractice?' portalPastLocked':''}"><b class="portalRsvpTitle">練習への参加</b><p class="portalRsvpCurrent">自分の回答：<strong>${esc(answer==='join'?'参加する':answer==='decline'?'参加しない':'未選択')}</strong></p>${pastPractice?'<p class="portalHelp">開催済みの練習は回答を変更できません。変更が必要な場合は管理者に連絡してください。</p>':''}<div class="portalRsvpOptions trRsvpCols2" role="group" aria-label="練習への参加回答">${[['join','参加する'],['decline','参加しない']].map(([id,label])=>`<button type="button" data-practice-response="${id}" data-practice-date="${esc(entry.date)}" class="${answer===id?'chosen':''}" aria-pressed="${answer===id?'true':'false'}" ${pastPractice?'aria-disabled="true" data-rsvp-locked="開催済みの練習のため変更できません。"':''}>${label}</button>`).join('')}</div>${pastPractice?'':'<p class="trRsvpUntap">再タップで解除できます</p>'}${rosterMarkup}</div>`;
     }else{
-             const item=eventItems.find(x=>x.id===entry.eventId),locallyRecorded=!!flowEntry(entry.eventId,flowSelfId()),registered=portalHasOwnRaceEntry(entry.eventId),rosterMarkup=portalAttendanceRosterMarkup('event',entry.eventId);
+             const item=eventItems.find(x=>x.id===entry.eventId),locallyRecorded=!!flowEntry(entry.eventId,flowSelfId()),registered=portalHasOwnRaceEntry(entry.eventId),rosterMarkup=portalAttendanceRosterMarkup('event',entry.eventId,portalEventDisplayCategory(item)!=='event');
        const answer=scheduleEventAnswer(entry.eventId,flowSelfId()),allowRace=portalEventDisplayCategory(item)!=='event'&&item?.raceEntryEnabled!==false,attendanceOpen=portalEventAttendanceOpen(item),attendanceCutoffPassed=flowIsRegistrationClosed(item);
-       const state=registered?'出走予定':window.__TR_PORTAL_SYNC__&&locallyRecorded?'端末内試作の出走（共有登録ではありません）':answer==='support'?(portalEventDisplayCategory(item)==='event'?'参加する':'参加する（応援・帯同）'):answer==='join'?'参加する':answer==='decline'?'参加しない':answer==='maybe'?'未定':'未回答';
+       const state=registered?'出走予定':window.__TR_PORTAL_SYNC__&&locallyRecorded?'端末内試作の出走（共有登録ではありません）':answer==='support'?(portalEventDisplayCategory(item)==='event'?'参加する':'帯同・応援として参加'):answer==='join'?'参加する':answer==='decline'?'参加しない':'未選択';
        const ended=flowIsEndedEvent(item||{date:entry.date||selectedDateKey});
        // A PORTAL event is the calendar authority. When its official service URL
        // is saved, enter that service from this very date detail; do not make
@@ -7847,8 +7851,10 @@ if(prefix==='home'){
        const baseOpen=portalHref?`<button class="portalRsvpGo portalScheduleBaseOpen" type="button" data-cal-open-portal="${esc(entry.eventId)}">リンク先を開く <span>›</span></button>`:hasConnectedBase?`<button class="portalRsvpGo portalScheduleBaseOpen" type="button" data-cal-open-base="${esc(entry.eventId)}">${item.type==='RELAY EVENT BASE'?'駅伝BASEを開く':'EVENT BASEを開く'} <span>›</span></button>`:portalMissingBaseAccessMarkup(item,true);
        // v120: a connected EVENT BASE / EKIDEN BASE event still takes its race entry here (official Firebase card).
        const raceLink=allowRace&&(!hasConnectedBase||!!flowOfficialDestination(item))?`<button class="portalRsvpGo" type="button" data-cal-entry="${esc(entry.eventId)}">${registered?'出走内容・取消を確認':ended?'出走内容・記録を確認':'出走する（種目と目標を登録）'} <span>›</span></button>`:'';
-       const answers=[['join','参加する'],['decline','参加しない'],['maybe','未定']];
-       action=`${baseOpen}<div class="portalRsvpSection${ended?' portalPastLocked':''}"><b class="portalRsvpTitle">${portalEventDisplayCategory(item)==='event'?'イベントへの参加':'大会当日の予定'}</b><p class="portalRsvpCurrent">現在：<strong>${esc(state)}</strong></p>${registered?`<p class="portalHelp" role="status">${esc(portalRegisteredResponseWarning)}</p>`:''}${raceLink}${portalEventDisplayCategory(item)==='event'?'':!attendanceOpen&&!registered?'<p class="portalHelp">大会当日の予定は回答できます。出走登録の受付状態とは別です。</p>':attendanceCutoffPassed&&!ended?'<p class="portalHelp">出走登録の期日とは別に、当日の参加予定は変更できます。</p>':''}${`<div class="portalRsvpOptions portalEventResponseOptions" role="group" aria-label="${portalEventDisplayCategory(item)==='event'?'イベントへの参加':'大会当日の予定'}">${answers.map(([id,label])=>`<button type="button" data-event-response="${id}" data-event-id="${esc(entry.eventId)}" class="${(id==='join'&&answer==='support'&&portalEventDisplayCategory(item)==='event')||answer===id?'chosen':''}" aria-pressed="${(id==='join'&&answer==='support'&&portalEventDisplayCategory(item)==='event')||answer===id?'true':'false'}" ${!portalEventCanRespond(item,id)?`aria-disabled="true" data-rsvp-locked="${esc(portalEventLockReason(item))}"`:''}>${label}</button>`).join('')}</div>${portalEventDisplayCategory(item)==='event'?'':`<div class="portalEventSupportChoice"><p>出走しない場合でも会場へ行く予定を登録できます。</p><div class="portalRsvpOptions portalRsvpOptionsSingle"><button type="button" data-event-response="support" data-event-id="${esc(entry.eventId)}" class="${answer==='support'?'chosen':''}" aria-pressed="${answer==='support'?'true':'false'}" ${!portalEventCanRespond(item,'support')?`aria-disabled="true" data-rsvp-locked="${esc(portalEventLockReason(item))}"`:''}>応援・帯同として参加する</button></div></div>`}`}${rosterMarkup}</div>`;
+       // v152: 大会 = 参加する／参加しない／帯同・応援として参加 (未定なし)。選んだボタンの再タップで解除。
+       const answers=portalEventDisplayCategory(item)==='event'?[['join','参加する'],['decline','参加しない']]:
+         [['join','参加する'],['decline','参加しない'],['support','<span class="trRsvpTwo"><span>帯同・応援</span><span>として参加</span></span>']];
+       action=`${baseOpen}<div class="portalRsvpSection${ended?' portalPastLocked':''}"><b class="portalRsvpTitle">${portalEventDisplayCategory(item)==='event'?'イベントへの参加':'大会当日の予定'}</b><p class="portalRsvpCurrent">現在：<strong>${esc(state)}</strong></p>${registered?`<p class="portalHelp" role="status">${esc(portalRegisteredResponseWarning)}</p>`:''}${raceLink}${portalEventDisplayCategory(item)==='event'?'':!attendanceOpen&&!registered?'<p class="portalHelp">大会当日の予定は回答できます。出走登録の受付状態とは別です。</p>':attendanceCutoffPassed&&!ended?'<p class="portalHelp">出走登録の期日とは別に、当日の参加予定は変更できます。</p>':''}${`<div class="portalRsvpOptions portalEventResponseOptions${portalEventDisplayCategory(item)==='event'?' trRsvpCols2':''}" role="group" aria-label="${portalEventDisplayCategory(item)==='event'?'イベントへの参加':'大会当日の予定'}">${answers.map(([id,label])=>`<button type="button" data-event-response="${id}" data-event-id="${esc(entry.eventId)}" class="${(id==='join'&&answer==='support'&&portalEventDisplayCategory(item)==='event')||answer===id?'chosen':''}" aria-pressed="${(id==='join'&&answer==='support'&&portalEventDisplayCategory(item)==='event')||answer===id?'true':'false'}" ${!portalEventCanRespond(item,id)?`aria-disabled="true" data-rsvp-locked="${esc(portalEventLockReason(item))}"`:''}>${label}</button>`).join('')}</div><p class="trRsvpUntap">再タップで解除できます</p>`}${rosterMarkup}</div>`;
     }
     return `<article class="portalScheduleEntry ${entry.kind}"><div class="portalScheduleEntryType">${typeLabel}</div>${titleMarkup}<div class="portalScheduleEntryRows">${rows.join('')}</div>${action}</article>`;  }
   function renderScheduleDetailBody(key){
@@ -8238,7 +8244,7 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
     const actor=flowSelfId(),registered=!!flowEntry(item.id,actor);
     const answer=scheduleEventAnswer(item.id,actor);
     const participation=item.previewOnly||!portalConnectedBase(item)?
-      (registered?'出走予定':answer==='support'?(portalEventDisplayCategory(item)==='event'?'参加予定':'応援・帯同'):answer==='join'?'参加予定':answer==='decline'?'行かない':answer==='maybe'?'未定':'未回答'):'EVENT BASEで確認';
+      (registered?'出走予定':answer==='support'?(portalEventDisplayCategory(item)==='event'?'参加予定':'帯同・応援'):answer==='join'?'参加予定':answer==='decline'?'行かない':'未回答'):'EVENT BASEで確認';
     const isEntryClosed=item.previewOnly&&item.raceEntryEnabled!==false&&flowIsRegistrationClosed(item);
     const attendanceStatus=item.previewOnly&&!portalEventAttendanceOpen(item)?'参加受付前':null;
     const raceStatus=registered?'登録あり':item.raceEntryEnabled===false?'受付前':isEntryClosed?'出走登録締切':'登録なし';
@@ -13755,7 +13761,10 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
     if(lockedReply){showActionFeedback('回答できません',lockedReply.dataset.rsvpLocked||'現在は回答できません。');return;}
     const reply=e.target.closest('[data-practice-response]');
     if(reply){
-      const date=reply.dataset.practiceDate,actorId=flowSelfId(),answer=reply.dataset.practiceResponse;
+      const date=reply.dataset.practiceDate,actorId=flowSelfId();
+      // v153: 選択中のボタンを再タップ → 解除（保存値は未選択扱いの maybe）
+      const clearing=reply.classList.contains('chosen');
+      const answer=clearing?'maybe':reply.dataset.practiceResponse;
       if(!schedules[date]||schedules[date].enabled===false){showActionFeedback('回答できません','この練習予定を確認できません。画面を開き直してください。');return;}
       if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||date<todayDateKey()){
         showActionFeedback('回答を変更できません','開催済みの練習です。');return;
@@ -13769,7 +13778,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
       buttons.forEach(b=>b.disabled=true);
       try{
         await portalTimeout(gateway.savePracticeResponse(date,answer));
-        showActionFeedback('参加回答を保存しました',answer==='join'?'参加する':answer==='decline'?'参加しない':'未定');
+        showActionFeedback(clearing?'選択を解除しました':'参加回答を保存しました',clearing?'もう一度選ぶこともできます':answer==='join'?'参加する':answer==='decline'?'参加しない':'未選択');
         renderScheduleDetailBody(date);
       }catch(error){
         buttons.forEach(b=>b.disabled=false);
@@ -13779,8 +13788,12 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
     }
     const eventReply=e.target.closest('[data-event-response]');
     if(eventReply){
-      const eventId=eventReply.dataset.eventId,answer=eventReply.dataset.eventResponse,actorId=flowSelfId();
+      const eventId=eventReply.dataset.eventId,actorId=flowSelfId();
       const event=flowEvent(eventId);
+      // v152: 大会で選択中のボタンを再タップ → 解除（保存値は未選択扱いの maybe）
+      let answer=eventReply.dataset.eventResponse;
+      const clearing=!!event&&eventReply.classList.contains('chosen');
+      if(clearing)answer='maybe';
       if(!event||event.enabled===false){showActionFeedback('回答できません','このイベントを確認できません。画面を開き直してください。');return;}
       if(!portalEventAttendanceOpen(event)){showActionFeedback('現在は受付前です','受付開始後に参加登録できます。現時点では登録していません。');return;}
       if(portalHasOwnRaceEntry(eventId,actorId)){
@@ -13805,7 +13818,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
           renderScheduleDetailBody(selectedDateKey);
           renderEventTab();renderManagedHomeEvents();renderHomeNextEvent();
           if(portalCalendarDisplayMode==='list')renderPortalAgendaLists();
-          showActionFeedback('Firebaseに保存しました',portalEventDisplayCategory(event)==='event'?(answer==='join'?'参加する':answer==='decline'?'参加しない':'未定'):(answer==='join'?'参加希望（出走未確定）':answer==='support'?'会場へ行く（応援・帯同）':answer==='decline'?'会場へ行かない':'未定'));
+          showActionFeedback(clearing?'選択を解除しました':'Firebaseに保存しました',clearing?'もう一度選ぶこともできます':portalEventDisplayCategory(event)==='event'?(answer==='join'?'参加する':answer==='decline'?'参加しない':'未選択'):(answer==='join'?'参加希望（出走未確定）':answer==='support'?'帯同・応援として参加':answer==='decline'?'参加しない':'未選択'));
         }catch(error){
           buttons.forEach(b=>b.disabled=false);
           showActionFeedback('回答を保存できません',String(error?.code||error?.message||error).slice(0,160));
@@ -15290,6 +15303,24 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
         throw Error('参加承認のFirebase保存確認に失敗しました');
       return {approved:true};
     };
+    // v151: developer removes an unneeded pending participant request (double registration, test device).
+    // Only memberRequests/<uid> while still pending and not approved. Nothing else is touched.
+    gate.deleteMemberApprovalRequest=async(uid,profileId)=>{
+      if(!isDeveloper())throw Error('開発者の権限が必要です');
+      uid=String(uid||'');
+      if(!/^[A-Za-z0-9_-]{6,128}$/.test(uid))throw Error('UIDの形式が不正です');
+      const a=(await dbMod.get(ref('memberAccess/'+uid))).val();
+      if(a?.active===true)throw Error('すでに参加承認されているため削除しません');
+      const at=ref('memberRequests/'+uid);
+      const result=await dbMod.runTransaction(at,v=>{
+        if(!v)return null;
+        if(v.status!=='pending'||v.profileId!==profileId)return;
+        return null;
+      },{applyLocally:false});
+      const after=(await dbMod.get(at)).val();
+      if(after)throw Error(result.committed?'削除の保存確認ができません':'申請の内容が変わったため削除しませんでした。もう一度「参加承認の申請を確認」を押してください');
+      return {deleted:true};
+    };
     gate.checkExistingIdentityLink=async()=>{
       const uid=auth.currentUser?.uid||'';
       if(!uid)throw Error('この画面の認証がまだありません');
@@ -16500,14 +16531,9 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       // Uncurated approvals (duplicates, test devices) are never listed. Read-only.
       gate.roomRoster=async()=>{
         devOnly();
-        const [selSnap,cpSnap]=await Promise.all([dbMod.get(ref('athleteSelections')),dbMod.get(ref('chatPeople'))]);
-        const sel=selSnap.val()||{},cp=cpSnap.val()||{};
+        // v150: one list only. Everyone who can be invited is chosen in 管理画面の設定「チャットの参加者を選ぶ」.
+        const cp=(await dbMod.get(ref('chatPeople'))).val()||{};
         const athletes=[],seen=new Set();
-        for(const it of Object.values(sel.items||{})){
-          const uid=String(it?.uid||''),name=String(it?.name||'').trim();
-          if(!rUid(uid)||!name||name.length>24||seen.has(uid)||uid===gate.uid)continue;
-          seen.add(uid);athletes.push({uid,name});
-        }
         const others=[];
         for(const [uid,it] of Object.entries(cp.items||{})){
           const name=String(it?.name||'').trim();
@@ -16533,7 +16559,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
           return bindNames[uid]||'';
         };
         const add=(uid,role,at)=>{
-          if(!rUid(uid)||athleteUids.has(uid)||seen.has(uid))return;
+          if(!rUid(uid)||seen.has(uid))return;
           const name=nameOf(uid)||(role!=='participant'?'登録名なし（末尾'+uid.slice(-6)+'）':'');
           if(!name||name.length>24)return;
           seen.add(uid);rows.push({uid,name,at,role,selected:!!chosen[uid]});
@@ -16557,7 +16583,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
             if(rUid(uid)&&n&&n.length<=24&&!bindNames[uid])bindNames[uid]=n;
           }
         }
-        const rest=[...new Set([...Object.keys(reqs),...Object.keys(chosen),...Object.keys(bindNames)])].filter(uid=>rUid(uid)&&!seen.has(uid)&&uid!==gate.uid&&!athleteUids.has(uid));
+        const rest=[...new Set([...Object.keys(reqs),...Object.keys(chosen),...Object.keys(bindNames)])].filter(uid=>rUid(uid)&&!seen.has(uid)&&uid!==gate.uid);
         const roles=await Promise.all(rest.map(uid=>dbMod.get(dbMod.ref(db,'portalRoles/'+uid)).then(s=>s.val()).catch(()=>null)));
         rest.forEach((uid,i)=>{
           const role=roles[i]?.role;
@@ -18594,7 +18620,20 @@ setInterval(display,1000);
           return row.name+' を管理者にしました。続けて「本人確認済み：参加を承認」を押してください';
         },mLog);
       };
-      box.append(adminButton);mList.append(box);
+      box.append(adminButton);
+      // v151: remove an unneeded request
+      const delButton=document.createElement('button');delButton.type='button';delButton.style.minHeight='42px';
+      delButton.textContent='申請を取り消す（削除）';
+      delButton.onclick=()=>{
+        if(!confirm(row.name+'（確認コード '+row.suffix+'）の申請を削除します。よろしいですか？'))return;
+        void run(async()=>{
+          if(typeof g.deleteMemberApprovalRequest!=='function')throw Error('削除の機能が準備できていません');
+          await g.deleteMemberApprovalRequest(row.uid,row.profileId);
+          setTimeout(refreshMembers,0);
+          return row.name+'（確認コード '+row.suffix+'）の申請を削除しました';
+        },mLog);
+      };
+      box.append(delButton);mList.append(box);
     }
     return rows.length?rows.length+'件の承認待ちがあります。':'承認待ちの申請はありません。';
   },mLog);
@@ -19202,10 +19241,9 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
       return '<p class="trPickHead">'+esc(title)+'<small>'+esc(note)+'</small>'+(rows.length>1?'<button type="button" class="trPickAll" data-pick-all>全員選ぶ</button>':'')+'</p>'+
         (rows.length?'<div class="trPick">'+rows.map(m=>'<label><input type="checkbox" value="'+esc(m.uid)+'" data-name="'+esc(m.name)+'">'+esc(m.name)+
           (count.get(norm(m.name))>1?'<span class="trSame">同名あり</span>':'')+'</label>').join('')+'</div>'
-        :'<p class="trRoomNote">'+(list.length?'招待できる人がいません。':title==='参加者'?'まだ選ばれていません。「管理画面の設定」→「チャットの参加者を選ぶ」で選べます。':'まだ選ばれていません。')+'</p>');
+        :'<p class="trRoomNote">'+(list.length?'招待できる人がいません。':'まだ選ばれていません。「管理画面の設定」→「チャットの参加者を選ぶ」で選べます。')+'</p>');
     };
-    return group('選手','管理画面「選手」で選んだ人',data?.athletes||[])+
-      group('参加者','管理画面の設定で選んだ人',data?.others||[]);
+    return group('招待できる人','',data?.others||[]);
   }
   function picked(root){return [...root.querySelectorAll('.trPick input:checked')].map(i=>({uid:i.value,name:i.dataset.name||''}));}
   async function openCreate(){
@@ -19375,7 +19413,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
         '<div class="portalPanelHead"><small>CHAT / MEMBERS</small><b>チャットの参加者（開発者）</b></div>'+
         '<details class="portalManageAccessDisclosure" id="trChatPeopleDetails"><summary>チャットの参加者を選ぶ</summary>'+
           '<div class="portalIdentityLinkBody">'+
-            '<p style="font-size:13px">チャットルームの招待画面で「参加者」に出す人を選びます。保護者などを選び、二重登録や確認用の端末は外してください。管理画面「選手」で選んだ人は、ここには出ません。</p>'+
+            '<p style="font-size:13px">チャットルームに招待できる人を選びます。二重登録や確認用の端末は外してください。</p>'+
             '<button id="trChatPeopleLoad" type="button" style="min-height:43px">参加者を読み込む</button>'+
             '<div id="trChatPeopleList"></div>'+
             '<button id="trChatPeopleSave" type="button" style="min-height:43px;margin-top:12px;width:100%" hidden>選んだ人を保存する</button>'+
@@ -19609,6 +19647,15 @@ html[data-portal-personal-color="matte"] #screen-chat .trPick input[type="checkb
 html[data-portal-personal-color="matte"] #screen-chat .trPickAll{background:#ff8940!important;border-color:#ff8940!important;color:#1c0d08!important;-webkit-text-fill-color:#1c0d08!important}
 html[data-portal-personal-color="matte"] #screen-chat .trPickHead small{color:#d9b8a8!important}
 :is(html[data-portal-personal-color="winter"],html[data-portal-personal-color="matte"]) #screen-chat .trSame{color:#ffb4a8!important;border-color:#e8a196!important}
+</style>
+<style id="v152-rsvp-competition">
+/* v152: 大会当日の予定 — 3 buttons in one row, the long label in two clean lines, small un-tap hint. Existing colors/fonts kept. */
+#screen-schedule-detail .portalEventResponseOptions{align-items:stretch}
+#screen-schedule-detail .portalEventResponseOptions button{display:flex;align-items:center;justify-content:center;text-align:center}
+.trRsvpTwo{display:block;line-height:1.3}
+.trRsvpTwo>span{display:block;white-space:nowrap}
+#screen-schedule-detail .portalRsvpOptions.trRsvpCols2,#screen-schedule-detail .portalScheduleEntry .portalRsvpOptions.trRsvpCols2{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+.trRsvpUntap{margin:6px 0 0;font-size:11px;line-height:1.5;opacity:.72;text-align:right}
 </style>
 </body>
 </html>
