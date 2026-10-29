@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v149 2026-10-29: v148 + developer identity-link list hides requests already confirmed (same profileId active), shows a note for requests whose person is active under another approval, and finalize treats already-active as done. Rules unchanged. -->
 <!-- TOP RUN PORTAL v147 2026-10-29: v146 + unread COUNT per room in the room list, and room totals in the ROOM icon / CHAT tab (own posts not counted; reads only unread messages, max 99). Rules unchanged (P103). Room push not yet (needs Worker). -->
 <!-- TOP RUN PORTAL v113 2026-10-28: v112 + P107 developer re-bind for the two historical events (same write as the EVENT BASE developer entry; Rules unchanged). v112 notes:  v111 + P106 duplicate guard (manual 過去大会 record hidden when EVENT BASE has same person/date/time). v111 notes:  v110 (ChatGPT) + P105 integrated by Claude: EVENT BASE result correction (staff), withdrawn EKIDEN entries hidden from 参加する/RSVP lock, MY PAGE reflection diagnosis. No Auth/UID/Rules/listener change beyond P105 players handling. STATIC/simulated tests only; real Firebase not verified. -->
 <!-- TOP RUN PORTAL v110 2026-10-28: v109 exact physical parent; PORTAL internal event links now saved via the existing eventItems writer and visible in event list/calendar. External EVENT BASE/EKIDEN validation and all Auth/UID/profileId/Rules/RTDB subscriptions, writes, official results and theme/home image safeguards unchanged. STATIC candidate; Firebase production not tested/deployed. -->
@@ -5953,7 +5954,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v147</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v149</b></div>
   </div>
 </div>
 
@@ -6147,7 +6148,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v147</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v149</b></div>
   </div>
 </div>
 
@@ -15416,6 +15417,9 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
       const review=await gate.getIdentityLinkReview();
       const link=review.requests.find(x=>x.uid===targetUid&&x.status==='approved');
       if(!link||!link.sourceUid||!link.profileId)throw Error('開発者承認がありません');
+      const already=review.memberAccess?.[targetUid];
+      if(already?.active===true&&already.profileId===link.profileId)return {alreadyActive:true};
+      if(already?.active===true)throw Error('この人は別の参加承認ですでに利用中です（前の記録とはつながっていません）。上書きしません');
       const source=review.candidates.find(x=>x.uid===link.sourceUid);
       if(!source||source.profileId!==link.profileId)
         throw Error('元の本人profileIdを正規PORTAL承認または既存大会bindingで検証できません');
@@ -18410,7 +18414,12 @@ setInterval(display,1000);
     const g=gate();if(!g?.getIdentityLinkReview)throw Error('共通本人モジュールが準備できていません');
     cache=await g.getIdentityLinkReview();
     list.replaceChildren();
+    let doneCount=0;
     for(const person of cache.requests){
+      const m=cache.memberAccess?.[person.uid];
+      const activeSame=person.status==='approved'&&m?.active===true&&m.profileId===person.profileId;
+      const activeOther=person.status==='approved'&&m?.active===true&&m.profileId!==person.profileId;
+      if(activeSame){doneCount++;continue;}
       const box=document.createElement('div');
       box.style.cssText='padding:12px;border:1px solid #686d67;border-radius:10px;display:grid;gap:7px';
       const title=document.createElement('strong');title.textContent=`申請 ${person.uid.slice(-6)} / ${person.requestedName||''} / ${person.status}`;box.append(title);
@@ -18426,6 +18435,10 @@ setInterval(display,1000);
           if(!confirm('本人確認は氏名一致だけでなく別の方法で完了しましたか？ 選択した既存profileIdへ紐付けます。'))return;
           void run(async()=>{await gate().approveIdentityLink(person.uid,select.value);setTimeout(refresh,0);return '本人引き継ぎを承認しました';},log);
         };
+      }else if(activeOther){
+        const note=document.createElement('small');
+        note.textContent='この人は別の参加承認ですでにPORTALを利用中です。この申請は確定できません（前の記録とはつながっていません）。';
+        box.append(note);list.append(box);continue;
       }else{
         button.textContent='本人の受取確認後：PORTAL利用資格を確定';
         button.onclick=()=>void run(async()=>{await gate().finalizeIdentityLink(person.uid);setTimeout(refresh,0);return '参加承認を確定しました';},log);
@@ -18433,7 +18446,8 @@ setInterval(display,1000);
       box.append(button);list.append(box);
     }
     const scope=cache.eventOwnerCanReviewBindings?'既存参加者・大会管理者の候補を確認':'大会の管理者bindingは閲覧権限外です（参加承認済み候補のみ確認）';
-    return (cache.requests.length?`${cache.requests.length}件の申請を確認しました。`:'現在の申請はありません。')+' '+scope;
+    const shown=cache.requests.length-doneCount;
+    return (shown?`${shown}件の申請を確認しました。`:'現在の申請はありません。')+(doneCount?`（確定済み${doneCount}件は表示していません）`:'')+' '+scope;
   },log);
   $('portalIdentityLinkRefresh')?.addEventListener('click',refresh);
   // P104: participant approval request / developer approval list
