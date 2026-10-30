@@ -1,3 +1,10 @@
+<!-- TOP RUN PORTAL v182 | 2026-10-30 | REVIEW / NOT DEPLOYED
+  PARENT: TOP_RUN_PORTAL_v181.html (SHA256 77f9a87b79f00f3f64cfce9fd768b17133700b703f47085847851c4a733d62f6).
+  LAYOUT: own bubbles shifted left; 既読 at the right-bottom of every bubble (same as others). Bubbles slightly shorter.
+  FIX: the seen/not-seen sheet disagreed with 既読N (staff were not in the list). The seen list now uses exactly the
+  same data as the number; people = approved participants + 管理画面の設定「チャットの参加者」 (includes staff).
+  No Firebase path or Rules change from v180.
+-->
 <!-- TOP RUN PORTAL v181 | 2026-10-30 | REVIEW / NOT DEPLOYED
   PARENT: TOP_RUN_PORTAL_v180.html (SHA256 1c996f27972ea5fb606d0984c3d948af2d9aefd59b2242b2e5a24ace117e31fe).
   FIX: 既読 placed just outside the bubble's bottom corner (others: right, own: left) instead of under reactions.
@@ -6052,7 +6059,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v181</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v182</b></div>
   </div>
 </div>
 
@@ -6243,7 +6250,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v181</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v182</b></div>
   </div>
 </div>
 
@@ -8567,7 +8574,8 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
   }
   async function portalOpenChatReadStatus(el){
     const g=window.__TR_PORTAL_SYNC__;
-    try{portalShowReadStatus('共通チャットのメッセージ',await g.chatReadStatus(Number(el.dataset.chatReadTs),el.dataset.chatReadSender||''));}
+    const hints={};(chatMessages||[]).forEach(m=>{if(m?.senderUid&&m?.name)hints[m.senderUid]=m.name;});
+    try{portalShowReadStatus('共通チャットのメッセージ',await g.chatReadStatus(Number(el.dataset.chatReadTs),el.dataset.chatReadSender||'',hints));}
     catch(e){showActionFeedback('既読状況を確認できません',String(e?.message||e).slice(0,120));}
   }
   window.__TR_SHOW_READ_STATUS__=portalShowReadStatus; // v181: shared with the room thread
@@ -16612,35 +16620,47 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         catch(e){CR.err='既読を共有できません（'+cErr(e)+'）';console.warn('[TOP RUN v180] chatRead write rejected',cErr(e));cEmit();}
         finally{CR.busy=false;}
       };
-      // Approved participants (memberAccess active). New members are included automatically once approved.
-      gate.readRoster=async()=>{
+      // v182: people to check = approved participants (memberAccess active; new members included automatically once approved)
+      // + the developer-curated chat participant list (chatPeople, which also holds developers/admins).
+      const readDirectory=async()=>{
         if(!cStaff())throw Error('開発者・管理者のみ確認できます');
-        const [ac,rq]=await Promise.all([dbMod.get(ref('memberAccess')),dbMod.get(ref('memberRequests'))]);
-        const acc=ac.val()||{},req=rq.val()||{},rows=[];
+        const [ac,rq,cp]=await Promise.all([
+          dbMod.get(ref('memberAccess')),dbMod.get(ref('memberRequests')),
+          dbMod.get(ref('chatPeople')).catch(()=>null)
+        ]);
+        const acc=ac.val()||{},req=rq.val()||{},cpl=(cp?.val?.()||{}).items||{};
+        const s=x=>typeof x==='string'?x.trim():'';
+        const nameOf=uid=>(s(req[uid]?.displayName)||s(acc[uid]?.displayName)||s(cpl[uid]?.name)||s(req[uid]?.requestedName)).slice(0,24);
+        const roster=new Set();
         for(const [uid,m] of Object.entries(acc)){
           const r=req[uid];
           if(!cUid(uid)||m?.active!==true||typeof m.profileId!=='string'||!m.profileId||(r?.profileId&&m.profileId!==r.profileId))continue;
-          const name=[r?.displayName,m?.displayName,r?.requestedName].map(x=>typeof x==='string'?x.trim():'').find(Boolean)||('名前なし（末尾'+uid.slice(-6)+'）');
-          rows.push({uid,name:name.slice(0,24)});
+          roster.add(uid);
         }
-        return rows.sort((a,b)=>a.name.localeCompare(b.name,'ja'));
+        for(const uid of Object.keys(cpl))if(cUid(uid))roster.add(uid);
+        return {roster,nameOf};
       };
-      gate.chatReadStatus=async(ts,senderUid)=>{
-        const at=Number(ts)||0;if(!at)throw Error('メッセージを確認できません');
-        const people=await gate.readRoster();
+      const label=(uid,dir,hints)=>dir.nameOf(uid)||String(hints?.[uid]||'').trim().slice(0,24)||('名前なし（末尾'+uid.slice(-6)+'）');
+      const byName=(a,b)=>a.localeCompare(b,'ja');
+      // The "seen" list uses exactly the same rule as the 既読N number (everyone except the sender whose read time ≥ the message).
+      gate.chatReadStatus=async(ts,senderUid,hints={})=>{
+        const at=Number(ts)||0,sender=String(senderUid||'');if(!at)throw Error('メッセージを確認できません');
+        const dir=await readDirectory();
         const map=CR.ready?CR.map:((await dbMod.get(ref('chatRead'))).val()||{});
-        const read=[],unread=[];
-        for(const p of people){if(p.uid===String(senderUid||''))continue;(Number(map[p.uid]||0)>=at?read:unread).push(p.name);}
-        return {read,unread};
+        const seen=new Set();
+        for(const [uid,v] of Object.entries(map))if(cUid(uid)&&uid!==sender&&Number(v)>=at)seen.add(uid);
+        const read=[...seen].map(u=>label(u,dir,hints)).sort(byName);
+        const unread=[...dir.roster].filter(u=>u!==sender&&!seen.has(u)).map(u=>label(u,dir,hints)).sort(byName);
+        return {read,unread,label:'対象の人数'};
       };
       gate.noticeReadStatus=async({key,version})=>{
         if(!/^(?:p|e)_[A-Za-z0-9_-]{1,298}$/.test(String(key||'')))throw Error('お知らせを確認できません');
         const need=Number(version)||1;
-        const people=await gate.readRoster();
-        const vals=await Promise.all(people.map(p=>dbMod.get(dbMod.ref(db,'profiles/'+p.uid+'/portalSelf/noticeReads/'+key)).then(s=>Number(s.val())||0)));
+        const dir=await readDirectory(),people=[...dir.roster];
+        const vals=await Promise.all(people.map(uid=>dbMod.get(dbMod.ref(db,'profiles/'+uid+'/portalSelf/noticeReads/'+key)).then(s=>Number(s.val())||0)));
         const read=[],unread=[];
-        people.forEach((p,i)=>(vals[i]>=need?read:unread).push(p.name));
-        return {read,unread};
+        people.forEach((uid,i)=>(vals[i]>=need?read:unread).push(label(uid,dir)));
+        return {read:read.sort(byName),unread:unread.sort(byName),label:'対象の人数'};
       };
     }
     // v133 PORTAL ROOMS (invite-only). Same Auth/db/gateway; paths under portalCommon/topRun:
@@ -20678,10 +20698,15 @@ body.portalChatIsolated > #trMsgSheet{visibility:visible!important;opacity:1!imp
 #screen-chat :is(#portalChatThread,#trRoomThread) .trReadMini.mine{justify-content:flex-end}
 #screen-chat :is(#portalChatThread,#trRoomThread) .trReadMini span{display:inline-block;padding:0 1px}
 #screen-chat :is(#portalChatThread,#trRoomThread) .msg.trReadTap span,#screen-chat :is(#portalChatThread,#trRoomThread) .trReadMini.trReadTap span{cursor:pointer;text-decoration:underline;text-underline-offset:2px}
-/* v181: 既読 sits just outside the bubble's bottom corner (others: right / own: left, where there is room) */
+/* v181/v182: 既読 sits just outside the bubble's right-bottom corner (own and others) */
 #screen-chat :is(#portalChatThread,#trRoomThread) .msg{position:relative}
-#screen-chat :is(#portalChatThread,#trRoomThread) .msg > .trReadMini{position:absolute;bottom:1px;left:calc(100% + 6px);right:auto;margin:0;white-space:nowrap;justify-content:flex-start}
-#screen-chat :is(#portalChatThread,#trRoomThread) .msg.mine > .trReadMini{left:auto;right:calc(100% + 6px);justify-content:flex-end}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg > .trReadMini{position:absolute;bottom:1px;left:calc(100% + 6px)!important;right:auto!important;margin:0;white-space:nowrap;justify-content:flex-start!important}
+/* v182: every bubble (own and others) keeps room on its right; 既読 sits at the bubble's right-bottom */
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg{max-width:min(calc(100% - 58px),620px)!important;padding:10px 14px 11px!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg.mine{margin-right:52px}
+#screen-chat :is(#portalChatThread,#trRoomThread) .trReacts.mine{margin-right:52px}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msgHead{padding-bottom:6px!important;margin-bottom:7px!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg p{line-height:1.6!important}
 #screen-chat :is(#portalChatThread,#trRoomThread) .msg > .trReadMini.trReadTap{padding:6px 4px;margin:-6px -4px}
 /* v181: the read-status sheet and messages must appear while CHAT is isolated */
 body.portalChatIsolated > #modal:not(.hidden){visibility:visible!important;opacity:1!important;pointer-events:auto!important}
