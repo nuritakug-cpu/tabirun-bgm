@@ -1,13 +1,30 @@
-<!-- TOP RUN PORTAL v185 | 2026-10-30 | REACTION TYPOGRAPHY / RHYTHM REVIEW / NOT DEPLOYED
-  EXACT PHYSICAL PARENT: TOP_RUN_PORTAL_V184_ROOM_NOTIFY_THEME_INTEGRATED.html
-  PARENT SHA256: 4089cabcfa5c94fa51352fec57b6e157d563e88213aa2ba937416b815964fc71
-  SCOPE: CHAT + ROOM PRESENTATION ONLY. Text reactions use compact logo-like letterforms,
-  typographic depth, colored ink and minimal framing; seals retain smaller serif/ink styling.
-  Reactions sit immediately under the appropriate message with reduced internal and inter-row whitespace.
-  Message bubble text 14px -> 15px, line-height 1.45 -> 1.53.
-  All existing reactions/selection data, message content, save paths, receipts, mention, reply,
-  auth/UID/profileId, notifications/Worker, Rules, Firebase, and other screens are unchanged.
-  CSS-only change; local automated syntax/layout inspection only, NOT Firebase/mobile field-verified.
+<!-- TOP RUN PORTAL v188 | 2026-10-30 | INTEGRATED REVIEW / NOT DEPLOYED
+  EXACT PHYSICAL PARENT: user-supplied TOP_RUN_PORTAL_v187.html
+  PARENT SHA256: fed1f4d6f11e285d18297f8c259788a46225eabf6212402ba8929e02f86d8d60
+  STYLE DONOR: user-supplied TOP_RUN_PORTAL(20261030-130205).html (v185).
+  v187 (read sheet progress/unread-first, LINE/BAND positioning, notification switches, Winter/Matte, room settings) retained.
+  CHANGE: copy v185 reaction typography, compact padding/spacing, and 15px message text CSS only;
+  TWEAK: own reaction row keeps v187's right-edge alignment (margin-right:0, not v185's 44px).
+  All 26 inline scripts are byte-identical to v187; Firebase, Auth/UID/profileId, RTDB paths, Rules,
+  Worker, messages, receipts, and stored reactions unchanged.
+  This file is an upload candidate, not a production-deployed or real-Firebase-verified result.
+-->
+<!-- TOP RUN PORTAL v187 | 2026-10-30 | REVIEW / NOT DEPLOYED
+  INTEGRATION (3-way merge, common parent v183): Claude v186 (read receipts / LINE-BAND chat layout / read sheet)
+  + ChatGPT v184 ROOM_NOTIFY_THEME_INTEGRATED (room silhouette icons, winter/matte contrast, notification OFF/ON switches).
+  Only the version label, these comments and the two appended <style> blocks overlapped; both kept (ChatGPT block first).
+-->
+<!-- TOP RUN PORTAL v186 | 2026-10-30 | REVIEW / NOT DEPLOYED
+  PARENT: TOP_RUN_PORTAL_v184.html (LINE/BAND layout kept: own = 既読/time at left-bottom, others = right-bottom).
+  CHANGE: read sheet redesigned — total + progress bar, "まだ見ていない人" first, names as equal cells in two columns.
+  No Firebase or Rules change from v183.
+-->
+<!-- TOP RUN PORTAL v184 | 2026-10-30 | REVIEW / NOT DEPLOYED
+  PARENT: TOP_RUN_PORTAL_v183.html.
+  FIX: tapping 既読 opened nothing — the CHAT isolation rule (selector with an #id) outranked the sheet's visibility rule.
+  LAYOUT (BAND style): name above others' bubbles; time and 既読 outside the bottom corner (others right / own left);
+  own bubbles back to the right edge. Reactions: smaller gaps between reactions and between a reaction and its count.
+  CSS-only apart from the version label; no Firebase or Rules change from v183.
 -->
 <!-- TOP RUN PORTAL v184 | 2026-10-30 | SETTINGS / NOTIFICATION UI REVIEW / NOT DEPLOYED
   EXACT PHYSICAL PARENT: user-uploaded TOP_RUN_PORTAL(20261030-113651).html (v183).
@@ -6092,7 +6109,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v184</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v188</b></div>
   </div>
 </div>
 
@@ -6283,7 +6300,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v184</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v188</b></div>
   </div>
 </div>
 
@@ -8597,16 +8614,18 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
     const newest=(chatMessages||[]).reduce((n,m)=>Math.max(n,Number(m?.ts)||0),0);
     if(newest)void g.chatReadMark(newest);
   }
-  // v183: small sheet, names in two neat columns (not the large notice modal).
+  // v186: compact sheet. "まだ見ていない人" first (what staff need), names as equal-width cells in two columns.
   function portalShowReadStatus(title,res){
     document.querySelector('.trReadSheet')?.remove();
     const total=res.read.length+res.unread.length;
-    const list=a=>a.length?'<ul class="trReadNames">'+a.map(n=>'<li>'+esc(n)+'</li>').join('')+'</ul>':'<p class="trReadNone">なし</p>';
+    const cells=a=>a.length?'<ul class="trReadNames">'+a.map(n=>'<li>'+esc(n)+'</li>').join('')+'</ul>':'<p class="trReadNone">いません</p>';
     const el=document.createElement('div');
     el.className='trReadSheet';el.setAttribute('role','dialog');el.setAttribute('aria-label','既読状況');
-    el.innerHTML='<div class="trReadCard"><div class="trReadTop"><span>'+esc(title)+'</span><b>既読 '+res.read.length+'／'+total+'</b></div>'+
-      '<div class="trReadSec"><small>見た人 '+res.read.length+'</small>'+list(res.read)+'</div>'+
-      '<div class="trReadSec"><small>まだの人 '+res.unread.length+'</small>'+list(res.unread)+'</div>'+
+    el.innerHTML='<div class="trReadCard">'+
+      '<div class="trReadTop"><span class="trReadTitle">'+esc(title)+'の既読</span><span class="trReadSum"><b>'+res.read.length+'</b> / '+total+'人</span></div>'+
+      '<div class="trReadBar" aria-hidden="true"><i style="width:'+(total?Math.round(res.read.length/total*100):0)+'%"></i></div>'+
+      '<section class="trReadSec isUnread"><h4><span class="dot"></span>まだ見ていない人<em>'+res.unread.length+'人</em></h4>'+cells(res.unread)+'</section>'+
+      '<section class="trReadSec isRead"><h4><span class="dot"></span>見た人<em>'+res.read.length+'人</em></h4>'+cells(res.read)+'</section>'+
       '<button type="button" class="trReadClose">閉じる</button></div>';
     el.addEventListener('click',e=>{if(e.target===el||e.target.closest('.trReadClose'))el.remove();});
     document.body.appendChild(el);
@@ -20766,19 +20785,26 @@ body.portalChatIsolated > #trMsgSheet{visibility:visible!important;opacity:1!imp
 #screen-chat :is(#portalChatThread,#trRoomThread) .msg.mine .msgHead span:first-child{display:none}
 #screen-chat :is(#portalChatThread,#trRoomThread) .msg.mine{border-radius:16px 16px 4px 16px!important}
 #screen-chat :is(#portalChatThread,#trRoomThread) .msg:not(.mine){border-radius:16px 16px 16px 4px!important}
-/* v183: compact read sheet */
-.trReadSheet{position:fixed;inset:0;z-index:7000;background:rgba(0,0,0,.35);display:flex;align-items:flex-end;justify-content:center;padding:0 12px calc(12px + env(safe-area-inset-bottom,0px))}
-.trReadSheet .trReadCard{width:min(420px,100%);max-height:62dvh;overflow-y:auto;background:#1d1a1c;color:#f6efe9;border:1px solid rgba(255,160,100,.45);border-radius:16px;padding:12px 14px;font-size:13px;box-shadow:0 10px 30px #0007}
-.trReadSheet .trReadTop{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px}
-.trReadSheet .trReadTop span{font-size:12px;opacity:.75}
-.trReadSheet .trReadTop b{font-size:15px}
-.trReadSheet .trReadSec{margin-top:8px}
-.trReadSheet .trReadSec small{display:block;font-size:11px;font-weight:800;opacity:.75;margin-bottom:4px}
-.trReadSheet .trReadNames{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:3px 10px}
-.trReadSheet .trReadNames li{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.5}
-.trReadSheet .trReadNone{margin:0;opacity:.6}
-.trReadSheet .trReadClose{display:block;width:100%;margin-top:12px;min-height:38px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:inherit;font-weight:800}
-body.portalChatIsolated > .trReadSheet{visibility:visible!important;opacity:1!important;pointer-events:auto!important}
+/* v186: read sheet */
+.trReadSheet{position:fixed;inset:0;z-index:7000;background:rgba(0,0,0,.4);display:flex;align-items:flex-end;justify-content:center;padding:0 10px calc(10px + env(safe-area-inset-bottom,0px))}
+.trReadSheet .trReadCard{box-sizing:border-box;width:min(440px,100%);max-height:70dvh;overflow-y:auto;background:#1f1c1e;color:#f6efe9;border:1px solid rgba(255,160,100,.4);border-radius:18px;padding:14px 14px 12px;box-shadow:0 12px 32px #0008}
+.trReadSheet .trReadTop{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.trReadSheet .trReadTitle{font-size:14px;font-weight:900}
+.trReadSheet .trReadSum{font-size:13px;color:#cfc6bf;white-space:nowrap}
+.trReadSheet .trReadSum b{font-size:20px;color:#fff}
+.trReadSheet .trReadBar{height:5px;margin:8px 0 4px;border-radius:9px;background:rgba(255,255,255,.12);overflow:hidden}
+.trReadSheet .trReadBar i{display:block;height:100%;background:#6fcf8f;border-radius:9px}
+.trReadSheet .trReadSec{margin-top:12px}
+.trReadSheet .trReadSec h4{display:flex;align-items:center;gap:6px;margin:0 0 6px;font-size:12px;font-weight:900;color:#e9e1db}
+.trReadSheet .trReadSec h4 em{margin-left:auto;font-style:normal;font-weight:800;color:#bfb6af}
+.trReadSheet .trReadSec .dot{width:8px;height:8px;border-radius:50%;background:#6fcf8f}
+.trReadSheet .trReadSec.isUnread .dot{background:#ff9a52}
+.trReadSheet .trReadNames{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+.trReadSheet .trReadNames li{box-sizing:border-box;min-width:0;padding:6px 9px;border-radius:9px;background:rgba(255,255,255,.07);font-size:13px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trReadSheet .isUnread .trReadNames li{background:rgba(255,154,82,.13)}
+.trReadSheet .trReadNone{margin:0;padding:6px 2px;font-size:12px;color:#a9a19b}
+.trReadSheet .trReadClose{display:block;width:100%;margin-top:14px;min-height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:inherit;font-size:14px;font-weight:800}
+body.portalChatIsolated > div.trReadSheet:not(#screen-chat){visibility:visible!important;opacity:1!important;pointer-events:auto!important}
 #screen-chat :is(#portalChatThread,#trRoomThread) .msg > .trReadMini.trReadTap{padding:6px 4px;margin:-6px -4px}
 /* v181: the read-status sheet and messages must appear while CHAT is isolated */
 body.portalChatIsolated > #modal:not(.hidden){visibility:visible!important;opacity:1!important;pointer-events:auto!important}
@@ -21541,8 +21567,26 @@ html[data-portal-personal-color="matte"] #screen-management-settings #portalEven
 #screen-notification-settings #trStage3Panel button:disabled{background:#29444b!important;color:#ebf5f6!important;-webkit-text-fill-color:#ebf5f6!important;border-color:#6e989c!important;opacity:1!important}
 @media(max-width:355px){#screen-notification-settings #trStage3Panel>div:has(#trStage3Register){grid-template-columns:1fr}#screen-notification-settings #trStage3Register{grid-column:auto}}
 </style>
-
-<style id="v185-chat-reaction-typography-balance">
+<style id="tr-v184-chat-layout">
+/* v184 (BAND / LINE style): name above others' bubbles, time and 既読 outside the bubble's bottom corner.
+   Others: left-aligned, 既読/time at right-bottom. Own: right-aligned, no name, 既読/time at left-bottom. */
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg{position:relative!important;padding:8px 12px!important;max-width:min(calc(100% - 52px),620px)!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg.mine{margin-right:0!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg:not(.mine){margin-top:20px!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg .msgHead{display:block!important;height:0!important;min-height:0!important;padding:0!important;margin:0!important;border:0!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg .msgHead span:first-child{position:absolute!important;left:4px!important;bottom:calc(100% + 3px)!important;max-width:min(260px,calc(100vw - 80px))!important;font-size:12px!important;font-weight:800!important;line-height:1.2!important;color:#8c9191!important;-webkit-text-fill-color:#8c9191!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg.mine .msgHead span:first-child{display:none!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg .msgHead span:last-child{position:absolute!important;bottom:1px!important;left:calc(100% + 6px)!important;right:auto!important;font-size:10px!important;font-weight:700!important;line-height:1.2!important;opacity:1!important;color:#8c9191!important;-webkit-text-fill-color:#8c9191!important;white-space:nowrap}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg.mine .msgHead span:last-child{left:auto!important;right:calc(100% + 6px)!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg > .trReadMini{bottom:15px!important;font-size:10px!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg.mine > .trReadMini{left:auto!important;right:calc(100% + 6px)!important;justify-content:flex-end!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .trReacts.mine{margin-right:0!important}
+/* v184: reactions a little closer together, and the count closer to its reaction */
+#screen-chat :is(#portalChatThread,#trRoomThread) .trReacts{gap:3px!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact,#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact.mine{gap:2px!important;padding:2px 4px!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trTeam{margin-right:1px!important}
+</style>
+<style id="v188-chat-reaction-typography-balance">
 /* v185: keep reactions supporting the message, not replacing it. CSS only. */
 #screen-chat :is(#portalChatThread,#trRoomThread).chatList{gap:10px!important}
 #screen-chat :is(#portalChatThread,#trRoomThread) .msg p{
@@ -21553,7 +21597,7 @@ html[data-portal-personal-color="matte"] #screen-management-settings #portalEven
   gap:4px!important;margin:-8px 5px -3px!important;align-items:center;
 }
 #screen-chat :is(#portalChatThread,#trRoomThread) .trReacts.mine{
-  margin-right:44px!important;justify-content:flex-end;
+  margin-right:0!important;justify-content:flex-end;
 }
 #screen-chat :is(#portalChatThread,#trRoomThread) button.trReact,
 #screen-chat :is(#portalChatThread,#trRoomThread) button.trReact.mine{
