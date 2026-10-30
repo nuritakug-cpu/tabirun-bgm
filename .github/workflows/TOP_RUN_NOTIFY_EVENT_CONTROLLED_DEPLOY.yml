@@ -473,6 +473,14 @@ jobs:
           moReplace('v172 prefsApplied notification response',
             "deliveredToDevice:'unverified'},accepted>0||eligible.length===0?200:502,c);",
             "deliveredToDevice:'unverified',prefsApplied:kind==='chat'?perUserChatNotify!==null:null},accepted>0||eligible.length===0?200:502,c);");
+          // v172: diagnostic response for per-person common CHAT settings.
+          // Status is computed from the single chatNotify read already in stage3Notify;
+          // no additional Firebase request or D1 query is introduced.
+          moReplace('v172 common CHAT prefsApplied response',
+            "return json({ok:accepted>0||eligible.length===0,acceptedByPushService:accepted,attemptedDevices:eligible.length,staleRemoved:invalid,",
+            "return json({ok:accepted>0||eligible.length===0,prefsApplied:kind==='chat'?perUserChatNotify!==null:null,acceptedByPushService:accepted,attemptedDevices:eligible.length,staleRemoved:invalid,");
+          if(!patched.includes("prefsApplied:kind==='chat'?perUserChatNotify!==null:null"))
+            throw Error('v172 prefsApplied response patch not applied');
           if(!patched.includes('roomNotifyAllowed(item,msg,uid)')||
              !patched.includes('portalCommon/topRun/chatNotify')||
              !patched.includes("kind==='roomInvite'"))
