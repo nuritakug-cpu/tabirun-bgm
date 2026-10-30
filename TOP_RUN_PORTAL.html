@@ -1,3 +1,9 @@
+<!-- TOP RUN PORTAL v174 | 2026-10-30 | REVIEW / NOT DEPLOYED
+  PARENT: TOP_RUN_PORTAL_v173.html (SHA256 31ac727522bde4b440d595235ee08b31a51be4da8edff2ed958760d127040bf5).
+  CHANGE: notify setting (all / mention / off) now controls PUSH ONLY. Unread counts (chat button, room list, home-icon badge)
+  always include every unread message, so muted chats are no longer hidden. Off-room counts stay grey in the room list.
+  Setting descriptions updated. Push filtering (Worker), Firebase paths, Rules and all other code unchanged.
+-->
 <!-- TOP RUN PORTAL v173 | 2026-10-30 | REVIEW / NOT DEPLOYED
   PARENT: TOP_RUN_PORTAL_v172.html (SHA256 d80d2a2999ed53e56fd551f99bfff89ca2393ecc0419ba479263ffaf363b37e7).
   FIX ONLY: home-icon badge after reading a NOTICE used notice + ALL common-chat unread (ignored all/mention/off, omitted rooms).
@@ -5989,7 +5995,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v173</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v174</b></div>
   </div>
 </div>
 
@@ -6180,7 +6186,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v173</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v174</b></div>
   </div>
 </div>
 
@@ -8326,10 +8332,10 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
     return chatMessages.filter(m=>!isMyPortalChat(m) && !portalChatReadIds.has(m.id));
   }
   // v173: one place for the chat part of the badge, used by the chat badge AND the notice-read badge sync.
-  // Common chat follows its notify setting (all / mention / off); rooms add unread (off rooms excluded) and invites.
+  // v174: unread counts do not depend on the notify setting; rooms add every unread message and invites.
   function portalChatBadgeCounts(){
-    const cMode=window.__TR_PORTAL_SYNC__?.commonNotify?.()||'all',cUid=window.__TR_PORTAL_SYNC__?.uid||'';
-    const common=cMode==='off'?0:cMode==='mention'?unreadPortalChatMessages().filter(m=>!!(m.mentions&&cUid&&m.mentions[cUid])).length:unreadPortalChatMessages().length;
+    // v174: the notify setting controls push only; unread is always counted (all / mention / off alike).
+    const common=unreadPortalChatMessages().length;
     return {common,total:common+Number(window.__TR_ROOMS_UNREAD__?.()||0)};
   }
   function renderPortalChatBadge(){
@@ -16482,13 +16488,13 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       const refreshCount=id=>{
         const me=RM.mine[id],m=metaOf(id);
         if(!me||me.status!=='joined'||!m)return;
-        const lastAt=Number(m.lastAt||0),readAt=Number(me.readAt||0),mode=me.notify==='mention'?'mention':'all',key=lastAt+'|'+readAt+'|'+mode;
+        const lastAt=Number(m.lastAt||0),readAt=Number(me.readAt||0),key=lastAt+'|'+readAt; // v174: count all unread whatever the notify setting
         if(lastAt<=readAt||RM.openId===id){if(RM.counts[id]){RM.counts[id]=0;}RM.countKey[id]=key;return;}
         if(RM.countKey[id]===key)return;
         RM.countKey[id]=key;const uid=RM.uid;
         dbMod.get(dbMod.query(ref('roomMessages/'+id),dbMod.orderByChild('ts'),dbMod.startAfter(readAt),dbMod.limitToLast(99)))
           .then(s=>{if(RM.uid!==uid||RM.countKey[id]!==key)return;const v=s.val()||{};
-            RM.counts[id]=Object.values(v).filter(x=>x&&x.senderUid!==uid&&(mode!=='mention'||!!(x.mentions&&x.mentions[uid]))).length;emit();})
+            RM.counts[id]=Object.values(v).filter(x=>x&&x.senderUid!==uid).length;emit();})
           .catch(()=>{});
       };
       const syncMeta=()=>{
@@ -16543,7 +16549,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
           const lastAt=Number(m?.lastAt||0),readAt=Number(me?.readAt||0);
           const pending=status==='joined'&&lastAt>readAt&&RM.openId!==id;
           const nmode=['mention','off'].includes(me?.notify)?me.notify:'all';
-          const count=pending?(RM.counts[id]===undefined||RM.countKey[id]!==lastAt+'|'+readAt+'|'+(nmode==='mention'?'mention':'all')?(nmode==='mention'?0:1):RM.counts[id]):0;
+          const count=pending?(RM.counts[id]===undefined||RM.countKey[id]!==lastAt+'|'+readAt?1:RM.counts[id]):0;
           return {id,name:String(m?.name||''),category:CATS.includes(m?.category)?m.category:'other',status,lastAt,
             unread:count>0,count,notify:nmode,loaded:!!m};
         }).filter(r=>r.loaded&&(r.status==='invited'||r.status==='joined'||r.status==='view'))
@@ -16552,7 +16558,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       };
       gate.roomsUnread=()=>{
         if(!rOk())return 0;
-        return gate.roomsState().rooms.reduce((n,r)=>n+(r.status==='invited'?1:(r.notify==='off'?0:r.count||0)),0);
+        return gate.roomsState().rooms.reduce((n,r)=>n+(r.status==='invited'?1:r.count||0),0); // v174: off rooms counted too
       };
       // v171: notification setting per room (all / mention / off), saved on the member's own userRooms record.
       gate.commonNotify=()=>RM.common||'all';
@@ -19301,8 +19307,8 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
       return back+'<div class="trRoomCard"><b class="trCardTitle">通知</b><div class="trNotifyList" role="radiogroup" aria-label="通知の設定">'+
         opt('all','すべて通知','新しいメッセージが来たら通知します')+
         opt('mention','メンションのみ','自分あて（@名前）のメッセージだけ通知します')+
-        opt('off','通知オフ','通知しません。未読はルーム一覧で確認できます')+
-        '</div><p class="trRoomNote">ホーム画面アイコンのバッジ（未読数）にも同じ設定が使われます。</p></div>';
+        opt('off','通知オフ','通知は送りません。未読の数は表示します')+
+        '</div><p class="trRoomNote">この設定で変わるのはプッシュ通知だけです。未読の数（チャットボタン・ホーム画面アイコン）は、どの設定でも表示されます。</p></div>';
     }
     if(setTab==='members')return back;
     const item=(attr,icon,title,sub,cls='')=>'<button type="button" class="trRoomBtn trSetItem'+cls+'" '+attr+'><span class="trSetIcon" aria-hidden="true">'+icon+'</span><span class="trSetText"><b>'+title+'</b>'+(sub?'<small>'+sub+'</small>':'')+'</span><span class="trSetGo" aria-hidden="true">›</span></button>';
@@ -19436,7 +19442,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
     if(isRoom(view)){const cur=roomOf(s,view);if(cur&&(cur.status==='invited'||(cur.status==='view')!==viewOnly)){openRoom(view);return;}}
     if(view.startsWith('invite:')){const r=roomOf(s,view.slice(7));if(!r||r.status!=='invited')leaveView();}
     if(view.startsWith('settings:'))renderSettings(false);
-    const n=s.rooms.reduce((t,r)=>t+(r.status==='invited'?1:(r.notify==='off'?0:(r.count||0))),0),b=$('trRoomsBadge');
+    const n=s.rooms.reduce((t,r)=>t+(r.status==='invited'?1:(r.count||0)),0),b=$('trRoomsBadge'); // v174
     b.textContent=n>99?'99+':String(n);b.hidden=n===0;
     if(!$('trRoomsSheet').hidden)renderSheet(s);
     if(isRoom(view)&&!rfActive)renderThread(s);
