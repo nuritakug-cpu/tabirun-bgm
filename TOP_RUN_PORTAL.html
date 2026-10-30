@@ -1,3 +1,10 @@
+<!-- TOP RUN PORTAL v181 | 2026-10-30 | REVIEW / NOT DEPLOYED
+  PARENT: TOP_RUN_PORTAL_v180.html (SHA256 1c996f27972ea5fb606d0984c3d948af2d9aefd59b2242b2e5a24ace117e31fe).
+  FIX: 既読 placed just outside the bubble's bottom corner (others: right, own: left) instead of under reactions.
+  FIX: tapping 既読 showed nothing: the sheet (#modal) and toast were hidden by the CHAT isolation CSS.
+  ROOMS: 既読N on every message (not only own), same position; developers/admins tap for seen / not-seen names.
+  No Firebase path or Rules change from v180.
+-->
 <!-- TOP RUN PORTAL v180 | 2026-10-30 | REVIEW / NOT DEPLOYED
   PARENT: TOP_RUN_PORTAL_v179_READ_REPAIR_STAMPS.html (uploaded file).
   ADD: common CHAT read receipts. portalCommon/topRun/chatRead/<uid> = server time of the latest common-chat view
@@ -6045,7 +6052,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v180</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v181</b></div>
   </div>
 </div>
 
@@ -6236,7 +6243,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v180</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v181</b></div>
   </div>
 </div>
 
@@ -8491,8 +8498,8 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
           <span>${esc(m.name||'参加者')}</span>
           <span>${Number.isFinite(d.getTime())?d.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):''}</span>
         </div>
-        ${D?D.quote(m):''}<p>${D?D.text(m):esc(m.text||'')}</p>
-      </div>${D?D.reacts(m,isMyPortalChat(m)):''}${portalChatReadMini(m)}`;
+        ${D?D.quote(m):''}<p>${D?D.text(m):esc(m.text||'')}</p>${portalChatReadMini(m)}
+      </div>${D?D.reacts(m,isMyPortalChat(m)):''}`;
     }).join('');
     const pcf=portalListFilterState.chat;
     const portalChatFiltered=!!pcf&&((pcf.mode==='day'&&!!pcf.day)||(pcf.mode==='month'&&!!pcf.month)||(pcf.mode==='range'&&!!(pcf.start||pcf.end)));
@@ -8554,7 +8561,7 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
     openModal('既読状況',title);
     const total=res.read.length+res.unread.length;
     $('modalNoticeBody').textContent=
-      `承認済みの参加者 ${total}人\n\n見た人 ${res.read.length}人\n${res.read.join('、')||'—'}\n\nまだ見ていない人 ${res.unread.length}人\n${res.unread.join('、')||'—'}`;
+      `${res.label||'承認済みの参加者'} ${total}人\n\n見た人 ${res.read.length}人\n${res.read.join('、')||'—'}\n\nまだ見ていない人 ${res.unread.length}人\n${res.unread.join('、')||'—'}`;
     $('modalNoticeBody').hidden=false;
     modal.classList.add('portalNoticeDetailOpen');
   }
@@ -8563,7 +8570,8 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
     try{portalShowReadStatus('共通チャットのメッセージ',await g.chatReadStatus(Number(el.dataset.chatReadTs),el.dataset.chatReadSender||''));}
     catch(e){showActionFeedback('既読状況を確認できません',String(e?.message||e).slice(0,120));}
   }
-  $('portalChatThread').addEventListener('click',e=>{const el=e.target.closest('[data-chat-read-ts]');if(el)void portalOpenChatReadStatus(el);});
+  window.__TR_SHOW_READ_STATUS__=portalShowReadStatus; // v181: shared with the room thread
+  $('portalChatThread').addEventListener('click',e=>{const el=e.target.closest('[data-chat-read-ts]');if(!el)return;e.preventDefault();e.stopPropagation();void portalOpenChatReadStatus(el);},true);
   $('portalChatThread').addEventListener('keydown',e=>{const el=e.target.closest('[data-chat-read-ts]');if(el&&(e.key==='Enter'||e.key===' ')){e.preventDefault();void portalOpenChatReadStatus(el);}});
   window.addEventListener('tr-chat-read',()=>{if(!chatScreen.classList.contains('hidden'))renderChat();});
   document.addEventListener('visibilitychange',()=>{
@@ -19577,11 +19585,32 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
     }
     return count;
   }
+  // v181: shown on every message (same as the common chat). Count = joined members other than the sender who opened it.
   function roomReadMini(m,uid,members){
-    if(m?.senderUid!==uid)return '';
-    const count=roomReadCount(members,m,uid);
-    return count?'<div class="trReadMini mine" aria-label="既読'+count+'"><span>既読'+count+'</span></div>':'';
+    const ts=Number(m?.ts||0);if(!ts||!members||typeof members!=='object')return '';
+    const sender=String(m?.senderUid||'');let count=0;
+    for(const [memberUid,row] of Object.entries(members)){
+      if(memberUid===sender||String(row?.status||'')!=='joined')continue;
+      if(Number(row?.readAt||0)>=ts)count++;
+    }
+    const staff=['developer','admin'].includes(window.__TR_PORTAL_SYNC__?.role);
+    if(!count&&!staff)return '';
+    const tap=staff?' role="button" tabindex="0" data-room-read-ts="'+ts+'" data-room-read-sender="'+esc(sender)+'"':'';
+    return '<div class="trReadMini'+(sender===uid?' mine':'')+(staff?' trReadTap':'')+'"'+tap+' aria-label="既読'+count+'"><span>既読'+count+(staff?' ›':'')+'</span></div>';
   }
+  function roomOpenReadStatus(el){
+    const s=window.__TR_PORTAL_SYNC__?.roomsState?.()||{},members=s.openMembers||{};
+    const ts=Number(el.dataset.roomReadTs)||0,sender=el.dataset.roomReadSender||'',read=[],unread=[];
+    for(const [u,row] of Object.entries(members)){
+      if(u===sender||String(row?.status||'')!=='joined')continue;
+      const name=String(row?.name||'').trim()||('名前なし（末尾'+u.slice(-6)+'）');
+      (Number(row?.readAt||0)>=ts?read:unread).push(name);
+    }
+    read.sort((a,b)=>a.localeCompare(b,'ja'));unread.sort((a,b)=>a.localeCompare(b,'ja'));
+    window.__TR_SHOW_READ_STATUS__?.('ルームのメッセージ',{read,unread,label:'このルームのメンバー'});
+  }
+  // delegated on document (the room thread is built later); capture so the bubble's own tap actions don't run
+  document.addEventListener('click',e=>{const el=e.target.closest?.('#trRoomThread [data-room-read-ts]');if(!el)return;e.preventDefault();e.stopPropagation();roomOpenReadStatus(el);},true);
   function msgsHtml(list,uid,members){
     let last='';
     return list.map(m=>{
@@ -19591,7 +19620,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
       const mine=m.senderUid===uid;
       const time=ts?d.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):'';
       const D=window.__trChatDecor;
-      return band+'<div class="msg'+(mine?' mine':'')+(D&&D.mentioned(m)?' trMentioned':'')+'" data-mid="'+esc(m.id||'')+'"><div class="msgHead"><span>'+esc(m.name||'参加者')+'</span><span>'+esc(time)+'</span></div>'+(D?D.quote(m):'')+'<p>'+(D?D.text(m):esc(m.text||''))+'</p></div>'+(D?D.reacts(m,mine):'')+roomReadMini(m,uid,members);
+      return band+'<div class="msg'+(mine?' mine':'')+(D&&D.mentioned(m)?' trMentioned':'')+'" data-mid="'+esc(m.id||'')+'"><div class="msgHead"><span>'+esc(m.name||'参加者')+'</span><span>'+esc(time)+'</span></div>'+(D?D.quote(m):'')+'<p>'+(D?D.text(m):esc(m.text||''))+'</p>'+roomReadMini(m,uid,members)+'</div>'+(D?D.reacts(m,mine):'');
     }).join('');
   }
   const chatMain=()=>document.querySelector('#screen-chat > main.chatMain');
@@ -20648,7 +20677,15 @@ body.portalChatIsolated > #trMsgSheet{visibility:visible!important;opacity:1!imp
 #screen-chat :is(#portalChatThread,#trRoomThread) .trReadMini{display:flex;align-items:center;gap:4px;margin:-3px 10px 9px;font-size:10px;line-height:1;color:#7f8585;letter-spacing:.02em}
 #screen-chat :is(#portalChatThread,#trRoomThread) .trReadMini.mine{justify-content:flex-end}
 #screen-chat :is(#portalChatThread,#trRoomThread) .trReadMini span{display:inline-block;padding:0 1px}
-#screen-chat #portalChatThread .trReadMini.trReadTap span{cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg.trReadTap span,#screen-chat :is(#portalChatThread,#trRoomThread) .trReadMini.trReadTap span{cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+/* v181: 既読 sits just outside the bubble's bottom corner (others: right / own: left, where there is room) */
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg{position:relative}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg > .trReadMini{position:absolute;bottom:1px;left:calc(100% + 6px);right:auto;margin:0;white-space:nowrap;justify-content:flex-start}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg.mine > .trReadMini{left:auto;right:calc(100% + 6px);justify-content:flex-end}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg > .trReadMini.trReadTap{padding:6px 4px;margin:-6px -4px}
+/* v181: the read-status sheet and messages must appear while CHAT is isolated */
+body.portalChatIsolated > #modal:not(.hidden){visibility:visible!important;opacity:1!important;pointer-events:auto!important}
+body.portalChatIsolated > #portalActionToast.show{visibility:visible!important;opacity:1!important;pointer-events:auto!important}
 @media(max-width:370px){#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact{padding:4px 7px;min-height:28px}#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trTextFace{width:38px;max-width:38px;height:20px}}
 </style>
 <style id="v176-frameless-reactions-only">
