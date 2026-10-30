@@ -1,3 +1,32 @@
+<!-- TOP RUN PORTAL v187 | 2026-10-30 | REVIEW / NOT DEPLOYED
+  INTEGRATION (3-way merge, common parent v183): Claude v186 (read receipts / LINE-BAND chat layout / read sheet)
+  + ChatGPT v184 ROOM_NOTIFY_THEME_INTEGRATED (room silhouette icons, winter/matte contrast, notification OFF/ON switches).
+  Only the version label, these comments and the two appended <style> blocks overlapped; both kept (ChatGPT block first).
+-->
+<!-- TOP RUN PORTAL v186 | 2026-10-30 | REVIEW / NOT DEPLOYED
+  PARENT: TOP_RUN_PORTAL_v184.html (LINE/BAND layout kept: own = 既読/time at left-bottom, others = right-bottom).
+  CHANGE: read sheet redesigned — total + progress bar, "まだ見ていない人" first, names as equal cells in two columns.
+  No Firebase or Rules change from v183.
+-->
+<!-- TOP RUN PORTAL v184 | 2026-10-30 | REVIEW / NOT DEPLOYED
+  PARENT: TOP_RUN_PORTAL_v183.html.
+  FIX: tapping 既読 opened nothing — the CHAT isolation rule (selector with an #id) outranked the sheet's visibility rule.
+  LAYOUT (BAND style): name above others' bubbles; time and 既読 outside the bottom corner (others right / own left);
+  own bubbles back to the right edge. Reactions: smaller gaps between reactions and between a reaction and its count.
+  CSS-only apart from the version label; no Firebase or Rules change from v183.
+-->
+<!-- TOP RUN PORTAL v184 | 2026-10-30 | SETTINGS / NOTIFICATION UI REVIEW / NOT DEPLOYED
+  EXACT PHYSICAL PARENT: user-uploaded TOP_RUN_PORTAL(20261030-113651).html (v183).
+  ROOM: replace emoji setting icons with monochrome silhouette SVGs, no new resources.
+  WINTER / MATTE: fix result editor and developer credential contrast, including disabled buttons.
+  NOTIFICATION: device-level NOTICE and CHAT controls are compact explicit OFF/ON switches.
+  Device registration checks existing Worker status when notification settings open (one existing endpoint call),
+  and shows registered vs unsaved vs unchecked state without treating a draft as saved.
+  ROOM: current all/mention/off choices remain stored in existing roomMembers/userRooms/chatNotify locations.
+  Device CHAT registration is an additional global prerequisite; server Worker enforcement remains unverified.
+  Preserve v183 read receipts, chat/rooms, reactions, member identity, Auth/UID/profileId and RTDB paths/Rules.
+  No GitHub, Firebase Rules, Worker deployment, production writes, or on-device verification.
+-->
 <!-- TOP RUN PORTAL v183 | 2026-10-30 | REVIEW / NOT DEPLOYED
   PARENT: TOP_RUN_PORTAL_v182.html (SHA256 40357549cac65da6e761c6321abf265e995264fe925bee8fc4da67adace12300).
   READ RECEIPTS: the people counted and listed are exactly 管理画面の設定「チャットの参加者」 (chatPeople), for the
@@ -6033,20 +6062,22 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
 <div class="portalScreen hidden" id="screen-notification-settings" aria-hidden="true">
   <div class="portalScreenHead"><button type="button" class="portalBack" data-back>← MY PAGE</button><div><small>COMMON PERSONAL</small><b>設定</b></div><span class="portalHeadSpacer"></span></div>
   <div class="portalScreenBody">
-    <details class="trPushSettings" id="trPushSettings"><summary>通知の受け取り設定</summary>
+    <details class="trPushSettings" id="trPushSettings"><summary>通知設定</summary>
       <!-- The published production Stage3 participant/device settings are retained here. -->
       <div id="trStage3Panel" class="trPushStage3" style="margin-top:16px;padding:13px;border:1px solid #a4aba5;border-radius:12px">
-        <strong>通知の受け取り設定</strong>
-        <p style="margin:7px 0 10px">この端末で受け取る通知を選び、本人として登録してください。</p>
-        <label style="display:flex;gap:8px;align-items:center;margin:9px 0"><input type="checkbox" id="trStage3Notice">お知らせ通知を受け取る</label>
-        <label style="display:flex;gap:8px;align-items:center;margin:9px 0"><input type="checkbox" id="trStage3Chat">CHAT通知を受け取る</label>
+        <strong>この端末の通知</strong>
+        <p class="trDeviceIntro">初期状態は両方OFF。変更後は「設定を保存」を押します。</p>
+        <div id="trDeviceNotifyState" class="trDeviceNotifyState" role="status" aria-live="polite">登録状況を確認していません（表示はOFF）</div>
+        <label class="trDeviceSwitchRow" for="trStage3Notice"><span class="trDeviceSwitchText"><b>お知らせ通知</b><small>PORTALのお知らせ</small></span><span class="trDeviceSwitchRight"><input type="checkbox" id="trStage3Notice"><i aria-hidden="true"></i><strong class="trDeviceSwitchState" aria-hidden="true"></strong></span></label>
+        <label class="trDeviceSwitchRow" for="trStage3Chat"><span class="trDeviceSwitchText"><b>CHAT通知</b><small>共通チャット・各ルームの端末受信を一括設定</small></span><span class="trDeviceSwitchRight"><input type="checkbox" id="trStage3Chat"><i aria-hidden="true"></i><strong class="trDeviceSwitchState" aria-hidden="true"></strong></span></label>
+        <p class="trDeviceScopeNote">CHAT通知は端末側とルーム別の2段階設定です。未読表示はOFFでも残ります。</p>
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0">
-          <button type="button" id="trStage3Register" disabled>この端末を登録・更新</button>
-          <button type="button" id="trStage3Status" disabled>登録状態を確認</button>
-          <button type="button" id="trStage3Revoke" disabled>この端末の登録を解除</button>
+          <button type="button" id="trStage3Register" disabled>設定を保存・端末を登録</button>
+          <button type="button" id="trStage3Status" disabled>登録状態を再確認</button>
+          <button type="button" id="trStage3Revoke" disabled>通知をすべてOFFにする（登録解除）</button>
         </div>
         <p id="trStage3Message" role="status" aria-live="polite">既存の本人認証と通知サーバーを確認してから登録できます。</p>
-        <p id="trStage3PrefsApplied" role="status" aria-live="polite" style="font-size:12px;color:var(--ink2);margin:10px 0 0">共通チャットのプッシュ通知設定：反映状況は未確認（投稿後、この端末に結果を表示）</p>
+        <p id="trStage3PrefsApplied" role="status" aria-live="polite" class="trDeviceWorkerNote">端末通知の到達は、保存後に実機で確認してください。</p>
       </div>
       <details id="trPushStage2Diagnostics" style="margin-top:10px"><summary>開発者用：通知の接続診断</summary><p>開発者向けの通信診断です。通常の通知登録には不要です。</p>
 <p>開発段階の通信登録です。通知の自動配信・本人別の宛先判定・未読バッジは未実装です。現行のお知らせやチャットには影響しません。</p>
@@ -6067,7 +6098,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v183</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v187</b></div>
   </div>
 </div>
 
@@ -6258,7 +6289,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v183</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v187</b></div>
   </div>
 </div>
 
@@ -7366,7 +7397,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       });
     }
     if(name === 'mypage')flowLoadBasicProfile();
-    if(name === 'notification-settings')$('trPushSettings').open=false;
+    if(name === 'notification-settings')$('trPushSettings').open=true;
     if(name === 'goal-tools'){portalGoalSwitchTab('setting',{keepScroll:true});portalGoalRefreshOverview();}
     if(name === 'calendar') renderFullCalendar();
     if(name === 'links') renderLinks();
@@ -8572,16 +8603,18 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
     const newest=(chatMessages||[]).reduce((n,m)=>Math.max(n,Number(m?.ts)||0),0);
     if(newest)void g.chatReadMark(newest);
   }
-  // v183: small sheet, names in two neat columns (not the large notice modal).
+  // v186: compact sheet. "まだ見ていない人" first (what staff need), names as equal-width cells in two columns.
   function portalShowReadStatus(title,res){
     document.querySelector('.trReadSheet')?.remove();
     const total=res.read.length+res.unread.length;
-    const list=a=>a.length?'<ul class="trReadNames">'+a.map(n=>'<li>'+esc(n)+'</li>').join('')+'</ul>':'<p class="trReadNone">なし</p>';
+    const cells=a=>a.length?'<ul class="trReadNames">'+a.map(n=>'<li>'+esc(n)+'</li>').join('')+'</ul>':'<p class="trReadNone">いません</p>';
     const el=document.createElement('div');
     el.className='trReadSheet';el.setAttribute('role','dialog');el.setAttribute('aria-label','既読状況');
-    el.innerHTML='<div class="trReadCard"><div class="trReadTop"><span>'+esc(title)+'</span><b>既読 '+res.read.length+'／'+total+'</b></div>'+
-      '<div class="trReadSec"><small>見た人 '+res.read.length+'</small>'+list(res.read)+'</div>'+
-      '<div class="trReadSec"><small>まだの人 '+res.unread.length+'</small>'+list(res.unread)+'</div>'+
+    el.innerHTML='<div class="trReadCard">'+
+      '<div class="trReadTop"><span class="trReadTitle">'+esc(title)+'の既読</span><span class="trReadSum"><b>'+res.read.length+'</b> / '+total+'人</span></div>'+
+      '<div class="trReadBar" aria-hidden="true"><i style="width:'+(total?Math.round(res.read.length/total*100):0)+'%"></i></div>'+
+      '<section class="trReadSec isUnread"><h4><span class="dot"></span>まだ見ていない人<em>'+res.unread.length+'人</em></h4>'+cells(res.unread)+'</section>'+
+      '<section class="trReadSec isRead"><h4><span class="dot"></span>見た人<em>'+res.read.length+'人</em></h4>'+cells(res.read)+'</section>'+
       '<button type="button" class="trReadClose">閉じる</button></div>';
     el.addEventListener('click',e=>{if(e.target===el||e.target.closest('.trReadClose'))el.remove();});
     document.body.appendChild(el);
@@ -18306,6 +18339,9 @@ setInterval(display,1000);
  const register=document.getElementById('trStage3Register');
  const status=document.getElementById('trStage3Status');
  const revoke=document.getElementById('trStage3Revoke');
+ const deviceState=document.getElementById('trDeviceNotifyState');
+ let dirty=false;
+ const stateText=text=>{if(deviceState)deviceState.textContent=String(text);};
  const say=text=>{message.textContent=String(text).slice(0,240);};
  const gate=()=>window.__TR_PORTAL_SYNC__;
  const eligible=()=>{
@@ -18441,11 +18477,11 @@ setInterval(display,1000);
  async function readiness(){
    const run=++epoch;manager=null;publicKey=null;disable();
    if(!box.open)return;
-   if(!eligible()){say('既存の本人認証・参加承認を確認できません。新しいUIDは発行しません。');return;}
-   if(!onSite()){say('GitHub Pagesの正規PORTALから起動してください。');return;}
-   if(isIOS()&&!standalone()){say('iPhoneはホーム画面のPORTALアイコンから開いてください。');return;}
+   if(!eligible()){stateText('本人確認ができないため登録状態は未確認です');say('既存の本人認証・参加承認を確認できません。新しいUIDは発行しません。');return;}
+   if(!onSite()){stateText('確認できません（正規URL以外）');say('GitHub Pagesの正規PORTALから起動してください。');return;}
+   if(isIOS()&&!standalone()){stateText('確認できません（iPhoneはホーム画面のPORTALから）');say('iPhoneはホーム画面のPORTALアイコンから開いてください。');return;}
    if(!('Notification' in window)||Notification.permission==='denied'){
-     say('iPhone・ブラウザの通知設定を確認してください。');return;
+     stateText('端末通知が許可されていません（登録状態未確認）');say('iPhone・ブラウザの通知設定を確認してください。');return;
    }
    try{
      const response=await fetch(BASE+'/api/stage2/config',{mode:'cors',cache:'no-store'});
@@ -18481,14 +18517,17 @@ setInterval(display,1000);
      publicKey=key;
      if(run!==epoch||!box.open||!eligible())return;
      controls(true);
-     say(Notification.permission==='granted'
-       ?'本人とこの端末を紐付けできます。カテゴリを選び「登録・更新」を押してください。'
-       :'通知許可は「登録・更新」を押した際に求めます。');
-   }catch(e){if(run===epoch)say(String(e?.message||'通知の準備が未完了です'));}
+     if(Notification.permission==='granted'){
+       if(!dirty){stateText('この端末の登録状態を確認中…');void runAction('status',true);}else stateText('変更があります（未保存）');
+     }else{
+       stateText('未登録（お知らせ OFF／CHAT OFF）');
+       say('通知をONにする場合はスイッチを選び「設定を保存・端末を登録」を押してください。');
+     }
+   }catch(e){if(run===epoch){stateText('登録状態は未確認です（通知サーバーに接続できません）');say(String(e?.message||'通知の準備が未完了です'));}}
  }
- async function runAction(type){
+ async function runAction(type,automatic=false){
    if(busy||!box.open||!eligible()||!manager||!publicKey){say('本人と通知の準備を確認してください');return;}
-   if(type==='register'&&!notice.checked&&!chat.checked){say('お知らせ・CHATの少なくとも1つを選択してください');return;}
+   if(type==='register'&&!notice.checked&&!chat.checked){stateText('両方OFFにする場合は「通知をすべてOFFにする」を使ってください');say('両方OFFは端末の登録解除で保存します。');return;}
    const startGate={uid:gate().uid,profileId:gate().profileId};
    busy=true;disable();
    try{
@@ -18499,30 +18538,36 @@ setInterval(display,1000);
        sub=Notification.permission==='granted'?await currentSubscription():null;
        if(!sub)sub=await manager.subscribe({userVisibleOnly:true,applicationServerKey:publicKey});
      }else sub=await currentSubscription();
-     if(!sub){say('この端末には通知購読がありません。');return;}
+     if(!sub){if(type==='status'&&!dirty){notice.checked=false;chat.checked=false;stateText('未登録（お知らせ OFF／CHAT OFF）');}say('この端末には通知購読がありません。');return;}
      if(!checkSame(startGate))throw Error('本人が切り替わったため保存を停止しました');
      const id=await idOf(sub);
      if(type==='register'){
        const ack=await invoke('register',{subscription:sub.toJSON(),consent:true,
          noticeEnabled:notice.checked,chatEnabled:chat.checked});
        if(ack.id!==id||ack.registered!==true)throw Error('登録先IDが一致しないため成立を確認できません');
-       say('この端末の本人別通知登録が保存されました。登録するとお知らせ・CHATを通知で受け取れます。');
+       dirty=false;stateText('保存済み：お知らせ '+(notice.checked?'ON':'OFF')+' ／ CHAT '+(chat.checked?'ON':'OFF'));
+       say('この端末の通知設定を保存しました。');
      }else if(type==='status'){
        const ack=await invoke('status',{id});
-       if(!ack.registered){say('この端末は本人別通知に未登録です。');return;}
-       notice.checked=ack.noticeEnabled===true;chat.checked=ack.chatEnabled===true;
-       say('登録済み：お知らせ '+(notice.checked?'ON':'OFF')+'／CHAT '+(chat.checked?'ON':'OFF')+'。正式通知を受け取れます。');
+       if(!ack.registered){if(!dirty||!automatic){notice.checked=false;chat.checked=false;dirty=false;}stateText('未登録（お知らせ OFF／CHAT OFF）');say('この端末は通知に未登録です。');return;}
+       if(!dirty||!automatic){notice.checked=ack.noticeEnabled===true;chat.checked=ack.chatEnabled===true;dirty=false;}
+       stateText(dirty?'変更があります（未保存）':'保存済み：お知らせ '+(notice.checked?'ON':'OFF')+' ／ CHAT '+(chat.checked?'ON':'OFF'));
+       if(!automatic)say('登録状態を確認しました。');
      }else if(type==='revoke'){
        const ack=await invoke('revoke',{id});
        if(ack.revoked!==true)throw Error('解除結果を確認できません');
-       notice.checked=false;chat.checked=false;
+       notice.checked=false;chat.checked=false;dirty=false;stateText('未登録（お知らせ OFF／CHAT OFF）');
        // Keep origin subscription untouched because Stage2 may be using it.
        say('本人別通知の端末登録を解除しました。従来の通信テストは変更していません。');
      }
-   }catch(e){say('操作できません：'+String(e?.message||'通信エラー').slice(0,190));}
+   }catch(e){stateText('登録状態は未確認です（設定変更は保存されていません）');if(!automatic)say('操作できません：'+String(e?.message||'通信エラー').slice(0,190));}
    finally{busy=false;controls(!!manager&&!!publicKey&&box.open&&eligible());}
  }
- box.addEventListener('toggle',readiness);
+ for(const input of [notice,chat])input.addEventListener('change',()=>{
+   dirty=true;stateText('変更があります（未保存）');
+   say(!notice.checked&&!chat.checked?'両方OFFにする場合は「通知をすべてOFFにする（登録解除）」を押してください。':'設定の変更は「設定を保存・端末を登録」で確定します。');
+ });
+ box.addEventListener('toggle',()=>{if(box.open){if(!dirty){notice.checked=false;chat.checked=false;stateText('登録状況を確認しています…');}void readiness();}else{dirty=false;}});
  window.addEventListener('tr-portal-identity-ready',()=>{if(box.open)void readiness();});
  window.addEventListener('tr-portal-authorized',()=>{if(box.open)void readiness();});
  register.addEventListener('click',()=>void runAction('register'));
@@ -19528,6 +19573,14 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
 
   // v171: each row = 「ルームへ移動」(left, wide) + 「設定」(right). Member/notify/leave moved into 設定.
   const GEAR='<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
+  // v184: quiet, single-tone silhouettes instead of color emoji (no external images).
+  const silhouettes={
+    people:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="7.3" r="3.3"/><path d="M2 19.5v-2.6c0-3.4 3.1-5.3 7-5.3s7 1.9 7 5.3v2.6z"/><circle cx="18.1" cy="8.7" r="2.7"/><path d="M17 12.5c3.2.1 5 1.7 5 4.4v2.6h-4v-2.6c0-1.7-.4-3.1-1-4.4z"/></svg>',
+    bell:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5c-3.6 0-6.2 2.8-6.2 6.5v4.3c0 1.6-1.1 2.9-2.2 4.2a1 1 0 0 0 .8 1.7h15.2a1 1 0 0 0 .8-1.7c-1.1-1.3-2.2-2.6-2.2-4.2V9c0-3.7-2.6-6.5-6.2-6.5ZM9.2 20h5.6a2.9 2.9 0 0 1-5.6 0Z"/></svg>',
+    pencil:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 16.8 10.8-10.8 3.2 3.2L7.2 20H4zM16.1 4.7l1.4-1.4a2 2 0 0 1 2.8 0l.4.4a2 2 0 0 1 0 2.8l-1.4 1.4z"/></svg>',
+    leave:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 2.5h12v19H3v-3h8v-13H6v10H3z"/><path d="M13 10h6l-2-2 1.6-1.6L23 12l-4.4 5.6L17 16l2-2h-6z"/></svg>',
+    trash:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4V2.5h10V4h5v2.6H2V4zm-3 4h16l-1.2 13H5.2zm5 2.5v8h2v-8zm4 0v8h2v-8z"/></svg>'
+  };
   const notifyText=m=>m==='mention'?'メンションのみ':m==='off'?'通知オフ':'すべて通知';
   const notifyTag=m=>m==='mention'?'🔔 メンションのみ':m==='off'?'🔕 通知オフ':'';
   function renderSheet(s){
@@ -19564,16 +19617,16 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
         opt('all','すべて通知','新しいメッセージが来たら通知します')+
         opt('mention','メンションのみ','自分あて（@名前）のメッセージだけ通知します')+
         opt('off','通知オフ','通知は送りません。未読の数は表示します')+
-        '</div><p class="trRoomNote">この設定で変わるのはプッシュ通知だけです。未読の数は、どの設定でも画面下の「チャット」とルーム一覧に表示されます。スマホに置いたPORTALアイコンの数字は、通知が届いたときとPORTALを開いたときに変わります。そのため、通知が届かない設定の未読は、PORTALを開くまでアイコンの数字に入りません。</p></div>';
+        '</div><p class="trRoomNote">通知は端末全体のCHAT設定と、このルームの個別設定の2段階です。未読件数はOFFでも表示されます。</p></div>';
     }
     if(setTab==='members')return back;
     const item=(attr,icon,title,sub,cls='')=>'<button type="button" class="trRoomBtn trSetItem'+cls+'" '+attr+'><span class="trSetIcon" aria-hidden="true">'+icon+'</span><span class="trSetText"><b>'+title+'</b>'+(sub?'<small>'+sub+'</small>':'')+'</span><span class="trSetGo" aria-hidden="true">›</span></button>';
     let h='<div class="trRoomCard trSetCard"><b class="trCardTitle">'+esc(common?'共通チャット':r.name)+' の設定</b>';
-    if(!common)h+=item('data-set-tab="members"','👥','メンバー',s?.isDev?'確認・招待・外す':'メンバーを確認');
-    if(canNotify)h+=item('data-set-tab="notify"','🔔','通知','現在：'+notifyText(mode));
-    if(!common&&s?.isDev)h+=item('data-room-rename','✏️','ルーム名を変更','');
-    if(!common&&r.status==='joined')h+=item('data-room-leave','🚪','退室','もう一度招待されるまで入れません',' warn');
-    if(!common&&s?.isDev)h+=item('data-room-delete','🗑','このルームを削除','メッセージもすべて消えます',' warn');
+    if(!common)h+=item('data-set-tab="members"',silhouettes.people,'メンバー',s?.isDev?'確認・招待・外す':'メンバーを確認');
+    if(canNotify)h+=item('data-set-tab="notify"',silhouettes.bell,'通知','現在：'+notifyText(mode));
+    if(!common&&s?.isDev)h+=item('data-room-rename',silhouettes.pencil,'ルーム名を変更','');
+    if(!common&&r.status==='joined')h+=item('data-room-leave',silhouettes.leave,'退室','もう一度招待されるまで入れません',' warn');
+    if(!common&&s?.isDev)h+=item('data-room-delete',silhouettes.trash,'このルームを削除','メッセージもすべて消えます',' warn');
     h+='</div><div class="trRoomRow"><button type="button" class="trRoomBtn main" '+(common?'data-room-common':'data-settings-open')+'>'+(common?'共通チャットへ':'ルームを開く')+'</button></div>';
     return h;
   }
@@ -20721,19 +20774,26 @@ body.portalChatIsolated > #trMsgSheet{visibility:visible!important;opacity:1!imp
 #screen-chat :is(#portalChatThread,#trRoomThread) .msg.mine .msgHead span:first-child{display:none}
 #screen-chat :is(#portalChatThread,#trRoomThread) .msg.mine{border-radius:16px 16px 4px 16px!important}
 #screen-chat :is(#portalChatThread,#trRoomThread) .msg:not(.mine){border-radius:16px 16px 16px 4px!important}
-/* v183: compact read sheet */
-.trReadSheet{position:fixed;inset:0;z-index:7000;background:rgba(0,0,0,.35);display:flex;align-items:flex-end;justify-content:center;padding:0 12px calc(12px + env(safe-area-inset-bottom,0px))}
-.trReadSheet .trReadCard{width:min(420px,100%);max-height:62dvh;overflow-y:auto;background:#1d1a1c;color:#f6efe9;border:1px solid rgba(255,160,100,.45);border-radius:16px;padding:12px 14px;font-size:13px;box-shadow:0 10px 30px #0007}
-.trReadSheet .trReadTop{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px}
-.trReadSheet .trReadTop span{font-size:12px;opacity:.75}
-.trReadSheet .trReadTop b{font-size:15px}
-.trReadSheet .trReadSec{margin-top:8px}
-.trReadSheet .trReadSec small{display:block;font-size:11px;font-weight:800;opacity:.75;margin-bottom:4px}
-.trReadSheet .trReadNames{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:3px 10px}
-.trReadSheet .trReadNames li{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.5}
-.trReadSheet .trReadNone{margin:0;opacity:.6}
-.trReadSheet .trReadClose{display:block;width:100%;margin-top:12px;min-height:38px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:inherit;font-weight:800}
-body.portalChatIsolated > .trReadSheet{visibility:visible!important;opacity:1!important;pointer-events:auto!important}
+/* v186: read sheet */
+.trReadSheet{position:fixed;inset:0;z-index:7000;background:rgba(0,0,0,.4);display:flex;align-items:flex-end;justify-content:center;padding:0 10px calc(10px + env(safe-area-inset-bottom,0px))}
+.trReadSheet .trReadCard{box-sizing:border-box;width:min(440px,100%);max-height:70dvh;overflow-y:auto;background:#1f1c1e;color:#f6efe9;border:1px solid rgba(255,160,100,.4);border-radius:18px;padding:14px 14px 12px;box-shadow:0 12px 32px #0008}
+.trReadSheet .trReadTop{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.trReadSheet .trReadTitle{font-size:14px;font-weight:900}
+.trReadSheet .trReadSum{font-size:13px;color:#cfc6bf;white-space:nowrap}
+.trReadSheet .trReadSum b{font-size:20px;color:#fff}
+.trReadSheet .trReadBar{height:5px;margin:8px 0 4px;border-radius:9px;background:rgba(255,255,255,.12);overflow:hidden}
+.trReadSheet .trReadBar i{display:block;height:100%;background:#6fcf8f;border-radius:9px}
+.trReadSheet .trReadSec{margin-top:12px}
+.trReadSheet .trReadSec h4{display:flex;align-items:center;gap:6px;margin:0 0 6px;font-size:12px;font-weight:900;color:#e9e1db}
+.trReadSheet .trReadSec h4 em{margin-left:auto;font-style:normal;font-weight:800;color:#bfb6af}
+.trReadSheet .trReadSec .dot{width:8px;height:8px;border-radius:50%;background:#6fcf8f}
+.trReadSheet .trReadSec.isUnread .dot{background:#ff9a52}
+.trReadSheet .trReadNames{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+.trReadSheet .trReadNames li{box-sizing:border-box;min-width:0;padding:6px 9px;border-radius:9px;background:rgba(255,255,255,.07);font-size:13px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trReadSheet .isUnread .trReadNames li{background:rgba(255,154,82,.13)}
+.trReadSheet .trReadNone{margin:0;padding:6px 2px;font-size:12px;color:#a9a19b}
+.trReadSheet .trReadClose{display:block;width:100%;margin-top:14px;min-height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:inherit;font-size:14px;font-weight:800}
+body.portalChatIsolated > div.trReadSheet:not(#screen-chat){visibility:visible!important;opacity:1!important;pointer-events:auto!important}
 #screen-chat :is(#portalChatThread,#trRoomThread) .msg > .trReadMini.trReadTap{padding:6px 4px;margin:-6px -4px}
 /* v181: the read-status sheet and messages must appear while CHAT is isolated */
 body.portalChatIsolated > #modal:not(.hidden){visibility:visible!important;opacity:1!important;pointer-events:auto!important}
@@ -21423,5 +21483,97 @@ html[data-portal-personal-color="matte"] .trSheetRow.active .trSheetMain{border-
   window.addEventListener('tr-portal-rooms',()=>{try{window.__TR_PORTAL_CHAT_BADGE__?.();}catch(_){}});
 })();
 </script>
+<style id="v184-room-silhouette-winter-matte-notification">
+/* TOP RUN v184: pure presentational repair. No new connection, listeners or DB paths. */
+#screen-chat .trSetItem .trSetIcon{display:grid;place-items:center;flex:0 0 28px;width:28px;height:28px;color:var(--ink2,#e6d6ae)}
+#screen-chat .trSetItem .trSetIcon svg{display:block;width:25px;height:25px;fill:currentColor;stroke:none}
+html[data-portal-personal-color="winter"] #screen-chat .trSetItem .trSetIcon{color:#c8fff4}
+html[data-portal-personal-color="matte"] #screen-chat .trSetItem .trSetIcon{color:#ffd2ba}
+#screen-chat .trSetItem.warn .trSetIcon{color:#de786c}
+/* Shared management-settings controls: no white-on-white or unreadable disabled labels. */
+:is(html[data-portal-personal-color="winter"],html[data-portal-personal-color="matte"]) #screen-management-settings .portalManagementSettingsSection :is(p,.portalHelp,.portalManageState){color:#e5eeef!important;-webkit-text-fill-color:#e5eeef!important;opacity:1!important}
+:is(html[data-portal-personal-color="winter"],html[data-portal-personal-color="matte"]) #screen-management-settings :is(input:not([type="checkbox"]),select,textarea){background:#faf9f5!important;color:#192f32!important;-webkit-text-fill-color:#192f32!important;border:1px solid #8caaa9!important;color-scheme:light!important;opacity:1!important}
+:is(html[data-portal-personal-color="winter"],html[data-portal-personal-color="matte"]) #screen-management-settings button:disabled{background:#38464b!important;color:#eef4f3!important;-webkit-text-fill-color:#eef4f3!important;border:1px solid #85999d!important;opacity:1!important;box-shadow:none!important;cursor:not-allowed!important}
+/* Winter / Matte: the real results-edit UI, not only its surrounding card. */
+:is(html[data-portal-personal-color="winter"],html[data-portal-personal-color="matte"]) #screen-management-settings #portalEventBaseResultEdit{
+  background:#112f38!important;color:#f9fcfa!important;border-color:#84c5c4!important;
+}
+html[data-portal-personal-color="matte"] #screen-management-settings #portalEventBaseResultEdit{background:#30262b!important;border-color:#c88965!important}
+:is(html[data-portal-personal-color="winter"],html[data-portal-personal-color="matte"]) #screen-management-settings #portalEventBaseResultEdit :is(p,strong,summary,label,.portalPanelHead b){
+  color:#f7f9f8!important;-webkit-text-fill-color:#f7f9f8!important;opacity:1!important;text-shadow:none!important;
+}
+:is(html[data-portal-personal-color="winter"],html[data-portal-personal-color="matte"]) #screen-management-settings #portalEventBaseResultEdit :is(#portalEbResultCurrent,#portalEbResultState,#portalEbOwnerState){color:#e5f0ec!important;-webkit-text-fill-color:#e5f0ec!important}
+:is(html[data-portal-personal-color="winter"],html[data-portal-personal-color="matte"]) #screen-management-settings #portalEventBaseResultEdit :is(select,input:not([type="checkbox"]),textarea){
+  background:#f8f7f2!important;color:#173039!important;-webkit-text-fill-color:#173039!important;border:2px solid #8fa4a4!important;
+  opacity:1!important;color-scheme:light!important;border-radius:11px!important;
+}
+:is(html[data-portal-personal-color="winter"],html[data-portal-personal-color="matte"]) #screen-management-settings #portalEventBaseResultEdit :is(select:disabled,input:disabled){background:#d8dedb!important;color:#465454!important;-webkit-text-fill-color:#465454!important}
+:is(html[data-portal-personal-color="winter"],html[data-portal-personal-color="matte"]) #screen-management-settings #portalEventBaseResultEdit :is(button:not(:disabled)){
+  background:#d8ac69!important;border:1px solid #f2d5a5!important;color:#251f19!important;-webkit-text-fill-color:#251f19!important;opacity:1!important;
+}
+:is(html[data-portal-personal-color="winter"],html[data-portal-personal-color="matte"]) #screen-management-settings #portalEventBaseResultEdit button:disabled{
+  background:#38464b!important;border:2px solid #889c9f!important;color:#eef4f3!important;-webkit-text-fill-color:#eef4f3!important;opacity:1!important;box-shadow:none!important;cursor:not-allowed!important;
+}
+/* Notification device settings: two actual checkboxes, visually switches with explicit state. */
+#screen-notification-settings .trPushSettings{margin-top:12px!important}
+#screen-notification-settings #trStage3Panel{padding:15px!important;overflow:hidden}
+#screen-notification-settings #trStage3Panel .trDeviceIntro{color:#edf8f8!important;font-size:13px!important;line-height:1.5!important;margin:6px 0 9px!important}
+#screen-notification-settings #trStage3Panel .trDeviceNotifyState{
+  padding:10px 12px;margin:8px 0 13px;border-radius:11px;background:#092a30;border:1px solid #6ab2aa;
+  color:#e4ffff;-webkit-text-fill-color:#e4ffff;font-size:13px;font-weight:900;line-height:1.5;
+}
+#screen-notification-settings #trStage3Panel label.trDeviceSwitchRow{
+  position:relative;display:flex!important;align-items:center;justify-content:space-between;gap:12px;
+  padding:12px 13px;min-height:82px;margin:9px 0;background:#08272f;border:1px solid #578987;
+  border-radius:14px;color:#f8ffff;cursor:pointer;
+}
+#screen-notification-settings #trStage3Panel .trDeviceSwitchText{display:grid;gap:5px;min-width:0;flex:1 1 auto}
+#screen-notification-settings #trStage3Panel .trDeviceSwitchText b{color:#fff!important;font-size:16px!important;line-height:1.3}
+#screen-notification-settings #trStage3Panel .trDeviceSwitchText small{color:#b9dcde!important;font-size:11px!important;line-height:1.5}
+#screen-notification-settings #trStage3Panel .trDeviceSwitchRight{display:flex;flex:0 0 63px;align-items:center;flex-direction:column;gap:3px;position:relative}
+#screen-notification-settings #trStage3Panel .trDeviceSwitchRight input{
+  position:absolute;inset:0 0 14px 0;width:60px;height:34px;margin:0;opacity:0;cursor:pointer;z-index:2;
+}
+#screen-notification-settings #trStage3Panel .trDeviceSwitchRight i{
+  display:block;position:relative;width:60px;height:34px;background:#526068;border:2px solid #acb8be;
+  border-radius:99px;transition:background .16s ease,border-color .16s ease;
+}
+#screen-notification-settings #trStage3Panel .trDeviceSwitchRight i::after{
+  content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;
+  background:#fff;box-shadow:0 1px 5px #0006;transition:transform .16s ease;
+}
+#screen-notification-settings #trStage3Panel .trDeviceSwitchRight input:checked+i{background:#20b59b;border-color:#83f0dc}
+#screen-notification-settings #trStage3Panel .trDeviceSwitchRight input:checked+i::after{transform:translateX(25px)}
+#screen-notification-settings #trStage3Panel .trDeviceSwitchRight input:focus-visible+i{outline:3px solid #ffcb6c;outline-offset:3px}
+#screen-notification-settings #trStage3Panel .trDeviceSwitchState::after{content:"OFF";color:#e7edf1;-webkit-text-fill-color:#e7edf1;font-size:11px;letter-spacing:.08em}
+#screen-notification-settings #trStage3Panel .trDeviceSwitchRight input:checked~.trDeviceSwitchState::after{content:"ON";color:#75f7da;-webkit-text-fill-color:#75f7da}
+#screen-notification-settings #trStage3Panel label.trDeviceSwitchRow:has(input:checked){border-color:#47cdb9;background:#103b41}
+#screen-notification-settings #trStage3Panel .trDeviceScopeNote{margin:8px 2px 11px!important;font-size:12px!important;line-height:1.55!important;color:#d3ebee!important}
+#screen-notification-settings #trStage3Panel .trDeviceWorkerNote{font-size:11px!important;line-height:1.55!important;color:#d7e6e6!important;margin:10px 0 0!important;overflow-wrap:anywhere}
+#screen-notification-settings #trStage3Panel>div:has(#trStage3Register){display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px!important;margin:13px 0!important}
+#screen-notification-settings #trStage3Register{grid-column:1/-1}
+#screen-notification-settings #trStage3Panel button{font-size:13px!important;line-height:1.35!important;white-space:normal!important;min-height:49px!important}
+#screen-notification-settings #trStage3Panel button:disabled{background:#29444b!important;color:#ebf5f6!important;-webkit-text-fill-color:#ebf5f6!important;border-color:#6e989c!important;opacity:1!important}
+@media(max-width:355px){#screen-notification-settings #trStage3Panel>div:has(#trStage3Register){grid-template-columns:1fr}#screen-notification-settings #trStage3Register{grid-column:auto}}
+</style>
+<style id="tr-v184-chat-layout">
+/* v184 (BAND / LINE style): name above others' bubbles, time and 既読 outside the bubble's bottom corner.
+   Others: left-aligned, 既読/time at right-bottom. Own: right-aligned, no name, 既読/time at left-bottom. */
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg{position:relative!important;padding:8px 12px!important;max-width:min(calc(100% - 52px),620px)!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg.mine{margin-right:0!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg:not(.mine){margin-top:20px!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg .msgHead{display:block!important;height:0!important;min-height:0!important;padding:0!important;margin:0!important;border:0!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg .msgHead span:first-child{position:absolute!important;left:4px!important;bottom:calc(100% + 3px)!important;max-width:min(260px,calc(100vw - 80px))!important;font-size:12px!important;font-weight:800!important;line-height:1.2!important;color:#8c9191!important;-webkit-text-fill-color:#8c9191!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg.mine .msgHead span:first-child{display:none!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg .msgHead span:last-child{position:absolute!important;bottom:1px!important;left:calc(100% + 6px)!important;right:auto!important;font-size:10px!important;font-weight:700!important;line-height:1.2!important;opacity:1!important;color:#8c9191!important;-webkit-text-fill-color:#8c9191!important;white-space:nowrap}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg.mine .msgHead span:last-child{left:auto!important;right:calc(100% + 6px)!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg > .trReadMini{bottom:15px!important;font-size:10px!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg.mine > .trReadMini{left:auto!important;right:calc(100% + 6px)!important;justify-content:flex-end!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .trReacts.mine{margin-right:0!important}
+/* v184: reactions a little closer together, and the count closer to its reaction */
+#screen-chat :is(#portalChatThread,#trRoomThread) .trReacts{gap:3px!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact,#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact.mine{gap:2px!important;padding:2px 4px!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trTeam{margin-right:1px!important}
+</style>
 </body>
 </html>
