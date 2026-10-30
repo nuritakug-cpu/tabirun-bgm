@@ -1,3 +1,25 @@
+<!-- TOP RUN PORTAL v177 | 2026-10-30 | PRODUCTION UPLOAD PACKAGE / NOT PUBLISHED
+  LATEST PHYSICAL PARENT: TOP RUN PORTAL v176.html
+  PARENT SHA256: 1bd67c84cad571324a63b8197e0d84eff0f98407ea66e6625a9199d3f1c11413
+  MERGE DONOR: TOP_RUN_PORTAL_v176_REACTION_FRAMELESS.html
+  V177 CHANGE: carry forward typed/pasted @name mention recognition and corrected notification badge note from the latest parent.
+  MERGED IN: compact frameless reaction display, tiny per-room 既読N (other joined members only), and the existing-gateway read cursor mirror.
+  DEPENDENCY: roomMembers/<roomId>/<uid>/readAt needs the accompanying FULL Rules candidate; no new Firebase app or UID/profileId.
+  ALL OTHER: existing push, ROOM invitations, unread counts, notices, official records, identity and Auth are preserved.
+  STATUS: prepared for Github upload after the coordinated Rules review/deployment; NOT uploaded or field-tested.
+-->
+<!-- TOP RUN PORTAL v176 | 2026-10-30 | REVIEW / NOT DEPLOYED
+  PARENT: TOP_RUN_PORTAL_v175.html (SHA256 85b2bca1e7baf2c2ef3b8971c32d8dc4b64a0bf0c23c30fc41274952ce9b4983).
+  TEXT ONLY: notification-settings note corrected. It wrongly said the phone icon badge always shows unread;
+  the icon number only changes when a push arrives or PORTAL is opened. Avoid "ホーム画面" (confused with PORTAL HOME).
+-->
+<!-- TOP RUN PORTAL v175 | 2026-10-30 | REVIEW / NOT DEPLOYED
+  PARENT: TOP_RUN_PORTAL_v174.html (SHA256 003b3ac7ccc459469ef5cb3d893280c37e4cbee54e9b60c9e993d7d720dc2976).
+  FIX: a mention typed or pasted as "@name" (without choosing from the picker) was sent without mention data,
+  so no mention push / highlight. On send, "@name" now matches the same candidates the picker shows
+  (room: joined members; common chat: people who posted in the visible thread). Longest name first.
+  No Firebase path, Rules or Worker change; message format unchanged (mentions/<uid>=name, max 20).
+-->
 <!-- TOP RUN PORTAL v174 | 2026-10-30 | REVIEW / NOT DEPLOYED
   PARENT: TOP_RUN_PORTAL_v173.html (SHA256 31ac727522bde4b440d595235ee08b31a51be4da8edff2ed958760d127040bf5).
   CHANGE: notify setting (all / mention / off) now controls PUSH ONLY. Unread counts (chat button, room list, home-icon badge)
@@ -5995,7 +6017,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v174</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v177</b></div>
   </div>
 </div>
 
@@ -6186,7 +6208,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v174</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v177</b></div>
   </div>
 </div>
 
@@ -16462,7 +16484,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
     // Traffic: own userRooms + small roomMeta listeners only. Messages (last 50) are read only while a room is open.
     // Existing common CHAT, notices, push, identity and other paths are not touched.
     {
-      const RM={subs:new Map(),own:null,all:null,cn:null,common:'all',msg:null,openId:'',mine:{},meta:{},allMeta:{},msgs:[],msgErr:'',err:'',uid:'',readTimer:null,counts:{},countKey:{}};
+      const RM={subs:new Map(),own:null,all:null,cn:null,common:'all',msg:null,mem:null,openId:'',mine:{},meta:{},allMeta:{},openMembers:{},msgs:[],msgErr:'',err:'',uid:'',readTimer:null,counts:{},countKey:{}};
       const rOk=()=>gate.roleVerified===true&&!!gate.uid&&!!gate.profileId&&auth.currentUser?.uid===gate.uid&&gate.hasOperationalAccess();
       const rDev=()=>rOk()&&['developer','admin'].includes(gate.role); // v134: developer and admin manage rooms
       const rId=id=>/^r[A-Za-z0-9_]{6,60}$/.test(String(id||''));
@@ -16475,13 +16497,26 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       const stopMsg=()=>{
         if(RM.readTimer){clearTimeout(RM.readTimer);RM.readTimer=null;}
         if(RM.msg){try{RM.msg();}catch(_){}RM.msg=null;}
+        if(RM.mem){try{RM.mem();}catch(_){}RM.mem=null;}
+        RM.openMembers={};
         RM.msgs=[];RM.msgErr='';
       };
       const markRead=async id=>{
         if(!rOk()||!rId(id)||RM.mine[id]?.status!=='joined')return;
         const lastAt=Number(metaOf(id)?.lastAt||0);
         if(!lastAt||Number(RM.mine[id]?.readAt||0)>=lastAt)return;
-        try{await dbMod.set(ref('userRooms/'+gate.uid+'/'+id+'/readAt'),dbMod.serverTimestamp());}catch(_){}
+        // v177: an atomic write keeps the existing personal unread cursor and the room-wide read receipt in sync.
+        // Requires matching RTDB Rules for roomMembers/<room>/<uid>/readAt before production rollout.
+        try{
+          await dbMod.update(dbMod.ref(db,root),{
+            ['userRooms/'+gate.uid+'/'+id+'/readAt']:dbMod.serverTimestamp(),
+            ['roomMembers/'+id+'/'+gate.uid+'/readAt']:dbMod.serverTimestamp()
+          });
+        }catch(err){
+          // Legacy Rules may reject the new shared readAt: keep the existing unread cursor working.
+          try{await dbMod.set(ref('userRooms/'+gate.uid+'/'+id+'/readAt'),dbMod.serverTimestamp());}catch(_){}
+          if(!RM.readMirrorWarned){RM.readMirrorWarned=true;console.warn('[TOP RUN v177] room read receipt Rules missing or write rejected',err?.code||String(err));}
+        }
       };
       // v147: number of unread messages per room. Read only messages newer than this person's readAt
       // (bounded to 99), and only when the room's lastAt changed. Own posts are not counted.
@@ -16554,7 +16589,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
             unread:count>0,count,notify:nmode,loaded:!!m};
         }).filter(r=>r.loaded&&(r.status==='invited'||r.status==='joined'||r.status==='view'))
           .sort((a,b)=>({invited:0,joined:1,view:2}[a.status]??3)-({invited:0,joined:1,view:2}[b.status]??3)||b.lastAt-a.lastAt||a.name.localeCompare(b.name,'ja'));
-        return {ready:rOk()&&!!RM.own,isDev:dev,uid:gate.uid,rooms,openId:RM.openId,msgs:RM.msgs.slice(),msgErr:RM.msgErr,err:RM.err};
+        return {ready:rOk()&&!!RM.own,isDev:dev,uid:gate.uid,rooms,openId:RM.openId,msgs:RM.msgs.slice(),openMembers:{...(RM.openMembers||{})},msgErr:RM.msgErr,err:RM.err};
       };
       gate.roomsUnread=()=>{
         if(!rOk())return 0;
@@ -16584,6 +16619,11 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         if(RM.mine[id]?.status!=='joined'&&!isDevRole())throw Error('このルームには入室していません');
         if(RM.openId===id&&RM.msg)return;
         stopMsg();RM.openId=id;RM.counts[id]=0;emit();
+        // v177: one existing-gateway subscription for the room currently open only, unsubscribed by stopMsg().
+        RM.mem=p94WatchValue(ref('roomMembers/'+id),s=>{
+          if(RM.openId!==id)return;
+          const v=s.val();RM.openMembers=v&&typeof v==='object'?v:{};emit();
+        },()=>{if(RM.openId!==id)return;RM.openMembers={};emit();});
         const q=dbMod.query(ref('roomMessages/'+id),dbMod.orderByChild('ts'),dbMod.limitToLast(50));
         RM.msg=p94WatchValue(q,s=>{
           if(RM.openId!==id)return;
@@ -19308,7 +19348,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
         opt('all','すべて通知','新しいメッセージが来たら通知します')+
         opt('mention','メンションのみ','自分あて（@名前）のメッセージだけ通知します')+
         opt('off','通知オフ','通知は送りません。未読の数は表示します')+
-        '</div><p class="trRoomNote">この設定で変わるのはプッシュ通知だけです。未読の数（チャットボタン・ホーム画面アイコン）は、どの設定でも表示されます。</p></div>';
+        '</div><p class="trRoomNote">この設定で変わるのはプッシュ通知だけです。未読の数は、どの設定でも画面下の「チャット」とルーム一覧に表示されます。スマホに置いたPORTALアイコンの数字は、通知が届いたときとPORTALを開いたときに変わります。そのため、通知が届かない設定の未読は、PORTALを開くまでアイコンの数字に入りません。</p></div>';
     }
     if(setTab==='members')return back;
     const item=(attr,icon,title,sub,cls='')=>'<button type="button" class="trRoomBtn trSetItem'+cls+'" '+attr+'><span class="trSetIcon" aria-hidden="true">'+icon+'</span><span class="trSetText"><b>'+title+'</b>'+(sub?'<small>'+sub+'</small>':'')+'</span><span class="trSetGo" aria-hidden="true">›</span></button>';
@@ -19347,7 +19387,22 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
     const d=new Date(Number(ts)||0);if(!Number.isFinite(d.getTime())||!ts)return '';
     return d.getFullYear()+'.'+(d.getMonth()+1)+'.'+d.getDate()+'（'+'日月火水木金土'[d.getDay()]+'）';
   }
-  function msgsHtml(list,uid){
+  function roomReadCount(members,m,uid){
+    const ts=Number(m?.ts||0);if(!ts||!members||typeof members!=='object')return 0;
+    let count=0;
+    for(const [memberUid,row] of Object.entries(members)){
+      if(memberUid===uid||memberUid===String(m?.senderUid||''))continue;
+      if(String(row?.status||'')!=='joined')continue;
+      if(Number(row?.readAt||0)>=ts)count++;
+    }
+    return count;
+  }
+  function roomReadMini(m,uid,members){
+    if(m?.senderUid!==uid)return '';
+    const count=roomReadCount(members,m,uid);
+    return count?'<div class="trReadMini mine" aria-label="既読'+count+'"><span>既読'+count+'</span></div>':'';
+  }
+  function msgsHtml(list,uid,members){
     let last='';
     return list.map(m=>{
       const ts=Number(m.ts)||0,d=new Date(ts),day=dayLabel(ts);
@@ -19356,7 +19411,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
       const mine=m.senderUid===uid;
       const time=ts?d.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):'';
       const D=window.__trChatDecor;
-      return band+'<div class="msg'+(mine?' mine':'')+(D&&D.mentioned(m)?' trMentioned':'')+'" data-mid="'+esc(m.id||'')+'"><div class="msgHead"><span>'+esc(m.name||'参加者')+'</span><span>'+esc(time)+'</span></div>'+(D?D.quote(m):'')+'<p>'+(D?D.text(m):esc(m.text||''))+'</p></div>'+(D?D.reacts(m,mine):'');
+      return band+'<div class="msg'+(mine?' mine':'')+(D&&D.mentioned(m)?' trMentioned':'')+'" data-mid="'+esc(m.id||'')+'"><div class="msgHead"><span>'+esc(m.name||'参加者')+'</span><span>'+esc(time)+'</span></div>'+(D?D.quote(m):'')+'<p>'+(D?D.text(m):esc(m.text||''))+'</p></div>'+(D?D.reacts(m,mine):'')+roomReadMini(m,uid,members);
     }).join('');
   }
   const chatMain=()=>document.querySelector('#screen-chat > main.chatMain');
@@ -19368,7 +19423,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
     if(key===shownMsgKey)return;
     shownMsgKey=key;
     if(!s.msgs.length){box.innerHTML='<div class="portalEmpty">まだメッセージはありません。</div>';return;}
-    box.innerHTML=msgsHtml(s.msgs,s.uid);
+    box.innerHTML=msgsHtml(s.msgs,s.uid,s.openMembers||{});
     // v148: move to the latest only when a newer message arrived (or the room was just opened).
     const newest=s.msgs[s.msgs.length-1].id;
     if(newest!==lastScrolledId){lastScrolledId=newest;requestAnimationFrame(()=>{const main=chatMain();if(main)main.scrollTop=main.scrollHeight;});}
@@ -20396,6 +20451,67 @@ body.portalChatIsolated > #trMsgSheet{visibility:visible!important;opacity:1!imp
 #trMsgSheet .trEmojiGrid button.txt.on{border-color:#f0cd5e;box-shadow:inset 0 0 0 1px #e7ba46}
 </style>
 
+<style id="v175-react-read-refine">
+/* v175: smaller LINE/BAND-like reactions + tiny room read receipts. */
+#screen-chat :is(#portalChatThread,#trRoomThread) .trReacts{gap:5px;margin:-2px 8px 8px}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact{padding:4px 8px;min-height:29px;min-width:36px;gap:5px;border-radius:15px;font-size:14px;line-height:1;box-shadow:0 1px 4px rgba(0,0,0,.16)}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact b{min-width:7px;font-size:11px;line-height:1}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trTeam{width:18px;height:18px;margin:0 5px 0 0}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trTeam i{font-size:8px;width:13px;height:13px;right:-6px;bottom:-4px}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trTextFace{width:40px;max-width:40px;height:21px;padding:1px 2px;overflow:hidden}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-short{font-size:13px}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-medium{font-size:10.5px;letter-spacing:-.07em}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-long{font-size:9.2px;letter-spacing:-.08em}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-extra{font-size:8.1px;letter-spacing:-.09em}
+#screen-chat :is(#portalChatThread,#trRoomThread) .trReadMini{display:flex;align-items:center;gap:4px;margin:-3px 10px 9px;font-size:10px;line-height:1;color:#7f8585;letter-spacing:.02em}
+#screen-chat :is(#portalChatThread,#trRoomThread) .trReadMini.mine{justify-content:flex-end}
+#screen-chat :is(#portalChatThread,#trRoomThread) .trReadMini span{display:inline-block;padding:0 1px}
+@media(max-width:370px){#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact{padding:4px 7px;min-height:28px}#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trTextFace{width:38px;max-width:38px;height:20px}}
+</style>
+<style id="v176-frameless-reactions-only">
+/* Outer reaction button: no black/gold capsule; the reaction itself stays visible. */
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact,
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact.mine{
+  box-sizing:border-box!important;
+  flex:0 0 auto!important;
+  width:auto!important;
+  max-width:max-content!important;
+  min-width:0!important;
+  height:auto!important;
+  min-height:26px!important;
+  padding:2px 3px!important;
+  gap:4px!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  color:inherit!important;
+  vertical-align:middle;
+}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact b{
+  padding:0!important;
+  font-size:10px!important;
+  color:#766320!important;
+  font-weight:900;
+}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact.mine b{
+  color:#8a6a13!important;
+}
+html[data-portal-personal-color="winter"] #screen-chat :is(#portalChatThread,#trRoomThread) button.trReact b,
+html[data-portal-personal-color="matte"] #screen-chat :is(#portalChatThread,#trRoomThread) button.trReact b{
+  color:#f2d675!important;
+}
+#screen-chat :is(#portalChatThread,#trRoomThread) .trReacts{
+  gap:7px;
+  align-items:center;
+  margin:-2px 8px 8px;
+}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact:focus-visible{
+  outline:2px solid #b39822;
+  outline-offset:2px;
+  border-radius:3px!important;
+}
+</style>
 <style id="v171-reaction-picker-organize">
 /* v171 picker UI only: one top category at a time and no duplicated quick row. */
 #trMsgSheet .trCategoryBar{
@@ -20580,13 +20696,22 @@ body.portalChatIsolated > #trMsgSheet{visibility:visible!important;opacity:1!imp
   const draft={};
   window.__trChatExtras={
     take(k,text){
-      const st=draft[k];if(!st)return {};
+      const st=draft[k];
       const out={};
-      if(st.replyTo)out.replyTo=st.replyTo;
-      const ms={};let n=0;
-      for(const [uid,name] of Object.entries(st.mentions||{})){if(n>=20)break;if(String(text||'').includes('@'+name)){ms[uid]=name;n++;}}
+      if(st?.replyTo)out.replyTo=st.replyTo;
+      const ms={};let n=0;const body=String(text||'');
+      for(const [uid,name] of Object.entries(st?.mentions||{})){if(n>=20)break;if(body.includes('@'+name)){ms[uid]=name;n++;}}
+      // v175: also recognise "@name" that was typed or pasted without using the picker (e.g. copy & paste).
+      // Same people as the picker offers; longest names first so "@山田 太郎" does not also match "@山田".
+      let rest=body;
+      for(const x of [...(lastPeople[k]||[])].sort((a,b)=>b.name.length-a.name.length)){
+        if(n>=20)break;const tag='@'+x.name;
+        if(!rest.includes(tag))continue;
+        rest=rest.split(tag).join('\u0000');
+        if(!ms[x.uid]){ms[x.uid]=x.name;n++;}
+      }
       if(n)out.mentions=ms;
-      st.sentAt=Date.now();afterSend();
+      if(st){st.sentAt=Date.now();afterSend();}
       return out;
     }
   };
@@ -20618,6 +20743,7 @@ body.portalChatIsolated > #trMsgSheet{visibility:visible!important;opacity:1!imp
   }
   // ---- mentions
   let roomPeople={id:'',list:[]};
+  const lastPeople={}; // v175: last candidate list per composer key, read by take() when sending
   async function people(ctx){
     const map=new Map();
     if(ctx==='room'){
@@ -20628,7 +20754,9 @@ body.portalChatIsolated > #trMsgSheet{visibility:visible!important;opacity:1!imp
     const thread=ctx==='room'?$('trRoomThread'):$('portalChatThread');
     thread?.querySelectorAll('.msg[data-mid]').forEach(el=>{const m=cache.get(el.dataset.mid);if(m?.senderUid&&m.name)map.set(m.senderUid,m.name);});
     map.delete(myUid());
-    return [...map.entries()].map(([uid,name])=>({uid,name})).filter(x=>x.name).sort((a,b)=>a.name.localeCompare(b.name,'ja'));
+    const list=[...map.entries()].map(([uid,name])=>({uid,name})).filter(x=>x.name).sort((a,b)=>a.name.localeCompare(b.name,'ja'));
+    lastPeople[key(ctx)]=list;
+    return list;
   }
   async function onType(ctx){
     const b=bars(ctx);if(!b)return;
@@ -20648,8 +20776,12 @@ body.portalChatIsolated > #trMsgSheet{visibility:visible!important;opacity:1!imp
     b.list.hidden=true;b.input.dispatchEvent(new Event('input',{bubbles:true}));
   }
   document.addEventListener('input',e=>{
-    if(e.target.id==='portalChatInput')onType('common');
-    else if(e.target.id==='trRoomInput')onType('room');
+    const ctx=e.target.id==='portalChatInput'?'common':e.target.id==='trRoomInput'?'room':'';
+    if(!ctx)return;
+    onType(ctx);
+    // v175: text containing "@" (typed or pasted) → prepare the candidate list so take() can match it on send.
+    // Room members are read at most once per room (existing cache); no listener is added.
+    if(String(e.target.value||'').includes('@'))void people(ctx).catch(()=>{});
   });
   // ---- sheet
   function sheet(html){
