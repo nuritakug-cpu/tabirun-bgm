@@ -1,6 +1,18 @@
-<!-- TOP RUN PORTAL v171 2026-10-30: v170 + room list rows get 「設定」 (members / notify all・mention・off / rename / leave / delete); member/leave bar removed from inside the room; per-room notify saved at userRooms/<uid>/<room>/notify (common: userRooms/<uid>/common/notify) and applied to in-app/home badges; home icon badge sync on chat reads (Android tray cleanup). Push filtering needs the notify Worker + Rules update. -->
-<!-- TOP RUN PORTAL v170 2026-10-30: exact parent user-uploaded TOP RUN PORTAL(1).html (v169 display, includes intervening fixes). Only chat/room visual refinement and text reaction face typography. No new image/font/network requests, database schema/auth/Rules/save calls or other screen changes. NOT DEPLOYED/field-tested. -->
-<!-- TOP RUN PORTAL v169 2026-10-30: v168 direct parent; chat/room message presentation (bubble width, name/body spacing, reply preview), reaction text styling and celebratory choices only. Existing v168 mention/push, Firebase Auth/UID/Rules/database paths, notifications and other pages untouched. STATIC REVIEW / not published or real-Firebase verified. -->
+<!-- TOP RUN PORTAL v173 | 2026-10-30 | REVIEW / NOT DEPLOYED
+  PARENT: TOP_RUN_PORTAL_v172.html (SHA256 d80d2a2999ed53e56fd551f99bfff89ca2393ecc0419ba479263ffaf363b37e7).
+  FIX ONLY: home-icon badge after reading a NOTICE used notice + ALL common-chat unread (ignored all/mention/off, omitted rooms).
+  Now it uses portalChatBadgeCounts(), the same calculation as the chat badge. No Firebase, Rules, Worker or other change.
+-->
+<!-- TOP RUN PORTAL v172 | 2026-10-30 | REVIEW / NOT DEPLOYED
+  PHYSICAL BASE: TOP_RUN_PORTAL_v171_REACTION_CATEGORY_LIGHT.html (reaction categories / all reaction code preserved).
+  NOTIFICATION DONOR: TOP RUN PORTAL(2).html (room list settings page, common/room all-mention-off preferences, canonical Firebase writes, in-app unread/badge filtering, return/invite defaults).
+  METHOD: v170 shared code compared to both v171 versions; only notification-related logic transplanted.
+  Keep v166 room push, v168 roomInvite, reactions, Auth/UID/profileId, unread and badge paths.
+  NEW: common-chat push preference application feedback in existing notification settings; does not alter Firebase connection.
+  REQUIRED: updated RTDB Rules and reviewed Worker must be deployed independently before feature can operate.
+-->
+<!-- TOP RUN PORTAL v171 2026-10-30: v170 exact uploaded parent. Reaction selection only: separate よく使う/絵文字/テキスト/スタンプ/チーム, 8 at first + more, preserve every v170 value and reaction decoration; frequency ranked per existing UID in localStorage only after confirmed reaction ACK, no new Firebase reads/listeners/writes, no network. CHAT and ROOM shared. STATIC REVIEW; not published or production/device verified. -->
+<!-- TOP RUN PORTAL v170 2026-10-30: v169 exact physical parent; KEEP all prior reaction choices. ADD reply / stamped reaction groups, compact equal-footprint reaction chips (including long labels), colored response and hanko-style new stamps. CHAT and ROOM only. Existing Firebase Auth/UID/Rules/RTDB paths, reaction persistence, push, other pages unchanged. STATIC REVIEW; not published or real-Firebase verified. -->
 <!-- TOP RUN PORTAL v168 2026-10-30: v167 + mention coloring covers the whole name incl. spaces; room create / invite (also re-invite after leaving) asks the notify Worker for invite push (kind roomInvite, id <room>). Rules unchanged. -->
 <!-- TOP RUN PORTAL v167 2026-10-30: v166 physical parent; compact dark/gold categorized reaction picker (QUICK/RUN/hype/feel/team), extra youth-oriented running phrases, existing common/room reaction storage, reply, copy and Firebase paths unchanged. STATIC CANDIDATE; not published or Firebase field-verified. -->
 <!-- TOP RUN PORTAL v166 2026-10-29: v165 + a room message asks the notify Worker for room push (kind room, id <room>/<message>). Works after the Worker room extension is deployed; before that nothing changes. Rules unchanged. -->
@@ -5956,6 +5968,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
           <button type="button" id="trStage3Revoke" disabled>この端末の登録を解除</button>
         </div>
         <p id="trStage3Message" role="status" aria-live="polite">既存の本人認証と通知サーバーを確認してから登録できます。</p>
+        <p id="trStage3PrefsApplied" role="status" aria-live="polite" style="font-size:12px;color:var(--ink2);margin:10px 0 0">共通チャットのプッシュ通知設定：反映状況は未確認（投稿後、この端末に結果を表示）</p>
       </div>
       <details id="trPushStage2Diagnostics" style="margin-top:10px"><summary>開発者用：通知の接続診断</summary><p>開発者向けの通信診断です。通常の通知登録には不要です。</p>
 <p>開発段階の通信登録です。通知の自動配信・本人別の宛先判定・未読バッジは未実装です。現行のお知らせやチャットには影響しません。</p>
@@ -5976,7 +5989,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v170</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v173</b></div>
   </div>
 </div>
 
@@ -6167,7 +6180,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v170</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v173</b></div>
   </div>
 </div>
 
@@ -7105,7 +7118,8 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       renderNotices();
       // The Worker otherwise reissues its stale D1 badge count on the next Push.
       // Only after the existing Firebase save ACK may we sync the remaining count.
-      const remaining=Math.min(99,unreadNoticeCount()+unreadPortalChatMessages().length);
+      // v173: same chat count as renderPortalChatBadge (common chat by its notify setting + rooms)
+      const remaining=Math.min(99,unreadNoticeCount()+portalChatBadgeCounts().total);
       void Promise.resolve(window.__TR_NOTICE_BADGE_SYNC__?.(remaining)).then(ok=>{
         if(!ok)showActionFeedback('ホームのバッジは未同期です','既読は保存できました。通知バッジの同期を確認してください。');
       });
@@ -8311,11 +8325,15 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
   function unreadPortalChatMessages(){
     return chatMessages.filter(m=>!isMyPortalChat(m) && !portalChatReadIds.has(m.id));
   }
-  function renderPortalChatBadge(){
-    // v171: the common chat follows its own notify setting (all / mention / off)
+  // v173: one place for the chat part of the badge, used by the chat badge AND the notice-read badge sync.
+  // Common chat follows its notify setting (all / mention / off); rooms add unread (off rooms excluded) and invites.
+  function portalChatBadgeCounts(){
     const cMode=window.__TR_PORTAL_SYNC__?.commonNotify?.()||'all',cUid=window.__TR_PORTAL_SYNC__?.uid||'';
-    const commonCount=cMode==='off'?0:cMode==='mention'?unreadPortalChatMessages().filter(m=>!!(m.mentions&&cUid&&m.mentions[cUid])).length:unreadPortalChatMessages().length;
-    const count=commonCount+Number(window.__TR_ROOMS_UNREAD__?.()||0); // v133: room unread/invites added
+    const common=cMode==='off'?0:cMode==='mention'?unreadPortalChatMessages().filter(m=>!!(m.mentions&&cUid&&m.mentions[cUid])).length:unreadPortalChatMessages().length;
+    return {common,total:common+Number(window.__TR_ROOMS_UNREAD__?.()||0)};
+  }
+  function renderPortalChatBadge(){
+    const {common:commonCount,total:count}=portalChatBadgeCounts();
     const badge=$('chatBottomBadge');
     if(!badge)return;
     badge.textContent=count>99?'99+':String(count);
@@ -16438,7 +16456,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
     // Traffic: own userRooms + small roomMeta listeners only. Messages (last 50) are read only while a room is open.
     // Existing common CHAT, notices, push, identity and other paths are not touched.
     {
-      const RM={subs:new Map(),own:null,all:null,msg:null,openId:'',mine:{},meta:{},allMeta:{},msgs:[],msgErr:'',err:'',uid:'',readTimer:null,counts:{},countKey:{}};
+      const RM={subs:new Map(),own:null,all:null,cn:null,common:'all',msg:null,openId:'',mine:{},meta:{},allMeta:{},msgs:[],msgErr:'',err:'',uid:'',readTimer:null,counts:{},countKey:{}};
       const rOk=()=>gate.roleVerified===true&&!!gate.uid&&!!gate.profileId&&auth.currentUser?.uid===gate.uid&&gate.hasOperationalAccess();
       const rDev=()=>rOk()&&['developer','admin'].includes(gate.role); // v134: developer and admin manage rooms
       const rId=id=>/^r[A-Za-z0-9_]{6,60}$/.test(String(id||''));
@@ -16487,6 +16505,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         stopMsg();RM.openId='';
         if(RM.own){try{RM.own();}catch(_){}RM.own=null;}
         if(RM.all){try{RM.all();}catch(_){}RM.all=null;}
+        if(RM.cn){try{RM.cn();}catch(_){}RM.cn=null;}RM.common='all';
         for(const stop of RM.subs.values()){try{stop();}catch(_){}}
         RM.subs.clear();RM.mine={};RM.meta={};RM.allMeta={};RM.err='';RM.uid='';RM.counts={};RM.countKey={};
         emit();
@@ -16502,6 +16521,8 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
             const v=s.val();RM.allMeta=v&&typeof v==='object'?v:{};emit();
           },e=>{if(RM.uid!==uid)return;RM.err=rErr(e);emit();});
         }
+        // v171: own notify setting for the common chat (tiny value)
+        RM.cn=p94WatchValue(ref('chatNotify/'+uid),s=>{if(RM.uid!==uid)return;const v=s.val();RM.common=['mention','off'].includes(v)?v:'all';emit();try{window.__TR_PORTAL_CHAT_BADGE__?.();}catch(_){}},()=>{});
         RM.own=p94WatchValue(ref('userRooms/'+uid),s=>{
           if(RM.uid!==uid)return;
           const v=s.val();RM.mine=v&&typeof v==='object'?v:{};RM.err='';
@@ -16534,7 +16555,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         return gate.roomsState().rooms.reduce((n,r)=>n+(r.status==='invited'?1:(r.notify==='off'?0:r.count||0)),0);
       };
       // v171: notification setting per room (all / mention / off), saved on the member's own userRooms record.
-      gate.commonNotify=()=>{const v=RM.mine?.common?.notify;return ['mention','off'].includes(v)?v:'all';};
+      gate.commonNotify=()=>RM.common||'all';
       gate.roomSetNotify=async(id,mode)=>{
         if(!rOk()||auth.currentUser?.uid!==gate.uid)throw Error('本人認証が確認できません');
         if(!['all','mention','off'].includes(mode))throw Error('通知の設定が正しくありません');
@@ -16542,7 +16563,13 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
           if(!rId(id))throw Error('ルームが正しくありません');
           if(RM.mine[id]?.status!=='joined')throw Error('入室しているルームだけ設定できます');
         }
-        try{await dbMod.set(ref('userRooms/'+gate.uid+'/'+id+'/notify'),mode);}
+        // Rooms: roomMembers/<room>/<uid>/notify (read by the notify Worker) + mirror on own userRooms (read by this screen).
+        // Common chat: chatNotify/<uid>.
+        try{
+          if(id==='common')await dbMod.set(ref('chatNotify/'+gate.uid),mode);
+          else await dbMod.update(dbMod.ref(db,root),{['roomMembers/'+id+'/'+gate.uid+'/notify']:mode,['userRooms/'+gate.uid+'/'+id+'/notify']:mode});
+          if(id==='common')RM.common=mode;
+        }
         catch(e){if(/permission/i.test(String(e?.code||e?.message||e)))throw Error('保存が許可されていません（Firebase Rules に notify の追加が必要です）');throw e;}
         emit();
       };
@@ -18081,6 +18108,18 @@ setInterval(display,1000);
        body:JSON.stringify({kind,id})
      });
      const result=await response.json().catch(()=>({}));
+     // v172: sender-side telemetry from existing /api/stage3/notify response, no new network call.
+     if(kind==='chat'){
+       const state=document.getElementById('trStage3PrefsApplied');
+       if(state){
+         const status=result?.prefsApplied;
+         state.textContent=status===true?
+           '共通チャットのプッシュ通知設定：今回の投稿では all／mention／off を反映しました（端末到達は未確認）':
+           status===false?
+           '注意：今回の投稿では通知設定を取得できず、旧判定で送信しました。通知オフの相手にも届く可能性があります。':
+           '共通チャットのプッシュ通知設定：今回の投稿の反映状況を確認できません（Worker未更新・再送処理など）。';
+       }
+     }
      // A successful Firebase save and a successful Push dispatch are different outcomes.
      // Keep dispatch errors visible in notification settings without changing saved content.
      if(!response.ok||result.ok!==true){
@@ -18090,7 +18129,13 @@ setInterval(display,1000);
        say(accepted>0?'投稿を保存し、通知配信サービスが'+accepted+'端末分を受け付けました。':
          '投稿は保存されました。現在、通知を受け取る登録端末はありません。');
      }
-   }catch{if(box.open)say('投稿は保存されましたが、通知送信結果を取得できません。');}
+   }catch{
+     if(kind==='chat'){
+       const state=document.getElementById('trStage3PrefsApplied');
+       if(state)state.textContent='共通チャットのプッシュ通知設定：通信エラーのため反映状況を確認できません。';
+     }
+     if(box.open)say('投稿は保存されましたが、通知送信結果を取得できません。');
+   }
  };
 
  async function currentSubscription(){
@@ -20286,81 +20331,110 @@ body.portalChatIsolated > #trMsgSheet{visibility:visible!important;opacity:1!imp
   #trMsgSheet .trEmojiGrid button.txt.wide .trTileFace {font-size:16px}
 }
 </style>
-<style id="v170-chat-stamp-native-fonts">
-/* v170: no downloaded fonts/images. Select screen and sent chips share the SAME trStampFace renderer.
-   Japanese typography relies on installed fonts, falling back gracefully across iOS/Android. */
-#trMsgSheet .trEmojiGrid button.txt,
-#screen-chat .trReact.is-stamp {
-  border:1px solid #8c7437;
-  background:linear-gradient(150deg,#383127 0%,#25292a 82%);
-  box-shadow:0 2px 7px rgba(0,0,0,.16),inset 0 1px rgba(255,233,156,.12);
+<style id="v170-chat-reaction-additive">
+/* CHAT and ROOM only — one icon-sized footprint for emoji, logo and any text length. */
+#screen-chat :is(#portalChatThread,#trRoomThread) .trReacts{gap:5px;align-items:center}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact{
+  box-sizing:border-box;flex:0 0 74px;width:74px;max-width:74px;min-width:74px;
+  height:36px;min-height:36px;padding:3px 5px;gap:3px;
+  border-radius:13px;font-size:20px;line-height:1;white-space:nowrap;
+  box-shadow:0 1px 3px rgba(0,0,0,.14);
 }
-#trMsgSheet .trEmojiGrid button.txt.on,
-#screen-chat .trReact.is-stamp.mine {
-  border-color:#e3bb43;
-  background:linear-gradient(150deg,#4a3a1d,#282923 85%);
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact b{
+  box-sizing:border-box;flex:0 0 auto;min-width:8px;padding:0;font-size:11px;line-height:1.1;
 }
-.trStampFace {
-  display:inline-block;position:relative;max-width:100%;white-space:nowrap;
-  color:#ffe18a;font-weight:950;line-height:1.15;
-  letter-spacing:-.025em;
-  font-family:"Hiragino Maru Gothic ProN","Hiragino Kaku Gothic ProN","Yu Gothic","Noto Sans CJK JP",system-ui,sans-serif;
-  -webkit-text-stroke:.28px currentColor;
-  text-shadow:0 1px 0 #634514,1px 2px 0 rgba(0,0,0,.33);
-  transform:skewX(-3deg);
-  padding-bottom:5px;
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trTeam{width:23px;height:23px;margin:0 7px 0 0}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trTeam i{font-size:10px;width:16px;height:16px;right:-7px;bottom:-5px}
+.trTextFace{
+  box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;
+  flex:0 1 auto;white-space:nowrap;max-width:100%;min-width:0;
+  font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;
+  font-size:14px;font-weight:950;letter-spacing:-.05em;line-height:1.15;
+  color:#ffdc75;text-shadow:none;
 }
-.trStampFace.serif {
-  color:#ffe8ad;letter-spacing:.055em;
-  font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif CJK JP",serif;
-  -webkit-text-stroke:.12px currentColor;
-  transform:none;
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trTextFace{
+  width:49px;max-width:49px;height:26px;overflow:hidden;
 }
-.trStampFace:after {
-  content:"";position:absolute;left:16%;right:16%;bottom:0;height:2px;
-  background:linear-gradient(90deg,transparent,#e7b940,transparent);
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-short{font-size:16px}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-medium{font-size:12px;letter-spacing:-.07em}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-long{font-size:10.5px;letter-spacing:-.08em}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-extra{font-size:9px;letter-spacing:-.09em}
+/* Response colors: restrained but distinct, not a large text banner. */
+.trTextFace.trTone-blue{color:#bfe6ff;background:#163c57;border:1px solid #4d9ac7;border-radius:5px}
+.trTextFace.trTone-indigo{color:#e1dcff;background:#34315b;border:1px solid #8880c4;border-radius:5px}
+.trTextFace.trTone-teal{color:#d4ffef;background:#175449;border:1px solid #5bbba0;border-radius:5px}
+.trTextFace.trTone-orange{color:#fff2cc;background:#88421e;border:1px solid #ed9350;border-radius:5px}
+.trTextFace.trTone-violet{color:#ffe0f2;background:#653755;border:1px solid #c77ba9;border-radius:5px}
+/* Traditional seals: muted red ink, square stamp outlines and subtle hand-stamped tilt. */
+.trTextFace.trTone-seal-red,.trTextFace.trTone-seal-purple,.trTextFace.trTone-seal-teal{
+  font-family:"Yu Mincho","Hiragino Mincho ProN",serif;
+  font-weight:900;letter-spacing:-.065em;border:2px double currentColor;
+  border-radius:3px;background:#f8f0df;text-shadow:none;
 }
-#trMsgSheet .trEmojiGrid button.txt .trTileFace .trStampFace {
-  font-size:inherit;font-weight:inherit;letter-spacing:inherit;
-}
-#trMsgSheet .trEmojiGrid button.txt .trTileFace .trStampFace.serif {letter-spacing:.035em}
-/* The text itself carries its own underline; suppress the old extra underline. */
-#trMsgSheet .trEmojiGrid button.txt .trTileFace:after {display:none}
-#screen-chat .trReact.is-stamp {
-  min-height:39px;gap:7px;border-radius:11px;
-  padding:7px 10px 6px;max-width:100%;
-  font-size:15px;color:#ffe18a;
-}
-#screen-chat .trReact.is-stamp .trStampFace {font-size:16px}
-#screen-chat .trReact.is-stamp b {
-  margin-left:1px;padding-left:7px;
-  border-left:1px solid rgba(255,214,110,.32);
-  font-size:12px;color:#ffe9a8;font-variant-numeric:tabular-nums;
-}
-/* Subtle chat polish. Keep the active user theme colors and the same message structure. */
-#screen-chat :is(#portalChatThread,#trRoomThread) .msg {
-  border-width:1px;max-width:min(88%,610px);
-  padding:12px 15px 13px;
-  border-radius:17px 17px 17px 7px;
-  box-shadow:0 4px 13px rgba(10,12,12,.10);
-}
-#screen-chat :is(#portalChatThread,#trRoomThread) .msg.staff {border-left-width:2px}
-#screen-chat :is(#portalChatThread,#trRoomThread) .msg.mine {border-radius:17px 17px 7px 17px}
-#screen-chat :is(#portalChatThread,#trRoomThread) .msgHead {
-  margin-bottom:8px;padding-bottom:7px;border-bottom-color:rgba(255,255,255,.12);
-}
-#screen-chat :is(#portalChatThread,#trRoomThread) .msg p {line-height:1.6;letter-spacing:0}
-#screen-chat :is(#portalChatThread,#trRoomThread) .trQuote {
-  padding:6px 9px 6px 11px;margin-bottom:9px;
-  background:rgba(255,255,255,.055);
-}
-#screen-chat .trReacts {gap:5px}
-@media (max-width:370px) {
-  #screen-chat :is(#portalChatThread,#trRoomThread) .msg {max-width:91%;padding:11px 12px 12px}
-  #screen-chat .trReact.is-stamp .trStampFace {font-size:14px}
-}
+.trTextFace.trTone-seal-red{color:#a12f33;transform:rotate(-4deg)}
+.trTextFace.trTone-seal-purple{color:#734a79;transform:rotate(3deg)}
+.trTextFace.trTone-seal-teal{color:#316f65;transform:rotate(-3deg)}
+/* Reaction picker: preserve the existing four categories; show two additional ones. */
+#trMsgSheet .trCategoryBar{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+#trMsgSheet .trCategoryBar button{font-size:12px;min-height:33px}
+#trMsgSheet .trEmojiGrid button.txt .trTextFace{font-size:inherit;min-height:25px;padding:2px 4px}
+#trMsgSheet .trEmojiGrid button.txt .trText-short{font-size:17px}
+#trMsgSheet .trEmojiGrid button.txt .trText-medium{font-size:15px}
+#trMsgSheet .trEmojiGrid button.txt .trText-long{font-size:13px}
+#trMsgSheet .trEmojiGrid button.txt .trText-extra{font-size:11px}
+#trMsgSheet .trEmojiGrid button.txt .trTileFace{transform:none;font-size:inherit}
+#trMsgSheet .trEmojiGrid button.txt:has(.trTone-seal-red,.trTone-seal-purple,.trTone-seal-teal){background:#332a26;border-color:#95685b}
+#trMsgSheet .trEmojiGrid button.txt:has(.trTone-seal-red,.trTone-seal-purple,.trTone-seal-teal) .trTileFace::after{display:none}
+#trMsgSheet .trEmojiGrid button.txt:has(.trTone-blue,.trTone-indigo,.trTone-teal,.trTone-orange,.trTone-violet){background:#212d33;border-color:#56616d}
+#trMsgSheet .trEmojiGrid button.txt:has(.trTone-blue,.trTone-indigo,.trTone-teal,.trTone-orange,.trTone-violet) .trTileFace::after{display:none}
+#trMsgSheet .trEmojiGrid button.txt.on{border-color:#f0cd5e;box-shadow:inset 0 0 0 1px #e7ba46}
 </style>
 
+<style id="v171-reaction-picker-organize">
+/* v171 picker UI only: one top category at a time and no duplicated quick row. */
+#trMsgSheet .trCategoryBar{
+  display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px;
+  padding:4px;margin:0 0 9px;overflow:visible;
+}
+#trMsgSheet .trCategoryBar button{
+  box-sizing:border-box;padding:6px 1px;min-height:38px;font-size:11px;
+  letter-spacing:-.035em;white-space:nowrap;
+}
+#trMsgSheet .trCategoryBar button.active{background:#dfb52e;color:#161a19}
+#trMsgSheet .trPickSubBar{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:0 1px 9px;-webkit-overflow-scrolling:touch}
+#trMsgSheet .trPickSubBar::-webkit-scrollbar{display:none}
+#trMsgSheet .trPickSubBar[hidden]{display:none!important}
+#trMsgSheet .trPickSubBar button{
+  flex:0 0 auto;min-height:30px;min-width:50px;padding:5px 10px;
+  border:1px solid #414b4d;border-radius:999px;background:#222b2e;
+  color:#c7cdcc;font-size:11px;font-weight:850;
+}
+#trMsgSheet .trPickSubBar button.active{color:#fff0ba;border-color:#bca24a;background:#50401c}
+#trMsgSheet .trCategoryHeading{padding:0 2px 7px}
+#trMsgSheet .trCategoryHeading small{font-size:10px;text-align:right}
+#trMsgSheet .trEmojiGrid{max-height:none;overflow:visible;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:6px}
+#trMsgSheet .trEmojiGrid button{
+  box-sizing:border-box;min-width:0;min-height:57px;padding:5px 2px;
+  border-radius:11px;gap:3px;overflow:hidden;
+}
+#trMsgSheet .trEmojiGrid button.txt{grid-column:auto!important}
+#trMsgSheet .trEmojiGrid button .trTileFace{max-width:100%;overflow:hidden;text-overflow:clip}
+#trMsgSheet .trEmojiGrid button.txt .trTileFace{width:100%;max-width:100%;padding:1px 2px}
+#trMsgSheet .trEmojiGrid button.txt .trTextFace{max-width:100%;min-width:0;padding:2px 1px}
+#trMsgSheet .trEmojiGrid button.txt .trText-extra{font-size:10px}
+#trMsgSheet .trPickMore{width:100%;min-height:37px;margin:4px 0 9px;
+  border-radius:10px;border:1px dashed #72643a;background:#232a2c;color:#e9cd74;
+  font-size:12px;font-weight:900}
+#trMsgSheet .trPickMore[hidden]{display:none!important}
+#trMsgSheet .trPickInfo{text-align:center;color:#aab4b3;font-size:10px;min-height:16px;margin:3px 0 2px}
+#trMsgSheet .trSheetBtns{margin-top:9px}
+@media(max-width:370px){
+ #trMsgSheet .trSheetCard{padding-left:12px;padding-right:12px}
+ #trMsgSheet .trCategoryBar button{font-size:10px;padding-left:0;padding-right:0}
+ #trMsgSheet .trEmojiGrid{gap:5px}
+ #trMsgSheet .trEmojiGrid button.txt .trText-extra{font-size:9.5px}
+}
+</style>
 
 <script id="v159-chat-react">
 /* v159: チャットのリアクション・返信・メンション（全体チャットとルーム）。LINE / BAND と同じ使い方:
@@ -20375,20 +20449,98 @@ body.portalChatIsolated > #trMsgSheet{visibility:visible!important;opacity:1!imp
   const TEAM_IMG='data:image/jpeg;base64,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';
   const TEAMS=['team','team:👌','team:👍','team:🔥','team:💪','team:🏃','team:🎉','team:👏','team:❤️','team:🙏','team:✨','team:💯'];
   const isTeam=e=>/^team(:|$)/.test(String(e||''));
-  const face=e=>isTeam(e)?'<span class="trTeam"><img src="'+TEAM_IMG+'" alt="TOP RUN AGUI">'+(String(e).slice(5)?'<i>'+esc(String(e).slice(5))+'</i>':'')+'</span>':isText(e)?'<span class="trStampFace '+(/(?:記録|ベスト|優勝|おめ|最強|最高|㊗|祝)/.test(e)?'serif':'round')+'">'+esc(e)+'</span>':esc(e);
+  // v170: visual classification only. No change to reaction values or Firebase data.
+  const REACT_STAMP_RED=new Set(['済','確認済','承認','合格','祝','完走','快走','必勝','達成','優勝','お見事','天晴']);
+  const REACT_STAMP_PURPLE=new Set(['拍手','感動','大吉','伝説']);
+  const REACT_STAMP_TEAL=new Set(['応援']);
+  const REACT_TONES={
+    '了解':'blue','了解！':'blue','承知':'indigo','確認！':'indigo',
+    '感謝':'teal','感謝！':'teal','ありがとう':'teal','助かる！':'teal','おはよう':'teal','いいね！':'teal',
+    '熱':'orange','熱烈':'orange','頑張れ！':'orange','任せて！':'orange','すごい！':'orange',
+    'おつかれ！':'violet','おやすみ':'violet','よろしく':'blue'
+  };
+  const reactTone=e=>REACT_STAMP_RED.has(e)?'seal-red':REACT_STAMP_PURPLE.has(e)?'seal-purple':REACT_STAMP_TEAL.has(e)?'seal-teal':(REACT_TONES[e]||'gold');
+  const reactLength=e=>Array.from(String(e||'')).length;
+  const face=e=>{
+    if(isTeam(e))return '<span class="trTeam"><img src="'+TEAM_IMG+'" alt="TOP RUN AGUI">'+(String(e).slice(5)?'<i>'+esc(String(e).slice(5))+'</i>':'')+'</span>';
+    if(!isText(e))return esc(e);
+    const n=reactLength(e),size=n<=2?'short':n<=3?'medium':n<=4?'long':'extra';
+    return '<span class="trTextFace trText-'+size+' trTone-'+reactTone(e)+'">'+esc(e)+'</span>';
+  };
   // v167: categories change presentation only; stored reactions remain the same string in the existing Firebase path.
   const QUICK=['🔥','💪','👏','❤️','😂','👍','🏃'];
   const REACT_GROUPS={
     run:{name:'RUN',hint:'走る仲間へ',items:['🏃','🏃‍♀️','⚡','💨','🏁','⏱️','👟','🚀','🥇','🥈','🥉','🏅','🎯','💪','🔥','ナイスラン！','速っ！','PB更新！','自己ベスト！','ファイト！','ラスト！','いける！','走！','Run!','次いこ！']},
     hype:{name:'アツい',hint:'最高の瞬間に',items:['🔥','㊗️','🎊','💐','🏆','💯','🙌','🎉','✨','🤩','👏','⭐','❤️','💪','🚀','神！','激アツ！','最高！','えぐい！','やば！','ナイス！','優勝！','おめ！','新記録！','最強！','いいね！']},
     feel:{name:'気持ち',hint:'いつものリアクション',items:['👍','❤️','😂','😊','😮','😢','🙏','👏','🎉','🔥','💪','✨','🙆','🙇','👀','💯','👌','🤝','😭','🤣','😆','🥰','😳','🤔','🎵','🫶','🥹','😎','🎊','OK','笑','了解','ありがとう','おつかれ！','ドンマイ！']},
-    team:{name:'チーム',hint:'TOP RUN AGUI',items:TEAMS}
+    team:{name:'チーム',hint:'TOP RUN AGUI',items:TEAMS},
+    // v170: ADDITIONS only. Existing four groups/items remain unmodified.
+    reply:{name:'応答',hint:'日常の返事を短く',items:['了解','承知','感謝','熱','OK','ありがとう','おつかれ！','よろしく','確認！','助かる！','任せて！','頑張れ！','了解！','おやすみ','おはよう','すごい！','いいね！','感謝！']},
+    stamp:{name:'印鑑',hint:'押印・スタンプのリアクション',items:['済','確認済','承認','合格','祝','完走','快走','必勝','達成','応援','拍手','優勝','最高','感動','熱烈','大吉','お見事','天晴','伝説']}
   };
   const REACT_LABELS={'🔥':'熱い！','💪':'ファイト','👏':'ナイス','❤️':'いいね','😂':'笑','👍':'GOOD','🏃':'RUN!','🏃‍♀️':'RUN!','⚡':'速い！','💨':'スピード','🏁':'GOAL','🚀':'GO!','🥇':'1位','🥈':'2位','🥉':'3位','🏅':'メダル','🎯':'目標','⏱️':'タイム','👟':'シューズ','💯':'満点','🙌':'最高','🎉':'お祝い','✨':'キラキラ','🤩':'すごい','🏆':'優勝','⭐':'輝く','🫶':'感謝','🥹':'感動','😎':'クール','🎊':'おめでとう','㊗️':'祝！','💐':'おめでとう'};
   const reactionLabel=e=>isTeam(e)?(e==='team'?'AGUI':(REACT_LABELS[e.slice(5)]||e.slice(5))):REACT_LABELS[e]||'';
   const isText=e=>!isTeam(e)&&!/\p{Extended_Pictographic}/u.test(e);
   const cache=new Map();
   const myUid=()=>g()?.uid||'';
+  // v171: private, small, device-only frequency. No listener, server call or new reaction path.
+  // An entry is counted only when the pre-existing reaction write resolves successfully.
+  const reactUsageCache=new Map();
+  const reactUsageKey=()=> 'toprun.portal.reaction.frequency.v171.'+(myUid()||'guest');
+  function readReactionUsage(){
+    const k=reactUsageKey();
+    if(reactUsageCache.has(k))return reactUsageCache.get(k);
+    let raw={};
+    try{const stored=JSON.parse(localStorage.getItem(k)||'{}');if(stored&&typeof stored==='object'&&!Array.isArray(stored))raw=stored;}catch(_){/* localStorage optional on private/restricted browsing */}
+    const out=Object.create(null);
+    for(const [e,v] of Object.entries(raw))if(Number.isInteger(v)&&v>0)out[e]=Math.min(999,v);
+    reactUsageCache.set(k,out);
+    return out;
+  }
+  function countReactionUse(e){
+    if(!e)return;
+    const usage=readReactionUsage();
+    usage[e]=Math.min(999,(usage[e]||0)+1);
+    try{localStorage.setItem(reactUsageKey(),JSON.stringify(usage));}catch(_){/* in-memory fallback; no network */}
+  }
+  // Keep every existing v170 group/choice. Type tabs are simply another view over those arrays.
+  const uniqueReact=xs=>[...new Set(xs)];
+  const choiceIn=(group,kind)=>REACT_GROUPS[group].items.filter(e=>kind==='emoji'?!isTeam(e)&&!isText(e):isText(e));
+  const PICK_TYPES={
+    frequent:{name:'よく使う',heading:'よく使うリアクション',hint:'この端末の利用回数順（通信なし）'},
+    emoji:{name:'絵文字',heading:'絵文字',hint:'ラン・盛り上げ・気持ち'},
+    text:{name:'テキスト',heading:'テキスト',hint:'応答・ラン・盛り上げ・気持ち'},
+    stamp:{name:'スタンプ',heading:'印鑑・スタンプ',hint:'印鑑・押印風のリアクション'},
+    team:{name:'チーム',heading:'TOP RUN AGUI',hint:'チームアイコン'}
+  };
+  const PICK_FILTERS={
+    emoji:[['all','すべて'],['run','ラン'],['hype','盛り上げ'],['feel','気持ち']],
+    text:[['all','すべて'],['reply','応答'],['run','ラン'],['hype','盛り上げ'],['feel','気持ち']]
+  };
+  const PICK_PREFERRED={
+    emoji:['👍','❤️','👏','🔥','💪','😂','😊','🙏','🏃','🎉','✨','👌'],
+    text:['了解','承知','感謝','熱','OK','ありがとう','おつかれ！','ナイス！','ナイスラン！','ファイト！','いいね！'],
+    stamp:['済','確認済','承認','祝','完走','達成','優勝','応援','必勝','合格'],
+    team:TEAMS
+  };
+  function allPicks(kind,filter){
+    if(kind==='team')return [...TEAMS];
+    if(kind==='stamp')return uniqueReact(REACT_GROUPS.stamp.items);
+    if(kind==='emoji')return uniqueReact((filter==='all'?['run','hype','feel']:[filter]).flatMap(g=>choiceIn(g,'emoji')));
+    if(kind==='text')return uniqueReact((filter==='all'?['reply','run','hype','feel']:[filter]).flatMap(g=>choiceIn(g,'text')));
+    const use=readReactionUsage();
+    const all=uniqueReact([...allPicks('emoji','all'),...allPicks('text','all'),...allPicks('stamp','all'),...allPicks('team','all')]);
+    const seen=all.filter(e=>(use[e]||0)>0).sort((a,b)=>(use[b]||0)-(use[a]||0));
+    return uniqueReact([...seen,...['👍','❤️','👏','🔥','💪','😂','了解','感謝','済','team','承知']]);
+  }
+  function orderPicks(kind,items){
+    const use=readReactionUsage(),pref=PICK_PREFERRED[kind]||[];
+    const pri=e=>{const n=pref.indexOf(e);return n<0?999:n;};
+    return items.map((e,i)=>({e,i})).sort((a,b)=>
+      (use[b.e]||0)-(use[a.e]||0)||pri(a.e)-pri(b.e)||a.i-b.i
+    ).map(x=>x.e);
+  }
+
   const D={
     mentioned(m){cache.set(m.id,m);return !!(m.mentions&&myUid()&&m.mentions[myUid()]);},
     text(m){cache.set(m.id,m);
@@ -20408,7 +20560,7 @@ body.portalChatIsolated > #trMsgSheet{visibility:visible!important;opacity:1!imp
       if(!rs.length)return '';
       const groups=new Map();
       for(const [uid,v] of rs){const e=String(v?.e||'');if(!e)continue;if(!groups.has(e))groups.set(e,[]);groups.get(e).push(uid);}
-      return '<div class="trReacts'+(mine?' mine':'')+'">'+[...groups.entries()].map(([e,uids])=>`<button type="button" class="trReact${uids.includes(myUid())?' mine':''}${isText(e)?' is-stamp':''}" data-who="${esc(m.id)}">${face(e)}<b>${uids.length}</b></button>`).join('')+'</div>';
+      return '<div class="trReacts'+(mine?' mine':'')+'">'+[...groups.entries()].map(([e,uids])=>`<button type="button" class="trReact${uids.includes(myUid())?' mine':''}" data-who="${esc(m.id)}">${face(e)}<b>${uids.length}</b></button>`).join('')+'</div>';
     },
     sig(m){const r=m.reactions||{};return Object.keys(r).sort().map(k=>k+'='+(r[k]?.e||'')).join(',');}
   };
@@ -20513,6 +20665,8 @@ body.portalChatIsolated > #trMsgSheet{visibility:visible!important;opacity:1!imp
       await Promise.race([
         ctx==='room'?g().roomReact(roomId(),mid,emoji):g().chatReact(mid,emoji),
         new Promise((_,rej)=>setTimeout(()=>rej(Error('通信に時間がかかっています')),12000))]);
+      // Count a successful selection locally; cancellation does not increase frequency.
+      if(emoji)countReactionUse(emoji);
       closeSheet();
       try{window.showActionFeedback?.(emoji?'リアクションしました':'リアクションを取り消しました','');}catch(_){}
     }catch(err){
@@ -20526,32 +20680,45 @@ body.portalChatIsolated > #trMsgSheet{visibility:visible!important;opacity:1!imp
   function openActions(ctx,mid){
     const m=cache.get(mid);if(!m)return;
     const mine=m.reactions?.[myUid()]?.e||'';
-    let active=Object.keys(REACT_GROUPS).find(k=>REACT_GROUPS[k].items.includes(mine))||'run';
-    const tile=e=>`<button type="button" class="${isText(e)?'txt ':''}${isText(e)&&e.length>=4?'wide ':''}${e===mine?'on':''}" data-re="${esc(e)}" aria-label="${esc(isTeam(e)?'TOP RUN AGUI '+reactionLabel(e):e)}" aria-pressed="${e===mine}"><span class="trTileFace">${face(e)}</span>${reactionLabel(e)?`<span class="trTileLabel">${esc(reactionLabel(e))}</span>`:''}</button>`;
-    const quick=e=>`<button type="button" class="${e===mine?'on':''}" data-re="${esc(e)}" aria-label="${esc(e)}" aria-pressed="${e===mine}">${face(e)}</button>`;
+    // Start with one small, useful row set. No duplicate seven-item QUICK strip.
+    let active='frequent',sub='all',visible=8;
+    const tile=e=>`<button type="button" class="${isText(e)?'txt trPickTone-'+reactTone(e)+' ':''}${e===mine?'on':''}" data-re="${esc(e)}" aria-label="${esc(isTeam(e)?'TOP RUN AGUI '+reactionLabel(e):e)}" aria-pressed="${e===mine}"><span class="trTileFace">${face(e)}</span>${reactionLabel(e)?`<span class="trTileLabel">${esc(reactionLabel(e))}</span>`:''}</button>`;
     const el=sheet(`<div class="trSheetTop"><span class="trSheetBrand">TOP RUN · REACTION</span><button class="trSheetClose" type="button" data-act="close" aria-label="閉じる">×</button></div>
       <p class="trSheetHead"><strong>${esc(m.name||'')}</strong>　${esc(String(m.text||'').replace(/\s+/g,' ').slice(0,56))}</p>
       <p class="trSheetNote" role="status" aria-live="polite"></p>
-      <div class="trQuickHeading"><b>QUICK REACT</b><span>タップで送信 ／ 同じものを押すと取消</span></div>
-      <div class="trQuickRow">${QUICK.map(quick).join('')}</div>
-      <div class="trCategoryBar" role="tablist" aria-label="リアクションの種類">${Object.entries(REACT_GROUPS).map(([k,v])=>`<button type="button" role="tab" data-cat="${k}" class="${k===active?'active':''}" aria-selected="${k===active}">${esc(v.name)}</button>`).join('')}</div>
+      <div class="trCategoryBar" role="tablist" aria-label="リアクションの種類">${Object.entries(PICK_TYPES).map(([k,v])=>`<button type="button" role="tab" data-cat="${k}" class="${k===active?'active':''}" aria-selected="${k===active}">${esc(v.name)}</button>`).join('')}</div>
+      <div class="trPickSubBar" aria-label="リアクションの分類" hidden></div>
       <div class="trCategoryHeading"><strong></strong><small></small></div>
       <div class="trEmojiGrid" role="group" aria-label="リアクションの候補"></div>
+      <button class="trPickMore" type="button" data-act="more" hidden></button>
+      <p class="trPickInfo" aria-live="polite"></p>
       <div class="trSheetBtns"><button type="button" data-act="reply">↩ 返信する</button><button type="button" data-act="copy">全文コピー</button><button type="button" data-act="select">一部コピー</button><button type="button" data-act="close">閉じる</button></div>`);
     const card=el.querySelector('.trSheetCard');
     function draw(){
-      const group=REACT_GROUPS[active];
-      card.querySelector('.trEmojiGrid').innerHTML=group.items.map(tile).join('');
-      card.querySelector('.trCategoryHeading strong').textContent=group.name;
-      card.querySelector('.trCategoryHeading small').textContent=group.hint;
+      const section=PICK_TYPES[active];
+      const filters=PICK_FILTERS[active]||[];
+      const subbar=card.querySelector('.trPickSubBar');
+      subbar.hidden=!filters.length;
+      subbar.innerHTML=filters.map(([k,name])=>`<button type="button" class="${sub===k?'active':''}" data-filter="${k}" aria-pressed="${sub===k}">${esc(name)}</button>`).join('');
+      const items=orderPicks(active,allPicks(active,sub));
+      const shown=items.slice(0,visible);
+      card.querySelector('.trEmojiGrid').innerHTML=shown.map(tile).join('');
+      card.querySelector('.trCategoryHeading strong').textContent=section.heading;
+      card.querySelector('.trCategoryHeading small').textContent=section.hint;
+      card.querySelector('.trPickInfo').textContent=`${shown.length} / ${items.length} 件を表示`;
+      const more=card.querySelector('.trPickMore');
+      const left=items.length-shown.length;
+      more.hidden=left<=0;
+      more.textContent=left>0?`＋ もっと見る（残り ${left} 件）`:'';
       card.querySelectorAll('[data-cat]').forEach(b=>{const yes=b.dataset.cat===active;b.classList.toggle('active',yes);b.setAttribute('aria-selected',String(yes));});
-      card.querySelector('.trEmojiGrid').scrollTop=0;
     }
     draw();
     card.onclick=e=>{
-      const tab=e.target.closest('[data-cat]');if(tab){active=tab.dataset.cat;draw();return;}
+      const tab=e.target.closest('[data-cat]');if(tab){active=tab.dataset.cat;sub='all';visible=8;draw();return;}
+      const filter=e.target.closest('[data-filter]');if(filter){sub=filter.dataset.filter;visible=8;draw();return;}
       const r=e.target.closest('[data-re]');if(r){react(ctx,mid,r.dataset.re===mine?null:r.dataset.re,r);return;}
       const a=e.target.closest('[data-act]')?.dataset.act;
+      if(a==='more'){visible+=8;draw();return;}
       if(a==='close')closeSheet();
       if(a==='copy'){const t=String(m.text||'');closeSheet();copyText(t);}
       if(a==='select'){
@@ -20703,17 +20870,21 @@ html[data-portal-personal-color="matte"] .trNotifyOpt.on{border-color:#ff8940}
 html[data-portal-personal-color="matte"] :is(.trNotifyOpt i,.trSetBack){color:#ff8940}
 html[data-portal-personal-color="matte"] .trSheetRow.active .trSheetMain{border-color:#ff8940;box-shadow:inset 4px 0 0 #ff8940}
 </style>
-<script id="v171-home-badge-sync">
-/* Android keeps the launcher badge while notifications stay in the tray, and the server badge counter was only
-   re-synced after reading a NOTICE. Now every unread change (chat, rooms, notices) syncs it and clears read ones from the tray. */
+<script id="v168-home-badge-sync">
+/* v168: Android keeps the launcher badge (dot/number) while notifications stay in the tray,
+   and the server badge counter was only re-synced after reading a NOTICE.
+   Now: whenever unread counts change (chat, rooms, notices), the server count and the icon badge are
+   synced, and notifications that are already read are removed from the tray. */
 (()=>{
   let timer=0,pending=null,lastSent=-1,lastAt=0;
+  const SCOPE='./TOP_RUN_PORTAL';
   const text=n=>[n.tag,n.title,n.body,JSON.stringify(n.data||{})].join(' ').toLowerCase();
   const isChat=n=>/chat|room|チャット|ルーム/.test(text(n));
+  const isNotice=n=>!isChat(n);
   async function closeTray(filter){
     try{
       if(!navigator.serviceWorker?.getRegistration)return;
-      const reg=await navigator.serviceWorker.getRegistration('./TOP_RUN_PORTAL')||await navigator.serviceWorker.getRegistration();
+      const reg=await navigator.serviceWorker.getRegistration(SCOPE)||await navigator.serviceWorker.getRegistration();
       if(!reg?.getNotifications)return;
       (await reg.getNotifications()).forEach(n=>{try{if(filter(n))n.close();}catch(_){}});
     }catch(_){}
@@ -20721,10 +20892,10 @@ html[data-portal-personal-color="matte"] .trSheetRow.active .trSheetMain{border-
   async function run(){
     const c=pending;if(!c||document.visibilityState!=='visible')return;
     const g=window.__TR_PORTAL_SYNC__;
-    if(g?.loaded&&(g.loaded.chat!==true||g.loaded.personal!==true))return;
+    if(g?.loaded&&(g.loaded.chat!==true||g.loaded.personal!==true))return; // counts not final yet
     const chat=Math.max(0,Number(c.chat)||0),notice=Math.max(0,Number(c.notice)||0),total=Math.min(99,chat+notice);
     if(total===0)await closeTray(()=>true);
-    else{if(chat===0)await closeTray(isChat);if(notice===0)await closeTray(n=>!isChat(n));}
+    else{if(chat===0)await closeTray(isChat);if(notice===0)await closeTray(isNotice);}
     if(total===lastSent&&Date.now()-lastAt<30000)return;
     let ok=false;
     try{ok=await window.__TR_NOTICE_BADGE_SYNC__?.(total);}catch(_){ok=false;}
@@ -20732,7 +20903,8 @@ html[data-portal-personal-color="matte"] .trSheetRow.active .trSheetMain{border-
     lastSent=total;lastAt=Date.now();
   }
   window.__TR_HOME_BADGE_SCHEDULE__=c=>{pending=c;clearTimeout(timer);timer=setTimeout(run,900);};
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){lastAt=0;try{window.__TR_PORTAL_CHAT_BADGE__?.();}catch(_){}}});
+  const refresh=()=>{if(document.visibilityState==='visible'){lastAt=0;try{window.__TR_PORTAL_CHAT_BADGE__?.();}catch(_){}}};
+  document.addEventListener('visibilitychange',refresh);
   window.addEventListener('tr-portal-rooms',()=>{try{window.__TR_PORTAL_CHAT_BADGE__?.();}catch(_){}});
 })();
 </script>
