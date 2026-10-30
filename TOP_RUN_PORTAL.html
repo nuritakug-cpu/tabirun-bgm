@@ -1,3 +1,12 @@
+<!-- TOP RUN PORTAL v180 | 2026-10-30 | REVIEW / NOT DEPLOYED
+  PARENT: TOP_RUN_PORTAL_v179_READ_REPAIR_STAMPS.html (uploaded file).
+  ADD: common CHAT read receipts. portalCommon/topRun/chatRead/<uid> = server time of the latest common-chat view
+  (one number per person, written only when a newer message is shown; listener only while CHAT is on screen).
+  Every message shows 既読N (people other than the sender). Developers/admins can tap it: seen / not-seen names
+  among approved participants (memberAccess active; new members included automatically).
+  ADD: 管理画面 お知らせ「既読状況」. Uses the existing tap-to-open markers profiles/<uid>/portalSelf/noticeReads/<key>.
+  REQUIRES: FIREBASE_RULES_v180 (chatRead + staff read of noticeReads). Rooms, push, Auth/UID/profileId unchanged.
+-->
 <!-- TOP RUN PORTAL v179 | 2026-10-30 | INTEGRATED REVIEW / NOT PUBLISHED
   EXACT IMPLEMENTATION PARENT: TOP_RUN_PORTAL_v178_REACTION_ROUNDSTAMP.html
   REQUEST: remove the individual round '感' / '動' stamps; add '涙' '泣' '喜' '熱'.
@@ -6036,7 +6045,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v179</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v180</b></div>
   </div>
 </div>
 
@@ -6227,7 +6236,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v179</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v180</b></div>
   </div>
 </div>
 
@@ -8391,6 +8400,7 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
   }
   window.__TR_PORTAL_CHAT_BADGE__=renderPortalChatBadge; // v133
   function markPortalChatRead(){
+    try{portalShareCommonRead();}catch(_){} // v180: shared read time (only when the common thread is actually shown)
     unreadPortalChatMessages().forEach(m=>portalChatReadIds.add(m.id));
     savePortalNotiPreview();
     renderPortalChatBadge();
@@ -8482,7 +8492,7 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
           <span>${Number.isFinite(d.getTime())?d.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):''}</span>
         </div>
         ${D?D.quote(m):''}<p>${D?D.text(m):esc(m.text||'')}</p>
-      </div>${D?D.reacts(m,isMyPortalChat(m)):''}`;
+      </div>${D?D.reacts(m,isMyPortalChat(m)):''}${portalChatReadMini(m)}`;
     }).join('');
     const pcf=portalListFilterState.chat;
     const portalChatFiltered=!!pcf&&((pcf.mode==='day'&&!!pcf.day)||(pcf.mode==='month'&&!!pcf.month)||(pcf.mode==='range'&&!!(pcf.start||pcf.end)));
@@ -8517,12 +8527,60 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
       }
     }
   }
+  // v180: 既読N for the common chat (everyone sees it). Developers/admins can tap it to see who has not seen it yet.
+  function portalChatReadMini(m){
+    const g=window.__TR_PORTAL_SYNC__,map=g?.chatReadMap?.();
+    const ts=Number(m?.ts)||0;
+    if(!map||!ts)return '';
+    const sender=String(m?.senderUid||'');let n=0;
+    for(const [uid,at] of Object.entries(map)){if(uid!==sender&&at>=ts)n++;}
+    const staff=['developer','admin'].includes(g?.role);
+    if(!n&&!staff)return '';
+    const tap=staff?` role="button" tabindex="0" data-chat-read-ts="${ts}" data-chat-read-sender="${esc(sender)}"`:'';
+    return `<div class="trReadMini${isMyPortalChat(m)?' mine':''}${staff?' trReadTap':''}"${tap} aria-label="既読${n}"><span>既読${n}${staff?' ›':''}</span></div>`;
+  }
+  function portalCommonThreadShown(){
+    const thread=$('portalChatThread');
+    return !!thread&&thread.offsetParent!==null&&document.visibilityState==='visible'&&!$('screen-chat').classList.contains('hidden');
+  }
+  function portalShareCommonRead(){
+    const g=window.__TR_PORTAL_SYNC__;
+    if(!g?.chatReadMark||!portalCommonThreadShown())return;
+    g.chatReadStart?.();
+    const newest=(chatMessages||[]).reduce((n,m)=>Math.max(n,Number(m?.ts)||0),0);
+    if(newest)void g.chatReadMark(newest);
+  }
+  function portalShowReadStatus(title,res){
+    openModal('既読状況',title);
+    const total=res.read.length+res.unread.length;
+    $('modalNoticeBody').textContent=
+      `承認済みの参加者 ${total}人\n\n見た人 ${res.read.length}人\n${res.read.join('、')||'—'}\n\nまだ見ていない人 ${res.unread.length}人\n${res.unread.join('、')||'—'}`;
+    $('modalNoticeBody').hidden=false;
+    modal.classList.add('portalNoticeDetailOpen');
+  }
+  async function portalOpenChatReadStatus(el){
+    const g=window.__TR_PORTAL_SYNC__;
+    try{portalShowReadStatus('共通チャットのメッセージ',await g.chatReadStatus(Number(el.dataset.chatReadTs),el.dataset.chatReadSender||''));}
+    catch(e){showActionFeedback('既読状況を確認できません',String(e?.message||e).slice(0,120));}
+  }
+  $('portalChatThread').addEventListener('click',e=>{const el=e.target.closest('[data-chat-read-ts]');if(el)void portalOpenChatReadStatus(el);});
+  $('portalChatThread').addEventListener('keydown',e=>{const el=e.target.closest('[data-chat-read-ts]');if(el&&(e.key==='Enter'||e.key===' ')){e.preventDefault();void portalOpenChatReadStatus(el);}});
+  window.addEventListener('tr-chat-read',()=>{if(!chatScreen.classList.contains('hidden'))renderChat();});
+  document.addEventListener('visibilitychange',()=>{
+    const g=window.__TR_PORTAL_SYNC__;
+    if(document.visibilityState!=='visible')g?.chatReadStop?.();
+    else if(!chatScreen.classList.contains('hidden')){g?.chatReadStart?.();portalShareCommonRead();}
+  });
   const chatInput=$('portalChatInput');
   const chatScreen=$('screen-chat');
   // v37 CHAT-only isolation: do not allow HOME/EVENTS/CALENDAR to be painted behind CHAT.
   // This is presentation-only and does not touch Firebase/Auth/binding/save paths.
   function syncPortalChatIsolation(){
     document.body.classList.toggle('portalChatIsolated', !!chatScreen && !chatScreen.classList.contains('hidden'));
+    // v180: the chatRead listener lives only while CHAT is on screen.
+    const g=window.__TR_PORTAL_SYNC__;
+    if(chatScreen&&!chatScreen.classList.contains('hidden')){g?.chatReadStart?.();requestAnimationFrame(portalShareCommonRead);}
+    else g?.chatReadStop?.();
   }
   syncPortalChatIsolation();
   if(chatScreen){
@@ -8889,6 +8947,7 @@ if(view==='list')portalApplyManageSearch(kind);
         <button class="portalManageDelete" type="button" data-delete-kind="${kind}" data-delete-id="${esc(id)}">削除</button>
         <label class="portalPublicToggle"><input type="checkbox" data-public-kind="${kind}" data-public-id="${esc(id)}" ${enabled===false?'':'checked'}><i></i><em>公開</em></label>
         <button class="portalManageCopy" type="button" data-copy-kind="${kind}" data-copy-id="${esc(id)}">コピー</button>
+        ${kind==='notice'?`<button type="button" class="portalManageEdit" data-notice-reads="${esc(id)}">既読状況</button>`:''}
         ${needsConnection?`<button type="button" class="portalManageEdit" data-portal-event-connect="${esc(id)}">大会を接続</button>`:''}
         ${hasServiceLink?`<button type="button" class="portalManageEdit" data-portal-event-open="${esc(id)}">${eventForConnection.type==='RELAY EVENT BASE'?'駅伝BASEを開く':'EVENT BASEを開く'}</button>`:''}
       </div>
@@ -9147,6 +9206,16 @@ if(view==='list')portalApplyManageSearch(kind);
     box.innerHTML=items.map(x=>manageRow(x.date,x.title,x.body,x.id,'notice',x.enabled!==false)).join('') || '<div class="portalEmpty">この条件のお知らせはありません。</div>';
     $('manageNoticeCount').textContent=`${portalListFilterLabel('notice')} / ${items.length}件`;
     wireManageCommon(box);portalApplyManageSearch('notice');
+    // v180: who has / has not opened this notice (tap-to-open markers already saved per person)
+    box.querySelectorAll('[data-notice-reads]').forEach(b=>b.addEventListener('click',async()=>{
+      const item=noticeItems.find(n=>n.id===b.dataset.noticeReads);
+      const g=window.__TR_PORTAL_SYNC__;
+      if(!item||typeof g?.noticeReadStatus!=='function'){showActionFeedback('既読状況を確認できません','接続を確認してください。');return;}
+      b.disabled=true;
+      try{portalShowReadStatus(portalNoticeDisplayTitle(item.title||'お知らせ'),await g.noticeReadStatus({key:portalNoticeReadKey('common',item.id),version:portalNoticeVersion(item)||1}));}
+      catch(e){showActionFeedback('既読状況を確認できません',String(e?.message||e).slice(0,120));}
+      finally{b.disabled=false;}
+    }));
   }
   function renderManagePractices(){
     let items=Object.entries(schedules).filter(([,v])=>v.kind==='practice').sort((a,b)=>a[0].localeCompare(b[0]));
@@ -16498,6 +16567,74 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       if(!emoji){await dbMod.remove(at);return;}
       await dbMod.set(at,{e:String(emoji).slice(0,16),n:gate.displayName});
     };
+    // v180 COMMON CHAT read receipts + staff read status (common chat / notices).
+    // portalCommon/topRun/chatRead/<uid> = server time of this person's latest common-chat view (ONE number per person).
+    // The chatRead listener runs only while the CHAT screen is open. Notices reuse the existing
+    // profiles/<uid>/portalSelf/noticeReads/<key> markers (saved when a notice is tapped open); staff read them on demand.
+    {
+      const CR={unsub:null,map:{},ready:false,mine:0,want:0,busy:false,err:''};
+      const cOk=()=>gate.roleVerified===true&&!!gate.uid&&!!gate.profileId&&auth.currentUser?.uid===gate.uid&&gate.hasOperationalAccess();
+      const cStaff=()=>cOk()&&['developer','admin'].includes(gate.role);
+      const cUid=u=>/^[A-Za-z0-9_-]{6,128}$/.test(String(u||''));
+      const cEmit=()=>{try{window.dispatchEvent(new CustomEvent('tr-chat-read'));}catch(_){}};
+      const cErr=e=>String(e?.code||e?.message||e).slice(0,60);
+      const cStop=()=>{if(CR.unsub){try{CR.unsub();}catch(_){}CR.unsub=null;}CR.ready=false;};
+      gate.chatReadMap=()=>CR.ready?CR.map:null;
+      gate.chatReadError=()=>CR.err;
+      gate.chatReadStart=()=>{
+        if(CR.unsub||!cOk())return;
+        CR.unsub=dbMod.onValue(ref('chatRead'),snap=>{
+          const v=snap.val()||{},m={};
+          for(const [uid,at] of Object.entries(v)){const n=Number(at);if(cUid(uid)&&Number.isFinite(n)&&n>0)m[uid]=n;}
+          CR.map=m;CR.ready=true;CR.err='';
+          if(m[gate.uid])CR.mine=Math.max(CR.mine,m[gate.uid]);
+          cEmit();
+          if(CR.want>CR.mine)void gate.chatReadMark(CR.want);
+        },e=>{cStop();CR.map={};CR.err='既読人数を取得できません（'+cErr(e)+'）';console.warn('[TOP RUN v180] chatRead read rejected',cErr(e));cEmit();});
+      };
+      gate.chatReadStop=()=>{cStop();};
+      // Write only when a message newer than this person's shared read time is shown. Server time, never the phone clock.
+      gate.chatReadMark=async latestTs=>{
+        const ts=Number(latestTs)||0;
+        if(!ts||!cOk())return;
+        CR.want=Math.max(CR.want,ts);
+        if(!CR.ready||CR.busy||CR.mine>=CR.want)return;
+        CR.busy=true;const target=CR.want;
+        try{await dbMod.set(ref('chatRead/'+gate.uid),dbMod.serverTimestamp());CR.mine=Math.max(CR.mine,target);}
+        catch(e){CR.err='既読を共有できません（'+cErr(e)+'）';console.warn('[TOP RUN v180] chatRead write rejected',cErr(e));cEmit();}
+        finally{CR.busy=false;}
+      };
+      // Approved participants (memberAccess active). New members are included automatically once approved.
+      gate.readRoster=async()=>{
+        if(!cStaff())throw Error('開発者・管理者のみ確認できます');
+        const [ac,rq]=await Promise.all([dbMod.get(ref('memberAccess')),dbMod.get(ref('memberRequests'))]);
+        const acc=ac.val()||{},req=rq.val()||{},rows=[];
+        for(const [uid,m] of Object.entries(acc)){
+          const r=req[uid];
+          if(!cUid(uid)||m?.active!==true||typeof m.profileId!=='string'||!m.profileId||(r?.profileId&&m.profileId!==r.profileId))continue;
+          const name=[r?.displayName,m?.displayName,r?.requestedName].map(x=>typeof x==='string'?x.trim():'').find(Boolean)||('名前なし（末尾'+uid.slice(-6)+'）');
+          rows.push({uid,name:name.slice(0,24)});
+        }
+        return rows.sort((a,b)=>a.name.localeCompare(b.name,'ja'));
+      };
+      gate.chatReadStatus=async(ts,senderUid)=>{
+        const at=Number(ts)||0;if(!at)throw Error('メッセージを確認できません');
+        const people=await gate.readRoster();
+        const map=CR.ready?CR.map:((await dbMod.get(ref('chatRead'))).val()||{});
+        const read=[],unread=[];
+        for(const p of people){if(p.uid===String(senderUid||''))continue;(Number(map[p.uid]||0)>=at?read:unread).push(p.name);}
+        return {read,unread};
+      };
+      gate.noticeReadStatus=async({key,version})=>{
+        if(!/^(?:p|e)_[A-Za-z0-9_-]{1,298}$/.test(String(key||'')))throw Error('お知らせを確認できません');
+        const need=Number(version)||1;
+        const people=await gate.readRoster();
+        const vals=await Promise.all(people.map(p=>dbMod.get(dbMod.ref(db,'profiles/'+p.uid+'/portalSelf/noticeReads/'+key)).then(s=>Number(s.val())||0)));
+        const read=[],unread=[];
+        people.forEach((p,i)=>(vals[i]>=need?read:unread).push(p.name));
+        return {read,unread};
+      };
+    }
     // v133 PORTAL ROOMS (invite-only). Same Auth/db/gateway; paths under portalCommon/topRun:
     // roomMeta/<room>, roomMembers/<room>/<uid>, roomMessages/<room>/<msg>, userRooms/<uid>/<room>.
     // Traffic: own userRooms + small roomMeta listeners only. Messages (last 50) are read only while a room is open.
@@ -20511,6 +20648,7 @@ body.portalChatIsolated > #trMsgSheet{visibility:visible!important;opacity:1!imp
 #screen-chat :is(#portalChatThread,#trRoomThread) .trReadMini{display:flex;align-items:center;gap:4px;margin:-3px 10px 9px;font-size:10px;line-height:1;color:#7f8585;letter-spacing:.02em}
 #screen-chat :is(#portalChatThread,#trRoomThread) .trReadMini.mine{justify-content:flex-end}
 #screen-chat :is(#portalChatThread,#trRoomThread) .trReadMini span{display:inline-block;padding:0 1px}
+#screen-chat #portalChatThread .trReadMini.trReadTap span{cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 @media(max-width:370px){#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact{padding:4px 7px;min-height:28px}#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trTextFace{width:38px;max-width:38px;height:20px}}
 </style>
 <style id="v176-frameless-reactions-only">
