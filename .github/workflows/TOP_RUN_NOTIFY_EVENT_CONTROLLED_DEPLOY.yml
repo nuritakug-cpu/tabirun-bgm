@@ -211,6 +211,17 @@ jobs:
           }
           // Room-only extension. Existing signed Worker / CHAT / NOTICE / Badge helpers remain untouched.
           const roomHelpers = String.raw`
+          // v171 room preference: null/missing is 'all'; no additional RTDB requests.
+          function roomNotifyAllowed(member,message,uid){
+            if(!member||member.status!=='joined')return false;
+            const mode=member.notify==='off'||member.notify==='mention'?member.notify:'all';
+            if(mode==='off')return false;
+            if(mode==='mention'){
+              const mentions=message?.mentions&&typeof message.mentions==='object'&&!Array.isArray(message.mentions)?message.mentions:{};
+              return Object.prototype.hasOwnProperty.call(mentions,uid);
+            }
+            return true;
+          }
           async function stage3NotifyRoom(data,env,person,auth,c){
             const match=typeof data?.id==='string'&&data.id.length<=130
               ? /^(r[A-Za-z0-9_]{6,60})\/(m[A-Za-z0-9_]+)$/.exec(data.id) : null;
@@ -237,7 +248,7 @@ jobs:
               return json({ok:false,error:'Room message, sender or membership invalid'},403,c);
             }
             const memberUids=Object.entries(members)
-              .filter(([uid,item])=>uid!==auth.uid&&/^[-A-Za-z0-9_]{1,128}$/.test(uid)&&item?.status==='joined')
+              .filter(([uid,item])=>uid!==auth.uid&&/^[-A-Za-z0-9_]{1,128}$/.test(uid)&&roomNotifyAllowed(item,msg,uid))
               .map(([uid])=>uid);
             if(memberUids.length>80)return json({ok:false,error:'Room audience exceeds safe limit'},503,c);
             const recipients=new Set(memberUids);
@@ -437,6 +448,29 @@ jobs:
           moReplace('chat HTTP status',
             "deliveredToDevice:'unverified'},accepted>0||devices.length===0?200:502,c);",
             "deliveredToDevice:'unverified'},accepted>0||eligible.length===0?200:502,c);");
+          // v171: apply per-UID preference after existing legacy mention-only patch.
+          moReplace('v171 common CHAT notification preference',
+            "  const eligible=kind==='chat'?devices.filter(row=>row.mention_only!==1||hasMention(row.uid)):devices;",
+            "  let perUserChatNotify=null;\n"+
+            "  if(kind==='chat'){\n"+
+            "    try{const value=await stage3Read('portalCommon/topRun/chatNotify',auth.token);\n"+
+            "      if(value===null)perUserChatNotify={};\n"+
+            "      else if(value&&typeof value==='object'&&!Array.isArray(value))perUserChatNotify=value;\n"+
+            "    }catch(_){/* Keep existing behavior on read failure. */}\n"+
+            "  }\n"+
+            "  const eligible=kind==='chat'?devices.filter(row=>{\n"+
+            "    if(perUserChatNotify!==null){\n"+
+            "      const mode=perUserChatNotify[row.uid];\n"+
+            "      if(mode==='off')return false;\n"+
+            "      if(mode==='mention')return hasMention(row.uid);\n"+
+            "      return true; // all or unset\n"+
+            "    }\n"+
+            "    return row.mention_only!==1||hasMention(row.uid); // read-denied legacy fallback\n"+
+            "  }):devices;");
+          if(!patched.includes('roomNotifyAllowed(item,msg,uid)')||
+             !patched.includes('portalCommon/topRun/chatNotify')||
+             !patched.includes("kind==='roomInvite'"))
+            throw Error('v171 notification preference patch incomplete');
           for(const marker of ["stage3NotifyRoomInvite(data,env,person,auth,c)","mentionOnly:row?.mention_only===1","ALTER TABLE stage3_devices ADD COLUMN mention_only","const deliverable=devices.filter","const eligible=kind==='chat'?devices.filter"]){
             if(!patched.includes(marker))throw Error('Worker patch missing: '+marker);
           }
