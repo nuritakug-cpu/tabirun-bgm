@@ -1,4 +1,5 @@
-<!-- TOP RUN PORTAL v189 | 2026-10-30 | v188 + ロゴ埋め込みを1つに統合（他は変更なし） | INTEGRATED REVIEW / NOT DEPLOYED
+<!-- TOP RUN PORTAL v190 | 2026-10-31 | v189 + チャット名（マイページで変更・共通チャット/全ルームで統一表示・開発者/管理者は表示名を併記）＋開発者設定「名前一覧」。REQUIRES Rules v190（portalCommon/topRun/nameBook 追加）
+  v189 | 2026-10-30 | v188 + ロゴ埋め込みを1つに統合（他は変更なし） | INTEGRATED REVIEW / NOT DEPLOYED
   EXACT PHYSICAL PARENT: user-supplied TOP_RUN_PORTAL_v187.html
   PARENT SHA256: fed1f4d6f11e285d18297f8c259788a46225eabf6212402ba8929e02f86d8d60
   STYLE DONOR: user-supplied TOP_RUN_PORTAL(20261030-130205).html (v185).
@@ -5795,6 +5796,16 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <button type="button" id="portalSaveName">名前を保存</button>
       </div>
       <div class="portalInlineState" id="portalNameState"></div>
+      <p class="trNameNote">表示名は<b>出走登録・大会記録</b>に使われる名前です（選手本人の名前）。</p>
+      <div class="trChatNameBox" id="trChatNameBox">
+        <div class="portalPanelHead"><small>CHAT NAME</small><b>チャットでの表示名</b></div>
+        <p class="trNameNote">共通チャット・ルームで表示される名前です。未入力のときは表示名を使います。保護者の端末で表示名をお子さんの名前にしている場合は、ここに保護者のお名前（例：○○ 母）を入れてください。</p>
+        <div class="portalNameRow">
+          <input id="trChatNameInput" maxlength="24" autocomplete="off" placeholder="未入力なら表示名">
+          <button type="button" id="trChatNameSave">チャット名を保存</button>
+        </div>
+        <div class="portalInlineState" id="trChatNameState" aria-live="polite"></div>
+      </div>
       <div class="portalBasicProfile" id="portalBasicProfile" aria-label="基本プロフィール">
         <div class="portalRuleTitle">基本プロフィール</div>
         <div class="portalBasicProfileGrid">
@@ -6109,7 +6120,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v189</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v190</b></div>
   </div>
 </div>
 
@@ -6300,7 +6311,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v189</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v190</b></div>
   </div>
 </div>
 
@@ -6920,6 +6931,39 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
     <section class="portalPanel"><div class="portalPanelHead"><small>MY RECORDS</small><b>管理登録の過去大会記録</b></div><p class="portalHelp portalV87HistoryHelp">ここには管理登録された大会記録のみ表示します。「過去の出走」件数は出走登録に基づくため、件数が異なる場合があります。TT・選考・試走の計測結果は「個人記録 → その他の記録」で確認できます。</p><div class="portalSimpleFilter" data-list-filter="external"><select data-filter-mode aria-label="絞り込み"><option value="all" selected>すべて</option><option value="day">日付</option><option value="month">月</option><option value="range">期間</option></select><div class="portalSimpleFilterValue"><input type="date" data-filter-day aria-label="指定日" hidden><input type="month" data-filter-month aria-label="表示する月"><div class="portalSimpleFilterRange" data-filter-range hidden><input type="date" data-filter-start aria-label="開始日"><input type="date" data-filter-end aria-label="終了日"></div></div></div><div id="flowExtList"></div></section>
  </div>
 </div>
+<script id="v190-chat-name-directory">
+/* v190: チャット名。共通チャット・全ルームで同じ規則：送信者UIDから nameBook/<uid> の今のチャット名を表示（未取得なら送信時の名前）。
+   開発者・管理者には、チャット名と表示名（出走登録の名前）が違うとき「（表示名：…）」を併記。 */
+(function(){
+  const N={book:{},ready:false,err:''};
+  const norm=v=>String(v||'').normalize('NFKC').replace(/[\s\u3000]/g,'');
+  const clean=v=>{const t=String(v??'').trim();return t&&t.length<=24?t:'';};
+  N.apply=(val,err)=>{
+    if(err){N.err=String(err?.code||err?.message||err);return;}
+    const b={};
+    for(const [u,r] of Object.entries(val||{})){
+      if(!/^[A-Za-z0-9_-]{6,128}$/.test(u)||!r||typeof r!=='object')continue;
+      const d=clean(r.displayName),c=clean(r.chatName);
+      if(d||c)b[u]={displayName:d,chatName:c||d,updatedAt:Number(r.updatedAt)||0};
+    }
+    const changed=JSON.stringify(b)!==JSON.stringify(N.book);
+    N.book=b;N.ready=true;N.err='';
+    if(changed){try{window.__TR_RENDER_COMMON_CHAT__?.();}catch(_){}try{window.dispatchEvent(new Event('tr-names-updated'));}catch(_){}}
+  };
+  N.isStaff=()=>{const g=window.__TR_PORTAL_SYNC__;return !!g&&g.roleVerified===true&&['developer','admin'].includes(g.role);};
+  N.chat=(uid,fb)=>{const r=N.book[String(uid||'')];return (r&&(r.chatName||r.displayName))||clean(fb)||'';};
+  N.label=(uid,fb,empty)=>{
+    const name=N.chat(uid,fb);
+    if(!name)return empty===undefined?'参加者':empty;
+    if(!N.isStaff())return name;
+    const d=N.book[String(uid||'')]?.displayName||'';
+    return d&&norm(d)!==norm(name)?name+'（表示名：'+d+'）':name;
+  };
+  window.__TR_NAMES__=N;
+  window.trChatNameLabel=(uid,fb,empty)=>N.label(uid,fb,empty);
+  window.trChatName=(uid,fb)=>N.chat(uid,fb);
+})();
+</script>
 <script>
 (() => {
   const $ = id => document.getElementById(id);
@@ -8531,6 +8575,7 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
     if(!Number.isFinite(d.getTime())) return '';
     return `${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}（${['日','月','火','水','木','金','土'][d.getDay()]}）`;
   }
+  window.__TR_RENDER_COMMON_CHAT__=()=>{try{renderChat();}catch(_){}};
   function renderChat(){
     const box=$('portalChatThread');
     const rows=(chatMessages||[]).filter(m=>portalListAccept('chat',portalChatLocalDay(m.ts))).slice().sort((a,b)=>(Number(a.ts)||0)-(Number(b.ts)||0));
@@ -8552,7 +8597,7 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
       const D=window.__trChatDecor;
       return `${dayBand}${boundary}<div class="msg ${m.staff?'staff ':''}${isMyPortalChat(m)?'mine ':''}${D&&D.mentioned(m)?'trMentioned ':''}" data-chat-ts="${ts}" data-mid="${esc(m.id||'')}">
         <div class="msgHead">
-          <span>${esc(m.name||'参加者')}</span>
+          <span>${esc((window.trChatNameLabel?window.trChatNameLabel(m.senderUid,m.name):(m.name||'参加者')))}</span>
           <span>${Number.isFinite(d.getTime())?d.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):''}</span>
         </div>
         ${D?D.quote(m):''}<p>${D?D.text(m):esc(m.text||'')}</p>${portalChatReadMini(m)}
@@ -9663,7 +9708,7 @@ if(view==='list')portalApplyManageSearch(kind);
     if(count)count.textContent=`メッセージ ${chatMessages.length}件`;
     if(!box)return;
     const sorted=chatMessages.filter(m=>portalListAccept('chatdelete',portalChatLocalDay(m.ts))).slice().sort((a,b)=>(Number(b.ts)||0)-(Number(a.ts)||0));
-    box.innerHTML=sorted.length?sorted.map(m=>`<div class="portalChatDeleteRow"><div><small>${esc(portalChatLocalDay(m.ts))}　${esc(m.name||'参加者')}</small><p>${esc(m.text||'')}</p></div><button type="button" data-portal-chat-delete="${esc(m.id)}" aria-label="このチャットを削除">削除</button></div>`).join(''):'<div class="portalEmpty">チャットはありません。</div>';
+    box.innerHTML=sorted.length?sorted.map(m=>`<div class="portalChatDeleteRow"><div><small>${esc(portalChatLocalDay(m.ts))}　${esc((window.trChatNameLabel?window.trChatNameLabel(m.senderUid,m.name):(m.name||'参加者')))}</small><p>${esc(m.text||'')}</p></div><button type="button" data-portal-chat-delete="${esc(m.id)}" aria-label="このチャットを削除">削除</button></div>`).join(''):'<div class="portalEmpty">チャットはありません。</div>';
   }
   function afterDeveloperChatDelete(label){
     renderChat();renderPortalChatBadge();renderNotificationPreview();renderDeveloperChatSummary();
@@ -15755,7 +15800,7 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
       if(old.profileId&&old.profileId!==link.profileId)throw Error('旧マイページのprofileIdが一致しません');
       const at=dbMod.ref(db,'profiles/'+uid+'/portalSelf');
       let changed=false;
-      const keys=['basicProfile','defaultGoals','personalColor','externalRecords'];
+      const keys=['basicProfile','defaultGoals','personalColor','externalRecords','chatName'];
       const tx=await dbMod.runTransaction(at,current=>{
         if(auth.currentUser?.uid!==uid)return;
         const live=current&&typeof current==='object'&&!Array.isArray(current)?current:{};
@@ -16168,6 +16213,44 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       if(confirmed.val()?.profileId!==profileId || confirmed.val()?.displayName!==name)
         throw Error('保存後の本人情報を再確認できませんでした');
       gate.displayName=name;
+      try{await gate.syncNameBook();}catch(_){}
+    };
+    // v190: チャット名 = profiles/<uid>/portalSelf/chatName（本人のみ）。他の人に見せる写しは nameBook/<uid>。
+    gate.syncNameBook=async()=>{
+      if(!gate.uid||!gate.displayName||auth.currentUser?.uid!==gate.uid)return false;
+      await dbMod.set(ref('nameBook/'+gate.uid),{displayName:gate.displayName,chatName:(gate.chatName||gate.displayName),updatedAt:Date.now()});
+      return true;
+    };
+    gate.saveOwnChatName=async(rawName)=>{
+      if(!gate.canSavePersonal())throw Error('本人Firebaseの受信が未成立です');
+      const name=String(rawName||'').trim();
+      if(name.length>24||/[\x00-\x1f]/.test(name))throw Error('チャット名は24文字以内で入力してください');
+      const uid=gate.uid,at=dbMod.ref(db,'profiles/'+uid+'/portalSelf/chatName');
+      if(name)await dbMod.set(at,name);else await dbMod.remove(at);
+      if(auth.currentUser?.uid!==uid)throw Error('保存処理中に本人認証が変わりました');
+      const back=String((await dbMod.get(at)).val()||'');
+      if(back!==name)throw Error('保存後のチャット名を再確認できませんでした');
+      gate.chatName=name;
+      let shared=true;try{await gate.syncNameBook();}catch(e){shared=false;console.warn('[TOP RUN v190] nameBook write rejected',e?.code||e);}
+      return {shared};
+    };
+    gate.nameDirectory=async()=>{
+      if(gate.roleVerified!==true||gate.role!=='developer')throw Error('開発者の権限が必要です');
+      const read=p=>dbMod.get(ref(p)).then(x=>x.val()||{});
+      const [rq,ac,nb,cp]=await Promise.all([read('memberRequests'),read('memberAccess'),read('nameBook').catch(()=>null),read('chatPeople').catch(()=>({}))]);
+      const ok=u=>/^[A-Za-z0-9_-]{6,128}$/.test(u);
+      const book=nb||{},people=(cp&&cp.items)||{};
+      const uids=[...new Set([...Object.keys(rq),...Object.keys(ac),...Object.keys(book),...Object.keys(people),gate.uid])].filter(ok);
+      const needRole=uids.filter(u=>ac[u]?.active!==true&&u!==gate.uid);
+      const roles={};
+      await Promise.all(needRole.map(u=>dbMod.get(dbMod.ref(db,'portalRoles/'+u)).then(x=>{roles[u]=x.val()?.role||'';}).catch(()=>{})));
+      const rows=uids.map(u=>{
+        const b=book[u]||{};
+        const role=u===gate.uid?'developer':(roles[u]==='developer'||roles[u]==='admin')?roles[u]:(ac[u]?.active===true?'participant':(rq[u]?'pending':''));
+        return {uid:u,reg:String(rq[u]?.displayName||'').trim(),disp:String(b.displayName||'').trim(),chat:String(b.chatName||'').trim(),
+          synced:!!book[u],role,active:ac[u]?.active===true};
+      }).filter(r=>r.reg||r.disp||r.chat||r.role);
+      return {rows,bookReadable:nb!==null};
     };
     gate.saveNoticeRead=async({key,version})=>{
       if(!gate.hasOperationalAccess()||gate.loaded.personal!==true||
@@ -16629,7 +16712,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       const id='c'+Date.now()+'_'+Math.random().toString(36).slice(2,11);
       // v159: optional 返信 (replyTo) and メンション (mentions) from the composer
       const ex=window.__trChatExtras?.take?.('common',text)||{};
-      await dbMod.set(ref('chat/'+id),{senderUid:gate.uid,name:gate.displayName,text,ts:dbMod.serverTimestamp(),staff:['developer','admin'].includes(gate.role),...ex});
+      await dbMod.set(ref('chat/'+id),{senderUid:gate.uid,name:(gate.chatName||gate.displayName),text,ts:dbMod.serverTimestamp(),staff:['developer','admin'].includes(gate.role),...ex});
       void window.__TR_STAGE3_NOTIFY__?.('chat',id);
     };
     // v159: one reaction per person per message (LINE / BAND style). emoji=null removes it.
@@ -16693,7 +16776,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       const readDirectory=async()=>{
         if(!cStaff())throw Error('開発者・管理者のみ確認できます');
         const items=((await dbMod.get(ref('chatPeople'))).val()||{}).items||{},names={};
-        for(const [uid,it] of Object.entries(items)){const n=String(it?.name||'').trim().slice(0,24);if(cUid(uid))names[uid]=n||('名前なし（末尾'+uid.slice(-6)+'）');}
+        for(const [uid,it] of Object.entries(items)){const n0=String(it?.name||'').trim().slice(0,24),n=window.trChatNameLabel?window.trChatNameLabel(uid,n0,''):n0;if(cUid(uid))names[uid]=n||('名前なし（末尾'+uid.slice(-6)+'）');}
         return names;
       };
       const byName=(a,b)=>a.localeCompare(b,'ja');
@@ -16907,7 +16990,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         const mid='m'+Date.now()+'_'+Math.random().toString(36).slice(2,11);
         const ex=window.__trChatExtras?.take?.('room:'+id,text)||{};
         await dbMod.update(dbMod.ref(db,root),{
-          ['roomMessages/'+id+'/'+mid]:{senderUid:gate.uid,name:gate.displayName,text,ts:dbMod.serverTimestamp(),...ex},
+          ['roomMessages/'+id+'/'+mid]:{senderUid:gate.uid,name:(gate.chatName||gate.displayName),text,ts:dbMod.serverTimestamp(),...ex},
           ['roomMeta/'+id+'/lastAt']:dbMod.serverTimestamp()
         });
         // v166: room push (Worker kind "room", id "<room>/<message>"). The Worker checks sender, membership and recipients.
@@ -17043,7 +17126,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         const id='r'+Date.now()+'_'+Math.random().toString(36).slice(2,9),now=Date.now();
         const {u,add}=memberRows(list,now);
         u['roomMeta/'+id]={name,category,createdAt:now,createdBy:gate.uid,lastAt:0};
-        u['roomMembers/'+id+'/'+gate.uid]={status:'joined',name:gate.displayName,updatedAt:now};
+        u['roomMembers/'+id+'/'+gate.uid]={status:'joined',name:(gate.chatName||gate.displayName),updatedAt:now};
         u['userRooms/'+gate.uid+'/'+id]={status:'joined',updatedAt:now};
         list.forEach(m=>add(id,m));
         await dbMod.update(dbMod.ref(db,root),u);
@@ -17707,6 +17790,7 @@ try{
           return;
         }
         gate.uid=uid;gate.profileId=p.profileId;gate.displayName=String(p.displayName||'').slice(0,24);
+        {const c=String(p?.portalSelf?.chatName||'').trim();gate.chatName=c&&c.length<=24?c:'';} // v190
         ui?.applyIdentity({profileId:p.profileId,displayName:gate.displayName});
         window.dispatchEvent(new Event('tr-portal-identity-ready'));
         try{
@@ -17978,6 +18062,14 @@ try{
             .map(([id,r])=>({...r,id})).sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0))),noticesRef);
           const chatRef=dbMod.query(ref('chat'),dbMod.orderByChild('ts'),dbMod.limitToLast(100));
           bind('chat','chat',items=>ui?.applyChat(Object.entries(items).map(([id,r])=>({...r,id})).sort((a,b)=>Number(a.ts||0)-Number(b.ts||0))),chatRef);
+          // v190: names for chat display (small, ~60 bytes per person). Failure keeps the send-time names.
+          try{gate.__nameBookStop?.();}catch(_){}
+          gate.__nameBookStop=p94WatchValue(ref('nameBook'),snap=>{
+            const v=snap.val()||{};window.__TR_NAMES__?.apply(v);
+            const mine=v[gate.uid];
+            if(!mine||mine.displayName!==gate.displayName||mine.chatName!==(gate.chatName||gate.displayName))
+              gate.syncNameBook().catch(e=>console.warn('[TOP RUN v190] nameBook write rejected',e?.code||e));
+          },e=>{window.__TR_NAMES__?.apply(null,e);console.warn('[TOP RUN v190] nameBook read rejected',e?.code||e);});
         }else{ui?.applyNotices([]);ui?.applyChat([]);ui?.disableChat();}
       }catch(error){if(seq!==generation)return;reset();status('本人READ不可：'+String(error?.code||error?.message||error));window.__TR_PARTICIPANT_ENTRY__?.failed('既存の本人情報を読み込めません。元の端末の登録と権限を確認してください。');}
     };
@@ -19695,7 +19787,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
     const ts=Number(el.dataset.roomReadTs)||0,sender=el.dataset.roomReadSender||'',read=[],unread=[];
     for(const [u,row] of Object.entries(members)){
       if(u===sender||String(row?.status||'')!=='joined')continue;
-      const name=String(row?.name||'').trim()||('名前なし（末尾'+u.slice(-6)+'）');
+      const name=(window.trChatNameLabel?window.trChatNameLabel(u,row?.name,''):String(row?.name||'').trim())||('名前なし（末尾'+u.slice(-6)+'）');
       (Number(row?.readAt||0)>=ts?read:unread).push(name);
     }
     read.sort((a,b)=>a.localeCompare(b,'ja'));unread.sort((a,b)=>a.localeCompare(b,'ja'));
@@ -19712,9 +19804,10 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
       const mine=m.senderUid===uid;
       const time=ts?d.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):'';
       const D=window.__trChatDecor;
-      return band+'<div class="msg'+(mine?' mine':'')+(D&&D.mentioned(m)?' trMentioned':'')+'" data-mid="'+esc(m.id||'')+'"><div class="msgHead"><span>'+esc(m.name||'参加者')+'</span><span>'+esc(time)+'</span></div>'+(D?D.quote(m):'')+'<p>'+(D?D.text(m):esc(m.text||''))+'</p>'+roomReadMini(m,uid,members)+'</div>'+(D?D.reacts(m,mine):'');
+      return band+'<div class="msg'+(mine?' mine':'')+(D&&D.mentioned(m)?' trMentioned':'')+'" data-mid="'+esc(m.id||'')+'"><div class="msgHead"><span>'+esc((window.trChatNameLabel?window.trChatNameLabel(m.senderUid,m.name):(m.name||'参加者')))+'</span><span>'+esc(time)+'</span></div>'+(D?D.quote(m):'')+'<p>'+(D?D.text(m):esc(m.text||''))+'</p>'+roomReadMini(m,uid,members)+'</div>'+(D?D.reacts(m,mine):'');
     }).join('');
   }
+  window.addEventListener('tr-names-updated',()=>{shownMsgKey='';try{render();}catch(_){}}); // v190
   const chatMain=()=>document.querySelector('#screen-chat > main.chatMain');
   let lastScrolledId='';
   function renderThread(s){
@@ -19846,7 +19939,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
     const group=(title,note,list)=>{
       const rows=list.filter(m=>!exclude?.has(m.uid));
       return '<p class="trPickHead">'+esc(title)+'<small>'+esc(note)+'</small>'+(rows.length>1?'<button type="button" class="trPickAll" data-pick-all>全員選ぶ</button>':'')+'</p>'+
-        (rows.length?'<div class="trPick">'+rows.map(m=>'<label><input type="checkbox" value="'+esc(m.uid)+'" data-name="'+esc(m.name)+'">'+esc(m.name)+
+        (rows.length?'<div class="trPick">'+rows.map(m=>'<label><input type="checkbox" value="'+esc(m.uid)+'" data-name="'+esc(m.name)+'">'+esc(window.trChatNameLabel?window.trChatNameLabel(m.uid,m.name):m.name)+
           (count.get(norm(m.name))>1?'<span class="trSame">同名あり</span>':'')+'</label>').join('')+'</div>'
         :'<p class="trRoomNote">'+(list.length?'招待できる人がいません。':'まだ選ばれていません。「管理画面の設定」→「チャットの参加者を選ぶ」で選べます。')+'</p>');
     };
@@ -19870,7 +19963,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
     try{list=await gate().roomMembers(id);}catch(e){if(rid()===id)box.innerHTML='<p class="trRoomNote">メンバーを確認できません：'+esc(errText(e))+'</p>';return;}
     if(rid()!==id)return;
     const label={joined:'入室中',invited:'招待中',left:'退室'};
-    let html='<b class="trCardTitle">メンバー</b>'+list.map(m=>'<div class="trMemberRow"><span>'+esc(m.name||'参加者')+'<small>'+esc(label[m.status]||'')+'</small></span>'+
+    let html='<b class="trCardTitle">メンバー</b>'+list.map(m=>'<div class="trMemberRow"><span>'+esc(window.trChatNameLabel?window.trChatNameLabel(m.uid,m.name):(m.name||'参加者'))+'<small>'+esc(label[m.status]||'')+'</small></span>'+
       (s?.isDev&&m.uid!==s.uid?'<button type="button" class="trRoomBtn warn" data-member-remove="'+esc(m.uid)+'" data-name="'+esc(m.name)+'">外す</button>':'')+'</div>').join('');
     if(s?.isDev){
       html+='<div class="trRoomRow"><button type="button" class="trRoomBtn" data-invite-more>招待を追加</button></div><div id="trRoomMorePick"></div>';
@@ -20193,7 +20286,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
     $('trRoomDelCount').textContent='メッセージ '+msgs.length+'件';
     const shown=msgs.filter(accept);
     $('trRoomDelList').innerHTML=shown.length?shown.slice().reverse().map(m=>
-      '<div class="portalChatDeleteRow"><div><small>'+esc(day(m.ts))+'　'+esc(m.name||'参加者')+'</small><p>'+esc(m.text||'')+'</p></div>'+
+      '<div class="portalChatDeleteRow"><div><small>'+esc(day(m.ts))+'　'+esc((window.trChatNameLabel?window.trChatNameLabel(m.senderUid,m.name):(m.name||'参加者')))+'</small><p>'+esc(m.text||'')+'</p></div>'+
       '<button type="button" data-trdel="'+esc(m.id)+'" aria-label="このメッセージを削除">削除</button></div>').join('')
       :'<div class="portalEmpty">'+(msgs.length?'この日付・期間のメッセージはありません。':'このルームのメッセージはありません。')+'</div>';
   }
@@ -21197,10 +21290,10 @@ html[data-portal-personal-color="matte"] #screen-chat #trRoomThread .trReadIssue
     if(ctx==='room'){
       const id=roomId();
       if(roomPeople.id!==id){roomPeople={id,list:[]};try{roomPeople.list=(await g().roomMembers(id)).filter(x=>x.status==='joined');}catch(_){}}
-      roomPeople.list.forEach(x=>map.set(x.uid,x.name));
+      roomPeople.list.forEach(x=>map.set(x.uid,window.trChatName?window.trChatName(x.uid,x.name):x.name));
     }
     const thread=ctx==='room'?$('trRoomThread'):$('portalChatThread');
-    thread?.querySelectorAll('.msg[data-mid]').forEach(el=>{const m=cache.get(el.dataset.mid);if(m?.senderUid&&m.name)map.set(m.senderUid,m.name);});
+    thread?.querySelectorAll('.msg[data-mid]').forEach(el=>{const m=cache.get(el.dataset.mid);if(m?.senderUid&&m.name)map.set(m.senderUid,window.trChatName?window.trChatName(m.senderUid,m.name):m.name);});
     map.delete(myUid());
     const list=[...map.entries()].map(([uid,name])=>({uid,name})).filter(x=>x.name).sort((a,b)=>a.name.localeCompare(b.name,'ja'));
     lastPeople[key(ctx)]=list;
@@ -21353,7 +21446,7 @@ html[data-portal-personal-color="matte"] #screen-chat #trRoomThread .trReadIssue
   function openWho(ctx,mid){
     const m=cache.get(mid);if(!m)return;
     const groups=new Map();
-    for(const [uid,v] of Object.entries(m.reactions||{})){const e=String(v?.e||'');if(!e)continue;if(!groups.has(e))groups.set(e,[]);groups.get(e).push(uid===myUid()?(v.n||'')+'（自分）':(v.n||''));}
+    for(const [uid,v] of Object.entries(m.reactions||{})){const e=String(v?.e||'');if(!e)continue;if(!groups.has(e))groups.set(e,[]);{const nm=window.trChatNameLabel?window.trChatNameLabel(uid,v.n,''):(v.n||'');groups.get(e).push(uid===myUid()?nm+'（自分）':nm);}}
     const total=[...groups.values()].reduce((n,a)=>n+a.length,0);
     const el=sheet(`<p class="trSheetHead">リアクション ${total}人｜${esc(String(m.text||'').slice(0,30))}</p>
       <div class="trWho">${[...groups.entries()].map(([e,names])=>`<b>${face(e)} ${names.length}</b>${names.map(n=>`<span>${esc(n)}</span>`).join('')}`).join('')}</div>
@@ -21749,5 +21842,104 @@ html[data-portal-personal-color="matte"] #screen-management-settings #portalEven
   #screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-medium{font-size:15px!important}
 }
 </style>
+<style id="v190-chat-name-style">
+.trNameNote{font-size:12px;line-height:1.6;opacity:.82;margin:6px 2px 0}
+.trChatNameBox{margin-top:16px;padding-top:12px;border-top:1px solid rgba(127,127,127,.25)}
+#trNameDirWrap{overflow-x:auto;margin-top:10px}
+#trNameDirTable{border-collapse:collapse;width:100%;min-width:330px;font-size:12px}
+#trNameDirTable th,#trNameDirTable td{border-bottom:1px solid rgba(127,127,127,.25);padding:7px 5px;text-align:left;vertical-align:top;word-break:break-all}
+#trNameDirTable th{font-weight:700;white-space:nowrap}
+#trNameDirTable td small{display:block;opacity:.7;font-size:10.5px;margin-top:2px}
+#trNameDirTable td.trNdDiff{font-weight:700;color:#e0a100}
+#trNameDirTable td.trNdNone{opacity:.55}
+</style>
+<script id="v190-chat-name-ui">
+(()=>{
+  const $=id=>document.getElementById(id);
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const norm=v=>String(v||'').normalize('NFKC').replace(/[\s\u3000]/g,'');
+  const gate=()=>window.__TR_PORTAL_SYNC__;
+  const withLimit=p=>Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(Error('通信に時間がかかっています。電波を確認して、もう一度押してください')),20000))]);
+  // ---- マイページ：チャット名
+  const fill=()=>{const g=gate(),i=$('trChatNameInput');if(i&&g&&document.activeElement!==i)i.value=g.chatName||'';};
+  window.addEventListener('tr-portal-identity-ready',fill);
+  window.addEventListener('tr-portal-authorized',fill);
+  document.addEventListener('click',async e=>{
+    if(!e.target.closest?.('#trChatNameSave'))return;
+    const g=gate(),i=$('trChatNameInput'),st=$('trChatNameState'),b=$('trChatNameSave');
+    if(!g?.saveOwnChatName||!g?.canSavePersonal?.()){st.textContent='本人Firebaseの認証とプロフィールを確認できません。未保存です。';return;}
+    const v=String(i.value||'').trim();
+    b.disabled=true;st.textContent='Firebaseへ保存しています…';
+    try{
+      const r=await withLimit(g.saveOwnChatName(v));
+      i.value=g.chatName||'';
+      st.textContent=(v?'チャット名「'+v+'」を保存しました。':'チャット名を消しました。チャットでは表示名を使います。')+
+        (r.shared?'':'（他の人の画面への反映はFirebase Rules v190の適用後になります）');
+      try{window.showActionFeedback?.('保存しました',v?'チャット名：'+v:'チャットでは表示名を使います');}catch(_){}
+    }catch(err){st.textContent='未保存：'+String(err?.message||err?.code||err).slice(0,135);}
+    finally{b.disabled=false;}
+  });
+  // ---- 開発者設定：名前一覧
+  let busy=false;
+  function mount(){
+    if($('trNameDirSection'))return true;
+    const anchor=$('trChatPeopleSection')||document.querySelector('#screen-management-settings .portalScreenBody > section');
+    if(!anchor)return false;
+    anchor.insertAdjacentHTML('afterend',
+      '<section id="trNameDirSection" class="portalManagementSettingsSection" hidden>'+
+        '<div class="portalPanelHead"><small>NAMES</small><b>名前一覧（開発者）</b></div>'+
+        '<details class="portalManageAccessDisclosure" id="trNameDirDetails"><summary>登録名・表示名・チャット名を確認する</summary>'+
+          '<div class="portalIdentityLinkBody">'+
+            '<p style="font-size:12px;line-height:1.6">登録名＝参加申請のときの名前　表示名＝出走登録・大会記録の名前　チャット名＝チャットで出る名前。食い違う所は色付きです。「未同期」はv190以降にまだPORTALを開いていない人です。</p>'+
+            '<button id="trNameDirLoad" type="button" style="min-height:43px">一覧を読み込む</button>'+
+            '<div id="trNameDirWrap"></div>'+
+            '<p id="trNameDirState" role="status" style="white-space:pre-wrap;font-size:12px"></p>'+
+          '</div>'+
+        '</details>'+
+      '</section>');
+    $('trNameDirLoad').addEventListener('click',load);
+    return true;
+  }
+  function visible(){
+    if(!mount())return;
+    const g=gate();
+    $('trNameDirSection').hidden=!(g?.roleVerified===true&&g?.role==='developer'&&!window.__TR_COMMON_PILOT_UI__?.isParticipantPreview?.());
+  }
+  const say=t=>{const el=$('trNameDirState');if(el)el.textContent=t||'';};
+  const ROLE={developer:'開発者',admin:'管理者',participant:'参加者',pending:'承認待ち'};
+  function render(res){
+    const rows=res.rows.slice().sort((a,b)=>(a.chat||a.disp||a.reg).localeCompare(b.chat||b.disp||b.reg,'ja'));
+    const me=gate()?.uid;
+    const cell=(v,diff,none)=>'<td class="'+(none?'trNdNone':diff?'trNdDiff':'')+'">'+esc(v)+'</td>';
+    let html='<table id="trNameDirTable"><thead><tr><th>登録名</th><th>表示名</th><th>チャット名</th></tr></thead><tbody>';
+    for(const r of rows){
+      const regTxt=r.reg||'—';
+      const dispTxt=r.synced?(r.disp||'—'):'未同期';
+      const chatTxt=r.synced?(norm(r.chat)===norm(r.disp)?'（表示名と同じ）':r.chat):'未同期';
+      const dDiff=r.synced&&r.reg&&norm(r.reg)!==norm(r.disp);
+      const cDiff=r.synced&&norm(r.chat)!==norm(r.disp);
+      html+='<tr><td>'+esc(regTxt)+'<small>'+esc((ROLE[r.role]||'')+(r.uid===me?'・この端末':'')+'｜末尾'+r.uid.slice(-6))+'</small></td>'+
+        cell(dispTxt,dDiff,!r.synced)+cell(chatTxt,cDiff,!r.synced||chatTxt==='（表示名と同じ）')+'</tr>';
+    }
+    html+='</tbody></table>';
+    $('trNameDirWrap').innerHTML=rows.length?html:'<p style="font-size:13px">対象者がいません。</p>';
+    const unsynced=rows.filter(r=>!r.synced).length;
+    say('読み込みました：'+rows.length+'人'+(unsynced?'（未同期 '+unsynced+'人）':'')+(res.bookReadable?'':'\n名前帳（nameBook）を読めません。Firebase Rules v190が未適用の可能性があります。'));
+  }
+  async function load(){
+    if(busy)return;busy=true;$('trNameDirLoad').disabled=true;say('読み込み中…');
+    try{render(await withLimit(gate().nameDirectory()));}
+    catch(e){say('読み込めませんでした：'+String(e?.message||e?.code||e).slice(0,120));}
+    finally{busy=false;$('trNameDirLoad').disabled=false;}
+  }
+  window.addEventListener('tr-portal-authorized',visible);
+  const start=()=>{
+    visible();
+    const screen=$('screen-management-settings');
+    if(screen)new MutationObserver(()=>{if(!screen.classList.contains('hidden'))visible();}).observe(screen,{attributes:true,attributeFilter:['class']});
+  };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+})();
+</script>
 </body>
 </html>
