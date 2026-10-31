@@ -1,4 +1,4 @@
-<!-- TOP RUN PORTAL v192 | 2026-10-31 | v191 physical parent + CHAT/ROOM display only: keep 1-character reaction size; reduce multi-character reaction footprint; remove full-width date-filter band. No Firebase/Auth/UID/Rules/RTDB/Worker/notification/read/writer change. Browser/device/Firebase unverified. -->
+<!-- TOP RUN PORTAL v193 | 2026-10-31 | v192 physical parent + CHAT/ROOM display only: re-balance multi-character reaction size, calm text-reaction tones, brighten others' chat bubbles slightly, keep filter-band removal. No Firebase/Auth/UID/Rules/RTDB/Worker/notification/read/writer change. Browser/device/Firebase unverified. -->
 <!-- TOP RUN PORTAL v191 | 2026-10-31 | v190 + traffic only: background listener grace 8s -> 5min (same as EVENT BASE P115). No Auth/UID/Rules/paths/writes changed.
   v190 | 2026-10-31 | v189 + チャット名（マイページで変更・共通チャット/全ルームで統一表示・開発者/管理者は表示名を併記）＋開発者設定「名前一覧」。REQUIRES Rules v190（portalCommon/topRun/nameBook 追加）
   v189 | 2026-10-30 | v188 + ロゴ埋め込みを1つに統合（他は変更なし） | INTEGRATED REVIEW / NOT DEPLOYED
@@ -6122,7 +6122,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v192</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v193</b></div>
   </div>
 </div>
 
@@ -6313,7 +6313,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v192</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v193</b></div>
   </div>
 </div>
 
@@ -12849,7 +12849,56 @@ flowSelectedManagerActor=actorId;
       th{background:#eee8d7;color:#242d2c;font-weight:800}tbody tr:nth-child(even){background:#f7f7f5}tbody tr{break-inside:avoid}
       @page{size:A4 landscape;margin:9mm}
       @media print{body{margin:0}.sheet{max-width:none}.tools{display:none}.scroll{overflow:visible}table{min-width:0;font-size:${sheetPrintSize}}th,td{padding:4px 3px}.meta{padding:5px 8px;margin:0 0 8px;font-size:9px}h1{font-size:15px;margin-bottom:6px}}
-    </style></head><body><div class="sheet"><div class="tools"><button onclick="window.print()">印刷・PDF保存</button></div><h1>${safeTitle}</h1><p class="meta">開催：${esc(portalEventDateLabel(data.e))}　開始：${esc(data.e.startTime||'—')}　会場：${esc(data.e.place||'—')}　／ ${printable.length}件</p><div class="scroll"><table><colgroup>${widths.map(w=>'<col style="width:'+w+'%">').join('')}</colgroup><thead><tr>${head.map(h=>td(h,'th')).join('')}</tr></thead><tbody>${printable.map(r=>'<tr>'+r.map(c=>td(c,'td')).join('')+'</tr>').join('')}</tbody></table></div></div></body></html>`;
+    </style></head><body><div class="sheet"><div class="tools"><button onclick="window.print()">印刷・PDF保存</button></div><h1>${safeTitle}</h1><p class="meta">開催：${esc(portalEventDateLabel(data.e))}　開始：${esc(data.e.startTime||'—')}　会場：${esc(data.e.place||'—')}　／ ${printable.length}件</p><div class="scroll"><table><colgroup>${widths.map(w=>'<col style="width:'+w+'%">').join('')}</colgroup><thead><tr>${head.map(h=>td(h,'th')).join('')}</tr></thead><tbody>${printable.map(r=>'<tr>'+r.map(c=>td(c,'td')).join('')+'</tr>').join('')}</tbody></table></div></div>
+<style id="v193-chat-reaction-and-bubble-tune">
+/* v193: restore 2-character reactions to a readable middle size; keep 1-character reactions as the reference. */
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-short.trText-one{
+  font-size:19px!important;
+}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-short:not(.trText-one){
+  font-size:15px!important;
+  -webkit-text-stroke:0!important;
+  text-shadow:none!important;
+}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-medium{
+  font-size:12.5px!important;
+  -webkit-text-stroke:0!important;
+  text-shadow:none!important;
+}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-long{
+  font-size:11.1px!important;
+  -webkit-text-stroke:0!important;
+  text-shadow:none!important;
+}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-extra{
+  font-size:10px!important;
+  -webkit-text-stroke:0!important;
+  text-shadow:none!important;
+}
+/* Calm the text-reaction tones without changing reaction data or picker logic. */
+#screen-chat :is(#portalChatThread,#trRoomThread) .trTextFace.trTone-blue{color:#d8edf8;background:#27485a;border-color:#7caac0}
+#screen-chat :is(#portalChatThread,#trRoomThread) .trTextFace.trTone-indigo{color:#e7e4f7;background:#4a4869;border-color:#9a94bf}
+#screen-chat :is(#portalChatThread,#trRoomThread) .trTextFace.trTone-teal{color:#dff7f0;background:#2f5b55;border-color:#7ab6a9}
+#screen-chat :is(#portalChatThread,#trRoomThread) .trTextFace.trTone-orange{color:#fff0d8;background:#8f5736;border-color:#d49a73}
+#screen-chat :is(#portalChatThread,#trRoomThread) .trTextFace.trTone-violet{color:#f6e3ee;background:#6a4a5f;border-color:#b996ae}
+/* Slightly brighten other people's bubbles only inside CHAT/ROOM, keeping a calm reading tone. */
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg:not(.mine){
+  background:#384342!important;
+  border-color:rgba(215,177,23,.62)!important;
+  color:#fffdf8!important;
+}
+html[data-portal-personal-color="winter"] #screen-chat :is(#portalChatThread,#trRoomThread) .msg:not(.mine){
+  background:#1a5661!important;
+  border-color:#5b9fa2!important;
+  color:#f6ffff!important;
+}
+html[data-portal-personal-color="matte"] #screen-chat :is(#portalChatThread,#trRoomThread) .msg:not(.mine){
+  background:#3b2f33!important;
+  border-color:#ad755f!important;
+  color:#fff8f3!important;
+}
+</style>
+</body></html>`;
     tab.document.open();tab.document.write(sheet);tab.document.close();
     $('portalAuditStatus').textContent='印刷用の一覧表を開きました。';
   });
@@ -21972,6 +22021,55 @@ html[data-portal-personal-color="matte"] #screen-management-settings #portalEven
   border:0!important;
   box-shadow:none!important;
   padding:0!important;
+}
+</style>
+
+<style id="v193-chat-reaction-and-bubble-tune">
+/* v193: restore 2-character reactions to a readable middle size; keep 1-character reactions as the reference. */
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-short.trText-one{
+  font-size:19px!important;
+}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-short:not(.trText-one){
+  font-size:15px!important;
+  -webkit-text-stroke:0!important;
+  text-shadow:none!important;
+}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-medium{
+  font-size:12.5px!important;
+  -webkit-text-stroke:0!important;
+  text-shadow:none!important;
+}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-long{
+  font-size:11.1px!important;
+  -webkit-text-stroke:0!important;
+  text-shadow:none!important;
+}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-extra{
+  font-size:10px!important;
+  -webkit-text-stroke:0!important;
+  text-shadow:none!important;
+}
+/* Calm the text-reaction tones without changing reaction data or picker logic. */
+#screen-chat :is(#portalChatThread,#trRoomThread) .trTextFace.trTone-blue{color:#d8edf8;background:#27485a;border-color:#7caac0}
+#screen-chat :is(#portalChatThread,#trRoomThread) .trTextFace.trTone-indigo{color:#e7e4f7;background:#4a4869;border-color:#9a94bf}
+#screen-chat :is(#portalChatThread,#trRoomThread) .trTextFace.trTone-teal{color:#dff7f0;background:#2f5b55;border-color:#7ab6a9}
+#screen-chat :is(#portalChatThread,#trRoomThread) .trTextFace.trTone-orange{color:#fff0d8;background:#8f5736;border-color:#d49a73}
+#screen-chat :is(#portalChatThread,#trRoomThread) .trTextFace.trTone-violet{color:#f6e3ee;background:#6a4a5f;border-color:#b996ae}
+/* Slightly brighten other people's bubbles only inside CHAT/ROOM, keeping a calm reading tone. */
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg:not(.mine){
+  background:#384342!important;
+  border-color:rgba(215,177,23,.62)!important;
+  color:#fffdf8!important;
+}
+html[data-portal-personal-color="winter"] #screen-chat :is(#portalChatThread,#trRoomThread) .msg:not(.mine){
+  background:#1a5661!important;
+  border-color:#5b9fa2!important;
+  color:#f6ffff!important;
+}
+html[data-portal-personal-color="matte"] #screen-chat :is(#portalChatThread,#trRoomThread) .msg:not(.mine){
+  background:#3b2f33!important;
+  border-color:#ad755f!important;
+  color:#fff8f3!important;
 }
 </style>
 </body>
