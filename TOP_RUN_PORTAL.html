@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v203 | 2026-10-31 | Parent v202. UI: CALENDAR 一覧 に「まとめて入力」。当月・翌月の予定を順に、参加する／参加しない／帯同・応援を一覧上で直接回答（既存 savePracticeResponse / saveEventResponse のみ使用、端末内保存なし）。押すと保存して次の予定へ自動スクロール、再タップで解除。複数日の大会は最初の日だけ回答欄。出走登録済み・受付前は既存ルールどおりロック。Rules unchanged. -->
 <!-- TOP RUN PORTAL v202 | 2026-10-31 | Parent v201 (user-supplied TOP_RUN_PORTAL_96115f.html). (1) staff personal-record view reads the person's self-entered past races profiles/<uid>/portalSelf/externalRecords (read-only; REQUIRES Rules v202). (2) chat/room send stores name = profiles displayName (Rules require it; shown name still comes from nameBook = チャット名) -> fixes PERMISSION_DENIED for people with a チャット名. (3) staff 目標/申告タイム edits and add-entry goal use one pulldown picker instead of text prompts. (4) version label unified. Browser/device/Firebase unverified. -->
 <!-- TOP RUN PORTAL v201 | 2026-10-31 | Physical parent v200. UI ONLY: harmonized notification and CHAT rooms (room list, settings, notification modes) across Original/Blue/Sakura/Winter/Matte palettes, slim outline icons, visible high-contrast controls and selection. No Auth/RTDB/Rules/Worker/notification save, listener or routing changes; browser/Firebase/device not verified. -->
 <!-- TOP RUN PORTAL v200 | 2026-10-31 | Parent v199. (1) race cancellation returns own 参加予定 to 未選択: self cancel writes maybe; staff cancellation in EVENT BASE is detected on the participant device (entry seen -> gone, answer join) and writes maybe on the own response path. (2) staff personal-record view now includes the selected person's EVENT BASE results (was self only). (3) 通知設定 starts closed. (4) entry panel: deadline first, 未登録/登録済み as a title badge, eligibility shown only when not met; schedule detail BASE link above the 参加する/参加しない buttons. Rules unchanged (v199 Rules still needed for request deletion). Browser/device/Firebase unverified. -->
@@ -5597,6 +5598,24 @@ body.trEventCommsActive #portalNoticeList{display:grid!important}
 #screen-management-settings #portalIdentityLinkDeveloper .portalIdentityLinkBody>strong{display:block;margin-top:10px}
 html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color="matte"]) #screen-management-settings #portalIdentityLinkDeveloper .portalManageAccessDisclosure{background:#f3f1ea;border-color:#d8d4c9;color:var(--ink,#2e3433)}
 </style>
+<style>
+/* v203: CALENDAR 一覧 まとめて入力 */
+.portalAgendaHeadRow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 2px 6px}
+.portalAgendaHeadRow .portalAgendaHeading{padding:0 2px}
+.portalAgendaBulkToggle{flex:none;border:1px solid #cbb366;border-radius:999px;background:#fff3ca;color:#4f411d;font-size:11px;font-weight:950;padding:6px 12px;min-height:32px;letter-spacing:.02em;touch-action:manipulation}
+.portalAgendaBulkToggle[aria-pressed="true"]{background:#323837;color:#fff;border-color:#323837}
+.portalAgendaBulkHint{font-size:11px;line-height:1.5;color:#766320;background:#fbf6e2;border-radius:10px;padding:8px 10px;font-weight:800}
+.portalAgendaItem.portalAgendaBulkCard{cursor:default;row-gap:9px;transition:box-shadow .25s}
+.portalAgendaItem.portalAgendaBulkCard:active{transform:none}
+.portalAgendaBulkCard .portalRsvpOptions{grid-column:1/-1;margin:0}
+.portalAgendaBulkCard .portalRsvpOptions.trRsvpCols2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.portalAgendaBulkCard .portalRsvpOptions button{min-height:42px;padding:9px 4px;font-size:12px}
+.portalAgendaBulkCard .portalRsvpOptions button[data-bulk-locked]{opacity:.45}
+.portalAgendaBulkCard.saving .portalRsvpOptions{opacity:.55;pointer-events:none}
+.portalAgendaBulkCard.portalAgendaBulkFocus{box-shadow:0 0 0 2px #d8b825}
+.portalAgendaBulkNote{grid-column:1/-1;font-size:10.5px;line-height:1.45;color:#7c817e;font-weight:800}
+.portalAgendaBulkDone{text-align:center;font-size:11px;color:#7c817e;font-weight:900;padding:4px 0 2px}
+</style>
 </head>
 <body>
 <div id="portalFirstPaintAuthOverlay" role="status" aria-live="polite" aria-label="TOP RUN PORTAL 認証中">
@@ -6137,7 +6156,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v202</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v203</b></div>
   </div>
 </div>
 
@@ -6328,7 +6347,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v202</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v203</b></div>
   </div>
 </div>
 
@@ -7620,13 +7639,14 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
   let portalCalendarDisplayMode='calendar';
   let portalAgendaExpanded=false;
   let portalAgendaChosenMonth='';
+  let portalAgendaBulk=false; // v203: まとめて入力モード（表示状態のみ・保存先は既存の回答処理）
   const portalAgendaWeekdays=['日','月','火','水','木','金','土'];
   function portalAgendaRows(){
     const today=todayDateKey(),actor=flowSelfId(),rows=[];
     Object.entries(schedules).forEach(([key,p])=>{
       if(!/^\d{4}-\d{2}-\d{2}$/.test(key)||key<today||p?.kind!=='practice'||p.enabled===false)return;
       const answer=schedulePracticeResponse(key,actor);
-      rows.push({date:key,kind:'practice',practiceMode:p.practiceMode,recordKind:p.recordKind,title:p.other||'練習',time:p.start||'',place:p.place||'',status:answer==='join'?'参加する':answer==='support'?'帯同・応援':answer==='decline'?'参加しない':'未回答',answer:answer==='join'||answer==='support'?'join':answer==='decline'?'decline':'maybe'});
+      rows.push({date:key,kind:'practice',rawAnswer:answer,practiceMode:p.practiceMode,recordKind:p.recordKind,title:p.other||'練習',time:p.start||'',place:p.place||'',status:answer==='join'?'参加する':answer==='support'?'帯同・応援':answer==='decline'?'参加しない':'未回答',answer:answer==='join'||answer==='support'?'join':answer==='decline'?'decline':'maybe'});
     });
     eventItems.forEach(e=>{
       if(e.enabled===false)return;
@@ -7635,7 +7655,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       const joined=!e.previewOnly&&e.registration==='registered';
       const attendance=answer==='join'||joined?'参加希望':answer==='support'?'帯同・応援':answer==='decline'?'参加しない':!portalEventAttendanceOpen(e)?'受付前':flowIsRegistrationClosed(e)?'受付終了':'未回答';
       const status=e.previewOnly?`参加：${attendance} / ${entry?'出走：登録あり':e.raceEntryEnabled===false?'出走：受付前':flowIsRegistrationClosed(e)?'出走登録締切':'出走：登録なし'}`:attendance;
-      portalEventDates(e).filter(date=>date>=today).forEach(date=>rows.push({date,kind:'event',displayCategory:portalEventDisplayCategory(e),title:e.title||'イベント',time:e.startTime||'',place:e.place||'',status,answer:attendance==='参加する'?'join':answer==='decline'?'decline':'maybe'}));
+      portalEventDates(e).filter(date=>date>=today).forEach(date=>rows.push({date,kind:'event',eventId:e.id,rawAnswer:answer,displayCategory:portalEventDisplayCategory(e),title:e.title||'イベント',time:e.startTime||'',place:e.place||'',status,answer:attendance==='参加する'?'join':answer==='decline'?'decline':'maybe'}));
     });
     rows.sort((a,b)=>a.date.localeCompare(b.date)||(a.kind===b.kind?0:a.kind==='event'?-1:1)||String(a.time||'').localeCompare(String(b.time||'')));
     return rows;
@@ -7660,28 +7680,70 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
     const visibleRows=normalRows;
     const expandedRows=portalAgendaExpanded&&portalAgendaChosenMonth ?futureRows.filter(r=>r.date.startsWith(portalAgendaChosenMonth)) : [];
     const heading='当月・翌月の予定';
+    const bulkSeen=new Set();
+    const renderBulkItem=(row,dayLabel,subtitle,m,d)=>{
+      const isEvent=row.kind==='event';
+      const key=isEvent?'e:'+row.eventId:'p:'+row.date;
+      if(bulkSeen.has(key))return '';
+      bulkSeen.add(key);
+      const item=isEvent?eventItems.find(x=>x.id===row.eventId):null;
+      const category=isEvent?portalEventDisplayCategory(item):'practice';
+      const answer=row.rawAnswer||'';
+      const registered=isEvent&&portalHasOwnRaceEntry(row.eventId);
+      const options=category==='event'?[['join','参加する'],['decline','参加しない']]:[['join','参加する'],['decline','参加しない'],['support','帯同・応援']];
+      const lockReason=isEvent&&!portalEventCanRespond(item,'join')?portalEventLockReason(item):'';
+      const answered=['join','support','decline'].includes(answer);
+      const badge=registered?['出走予定','join']:answered?['回答済み','join']:lockReason?['回答不可','decline']:['未回答','maybe'];
+      const multi=isEvent&&portalEventDates(item).filter(x=>x>=todayDateKey()).length>1;
+      const typeLabel=row.kind==='practice'?(row.practiceMode==='record'?'記録練習':'練習'):(category==='event'?'通常イベント':'大会');
+      const buttons=options.map(([id,label])=>{
+        const chosen=answer===id||(category==='event'&&id==='join'&&answer==='support');
+        return `<button type="button" data-bulk-answer="${id}" class="${chosen?'chosen':''}" aria-pressed="${chosen}" ${lockReason?`aria-disabled="true" data-bulk-locked="${esc(lockReason)}"`:''}>${label}</button>`;
+      }).join('');
+      const note=registered?'出走登録済みのため、ここでは変更できません。':lockReason?esc(lockReason):multi?'複数日の大会です。回答は全日共通です。':'';
+      return `<div class="portalAgendaItem ${row.kind} portalAgendaBulkCard" data-bulk-key="${esc(key)}" data-bulk-kind="${row.kind}" data-bulk-date="${esc(row.date)}"${isEvent?` data-bulk-event="${esc(row.eventId)}"`:''}><span class="portalAgendaWhen"><b>${Number(m)}/${Number(d)}</b><small>${esc(dayLabel)}</small></span><span class="portalAgendaInfo"><span class="portalAgendaTop"><span class="portalAgendaType">${typeLabel}</span><span class="portalAgendaStatus ${badge[1]}">${badge[0]}</span></span><span class="portalAgendaName">${esc(row.title)}</span>${subtitle?`<span class="portalAgendaPlace">${esc(subtitle)}</span>`:''}</span><div class="portalRsvpOptions${options.length===2?' trRsvpCols2':''}" role="group" aria-label="${esc(row.title)}への回答">${buttons}</div>${note?`<p class="portalAgendaBulkNote">${note}</p>`:''}</div>`;
+    };
     const renderAgendaItems=agendaRows=>agendaRows.map(row=>{
       const [y,m,d]=row.date.split('-');
       const dayOfWeek=new Date(Number(y),Number(m)-1,Number(d)).getDay();
       const dayLabel=row.date===today?'今日':portalAgendaWeekdays[dayOfWeek]+'曜日';
       const subtitle=[row.time,row.place].filter(Boolean).join(' / ');
+      if(portalAgendaBulk)return renderBulkItem(row,dayLabel,subtitle,m,d);
       return `<button type="button" class="portalAgendaItem ${row.kind}" data-agenda-date="${row.date}" aria-label="${esc(row.date+' '+row.title+' '+row.status)}"><span class="portalAgendaWhen"><b>${Number(m)}/${Number(d)}</b><small>${esc(dayLabel)}</small></span><span class="portalAgendaInfo"><span class="portalAgendaTop"><span class="portalAgendaType">${row.kind==='practice'?(row.practiceMode==='record'?'記録練習':'練習'):(row.displayCategory==='event'?'通常イベント':'大会')}</span><span class="portalAgendaStatus ${row.answer}">${esc(row.status)}</span></span><span class="portalAgendaName">${esc(row.title)}</span>${subtitle?`<span class="portalAgendaPlace">${esc(subtitle)}</span>`:''}</span></button>`;
     }).join('');
-    const html=`<div class="portalAgendaHeading">${heading}（表示${visibleRows.length}件）</div>`+
+    const hasBulkRows=visibleRows.length||futureRows.length;
+    const html=`<div class="portalAgendaHeadRow"><div class="portalAgendaHeading">${heading}（表示${visibleRows.length}件）</div>${hasBulkRows?`<button type="button" class="portalAgendaBulkToggle" data-agenda-bulk-toggle aria-pressed="${portalAgendaBulk}">${portalAgendaBulk?'入力を終える':'まとめて入力'}</button>`:''}</div>`+
+      (portalAgendaBulk?'<div class="portalAgendaBulkHint">押すと保存して次の予定へ進みます。選んだボタンをもう一度押すと解除できます。</div>':'')+
       (visibleRows.length?renderAgendaItems(visibleRows):'<div class="portalAgendaEmpty">この期間の予定はありません。</div>')+
       (futureMonths.length?`<button type="button" class="portalAgendaMore" data-agenda-more aria-expanded="${portalAgendaExpanded}">${portalAgendaExpanded?'追加表示を閉じる':`さらに表示（2か月以上先・${futureRows.length}件）`}</button>`:'')+
-      (portalAgendaExpanded&&futureMonths.length?`<div class="portalAgendaFutureGroup"><label class="portalAgendaMonthPicker">確認する月を選択<select data-agenda-select-month aria-label="2か月以上先の予定月を選択">${futureMonths.map(m=>`<option value="${esc(m)}" ${m===portalAgendaChosenMonth?'selected':''}>${esc(m.replace('-','年'))}月（${futureRows.filter(r=>r.date.startsWith(m)).length}件）</option>`).join('')}</select></label><div class="portalAgendaHeading">${portalAgendaChosenMonth.replace('-','年')}月（${expandedRows.length}件）</div>${expandedRows.length?renderAgendaItems(expandedRows):'<div class="portalAgendaEmpty">この月の予定はありません。</div>'}</div>`:'');
+      (portalAgendaExpanded&&futureMonths.length?`<div class="portalAgendaFutureGroup"><label class="portalAgendaMonthPicker">確認する月を選択<select data-agenda-select-month aria-label="2か月以上先の予定月を選択">${futureMonths.map(m=>`<option value="${esc(m)}" ${m===portalAgendaChosenMonth?'selected':''}>${esc(m.replace('-','年'))}月（${futureRows.filter(r=>r.date.startsWith(m)).length}件）</option>`).join('')}</select></label><div class="portalAgendaHeading">${portalAgendaChosenMonth.replace('-','年')}月（${expandedRows.length}件）</div>${expandedRows.length?renderAgendaItems(expandedRows):'<div class="portalAgendaEmpty">この月の予定はありません。</div>'}</div>`:'')+
+      (portalAgendaBulk&&visibleRows.length?`<button type="button" class="portalAgendaBulkToggle" data-agenda-bulk-toggle aria-pressed="true" style="justify-self:center">入力を終える</button>`:'');
     $('homeCalendarAgendaList').innerHTML=html;
     $('fullCalendarAgendaList').innerHTML=html;
   }
   document.querySelectorAll('[data-agenda-toggle] button').forEach(btn=>btn.addEventListener('click',()=>{
     portalCalendarDisplayMode=btn.dataset.agendaMode;
     portalAgendaExpanded=false;
+    portalAgendaBulk=false;
     renderPortalAgendaLists();
   }));
   document.querySelectorAll('.portalAgendaList').forEach(list=>{
     list.addEventListener('change',event=>{if(event.target.matches('[data-agenda-select-month]')){portalAgendaChosenMonth=event.target.value;renderPortalAgendaLists();}});
     list.addEventListener('click',event=>{
+    if(event.target.closest('[data-agenda-bulk-toggle]')){
+      portalAgendaBulk=!portalAgendaBulk;
+      renderPortalAgendaLists();
+      const head=list.querySelector('.portalAgendaHeadRow');
+      if(portalAgendaBulk){
+        const first=[...list.querySelectorAll('[data-bulk-key]')].find(c=>c.querySelector('.portalAgendaStatus.maybe'));
+        if(first)portalAgendaBulkFocus(first);else head?.scrollIntoView({behavior:'smooth',block:'start'});
+      }else head?.scrollIntoView({behavior:'smooth',block:'start'});
+      return;
+    }
+    const bulkLocked=event.target.closest('[data-bulk-locked]');
+    if(bulkLocked){showActionFeedback('回答できません',bulkLocked.dataset.bulkLocked||'現在は回答できません。');return;}
+    const bulkBtn=event.target.closest('[data-bulk-answer]');
+    if(bulkBtn){void portalAgendaBulkSave(list,bulkBtn);return;}
     if(event.target.closest('[data-agenda-more]')){
       const before=event.target.closest('[data-agenda-more]').getBoundingClientRect().top;
       portalAgendaExpanded=!portalAgendaExpanded;
@@ -7699,6 +7761,65 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
     });
   });
 
+  // v203: まとめて入力。保存は詳細画面と同じ gateway.savePracticeResponse / saveEventResponse だけを使う。
+  function portalAgendaBulkFocus(card){
+    if(!card)return;
+    document.querySelectorAll('.portalAgendaBulkFocus').forEach(c=>c.classList.remove('portalAgendaBulkFocus'));
+    card.classList.add('portalAgendaBulkFocus');
+    card.scrollIntoView({behavior:'smooth',block:'center'});
+  }
+  async function portalAgendaBulkSave(list,btn){
+    const card=btn.closest('[data-bulk-key]');
+    if(!card||card.classList.contains('saving'))return;
+    const key=card.dataset.bulkKey,kind=card.dataset.bulkKind,actorId=flowSelfId(),gateway=window.__TR_PORTAL_SYNC__;
+    const clearing=btn.classList.contains('chosen');
+    const answer=clearing?'maybe':btn.dataset.bulkAnswer;
+    let save,label;
+    if(kind==='practice'){
+      const date=card.dataset.bulkDate;
+      if(!schedules[date]||schedules[date].enabled===false){showActionFeedback('回答できません','この練習予定を確認できません。画面を開き直してください。');return;}
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||date<todayDateKey()){showActionFeedback('回答を変更できません','開催済みの練習です。');return;}
+      if(!gateway?.canRespondPractice?.()||gateway.profileId!==actorId){
+        const reason=gateway?.errors?.practiceResponses||gateway?.errors?.practices;
+        showActionFeedback('回答を保存できません',reason?'Firebaseの練習参加回答を利用できません：'+String(reason).slice(0,110):'本人承認・練習予定・参加回答のFirebase受信が必要です。');return;
+      }
+      save=()=>gateway.savePracticeResponse(date,answer);
+      label=answer==='join'?'参加する':answer==='support'?'帯同・応援として参加':answer==='decline'?'参加しない':'未選択';
+    }else{
+      const eventId=card.dataset.bulkEvent,item=flowEvent(eventId);
+      if(!item||item.enabled===false){showActionFeedback('回答できません','このイベントを確認できません。画面を開き直してください。');return;}
+      if(!portalEventAttendanceOpen(item)){showActionFeedback('現在は受付前です','受付開始後に参加登録できます。現時点では登録していません。');return;}
+      if(portalHasOwnRaceEntry(eventId,actorId)){showActionFeedback('出走登録済みのため変更できません',portalRegisteredResponseWarning);return;}
+      if(!portalEventCanRespond(item,answer,actorId)){showActionFeedback('現在は回答を変更できません',portalEventLockReason(item));return;}
+      if(!gateway){showActionFeedback('回答を保存できません','Firebase接続が開始していません。接続後に再度操作してください。');return;}
+      if(gateway.profileId!==actorId||!gateway.canRespondEvent?.()){
+        const reason=gateway?.errors?.eventResponses||gateway?.errors?.eventItems;
+        showActionFeedback('回答を保存できません',reason?'Firebaseのイベント回答を利用できません：'+String(reason).slice(0,110):'本人承認・イベント・参加回答のFirebase受信が必要です。');return;
+      }
+      save=()=>gateway.saveEventResponse(eventId,answer);
+      label=portalEventDisplayCategory(item)==='event'?(answer==='join'?'参加する':answer==='decline'?'参加しない':'未選択'):(answer==='join'?'参加希望（出走未確定）':answer==='support'?'帯同・応援として参加':answer==='decline'?'参加しない':'未選択');
+    }
+    card.classList.add('saving');
+    try{
+      await portalTimeout(save());
+    }catch(error){
+      card.classList.remove('saving');
+      showActionFeedback('回答を保存できません',String(error?.code||error?.message||error).slice(0,160));
+      return;
+    }
+    if(kind==='event'){renderEventTab();renderManagedHomeEvents();renderHomeNextEvent();}
+    renderPortalAgendaLists();
+    showActionFeedback(clearing?'選択を解除しました':'保存しました',label,1400);
+    if(clearing){portalAgendaBulkFocus(list.querySelector(`[data-bulk-key="${CSS.escape(key)}"]`));return;}
+    const cards=[...list.querySelectorAll('[data-bulk-key]')];
+    const idx=cards.findIndex(c=>c.dataset.bulkKey===key);
+    const next=cards.slice(idx+1).find(c=>c.querySelector('[data-bulk-answer]:not([data-bulk-locked])'));
+    if(next)portalAgendaBulkFocus(next);
+    else{
+      document.querySelectorAll('.portalAgendaBulkFocus').forEach(c=>c.classList.remove('portalAgendaBulkFocus'));
+      showActionFeedback('最後の予定まで入力しました','「入力を終える」で一覧に戻ります。',2200);
+    }
+  }
   function dateKey(year, monthIndex, day){
     const d=new Date(year,monthIndex,day);
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
