@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v192 | 2026-10-31 | v191 physical parent + CHAT/ROOM display only: keep 1-character reaction size; reduce multi-character reaction footprint; remove full-width date-filter band. No Firebase/Auth/UID/Rules/RTDB/Worker/notification/read/writer change. Browser/device/Firebase unverified. -->
 <!-- TOP RUN PORTAL v191 | 2026-10-31 | v190 + traffic only: background listener grace 8s -> 5min (same as EVENT BASE P115). No Auth/UID/Rules/paths/writes changed.
   v190 | 2026-10-31 | v189 + チャット名（マイページで変更・共通チャット/全ルームで統一表示・開発者/管理者は表示名を併記）＋開発者設定「名前一覧」。REQUIRES Rules v190（portalCommon/topRun/nameBook 追加）
   v189 | 2026-10-30 | v188 + ロゴ埋め込みを1つに統合（他は変更なし） | INTEGRATED REVIEW / NOT DEPLOYED
@@ -6121,7 +6122,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v191</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v192</b></div>
   </div>
 </div>
 
@@ -6312,7 +6313,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v191</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v192</b></div>
   </div>
 </div>
 
@@ -21122,7 +21123,7 @@ html[data-portal-personal-color="matte"] #screen-chat #trRoomThread .trReadIssue
     }
     if(!isText(e))return esc(e);
     const n=reactLength(e),size=n<=2?'short':n<=3?'medium':n<=4?'long':'extra';
-    return '<span class="trTextFace trText-'+size+' trTone-'+reactTone(e)+'">'+esc(reactionBase(e))+'</span>';
+    return '<span class="trTextFace trText-'+size+(n===1?' trText-one':'')+' trTone-'+reactTone(e)+'">'+esc(reactionBase(e))+'</span>';
   };
   // v167: categories change presentation only; stored reactions remain the same string in the existing Firebase path.
   const QUICK=['🔥','💪','👏','❤️','😂','👍','🏃'];
@@ -21942,5 +21943,36 @@ html[data-portal-personal-color="matte"] #screen-management-settings #portalEven
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
 </script>
+<style id="v192-chat-reaction-scale-and-filter-band">
+/* v192: One-character reaction is the size reference; more characters occupy less visual space. */
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-short.trText-one{
+  font-size:19px!important; /* v191 single-character appearance remains unchanged */
+}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-short:not(.trText-one){
+  font-size:12.5px!important; /* 2-character responses (承知 / 感謝 etc.) */
+  -webkit-text-stroke:.28px currentColor!important;
+}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-medium{
+  font-size:11px!important;
+  -webkit-text-stroke:.25px currentColor!important;
+}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-long{
+  font-size:9.5px!important;
+  -webkit-text-stroke:.2px currentColor!important;
+}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-extra{
+  font-size:8.5px!important;
+  -webkit-text-stroke:.2px currentColor!important;
+}
+/* Remove only the full-width backing band beside "すべて" in CHAT/ROOM.
+   Leave the native selector and date/month/range controls fully functional. */
+#screen-chat :is([data-list-filter="chat"],#trRoomFilter){
+  background:transparent!important;
+  background-image:none!important;
+  border:0!important;
+  box-shadow:none!important;
+  padding:0!important;
+}
+</style>
 </body>
 </html>
