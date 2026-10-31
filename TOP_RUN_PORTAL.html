@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v194 | v193 parent. Fix low-contrast text reactions on light backgrounds; display chat name alone in message headers; staff identity detail remains in read-status sheets. UI-only; Firebase/Worker/Rules unchanged. -->
 <!-- TOP RUN PORTAL v193 | 2026-10-31 | v192 physical parent + CHAT/ROOM display only: re-balance multi-character reaction size, calm text-reaction tones, brighten others' chat bubbles slightly, keep filter-band removal. No Firebase/Auth/UID/Rules/RTDB/Worker/notification/read/writer change. Browser/device/Firebase unverified. -->
 <!-- TOP RUN PORTAL v191 | 2026-10-31 | v190 + traffic only: background listener grace 8s -> 5min (same as EVENT BASE P115). No Auth/UID/Rules/paths/writes changed.
   v190 | 2026-10-31 | v189 + チャット名（マイページで変更・共通チャット/全ルームで統一表示・開発者/管理者は表示名を併記）＋開発者設定「名前一覧」。REQUIRES Rules v190（portalCommon/topRun/nameBook 追加）
@@ -6122,7 +6123,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v193</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v194</b></div>
   </div>
 </div>
 
@@ -6313,7 +6314,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v193</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v194</b></div>
   </div>
 </div>
 
@@ -8599,7 +8600,7 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
       const D=window.__trChatDecor;
       return `${dayBand}${boundary}<div class="msg ${m.staff?'staff ':''}${isMyPortalChat(m)?'mine ':''}${D&&D.mentioned(m)?'trMentioned ':''}" data-chat-ts="${ts}" data-mid="${esc(m.id||'')}">
         <div class="msgHead">
-          <span>${esc((window.trChatNameLabel?window.trChatNameLabel(m.senderUid,m.name):(m.name||'参加者')))}</span>
+          <span>${esc((window.trChatName?window.trChatName(m.senderUid,m.name):(m.name||'参加者')))}</span>
           <span>${Number.isFinite(d.getTime())?d.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):''}</span>
         </div>
         ${D?D.quote(m):''}<p>${D?D.text(m):esc(m.text||'')}</p>${portalChatReadMini(m)}
@@ -12897,6 +12898,22 @@ html[data-portal-personal-color="matte"] #screen-chat :is(#portalChatThread,#trR
   border-color:#ad755f!important;
   color:#fff8f3!important;
 }
+</style>
+
+<style id="v194-light-chat-reaction-contrast">
+/* Text reactions on a light background: actual dark ink, no faint pastel letters.
+   Only rendered reactions inside common CHAT and ROOM. Picker remains untouched. */
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trTextFace.trTone-blue{color:#245b79!important;-webkit-text-fill-color:#245b79!important;text-shadow:1px 1px 0 #cee2ea!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trTextFace.trTone-indigo{color:#504783!important;-webkit-text-fill-color:#504783!important;text-shadow:1px 1px 0 #e1deed!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trTextFace.trTone-teal{color:#176454!important;-webkit-text-fill-color:#176454!important;text-shadow:1px 1px 0 #cee5dd!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trTextFace.trTone-orange{color:#92501f!important;-webkit-text-fill-color:#92501f!important;text-shadow:1px 1px 0 #efdec9!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trTextFace.trTone-violet{color:#784469!important;-webkit-text-fill-color:#784469!important;text-shadow:1px 1px 0 #eadde7!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trTextFace.trTone-gold{color:#80610e!important;-webkit-text-fill-color:#80610e!important;text-shadow:1px 1px 0 #f4e7b9!important}
+/* Preserve traditional seal presentation and its own high-contrast ink. */
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trTextFace.trTone-seal-red{-webkit-text-fill-color:#a12f33!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trTextFace.trTone-seal-purple{-webkit-text-fill-color:#734a79!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trTextFace.trTone-seal-teal{-webkit-text-fill-color:#316f65!important}
+/* In winter/matte, same readable dark ink on the pale chat backdrop. */
 </style>
 </body></html>`;
     tab.document.open();tab.document.write(sheet);tab.document.close();
@@ -19855,7 +19872,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
       const mine=m.senderUid===uid;
       const time=ts?d.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):'';
       const D=window.__trChatDecor;
-      return band+'<div class="msg'+(mine?' mine':'')+(D&&D.mentioned(m)?' trMentioned':'')+'" data-mid="'+esc(m.id||'')+'"><div class="msgHead"><span>'+esc((window.trChatNameLabel?window.trChatNameLabel(m.senderUid,m.name):(m.name||'参加者')))+'</span><span>'+esc(time)+'</span></div>'+(D?D.quote(m):'')+'<p>'+(D?D.text(m):esc(m.text||''))+'</p>'+roomReadMini(m,uid,members)+'</div>'+(D?D.reacts(m,mine):'');
+      return band+'<div class="msg'+(mine?' mine':'')+(D&&D.mentioned(m)?' trMentioned':'')+'" data-mid="'+esc(m.id||'')+'"><div class="msgHead"><span>'+esc((window.trChatName?window.trChatName(m.senderUid,m.name):(m.name||'参加者')))+'</span><span>'+esc(time)+'</span></div>'+(D?D.quote(m):'')+'<p>'+(D?D.text(m):esc(m.text||''))+'</p>'+roomReadMini(m,uid,members)+'</div>'+(D?D.reacts(m,mine):'');
     }).join('');
   }
   window.addEventListener('tr-names-updated',()=>{shownMsgKey='';try{render();}catch(_){}}); // v190
@@ -22071,6 +22088,22 @@ html[data-portal-personal-color="matte"] #screen-chat :is(#portalChatThread,#trR
   border-color:#ad755f!important;
   color:#fff8f3!important;
 }
+</style>
+
+<style id="v194-light-chat-reaction-contrast">
+/* Text reactions on a light background: actual dark ink, no faint pastel letters.
+   Only rendered reactions inside common CHAT and ROOM. Picker remains untouched. */
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trTextFace.trTone-blue{color:#245b79!important;-webkit-text-fill-color:#245b79!important;text-shadow:1px 1px 0 #cee2ea!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trTextFace.trTone-indigo{color:#504783!important;-webkit-text-fill-color:#504783!important;text-shadow:1px 1px 0 #e1deed!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trTextFace.trTone-teal{color:#176454!important;-webkit-text-fill-color:#176454!important;text-shadow:1px 1px 0 #cee5dd!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trTextFace.trTone-orange{color:#92501f!important;-webkit-text-fill-color:#92501f!important;text-shadow:1px 1px 0 #efdec9!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trTextFace.trTone-violet{color:#784469!important;-webkit-text-fill-color:#784469!important;text-shadow:1px 1px 0 #eadde7!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trTextFace.trTone-gold{color:#80610e!important;-webkit-text-fill-color:#80610e!important;text-shadow:1px 1px 0 #f4e7b9!important}
+/* Preserve traditional seal presentation and its own high-contrast ink. */
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trTextFace.trTone-seal-red{-webkit-text-fill-color:#a12f33!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trTextFace.trTone-seal-purple{-webkit-text-fill-color:#734a79!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trTextFace.trTone-seal-teal{-webkit-text-fill-color:#316f65!important}
+/* In winter/matte, same readable dark ink on the pale chat backdrop. */
 </style>
 </body>
 </html>
