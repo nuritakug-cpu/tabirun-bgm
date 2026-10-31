@@ -1,3 +1,6 @@
+<!-- TOP RUN PORTAL v206 | 2026-10-31 | Parent v205. UI ONLY: 出欠回答の表示は終わりではなく切替表示。ボタン「出欠回答」⇔「通常表示」、回答可能な未回答があれば「未回答あり」（強調）。押すと最初の未回答へ移動（2か月以上先なら追加表示を開く）。カレンダー⇔一覧の切替で出欠回答表示を解除しない。Rules unchanged. -->
+<!-- TOP RUN PORTAL v205 | 2026-10-31 | Parent v204. UI ONLY: CALENDAR 一覧の切替ボタン名を「まとめて入力／入力を終える」→「出欠回答／完了」。説明文を削除。下部ボタンは「上に戻る」（モードは維持し見出しへスクロール）。Rules unchanged. -->
+<!-- TOP RUN PORTAL v204 | 2026-10-31 | Parent v203. UI ONLY (目標を立てる): (1) 目標設定の重複説明を整理し注意は1か所に短縮、参加者向け文面から「Firebase」表記を削除（保存処理は不変）。(2) 距離選択下の説明を削除、駅伝案内を短文化。(3) タイムの目安「目標欄へ」で目標設定の先頭へ移動（保存ボタンへスクロールしない）。(4) ラップ換算：区間タイムを主役に、「この区間の時間を調整」を小さな「調整 ›」リンクへ。Rules unchanged. -->
 <!-- TOP RUN PORTAL v203 | 2026-10-31 | Parent v202. UI: CALENDAR 一覧 に「まとめて入力」。当月・翌月の予定を順に、参加する／参加しない／帯同・応援を一覧上で直接回答（既存 savePracticeResponse / saveEventResponse のみ使用、端末内保存なし）。押すと保存して次の予定へ自動スクロール、再タップで解除。複数日の大会は最初の日だけ回答欄。出走登録済み・受付前は既存ルールどおりロック。Rules unchanged. -->
 <!-- TOP RUN PORTAL v202 | 2026-10-31 | Parent v201 (user-supplied TOP_RUN_PORTAL_96115f.html). (1) staff personal-record view reads the person's self-entered past races profiles/<uid>/portalSelf/externalRecords (read-only; REQUIRES Rules v202). (2) chat/room send stores name = profiles displayName (Rules require it; shown name still comes from nameBook = チャット名) -> fixes PERMISSION_DENIED for people with a チャット名. (3) staff 目標/申告タイム edits and add-entry goal use one pulldown picker instead of text prompts. (4) version label unified. Browser/device/Firebase unverified. -->
 <!-- TOP RUN PORTAL v201 | 2026-10-31 | Physical parent v200. UI ONLY: harmonized notification and CHAT rooms (room list, settings, notification modes) across Original/Blue/Sakura/Winter/Matte palettes, slim outline icons, visible high-contrast controls and selection. No Auth/RTDB/Rules/Worker/notification save, listener or routing changes; browser/Firebase/device not verified. -->
@@ -5616,6 +5619,19 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
 .portalAgendaBulkNote{grid-column:1/-1;font-size:10.5px;line-height:1.45;color:#7c817e;font-weight:800}
 .portalAgendaBulkDone{text-align:center;font-size:11px;color:#7c817e;font-weight:900;padding:4px 0 2px}
 </style>
+<style>
+/* v204: ラップ換算 区間タイムを主役、調整は小さなリンク */
+html #screen-goal-tools .portalToolSplitRow .lap-segment-time{display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left;padding:6px 10px;min-height:34px}
+html #screen-goal-tools .portalToolSplitRow .lap-seg-label{font-size:13px;font-weight:900;font-variant-numeric:tabular-nums}
+html #screen-goal-tools .portalToolSplitRow button[data-lap-adjust]{background:transparent!important;border:0!important;box-shadow:none!important;width:auto;min-height:32px;margin:0;padding:4px 0 4px 10px;font-size:11px;font-weight:800;color:#8a7a45;text-decoration:underline;text-underline-offset:3px;flex:none;white-space:nowrap}
+html #screen-goal-tools .portalToolSplitRow button[data-lap-adjust].is-edited{color:#9d7d10;font-weight:950}
+#screen-goal-tools #portalCommonGoalsState:empty{display:none}
+</style>
+<style>
+/* v206: 未回答あり */
+.portalAgendaBulkToggle.hasPending{background:#f2cf4a!important;color:#2d2613!important;border-color:#c9a21e!important;display:inline-flex;align-items:center;gap:6px}
+.portalAgendaBulkToggle.hasPending::before{content:"";width:7px;height:7px;border-radius:50%;background:#c43d2f;flex:none}
+</style>
 </head>
 <body>
 <div id="portalFirstPaintAuthOverlay" role="status" aria-live="polite" aria-label="TOP RUN PORTAL 認証中">
@@ -6003,19 +6019,18 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
                   <option value="400">400m</option><option value="800">800m</option><option value="1000">1000m</option><option value="1500" selected>1500m</option><option value="3000">3000m</option><option value="5000">5000m</option><option value="10000">10000m</option><option value="21097.5">ハーフ</option><option value="42195">フルマラソン</option><option value="relay">駅伝</option><option value="other">その他</option>
                 </select>
               </label>
-              <p class="portalToolNote">距離と分・秒・100分の1秒を選んで目標を設定します。換算した目安も取り込めます。</p><div id="portalGoalRelayInfo" class="portalToolNote" hidden>駅伝の大会・区間指定は「ラップ換算」で選択できます。PORTALの現行イベント登録には区間距離がないため、区間別の自動反映は未接続です。</div>
+              <div id="portalGoalRelayInfo" class="portalToolNote" hidden>駅伝の区間ごとの目安は「ラップ換算」で確認できます。</div>
               <p id="portalGoalHandoffState" class="portalToolNote" aria-live="polite"></p>
               <div id="portalCommonGoalForm" class="portalGoalForm"></div>
               <button type="button" id="portalSaveCommonGoals" class="portalGoalSave">目標タイムを保存</button>
-              <p id="portalCommonGoalsState" class="portalFlowStatus" role="status" aria-live="polite" data-state="info">目標タイムを選択後、「保存」を押してください。Firebaseへの保存結果をここに表示します。</p>
-              <p class="portalToolNote">MY PAGEの共通目標は本人のFirebaseデータに保存します。出走登録済み大会の目標・申告タイムは変更しません。</p>
-              <p class="portalGoalSafeNote">※すでに目標設定済みの大会（イベント）の目標タイムは変更されません。変更する場合は各イベントで再入力してください。<br>※申告タイム（大会エントリー時に大会へ申請したタイム）は変更されません。</p>
+              <p id="portalCommonGoalsState" class="portalFlowStatus" role="status" aria-live="polite" data-state="info"></p>
+              <p class="portalGoalSafeNote">※大会ごとに設定した目標タイムと、エントリー時の申告タイムは変わりません。変更は各大会の画面で行ってください。</p>
             </section>
             <section class="portalGoalView portalToolCard portalGoalOverviewCard" id="portalGoalViewOverview" role="tabpanel" aria-labelledby="portalGoalTabOverview" hidden>
               <div class="portalToolHeading"><small>MY TARGETS</small><b>設定済み目標一覧</b></div>
               <p class="portalToolNote">自分で決定して保存した目標タイムです。種目をタップすると目標設定へ戻り、変更できます。</p>
               <div id="portalGoalSavedList" class="portalGoalSavedList" aria-live="polite"></div>
-              <p class="portalGoalSafeNote">※すでに目標設定済みの大会（イベント）の目標タイムは変更されません。変更する場合は各イベントで再入力してください。<br>※申告タイム（大会エントリー時に大会へ申請したタイム）は変更されません。</p>
+              <p class="portalGoalSafeNote">※大会ごとに設定した目標タイムと、エントリー時の申告タイムは変わりません。変更は各大会の画面で行ってください。</p>
             </section>
     </div>
   </div>
@@ -6156,7 +6171,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v203</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v206</b></div>
   </div>
 </div>
 
@@ -6347,7 +6362,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v203</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v206</b></div>
   </div>
 </div>
 
@@ -6593,7 +6608,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
           <div class="portalRuleTitle" style="margin-top:12px">申告タイム（大会エントリーに使うタイム）の登録条件</div>
           <div class="portalRuleChoice" id="manageEventDeclareCondition"><label><input type="radio" name="manageEventDeclaredRequired" value="no" checked> 不要</label><label><input type="radio" name="manageEventDeclaredRequired" value="yes"> 出走登録時に入力する</label></div>
           <p class="portalHelp">「入力する」の大会では、参加者のMY PAGE目標を初期候補に表示します。申告タイムはエントリー時の値として別に保持し、その後の共通目標変更では書き換えません。</p>
-          <p class="portalGoalSafeNote">※すでに目標設定済みの大会（イベント）の目標タイムは変更されません。変更する場合は各イベントで再入力してください。<br>※申告タイム（大会エントリー時に大会へ申請したタイム）は変更されません。</p>
+          <p class="portalGoalSafeNote">※大会ごとに設定した目標タイムと、エントリー時の申告タイムは変わりません。変更は各大会の画面で行ってください。</p>
           <div class="portalRuleTitle" style="margin-top:12px">出走条件</div>
           <div class="portalRuleChoice"><label><input type="radio" name="portalEventHasRules" value="no" checked> なし</label><label><input type="radio" name="portalEventHasRules" value="yes"> あり</label></div>
           <div id="portalEventRulesDetails" class="hidden">
@@ -7660,6 +7675,18 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
     rows.sort((a,b)=>a.date.localeCompare(b.date)||(a.kind===b.kind?0:a.kind==='event'?-1:1)||String(a.time||'').localeCompare(String(b.time||'')));
     return rows;
   }
+  // v206: 回答可能な未回答（複数日の大会は最初の日のみ）
+  function portalAgendaPendingRows(rows){
+    const seen=new Set(),out=[];
+    rows.forEach(row=>{
+      const key=row.kind==='event'?'e:'+row.eventId:'p:'+row.date;
+      if(seen.has(key))return;seen.add(key);
+      if(['join','support','decline'].includes(row.rawAnswer))return;
+      if(row.kind==='event'){const item=eventItems.find(x=>x.id===row.eventId);if(!portalEventCanRespond(item,'join'))return;}
+      out.push({...row,bulkKey:key});
+    });
+    return out;
+  }
   function renderPortalAgendaLists(){
     const isList=portalCalendarDisplayMode==='list';
     document.querySelectorAll('[data-agenda-toggle] button').forEach(btn=>{
@@ -7712,26 +7739,36 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       return `<button type="button" class="portalAgendaItem ${row.kind}" data-agenda-date="${row.date}" aria-label="${esc(row.date+' '+row.title+' '+row.status)}"><span class="portalAgendaWhen"><b>${Number(m)}/${Number(d)}</b><small>${esc(dayLabel)}</small></span><span class="portalAgendaInfo"><span class="portalAgendaTop"><span class="portalAgendaType">${row.kind==='practice'?(row.practiceMode==='record'?'記録練習':'練習'):(row.displayCategory==='event'?'通常イベント':'大会')}</span><span class="portalAgendaStatus ${row.answer}">${esc(row.status)}</span></span><span class="portalAgendaName">${esc(row.title)}</span>${subtitle?`<span class="portalAgendaPlace">${esc(subtitle)}</span>`:''}</span></button>`;
     }).join('');
     const hasBulkRows=visibleRows.length||futureRows.length;
-    const html=`<div class="portalAgendaHeadRow"><div class="portalAgendaHeading">${heading}（表示${visibleRows.length}件）</div>${hasBulkRows?`<button type="button" class="portalAgendaBulkToggle" data-agenda-bulk-toggle aria-pressed="${portalAgendaBulk}">${portalAgendaBulk?'入力を終える':'まとめて入力'}</button>`:''}</div>`+
-      (portalAgendaBulk?'<div class="portalAgendaBulkHint">押すと保存して次の予定へ進みます。選んだボタンをもう一度押すと解除できます。</div>':'')+
+    const pendingCount=portalAgendaPendingRows(rows).length;
+    const html=`<div class="portalAgendaHeadRow"><div class="portalAgendaHeading">${heading}（表示${visibleRows.length}件）</div>${hasBulkRows?`<button type="button" class="portalAgendaBulkToggle${!portalAgendaBulk&&pendingCount?' hasPending':''}" data-agenda-bulk-toggle aria-pressed="${portalAgendaBulk}">${portalAgendaBulk?'通常表示':pendingCount?'未回答あり':'出欠回答'}</button>`:''}</div>`+
+
       (visibleRows.length?renderAgendaItems(visibleRows):'<div class="portalAgendaEmpty">この期間の予定はありません。</div>')+
       (futureMonths.length?`<button type="button" class="portalAgendaMore" data-agenda-more aria-expanded="${portalAgendaExpanded}">${portalAgendaExpanded?'追加表示を閉じる':`さらに表示（2か月以上先・${futureRows.length}件）`}</button>`:'')+
       (portalAgendaExpanded&&futureMonths.length?`<div class="portalAgendaFutureGroup"><label class="portalAgendaMonthPicker">確認する月を選択<select data-agenda-select-month aria-label="2か月以上先の予定月を選択">${futureMonths.map(m=>`<option value="${esc(m)}" ${m===portalAgendaChosenMonth?'selected':''}>${esc(m.replace('-','年'))}月（${futureRows.filter(r=>r.date.startsWith(m)).length}件）</option>`).join('')}</select></label><div class="portalAgendaHeading">${portalAgendaChosenMonth.replace('-','年')}月（${expandedRows.length}件）</div>${expandedRows.length?renderAgendaItems(expandedRows):'<div class="portalAgendaEmpty">この月の予定はありません。</div>'}</div>`:'')+
-      (portalAgendaBulk&&visibleRows.length?`<button type="button" class="portalAgendaBulkToggle" data-agenda-bulk-toggle aria-pressed="true" style="justify-self:center">入力を終える</button>`:'');
+      (portalAgendaBulk&&visibleRows.length?`<button type="button" class="portalAgendaBulkToggle" data-agenda-bulk-top style="justify-self:center">上に戻る ↑</button>`:'');
     $('homeCalendarAgendaList').innerHTML=html;
     $('fullCalendarAgendaList').innerHTML=html;
   }
   document.querySelectorAll('[data-agenda-toggle] button').forEach(btn=>btn.addEventListener('click',()=>{
     portalCalendarDisplayMode=btn.dataset.agendaMode;
     portalAgendaExpanded=false;
-    portalAgendaBulk=false;
     renderPortalAgendaLists();
   }));
   document.querySelectorAll('.portalAgendaList').forEach(list=>{
     list.addEventListener('change',event=>{if(event.target.matches('[data-agenda-select-month]')){portalAgendaChosenMonth=event.target.value;renderPortalAgendaLists();}});
     list.addEventListener('click',event=>{
+    if(event.target.closest('[data-agenda-bulk-top]')){
+      list.querySelector('.portalAgendaHeadRow')?.scrollIntoView({behavior:'smooth',block:'start'});
+      return;
+    }
     if(event.target.closest('[data-agenda-bulk-toggle]')){
       portalAgendaBulk=!portalAgendaBulk;
+      if(portalAgendaBulk){
+        const firstPending=portalAgendaPendingRows(portalAgendaRows())[0];
+        const t=todayDateKey().slice(0,7),[yy,mm]=t.split('-').map(Number),nd=new Date(yy,mm,1);
+        const nextMonth=`${nd.getFullYear()}-${String(nd.getMonth()+1).padStart(2,'0')}`;
+        if(firstPending&&firstPending.date.slice(0,7)>nextMonth){portalAgendaExpanded=true;portalAgendaChosenMonth=firstPending.date.slice(0,7);}
+      }
       renderPortalAgendaLists();
       const head=list.querySelector('.portalAgendaHeadRow');
       if(portalAgendaBulk){
@@ -7817,7 +7854,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
     if(next)portalAgendaBulkFocus(next);
     else{
       document.querySelectorAll('.portalAgendaBulkFocus').forEach(c=>c.classList.remove('portalAgendaBulkFocus'));
-      showActionFeedback('最後の予定まで入力しました','「入力を終える」で一覧に戻ります。',2200);
+      showActionFeedback('最後の予定まで回答しました','',1800);
     }
   }
   function dateKey(year, monthIndex, day){
@@ -11185,7 +11222,7 @@ function portalGoalSwitchTab(tab,{keepScroll=false}={}){
   function flowRefreshCommonGoals(){
     const v=flowGoalsFor();portalGoalMetrics.forEach(([metric,label,id])=>flowSetTime(id,v[metric]||''));
     portalNamedGoalsDraft=Array.isArray(v.namedGoals)?v.namedGoals.map(g=>({...g})):[];flowRenderNamedGoals();
-    $('portalCommonGoalsState').textContent='本人の共通目標を保存します。出走登録済みの目標・申告タイムは変更されません。';
+    $('portalCommonGoalsState').textContent='';
     // MY PAGE goals are editable independently from an already-submitted race entry.
     for(const [metric,,id] of portalGoalMetrics){const field=document.querySelector(`[data-flow-time="${id}"]`);if(field){field.classList.remove('portalPastLocked');field.querySelectorAll('select,button').forEach(el=>el.disabled=false);}}
   }
@@ -11220,7 +11257,7 @@ function portalGoalSwitchTab(tab,{keepScroll=false}={}){
     const quick=$('portalGoalQuickStatus');
     quick.textContent=message;
     if(state==='error')showActionFeedback('目標を保存できません',message.slice(0,180));
-    else if(state==='success')showActionFeedback('目標タイムを保存しました','本人Firebaseの保存・再読込照合が成立しました。');
+    else if(state==='success')showActionFeedback('目標タイムを保存しました','');
   }
   $('portalSaveCommonGoals').addEventListener('click',async()=>{
     const selectedMetric=$('portalGoalMetricPicker').value;
@@ -11245,26 +11282,26 @@ function portalGoalSwitchTab(tab,{keepScroll=false}={}){
     if(!gateway?.canSavePersonal?.()){
       const detail=String(gateway?.errors?.personal?.code||gateway?.errors?.personal?.message||gateway?.errors?.profile?.code||'').slice(0,100);
       portalGoalSaveFeedback(!gateway?.uid||!gateway?.profileId?
-        '未保存：本人認証・profileIdが確認できません。登録済み本人情報を維持したまま、ログイン状態をご確認ください。':
+        '未保存：本人確認ができませんでした。登録し直さず、画面を開き直してください。':
         gateway?.loaded?.personal!==true?
-        '未保存：本人の目標情報をFirebaseから受信できていません。'+(detail?'（'+detail+'）':''):
-        '未保存：Firebaseの本人確認が一致していません。別人として登録し直さず、管理者へ連絡してください。');
+        '未保存：目標情報を読み込めていません。通信状態を確認して、画面を開き直してください。'+(detail?'（'+detail+'）':''):
+        '未保存：本人確認ができませんでした。登録し直さず、管理者へ連絡してください。');
       return;
     }
     const button=$('portalSaveCommonGoals');button.disabled=true;
-    portalGoalSaveFeedback('保存中：本人の目標をFirebaseへ送信しています…','info');
+    portalGoalSaveFeedback('保存中…','info');
     try{
       // Existing unified Firebase Auth/RTDB and canonical portalSelf/defaultGoals writer only.
       // The save method confirms the committed server value; no local-only success fallback.
       await gateway.saveOwnGoals(goal);
     }catch(error){
       const code=String(error?.code||'').slice(0,70),message=String(error?.message||error).slice(0,175);
-      portalGoalSaveFeedback('未保存：Firebaseの保存確認が成立しませんでした。'+(code?' ['+code+']':'')+' '+message);
+      portalGoalSaveFeedback('未保存：保存できませんでした。通信状態を確認して、もう一度押してください。'+(code?' ['+code+']':''));
       return;
     }finally{button.disabled=false;}
     flowState.defaultGoals[actor]=goal;
     const cached=flowPersist();
-    portalGoalSaveFeedback('保存完了：本人Firebaseへ保存し、保存後の値を確認しました。'+(cached?'':'（端末キャッシュは未保存）'),'success');
+    portalGoalSaveFeedback('保存しました。','success');
     portalGoalRefreshOverview();
     flowRefreshAll();
     if(currentScreen()?.id==='screen-competition-results')renderPortalPersonalRecord();
@@ -11787,7 +11824,7 @@ list.innerHTML=output.map(metric=>{
       $('portalGoalMetricPicker').value=String(metric);portalGoalShowMetric(String(metric));
       $('portalGoalHandoffState').textContent=portalLapFormatLabel(metric)+' の目安 '+time+' を目標欄へ取り込みました。保存してください。';
       portalGoalSwitchTab('setting');
-      $('portalSaveCommonGoals').scrollIntoView({block:'nearest'});
+      requestAnimationFrame(()=>{$('screen-goal-tools').scrollTop=0;window.scrollTo(0,0);});
     }));
     if(!quiet)portalLapResultsToView();
   }
@@ -12137,8 +12174,8 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
       const emphasize=halfLine?' lap-highlight-half':fiveLine?' lap-highlight-five':finish?' lap-highlight-finish':'';
       const name=halfLine?'ハーフ 21.0975km':finalRest?(plan?.halfSplit?'後半ハーフ → ゴール':(plan?.composite||choice==='2')?'40km–ゴール（残り2.195km）':row?row.before+'–42195m（残り'+(42195-row.before)+'m）':'ゴール'):row?(plan?.checkpoints?row.covered+'m通過':row.before+'–'+row.covered+'m'):mark+'m通過';
       const note=finalRest&&(plan?.composite||choice==='2')?`40kmからゴールまで ${portalLapDisplay(timeAtMetres(42195)-timeAtMetres(40000))}`:row?`区間 ${portalLapSegmentDisplay(row.lapCs/100,row.length)}`:halfLine?'中間通過（区間の途中）':'通過地点';
-      const editable=row&&row.covered===mark?`<button type="button" data-lap-adjust="${row.index}" class="${portalLapManualTimeOffsets.has(row.index)?'is-edited':''}">この区間の時間を調整 ›</button>`:'';
-      return `<div class="portalToolResult portalToolSplitRow${emphasize}"><b>${name}</b><div class="lap-passing-time" aria-label="${mark}m通過">${portalLapSegmentDisplay(timeAtMetres(mark),mark)}</div><div class="lap-segment-time">${note}${editable}</div></div>`;
+      const editable=row&&row.covered===mark?`<button type="button" data-lap-adjust="${row.index}" class="${portalLapManualTimeOffsets.has(row.index)?'is-edited':''}" aria-label="この区間の時間を調整">${portalLapManualTimeOffsets.has(row.index)?'調整済み ›':'調整 ›'}</button>`:'';
+      return `<div class="portalToolResult portalToolSplitRow${emphasize}"><b>${name}</b><div class="lap-passing-time" aria-label="${mark}m通過">${portalLapSegmentDisplay(timeAtMetres(mark),mark)}</div><div class="lap-segment-time"><span class="lap-seg-label">${note}</span>${editable}</div></div>`;
 }).join('');
     passCs=laps.reduce((a,row)=>a+row.lapCs,0);
     state.innerHTML=`<strong>目標 ${portalLapSegmentDisplay(totalCs/100,dist)} ／ 配分後 ${portalLapSegmentDisplay(passCs/100,dist)}</strong>。各ブロックをタップして時間を調整できます。`;
