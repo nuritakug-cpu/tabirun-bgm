@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v195 | 2026-10-31 | Physical parent v194. CHAT/ROOM only: date/month/range filter selection stays at the result top, not latest/bottom. All-mode latest behavior retained. No Firebase/Auth/UID/profileId/RTDB/Rules/notifications/read/write changes. STATIC REVIEW; real device not verified. -->
 <!-- TOP RUN PORTAL v194 | v193 parent. Fix low-contrast text reactions on light backgrounds; display chat name alone in message headers; staff identity detail remains in read-status sheets. UI-only; Firebase/Worker/Rules unchanged. -->
 <!-- TOP RUN PORTAL v193 | 2026-10-31 | v192 physical parent + CHAT/ROOM display only: re-balance multi-character reaction size, calm text-reaction tones, brighten others' chat bubbles slightly, keep filter-band removal. No Firebase/Auth/UID/Rules/RTDB/Worker/notification/read/writer change. Browser/device/Firebase unverified. -->
 <!-- TOP RUN PORTAL v191 | 2026-10-31 | v190 + traffic only: background listener grace 8s -> 5min (same as EVENT BASE P115). No Auth/UID/Rules/paths/writes changed.
@@ -6123,7 +6124,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v194</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v195</b></div>
   </div>
 </div>
 
@@ -6314,7 +6315,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v194</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v195</b></div>
   </div>
 </div>
 
@@ -8610,17 +8611,25 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
     const portalChatFiltered=!!pcf&&((pcf.mode==='day'&&!!pcf.day)||(pcf.mode==='month'&&!!pcf.month)||(pcf.mode==='range'&&!!(pcf.start||pcf.end)));
     if(!rows.length&&portalChatFiltered)box.innerHTML='<div class="portalEmpty" role="status">この日付・期間のメッセージはありません。</div>';
     const portalChatNewest=rows.length?rows[rows.length-1].id:'';
-    // v148: a filter change shows the top of the result (the start of the chosen day/period).
+    // v195: changing to 日付/月/期間 must show the filter/results at the top,
+    // including before a date is entered. New live/receipt events must not jump to the bottom.
+    const portalChatFilterMode=pcf?.mode||'all';
     if(portalChatFilterJump && !chatScreen.classList.contains('hidden')){
       portalChatFilterJump=false;
-      if(portalChatFiltered){
+      if(portalChatFilterMode!=='all'){
         portalChatLastScrolledId=portalChatNewest;portalChatWasFiltered=true;
+        portalChatUnreadScrollPending=false;
         requestAnimationFrame(()=>{const main=chatScreen.querySelector('main.chatMain');if(main)main.scrollTop=0;});
         return;
       }
-      // Back from a filter to すべて: show the latest. Only changing the choice (no date yet): stay where you are.
+      // Only すべて restores the latest-message position.
       if(portalChatWasFiltered){portalChatWasFiltered=false;portalChatLastScrolledId='';}
       else portalChatLastScrolledId=portalChatNewest;
+    }
+    if(portalChatFilterMode!=='all'){
+      portalChatLastScrolledId=portalChatNewest;
+      portalChatUnreadScrollPending=false;
+      return;
     }
     // Enter at the first unread line; after entry, only a NEW message
     // moves the chat to the latest visible row above the composer.
@@ -19917,18 +19926,23 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
     f.classList.toggle('portalFilterAllMode',mode==='all');f.classList.toggle('portalFilterRangeMode',mode==='range');
     if(mode==='month'&&!$('trRoomFilterMonth').value){const d=new Date();$('trRoomFilterMonth').value=d.getFullYear()+'-'+pad(d.getMonth()+1);}
   }
-  function showLive(){
-    rfActive=false;rfSeq++;shownMsgKey='';lastScrolledId='';
-    const s=state();if(s&&isRoom(view))renderThread(s);
+  function showLive(keepFilterTop=false){
+    rfActive=false;rfSeq++;shownMsgKey='';
+    const s=state();
+    // v195: switching to 日付/月/期間 before choosing a date is not a request to jump to newest.
+    lastScrolledId=keepFilterTop?(s?.msgs?.[s.msgs.length-1]?.id||''):'';
+    if(s&&isRoom(view))renderThread(s);
+    if(keepFilterTop)requestAnimationFrame(()=>{const main=chatMain();if(main)main.scrollTop=0;});
   }
   async function onFilter(){
     syncFilterInputs();
     const id=view;if(!isRoom(id))return;
     const r=filterRange();
-    if(!r){filterNote($('trRoomFilterMode').value==='all'?'':'日付を選ぶと、そのメッセージだけを表示します。');showLive();return;}
+    if(!r){filterNote($('trRoomFilterMode').value==='all'?'':'日付を選ぶと、そのメッセージだけを表示します。');showLive($('trRoomFilterMode').value!=='all');return;}
     if(r.bad){filterNote('開始日は終了日より前にしてください。');return;}
     rfActive=true;const seq=++rfSeq,box=$('trRoomThread'),s=state();
     box.innerHTML='<div class="portalEmpty" role="status">読み込み中です。</div>';filterNote('');
+    requestAnimationFrame(()=>{const main=chatMain();if(main)main.scrollTop=0;});
     let list,partial=false;
     try{list=await gate().roomMessagesRange(id,r.from,r.to);}
     catch(_){partial=true;list=(s?.msgs||[]).filter(m=>{const t=Number(m.ts)||0;return t>=r.from&&t<=r.to;});}
