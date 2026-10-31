@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v202 | 2026-10-31 | Parent v201 (user-supplied TOP_RUN_PORTAL_96115f.html). (1) staff personal-record view reads the person's self-entered past races profiles/<uid>/portalSelf/externalRecords (read-only; REQUIRES Rules v202). (2) chat/room send stores name = profiles displayName (Rules require it; shown name still comes from nameBook = チャット名) -> fixes PERMISSION_DENIED for people with a チャット名. (3) staff 目標/申告タイム edits and add-entry goal use one pulldown picker instead of text prompts. (4) version label unified. Browser/device/Firebase unverified. -->
 <!-- TOP RUN PORTAL v201 | 2026-10-31 | Physical parent v200. UI ONLY: harmonized notification and CHAT rooms (room list, settings, notification modes) across Original/Blue/Sakura/Winter/Matte palettes, slim outline icons, visible high-contrast controls and selection. No Auth/RTDB/Rules/Worker/notification save, listener or routing changes; browser/Firebase/device not verified. -->
 <!-- TOP RUN PORTAL v200 | 2026-10-31 | Parent v199. (1) race cancellation returns own 参加予定 to 未選択: self cancel writes maybe; staff cancellation in EVENT BASE is detected on the participant device (entry seen -> gone, answer join) and writes maybe on the own response path. (2) staff personal-record view now includes the selected person's EVENT BASE results (was self only). (3) 通知設定 starts closed. (4) entry panel: deadline first, 未登録/登録済み as a title badge, eligibility shown only when not met; schedule detail BASE link above the 参加する/参加しない buttons. Rules unchanged (v199 Rules still needed for request deletion). Browser/device/Firebase unverified. -->
 <!-- TOP RUN PORTAL v199 | 2026-10-31 | Parent v198. DISPLAY ONLY: (1) calendar event detail: 大会当日の予定/出走 first, connected 駅伝BASE/EVENT BASE link small and last; (2) EVENTS card for connected official events: 出走：登録済/未登録/受付前/締切, and 「出走登録する ›」 (opens the existing calendar event detail) when open and unregistered. Requires Rules v199 for developer deletion of a pending approval request. No writes/paths/Auth/UID changed in HTML. Browser/device/Firebase unverified. -->
@@ -6136,7 +6137,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v201</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v202</b></div>
   </div>
 </div>
 
@@ -6327,7 +6328,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v200</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v202</b></div>
   </div>
 </div>
 
@@ -13761,10 +13762,12 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
       if(!card)return rpSay('登録の内容を読み込み中です。少し待ってからもう一度押してください。');
       const done=()=>{delete rpCards[ev.id];[1500,4000].forEach(t=>setTimeout(rpRender,t));};
       if(act==='entry-edit'){
-        const goal=prompt('目標タイム（例 10:24）。空にすると目標なし',String(card.targetTime||''));if(goal===null)return;
+        return (async()=>{
+        const goal=await window.trPickTimeV202((card.name||'')+' の目標タイム',String(card.targetTime||''),true);if(goal===null)return;
         let declared;
-        if(String(card.declaredTime||'').trim()){declared=prompt('申告タイム（例 10:30）',String(card.declaredTime||''));if(declared===null)return;}
+        if(String(card.declaredTime||'').trim()){declared=await window.trPickTimeV202((card.name||'')+' の申告タイム',String(card.declaredTime||''),false);if(declared===null)return;}
         return run(async()=>{await rpG().staffEditEntry(ev.id,pid,{targetTime:goal,declaredTime:declared});rpSay('修正しました：'+(card.name||'')+'の出走登録');done();});
+        })();
       }
       const hasRes=['result','officialResult','provisionalResult','place','officialPlace','provisionalPlace','resultStatus','resultSource'].some(k=>String(card[k]||'').trim());
       const q=hasRes?`「${btn.dataset.name}」の出走登録を一覧から外しますか？\n記録が入っているため、記録は消さずに残します（紐付け済みの記録もそのままです）。`
@@ -14370,6 +14373,17 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
       }
       flowRefreshAll();
       if(currentScreen()?.id==='screen-flow-manager'&&$('flowMgrExtAthlete')?.value===profileId)flowRenderManagerExternalList();
+    },
+    applyStaffSelfRecordsV202({uid,profileId,records,error}){
+      if(!canManage||portalParticipantPreviewMode||!uid||!profileId)return;
+      flowState.external=flowState.external.filter(r=>!(r.staffViewV202===true&&r.actorId===profileId));
+      if(error){try{showActionFeedback('本人入力の記録を読めません','Rules v202 が公開されているか確認してください（'+String(error).slice(0,60)+'）');}catch(_){}flowRefreshAll();return;}
+      for(const [recordId,row] of Object.entries(records&&typeof records==='object'?records:{})){
+        if(!/^local-flow-[A-Za-z0-9_-]{8,100}$/.test(recordId)||!row||typeof row!=='object')continue;
+        if(!/^\d{4}-\d{2}-\d{2}$/.test(row.date||''))continue;
+        flowState.external.push({...row,id:recordId,actorId:profileId,subjectUid:uid,source:'manager-external',firebaseSource:'portalSelf',staffViewV202:true});
+      }
+      flowRefreshAll();
     },
     applyApprovedMemberRoster(items,error=''){
       const gate=window.__TR_PORTAL_SYNC__;
@@ -16440,6 +16454,14 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       if(currentGeneration!==generation||auth.currentUser?.uid!==currentUid)throw Error('認証が切り替わったためREADを破棄しました');
       const records=Object.fromEntries(Object.entries(result).filter(([id,r])=>r&&r.subjectUid===uid&&r.profileId===profileId&&/^local-flow-[A-Za-z0-9_-]{8,100}$/.test(id)));
       ui?.applySharedPastRecords({uid,profileId,records});
+      // v202: the person's own entered past races live in profiles/<uid>/portalSelf/externalRecords.
+      // Staff could never read them, so the staff view showed 0. Read-only; needs Rules v202.
+      if(staffPastAllowed()&&uid!==gate.uid){
+        try{
+          const ex=(await dbMod.get(dbMod.ref(db,'profiles/'+uid+'/portalSelf/externalRecords'))).val()||{};
+          if(currentGeneration===generation&&auth.currentUser?.uid===currentUid)ui?.applyStaffSelfRecordsV202?.({uid,profileId,records:ex,error:''});
+        }catch(err){ui?.applyStaffSelfRecordsV202?.({uid,profileId,records:{},error:String(err?.code||err?.message||err)});}
+      }
       if(uid===gate.uid&&profileId===gate.profileId){
         const ids=new Set(Object.keys(records).filter(id=>id.startsWith('local-flow-claim-')));
         const before=[...(gate.ownClaimIds||[])].sort().join('|');gate.ownClaimIds=ids;
@@ -16834,7 +16856,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       const id='c'+Date.now()+'_'+Math.random().toString(36).slice(2,11);
       // v159: optional 返信 (replyTo) and メンション (mentions) from the composer
       const ex=window.__trChatExtras?.take?.('common',text)||{};
-      await dbMod.set(ref('chat/'+id),{senderUid:gate.uid,name:(gate.chatName||gate.displayName),text,ts:dbMod.serverTimestamp(),staff:['developer','admin'].includes(gate.role),...ex});
+      await dbMod.set(ref('chat/'+id),{senderUid:gate.uid,name:gate.displayName,text,ts:dbMod.serverTimestamp(),staff:['developer','admin'].includes(gate.role),...ex});
       void window.__TR_STAGE3_NOTIFY__?.('chat',id);
     };
     // v159: one reaction per person per message (LINE / BAND style). emoji=null removes it.
@@ -17112,7 +17134,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         const mid='m'+Date.now()+'_'+Math.random().toString(36).slice(2,11);
         const ex=window.__trChatExtras?.take?.('room:'+id,text)||{};
         await dbMod.update(dbMod.ref(db,root),{
-          ['roomMessages/'+id+'/'+mid]:{senderUid:gate.uid,name:(gate.chatName||gate.displayName),text,ts:dbMod.serverTimestamp(),...ex},
+          ['roomMessages/'+id+'/'+mid]:{senderUid:gate.uid,name:gate.displayName,text,ts:dbMod.serverTimestamp(),...ex},
           ['roomMeta/'+id+'/lastAt']:dbMod.serverTimestamp()
         });
         // v166: room push (Worker kind "room", id "<room>/<message>"). The Worker checks sender, membership and recipients.
@@ -20664,7 +20686,7 @@ window.trEventLabel=(id,fallback)=>{
         .sort((a,b)=>a.name.localeCompare(b.name,'ja'));
       const opts=metricsOf(ev).map(([v,t])=>`<option value="${esc(v)}">${esc(t)}</option>`).join('');
       list.innerHTML=people.length?people.map(x=>`<div class="trwCard"><b>${esc(x.name)}</b><span class="trwSub">PORTALの回答：${x.answer==='support'?'帯同・応援':'参加する'}｜出走登録なし</span>
-        <div class="trwRow"><select data-trw-metric="${esc(x.uid)}">${opts}</select><input data-trw-goal="${esc(x.uid)}" inputmode="decimal" placeholder="目標（例 10:24）"></div>
+        <div class="trwRow"><select data-trw-metric="${esc(x.uid)}">${opts}</select><button type="button" class="trwGoalPick" data-trw-goal="${esc(x.uid)}" data-value="">目標タイムを選ぶ</button></div>
         <div class="trwRow"><button type="button" class="portalPrimary" data-trw-add="${esc(x.uid)}">出走登録する</button></div></div>`).join('')
         :'<p class="portalHelp">出走登録が漏れている人はいません。</p>';
       list._people=people;
@@ -20722,7 +20744,7 @@ window.trEventLabel=(id,fallback)=>{
     const add=e.target.closest('[data-trw-add]');
     if(add){
       const ev=cur(),uid=add.dataset.trwAdd,x=($('trwList')._people||[]).find(p=>p.uid===uid);if(!ev||!x)return;
-      const metric=document.querySelector(`[data-trw-metric="${CSS.escape(uid)}"]`)?.value||'',goal=document.querySelector(`[data-trw-goal="${CSS.escape(uid)}"]`)?.value.trim()||'';
+      const metric=document.querySelector(`[data-trw-metric="${CSS.escape(uid)}"]`)?.value||'',goal=document.querySelector(`[data-trw-goal="${CSS.escape(uid)}"]`)?.dataset.value||'';
       if(!confirm(`「${x.name}」を ${metricName(metricKey(metric))} に出走登録しますか？`))return;
       act(async()=>{await g().staffCreateEntry(ev.id,{subject:{uid:x.uid,profileId:x.profileId},name:x.name,metric,targetTime:goal,date:dateOf(ev,metric)});
         say(`出走登録しました：${x.name}（${metricName(metricKey(metric))}）`);await render(true);});
@@ -20731,8 +20753,8 @@ window.trEventLabel=(id,fallback)=>{
     const ed=e.target.closest('[data-trw-edit]');
     if(ed){
       const ev=cur(),pid=ed.dataset.trwEdit,p=(cards[ev?.id]||{})[pid];if(!ev||!p)return;
-      const goal=prompt(`${p.name} の目標タイム（例 10:24）。空にすると目標なし`,String(p.targetTime||''));if(goal===null)return;
-      act(async()=>{await g().staffEditEntry(ev.id,pid,{targetTime:goal});say(`修正しました：${p.name}`);await render(true);});
+      void window.trPickTimeV202(`${p.name} の目標タイム`,String(p.targetTime||''),true).then(goal=>{if(goal===null)return;
+        act(async()=>{await g().staffEditEntry(ev.id,pid,{targetTime:goal});say(`修正しました：${p.name}`);await render(true);});});
       return;
     }
     const del=e.target.closest('[data-trw-del]');
@@ -22454,5 +22476,52 @@ html[data-portal-personal-color="matte"] :is(#screen-notification-settings,#scre
 }
 @media(prefers-reduced-motion:reduce){#screen-notification-settings .trNotifySummaryArrow{transition:none!important}}
 </style>
+<script>
+/* v202: one pulldown time picker for staff edits (時間・分・秒・1/100秒). Returns '' (no goal), null (cancel) or M:SS.cc / H:MM:SS.cc. */
+(()=>{
+  const pad=n=>String(n).padStart(2,'0');
+  const opts=(from,to,sel,fmt)=>{let h='';for(let i=from;i<=to;i++)h+=`<option value="${i}"${i===sel?' selected':''}>${fmt(i)}</option>`;return h;};
+  const parse=t=>{const m=String(t||'').trim().match(/^(?:(\d{1,2}):)?(\d{1,2}):(\d{2})(?:\.(\d{1,2}))?$/);if(!m)return null;return {h:Number(m[1]||0),m:Number(m[2]),s:Number(m[3]),c:Number((m[4]||'0').padEnd(2,'0'))};};
+  window.trPickTimeV202=(title,current,allowEmpty)=>new Promise(resolve=>{
+    const v=parse(current)||{h:0,m:-1,s:-1,c:0};
+    const wrap=document.createElement('div');
+    wrap.style.cssText='position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:18px';
+    const sel='flex:1;min-width:0;padding:10px 6px;border:1px solid #b9b3a2;border-radius:10px;font:16px system-ui,sans-serif;background:#fff;color:#111';
+    wrap.innerHTML=`<div role="dialog" aria-modal="true" style="width:100%;max-width:420px;background:#fffdf6;color:#1a1a1a;border-radius:16px;padding:18px;box-shadow:0 12px 40px rgba(0,0,0,.35)">
+      <div style="font-weight:900;font-size:16px;margin-bottom:12px"></div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;font-size:12px;font-weight:800;margin-bottom:4px"><span>時間</span><span>分</span><span>秒</span><span>1/100秒</span></div>
+      <div style="display:flex;gap:6px">
+        <select data-p="h" style="${sel}"><option value="0"${v.h===0?' selected':''}>—</option>${opts(1,9,v.h,String)}</select>
+        <select data-p="m" style="${sel}">${v.m<0?'<option value="" selected>--</option>':''}${opts(0,59,v.m,pad)}</select>
+        <select data-p="s" style="${sel}">${v.s<0?'<option value="" selected>--</option>':''}${opts(0,59,v.s,pad)}</select>
+        <select data-p="c" style="${sel}">${opts(0,99,v.c,pad)}</select>
+      </div>
+      <p data-p="msg" style="min-height:18px;margin:8px 0 0;font-size:13px;font-weight:700;color:#9a2a18"></p>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        ${allowEmpty?'<button type="button" data-p="none" style="flex:1;min-height:46px;border-radius:12px;border:1px solid #b9b3a2;background:#fff;color:#1a1a1a;font-weight:800">目標なし</button>':''}
+        <button type="button" data-p="cancel" style="flex:1;min-height:46px;border-radius:12px;border:1px solid #b9b3a2;background:#fff;color:#1a1a1a;font-weight:800">キャンセル</button>
+        <button type="button" data-p="ok" style="flex:1;min-height:46px;border-radius:12px;border:0;background:#e2b21e;color:#1a1a1a;font-weight:900">OK</button>
+      </div></div>`;
+    wrap.querySelector('div[role=dialog] > div').textContent=title||'タイムを選ぶ';
+    const q=k=>wrap.querySelector(`[data-p="${k}"]`);
+    const close=val=>{wrap.remove();resolve(val);};
+    q('cancel').onclick=()=>close(null);
+    if(allowEmpty)q('none').onclick=()=>close('');
+    q('ok').onclick=()=>{
+      const h=Number(q('h').value),m=q('m').value,s=q('s').value,c=Number(q('c').value);
+      if(m===''||s===''){q('msg').textContent='分と秒を選んでください';return;}
+      if(!h&&!Number(m)&&!Number(s)&&!c){q('msg').textContent='タイムを選んでください';return;}
+      close(h?`${h}:${pad(m)}:${pad(s)}.${pad(c)}`:`${pad(m)}:${pad(s)}.${pad(c)}`);
+    };
+    wrap.addEventListener('click',e=>{if(e.target===wrap)close(null);});
+    document.body.appendChild(wrap);
+  });
+  document.addEventListener('click',e=>{
+    const b=e.target.closest('[data-trw-goal]');if(!b)return;
+    e.preventDefault();
+    void window.trPickTimeV202('目標タイム',b.dataset.value||'',true).then(v=>{if(v===null)return;b.dataset.value=v;b.textContent=v?('目標 '+v):'目標タイムを選ぶ';});
+  });
+})();
+</script>
 </body>
 </html>
