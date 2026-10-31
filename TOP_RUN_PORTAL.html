@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v208 | 2026-11-01 | Parent v207. (1) 個人記録：pastRecords/<uid> の記録で profileId が旧ID（再登録前）でも subjectUid がそのuidと一致すれば表示（表示のみ・旧ID記録は修正削除ボタンなし・書込なし）。原因確認パネルに旧ID記録件数。(2) タイムの目安「目標欄へ」：iOS慣性スクロールを止めて目標設定の先頭へ（複数回）。目標一覧・下部ボタンも同様。(3) 一覧：練習の題名「—」を場所/練習に、出欠ボタンを一覧と同じ落ち着いたデザインへ（未回答は件数バッジ）。(4) 場所に 美浜町運動公園陸上競技場・知多運動公園 を追加。Rules unchanged. -->
 <!-- TOP RUN PORTAL v207 | 2026-10-31 | Parent v206. (1) 練習予定の登録・一括登録が成功したら入力欄の先頭へ上スクロール（押した瞬間の下スクロールを削除）。(2) 個人記録「0件」原因確認パネル（開発者のみ）：対象uid有無、pastRecords 取得数と除外理由、本人入力記録の取得数/エラー、EVENT BASE件数、画面集計件数を表示し、再読込ボタン付き。読取のみ・書込なし。Rules unchanged. -->
 <!-- TOP RUN PORTAL v206 | 2026-10-31 | Parent v205. UI ONLY: 出欠回答の表示は終わりではなく切替表示。ボタン「出欠回答」⇔「通常表示」、回答可能な未回答があれば「未回答あり」（強調）。押すと最初の未回答へ移動（2か月以上先なら追加表示を開く）。カレンダー⇔一覧の切替で出欠回答表示を解除しない。Rules unchanged. -->
 <!-- TOP RUN PORTAL v205 | 2026-10-31 | Parent v204. UI ONLY: CALENDAR 一覧の切替ボタン名を「まとめて入力／入力を終える」→「出欠回答／完了」。説明文を削除。下部ボタンは「上に戻る」（モードは維持し見出しへスクロール）。Rules unchanged. -->
@@ -5644,6 +5645,13 @@ html #screen-goal-tools .portalToolSplitRow button[data-lap-adjust].is-edited{co
 #v207RecDiagReload{margin-top:8px;width:100%;min-height:38px;border:1px solid #c9aa43;border-radius:9px;background:#fff3ca;font-weight:900;color:#403716}
 .v207RecDiagHint{margin:6px 0 0;font-size:11px;color:#7c817e}
 </style>
+<style>
+/* v208: 出欠ボタンを一覧と同じトーンに */
+.portalAgendaBulkToggle,.portalAgendaBulkToggle.hasPending{display:inline-flex!important;align-items:center;gap:7px;min-height:34px;padding:6px 13px!important;border-radius:11px!important;border:1px solid var(--portal-theme-stroke,#d6d2c7)!important;background:var(--portal-theme-surface-2,#eeece5)!important;color:var(--portal-theme-text,#313837)!important;font-size:12px!important;font-weight:900!important;letter-spacing:.02em;box-shadow:none!important}
+.portalAgendaBulkToggle.hasPending::before{display:none!important;content:none!important}
+.portalAgendaBulkToggle[aria-pressed="true"]{background:#313837!important;border-color:#313837!important;color:#fff!important}
+.portalAgendaBulkCount{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:#f4edce;color:#766320;font-size:11px;font-weight:950;line-height:1}
+</style>
 </head>
 <body>
 <div id="portalFirstPaintAuthOverlay" role="status" aria-live="polite" aria-label="TOP RUN PORTAL 認証中">
@@ -6184,7 +6192,7 @@ html #screen-goal-tools .portalToolSplitRow button[data-lap-adjust].is-edited{co
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v207</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v208</b></div>
   </div>
 </div>
 
@@ -6375,7 +6383,7 @@ html #screen-goal-tools .portalToolSplitRow button[data-lap-adjust].is-edited{co
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v207</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v208</b></div>
   </div>
 </div>
 
@@ -7227,6 +7235,8 @@ html #screen-goal-tools .portalToolSplitRow button[data-lap-adjust].is-edited{co
     '瑞穂陸上競技場',
     '新城総合公園',
     'スポーレ春日井',
+    '美浜町運動公園陸上競技場',
+    '知多運動公園',
     'その他'
   ];
   function fillCommonPlaceSelects(){
@@ -7674,7 +7684,8 @@ html #screen-goal-tools .portalToolSplitRow button[data-lap-adjust].is-edited{co
     Object.entries(schedules).forEach(([key,p])=>{
       if(!/^\d{4}-\d{2}-\d{2}$/.test(key)||key<today||p?.kind!=='practice'||p.enabled===false)return;
       const answer=schedulePracticeResponse(key,actor);
-      rows.push({date:key,kind:'practice',rawAnswer:answer,practiceMode:p.practiceMode,recordKind:p.recordKind,title:p.other||'練習',time:p.start||'',place:p.place||'',status:answer==='join'?'参加する':answer==='support'?'帯同・応援':answer==='decline'?'参加しない':'未回答',answer:answer==='join'||answer==='support'?'join':answer==='decline'?'decline':'maybe'});
+      const pOther=String(p.other||'').trim(),pHasTitle=pOther&&pOther!=='—'&&pOther!=='-';
+      rows.push({date:key,kind:'practice',rawAnswer:answer,practiceMode:p.practiceMode,recordKind:p.recordKind,title:pHasTitle?pOther:(p.place||'練習'),time:p.start||'',place:pHasTitle?(p.place||''):'',status:answer==='join'?'参加する':answer==='support'?'帯同・応援':answer==='decline'?'参加しない':'未回答',answer:answer==='join'||answer==='support'?'join':answer==='decline'?'decline':'maybe'});
     });
     eventItems.forEach(e=>{
       if(e.enabled===false)return;
@@ -7753,7 +7764,7 @@ html #screen-goal-tools .portalToolSplitRow button[data-lap-adjust].is-edited{co
     }).join('');
     const hasBulkRows=visibleRows.length||futureRows.length;
     const pendingCount=portalAgendaPendingRows(rows).length;
-    const html=`<div class="portalAgendaHeadRow"><div class="portalAgendaHeading">${heading}（表示${visibleRows.length}件）</div>${hasBulkRows?`<button type="button" class="portalAgendaBulkToggle${!portalAgendaBulk&&pendingCount?' hasPending':''}" data-agenda-bulk-toggle aria-pressed="${portalAgendaBulk}">${portalAgendaBulk?'通常表示':pendingCount?'未回答あり':'出欠回答'}</button>`:''}</div>`+
+    const html=`<div class="portalAgendaHeadRow"><div class="portalAgendaHeading">${heading}（表示${visibleRows.length}件）</div>${hasBulkRows?`<button type="button" class="portalAgendaBulkToggle${!portalAgendaBulk&&pendingCount?' hasPending':''}" data-agenda-bulk-toggle aria-pressed="${portalAgendaBulk}">${portalAgendaBulk?'通常表示':pendingCount?`未回答<span class="portalAgendaBulkCount">${pendingCount}</span>`:'出欠回答'}</button>`:''}</div>`+
 
       (visibleRows.length?renderAgendaItems(visibleRows):'<div class="portalAgendaEmpty">この期間の予定はありません。</div>')+
       (futureMonths.length?`<button type="button" class="portalAgendaMore" data-agenda-more aria-expanded="${portalAgendaExpanded}">${portalAgendaExpanded?'追加表示を閉じる':`さらに表示（2か月以上先・${futureRows.length}件）`}</button>`:'')+
@@ -10453,9 +10464,10 @@ const gateway=window.__TR_PORTAL_SYNC__;
       L('読込',D?('実行 '+t(D.at)+(D.done?'':' 実行中')):'未実行',!D),
       D?.error?L('読込エラー',D.error,true):'',
       D?L('管理権限（読込時）',D.staffAllowed?'あり':'なし',!D.staffAllowed):'',
-      D&&D.pastRaw!=null?L('管理登録記録（取得）',D.pastRaw+'件 → 採用 '+D.pastKept+'件',D.pastRaw>D.pastKept):'',
-      D&&D.pastRaw>D.pastKept?L('除外の内訳','uid不一致 '+D.pastDropSubject+' ／ profileId不一致 '+D.pastDropProfile+' ／ ID形式 '+D.pastDropId,true):'',
-      D?.pastOtherProfileIds?.length?L('記録側のprofileId',D.pastOtherProfileIds.join(', '),true):'',
+      D&&D.pastRaw!=null?L('管理登録記録（取得）',D.pastRaw+'件 → 採用 '+D.pastKept+'件',D.pastRaw>D.pastKept+(D.legacyShown||0)):'',
+      D&&D.pastRaw>D.pastKept+(D.legacyShown||0)?L('除外の内訳','uid不一致 '+D.pastDropSubject+' ／ profileId不一致 '+D.pastDropProfile+' ／ ID形式 '+D.pastDropId,true):'',
+      D?.pastOtherProfileIds?.length?L('記録側のprofileId（旧）',D.pastOtherProfileIds.join(', '),false):'',
+      D?.legacyShown?L('旧profileIdの記録を表示',D.legacyShown+'件（同じuid・表示のみ）',false):'',
       D&&!isSelf?L('本人入力記録（取得）',D.selfError?'エラー：'+D.selfError:(D.selfRaw??'—')+'件',!!D.selfError):'',
       L('EVENT BASE結果',eb+'件',false),
       L('端末に読込済みの記録',ext.length+'件',false),
@@ -11253,7 +11265,14 @@ function portalGoalSwitchTab(tab,{keepScroll=false}={}){
     $('portalGoalQuickButton').textContent=inSetting?'目標タイムを保存':tab==='overview'?'目標を変更する':'目標設定へ戻って保存';
     $('portalGoalQuickLabel').textContent=inSetting?'目標タイムを選択し、保存してください':tab==='overview'?'保存済み目標を確認・選択できます':'目安やラップを確認後、目標設定で確定します';
     if(tab==='overview')portalGoalRefreshOverview();
-    if(!keepScroll){$('screen-goal-tools').scrollTop=0;}
+    if(!keepScroll)portalGoalToTop();
+  }
+  // v208: iOSの慣性スクロールが残ると scrollTop=0 が上書きされるため、一度止めてから先頭へ（数回）
+  function portalGoalToTop(){
+    const sc=$('screen-goal-tools');if(!sc)return;
+    try{document.activeElement?.blur?.();}catch(_){}
+    const go=()=>{sc.style.overflowY='hidden';sc.scrollTop=0;requestAnimationFrame(()=>{sc.style.overflowY='';sc.scrollTop=0;});};
+    go();setTimeout(go,120);setTimeout(go,400);
   }
   $('portalGoalQuickButton').addEventListener('click',()=>{
     if(!$('portalGoalViewSetting').hidden){$('portalSaveCommonGoals').click();return;}
@@ -11886,7 +11905,7 @@ list.innerHTML=output.map(metric=>{
       $('portalGoalMetricPicker').value=String(metric);portalGoalShowMetric(String(metric));
       $('portalGoalHandoffState').textContent=portalLapFormatLabel(metric)+' の目安 '+time+' を目標欄へ取り込みました。保存してください。';
       portalGoalSwitchTab('setting');
-      requestAnimationFrame(()=>{$('screen-goal-tools').scrollTop=0;window.scrollTo(0,0);});
+      portalGoalToTop();
     }));
     if(!quiet)portalLapResultsToView();
   }
@@ -14587,7 +14606,8 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
       const rows=records&&typeof records==='object'&&!Array.isArray(records)?records:{};
       flowState.external=flowState.external.filter(r=>!(r.firebaseSource==='portalStaff'&&r.actorId===profileId));
       for(const [recordId,row] of Object.entries(rows)){
-        if(!/^local-flow-[A-Za-z0-9_-]{8,100}$/.test(recordId)||!row||row.subjectUid!==uid||row.profileId!==profileId)continue;
+        // v208: 旧profileIdの記録も同じuidなら表示（row.profileId は元のまま残すため修正・削除ボタンは出ない）
+        if(!/^local-flow-[A-Za-z0-9_-]{8,100}$/.test(recordId)||!row||row.subjectUid!==uid)continue;
         if(!/^\d{4}-\d{2}-\d{2}$/.test(row.date||''))continue;
         flowState.external.push({...row,id:recordId,actorId:profileId,source:'manager-external',firebaseSource:'portalStaff'});
       }
@@ -16681,8 +16701,10 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       const currentGeneration=generation,currentUid=gate.uid;
       const result=(await dbMod.get(ref(pastRoot+uid))).val()||{};
       if(currentGeneration!==generation||auth.currentUser?.uid!==currentUid)throw Error('認証が切り替わったためREADを破棄しました');
-      const records=Object.fromEntries(Object.entries(result).filter(([id,r])=>r&&r.subjectUid===uid&&r.profileId===profileId&&/^local-flow-[A-Za-z0-9_-]{8,100}$/.test(id)));
-      {const all=Object.entries(result);D.pastRaw=all.length;D.pastKept=Object.keys(records).length;
+      // v208: 同じuid（同じ本人のAuth）の記録は、再登録前の旧profileIdでも表示対象にする（表示のみ）。
+      const records=Object.fromEntries(Object.entries(result).filter(([id,r])=>r&&r.subjectUid===uid&&/^local-flow-[A-Za-z0-9_-]{8,100}$/.test(id)));
+      D.legacyShown=Object.values(records).filter(r=>r.profileId!==profileId).length;
+      {const all=Object.entries(result);D.pastRaw=all.length;D.pastKept=Object.values(records).filter(r=>r.profileId===profileId).length;
        D.pastDropSubject=all.filter(([,r])=>r&&r.subjectUid!==uid).length;
        D.pastDropProfile=all.filter(([,r])=>r&&r.subjectUid===uid&&r.profileId!==profileId).length;
        D.pastDropId=all.filter(([id,r])=>r&&r.subjectUid===uid&&r.profileId===profileId&&!/^local-flow-[A-Za-z0-9_-]{8,100}$/.test(id)).length;
