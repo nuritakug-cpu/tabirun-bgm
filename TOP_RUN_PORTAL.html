@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v199 | 2026-10-31 | Parent v198. DISPLAY ONLY: (1) calendar event detail: 大会当日の予定/出走 first, connected 駅伝BASE/EVENT BASE link small and last; (2) EVENTS card for connected official events: 出走：登録済/未登録/受付前/締切, and 「出走登録する ›」 (opens the existing calendar event detail) when open and unregistered. Requires Rules v199 for developer deletion of a pending approval request. No writes/paths/Auth/UID changed in HTML. Browser/device/Firebase unverified. -->
 <!-- TOP RUN PORTAL v198 | 2026-10-31 | Parent v197. Participant マイ出走登録 DISPLAY ONLY: no EVENT BASE link for official events on this screen; one-discipline events (駅伝) hide the discipline step (auto-selected via existing change handler), no 種目 count/「出走種目を選択」/「別の種目」 texts. Registration checks/writes unchanged. Browser/device/Firebase unverified. -->
 <!-- TOP RUN PORTAL v197 | 2026-10-31 | Physical parent: v196 (user-supplied TOP_RUN_PORTAL_1.html). Participant マイ出走登録 screen DISPLAY ONLY: removed Firebase/internal wording and duplicate status text, step labels ①②(③申告)→出走登録, status 未登録/登録済み, short lock note; re-applied Claude v192 wording (申告タイム=大会エントリーに使うタイム・変更不可, 目標タイム=変更可). No Firebase/Auth/UID/profileId/RTDB paths/writes/Rules/listeners/permissions changed. Browser/device/Firebase unverified. -->
 <!-- TOP RUN PORTAL v196 (unpublished, same version) | 2026-10-31 | v195 production physical parent byte-exact. ROOM unread-entry UI: position at first unread message captured before existing room read ACK, while already-read rooms continue to latest. No new RTDB subscription/query/write/path or Auth/Rules changes.  CHAT/ROOM name display only: same-UID historical author names use current chat name (self immediately, others via existing nameBook), read through existing name subscription, reread-free filtered room rerender, verified-UID quote author normalization. No RTDB data/paths/Rules/Auth/UID/profileId/writes/listeners/notification/result changes. Browser/device/Firebase unverified. -->
@@ -1455,6 +1456,9 @@ body.portalParticipantPreview .portalDevPreviewActor:not([hidden]){display:block
 #screen-flow-event .portalFlowActions button:only-child{grid-column:1/-1}
 #screen-flow-event .portalFlowBanner{font-size:13px;line-height:1.4}
 #screen-flow-event [hidden]{display:none!important}
+.portalV199BaseSmall{display:flex;align-items:center;justify-content:space-between;width:100%;box-sizing:border-box;margin-top:12px;min-height:44px;padding:10px 14px;border:1px solid #c9bd94;border-radius:12px;background:transparent;color:inherit;font-size:14px;font-weight:800;text-align:left}
+.portalV199BaseSmall span{font-size:16px}
+.portalEventRsvpOpen.portalV199EntryGo{background:#e2b21e;color:#1d1a10;font-size:15px;font-weight:950;border-top:0}
 #screen-flow-event #flowEventConnection[hidden]{display:none}
 #screen-flow-event .portalOfficialResult{grid-column:1/-1;margin:8px 0 0;padding:9px 12px;border-radius:11px;border:1px solid #ddd3b5;background:#faf5e3;font-weight:900;font-size:13px}
 #screen-flow-event .portalOfficialResult[hidden]{display:none}
@@ -6128,7 +6132,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v198</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v199</b></div>
   </div>
 </div>
 
@@ -6319,7 +6323,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v198</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v199</b></div>
   </div>
 </div>
 
@@ -8062,13 +8066,13 @@ if(prefix==='home'){
        // users look for another screen or confuse access with race entry status.
        const hasConnectedBase=portalConnectedBase(item);
        const portalHref=portalGeneralEventLink(item);
-       const baseOpen=portalHref?`<button class="portalRsvpGo portalScheduleBaseOpen" type="button" data-cal-open-portal="${esc(entry.eventId)}">リンク先を開く <span>›</span></button>`:hasConnectedBase?`<button class="portalRsvpGo portalScheduleBaseOpen" type="button" data-cal-open-base="${esc(entry.eventId)}">${item.type==='RELAY EVENT BASE'?'駅伝BASEを開く':'EVENT BASEを開く'} <span>›</span></button>`:portalMissingBaseAccessMarkup(item,true);
+       const baseOpen=portalHref?`<button class="portalRsvpGo portalScheduleBaseOpen" type="button" data-cal-open-portal="${esc(entry.eventId)}">リンク先を開く <span>›</span></button>`:hasConnectedBase?`<button class="portalScheduleBaseOpen portalV199BaseSmall" type="button" data-cal-open-base="${esc(entry.eventId)}">${item.type==='RELAY EVENT BASE'?'駅伝BASEを開く':'EVENT BASEを開く'} <span>›</span></button>`:portalMissingBaseAccessMarkup(item,true);
        // v120: a connected EVENT BASE / EKIDEN BASE event still takes its race entry here (official Firebase card).
        const raceLink=allowRace&&(!hasConnectedBase||!!flowOfficialDestination(item))?`<button class="portalRsvpGo" type="button" data-cal-entry="${esc(entry.eventId)}">${registered?'出走内容・取消を確認':ended?'出走内容・記録を確認':'出走する（種目と目標を登録）'} <span>›</span></button>`:'';
        // v152: 大会 = 参加する／参加しない／帯同・応援として参加 (未定なし)。選んだボタンの再タップで解除。
        const answers=portalEventDisplayCategory(item)==='event'?[['join','参加する'],['decline','参加しない']]:
          [['join','参加する'],['decline','参加しない'],['support','<span class="trRsvpTwo"><span>帯同・応援</span><span>として参加</span></span>']];
-       action=`${baseOpen}<div class="portalRsvpSection${ended?' portalPastLocked':''}"><b class="portalRsvpTitle">${portalEventDisplayCategory(item)==='event'?'イベントへの参加':'大会当日の予定'}</b><p class="portalRsvpCurrent">現在：<strong>${esc(state)}</strong></p>${registered?`<p class="portalHelp" role="status">${esc(portalRegisteredResponseWarning)}</p>`:''}${raceLink}${portalEventDisplayCategory(item)==='event'?'':!attendanceOpen&&!registered?'<p class="portalHelp">大会当日の予定は回答できます。出走登録の受付状態とは別です。</p>':attendanceCutoffPassed&&!ended?'<p class="portalHelp">出走登録の期日とは別に、当日の参加予定は変更できます。</p>':''}${`<div class="portalRsvpOptions portalEventResponseOptions${portalEventDisplayCategory(item)==='event'?' trRsvpCols2':''}" role="group" aria-label="${portalEventDisplayCategory(item)==='event'?'イベントへの参加':'大会当日の予定'}">${answers.map(([id,label])=>`<button type="button" data-event-response="${id}" data-event-id="${esc(entry.eventId)}" class="${(id==='join'&&answer==='support'&&portalEventDisplayCategory(item)==='event')||answer===id?'chosen':''}" aria-pressed="${(id==='join'&&answer==='support'&&portalEventDisplayCategory(item)==='event')||answer===id?'true':'false'}" ${!portalEventCanRespond(item,id)?`aria-disabled="true" data-rsvp-locked="${esc(portalEventLockReason(item))}"`:''}>${label}</button>`).join('')}</div><p class="trRsvpUntap">再タップで解除できます</p>`}${rosterMarkup}</div>`;
+       action=`${hasConnectedBase?'':baseOpen}<div class="portalRsvpSection${ended?' portalPastLocked':''}"><b class="portalRsvpTitle">${portalEventDisplayCategory(item)==='event'?'イベントへの参加':'大会当日の予定'}</b><p class="portalRsvpCurrent">現在：<strong>${esc(state)}</strong></p>${registered?`<p class="portalHelp" role="status">${esc(portalRegisteredResponseWarning)}</p>`:''}${raceLink}${portalEventDisplayCategory(item)==='event'?'':!attendanceOpen&&!registered?'<p class="portalHelp">大会当日の予定は回答できます。出走登録の受付状態とは別です。</p>':attendanceCutoffPassed&&!ended?'<p class="portalHelp">出走登録の期日とは別に、当日の参加予定は変更できます。</p>':''}${`<div class="portalRsvpOptions portalEventResponseOptions${portalEventDisplayCategory(item)==='event'?' trRsvpCols2':''}" role="group" aria-label="${portalEventDisplayCategory(item)==='event'?'イベントへの参加':'大会当日の予定'}">${answers.map(([id,label])=>`<button type="button" data-event-response="${id}" data-event-id="${esc(entry.eventId)}" class="${(id==='join'&&answer==='support'&&portalEventDisplayCategory(item)==='event')||answer===id?'chosen':''}" aria-pressed="${(id==='join'&&answer==='support'&&portalEventDisplayCategory(item)==='event')||answer===id?'true':'false'}" ${!portalEventCanRespond(item,id)?`aria-disabled="true" data-rsvp-locked="${esc(portalEventLockReason(item))}"`:''}>${label}</button>`).join('')}</div><p class="trRsvpUntap">再タップで解除できます</p>`}${rosterMarkup}</div>${hasConnectedBase?baseOpen:''}`;
     }
     return `<article class="portalScheduleEntry ${entry.kind}"><div class="portalScheduleEntryType">${typeLabel}</div>${titleMarkup}<div class="portalScheduleEntryRows">${rows.join('')}</div>${action}</article>`;  }
   function renderScheduleDetailBody(key){
@@ -8457,12 +8461,19 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
     const noLinkLabel=item.relay?'駅伝EVENT BASEを開く':(item.type==='EVENT BASE'?'EVENT BASEを開く':'詳細を開く');
     const actor=flowSelfId(),registered=!!flowEntry(item.id,actor);
     const answer=scheduleEventAnswer(item.id,actor);
+    const v199Official=!item.previewOnly&&portalConnectedBase(item)&&portalEventDisplayCategory(item)!=='event'&&!!flowOfficialDestination(item);
+    const v199Registered=v199Official&&portalHasOwnRaceEntry(item.id);
+    const v199Open=v199Official&&!v199Registered&&!isPastEvent(item)&&item.raceEntryEnabled!==false&&!flowIsRegistrationClosed(item);
+    const v199Date=esc(portalEventDates(item).find(d=>d>=todayDateKey())||portalEventFirstDate(item));
+    const v199EntryBtn=v199Open?`<button type="button" class="portalEventRsvpOpen portalV199EntryGo" data-event-rsvp-date="${v199Date}">出走登録する ›</button>`:'';
     const participation=item.previewOnly||!portalConnectedBase(item)?
       (registered?'出走予定':answer==='support'?(portalEventDisplayCategory(item)==='event'?'参加予定':'帯同・応援'):answer==='join'?'参加予定':answer==='decline'?'行かない':'未回答'):'EVENT BASEで確認';
     const isEntryClosed=item.previewOnly&&item.raceEntryEnabled!==false&&flowIsRegistrationClosed(item);
     const attendanceStatus=item.previewOnly&&!portalEventAttendanceOpen(item)?'参加受付前':null;
     const raceStatus=registered?'登録あり':item.raceEntryEnabled===false?'受付前':isEntryClosed?'出走登録締切':'登録なし';
-    const responseClass=['出走予定','応援・帯同','参加予定'].includes(participation)?'join':answer==='decline'?'decline':'maybe';
+    const responseClass=v199Registered||['出走予定','応援・帯同','参加予定'].includes(participation)?'join':answer==='decline'?'decline':'maybe';
+    const v199Label=v199Official?'出走':(portalEventDisplayCategory(item)==='event'?'参加予定':'大会の予定');
+    const v199Value=v199Official?(v199Registered?'登録済':isPastEvent(item)?'—':item.raceEntryEnabled===false?'受付前':flowIsRegistrationClosed(item)?'締切':'未登録'):(attendanceStatus||participation);
     const rsvpOpen=item.previewOnly?`<button type="button" class="portalEventRsvpOpen" data-event-rsvp-date="${esc(portalEventDates(item).find(d=>d>=todayDateKey())||portalEventFirstDate(item))}">大会当日の予定を選ぶ ›</button>`:'';
     const protectedOfficialTarget=window.__TR_COMMON_PILOT_UI__?.officialTargetFor?.(item);
     const protectedEventHref=protectedOfficialTarget?portalOfficialSafeOpenUrl(protectedOfficialTarget):(item.url||'');
@@ -8470,7 +8481,7 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
     const action=portalHref ? `<button class="openBtn" type="button" data-event-open-portal="${esc(item.id)}"><span>リンク先を開く</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : portalEventDisplayCategory(item)==='event' ? `<button class="openBtn" type="button" data-event-rsvp-date="${esc(portalEventDates(item).find(d=>d>=todayDateKey())||portalEventFirstDate(item))}"><span>参加予定・詳細を確認</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : portalConnectedBase(item) ? `<button type="button" class="openBtn" data-event-open-base="${esc(item.id)}"><span>${item.type==='RELAY EVENT BASE'?'駅伝BASEを開く':'EVENT BASEを開く'}</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : item.previewOnly ? `<button class="openBtn" type="button" ${item.raceEntryEnabled===false?'data-event-rsvp-date="'+esc(portalEventDates(item).find(d=>d>=todayDateKey())||portalEventFirstDate(item))+'"':'data-flow-event="'+esc(item.id)+'"'}><span>${item.raceEntryEnabled===false||isEntryClosed?'詳細を見る':'詳細・出走登録'}</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : item.type==='OTHER' ? `<button type="button" class="openBtn" data-event-rsvp-date="${esc(portalEventDates(item).find(d=>d>=todayDateKey())||portalEventFirstDate(item))}"><span>イベントの詳細を見る</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : item.url
       ? protectedEventHref?`<a class="openBtn" href="${esc(protectedEventHref)}"><span>${item.relay?'駅伝EVENT BASEを開く':'EVENT BASEを開く'}</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></a>`:`<button type="button" class="openBtn" disabled title="開発者本人の接続を確認してください">大会への接続を保護中</button>`
       : `<button class="openBtn" type="button" data-ui-event-coming="${esc(item.id)}"><span>${esc(noLinkLabel)}</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>`;
-    return `<article class="event${relayClass}${isPastEvent(item)?' portalPastEvent':''}"><div class="eventTop"><div class="eventDate"><strong>${esc(day)}</strong><span>${esc(mon)}</span></div><div class="eventBody"><div class="eventState"><i></i>${esc(state)}</div><h3>${esc(item.title)}</h3><div class="eventType">${esc(portalEventDisplayCategory(item)==='event'?'通常イベント':item.type==='RELAY EVENT BASE'?'大会 ／ 駅伝 EVENT BASE':item.type==='OTHER'?'大会': '大会 ／ '+item.type)}</div><span class="portalEventCardMetrics">${esc(portalEventDateLabel(item))}${portalEventDisplayCategory(item)==='event'?' ／ 参加予定の確認':item.raceEntryEnabled===false?' ／ 開催種目：'+esc(eventRaceMetricNames(item).join(' ／ ')||'未定'):' ／ '+esc(eventRaceMetricsText(item))}</span><span class="portalEventParticipation ${responseClass}"><span class="portalAttendancePiece">${portalEventDisplayCategory(item)==='event'?'参加予定':'大会の予定'}：<b>${esc(attendanceStatus||participation)}</b></span>${item.previewOnly?`<span class="portalAttendancePiece">出走：<b>${esc(raceStatus)}</b></span>`:''}</span></div></div>${rsvpOpen}${missingConnection}${action}</article>`;
+    return `<article class="event${relayClass}${isPastEvent(item)?' portalPastEvent':''}"><div class="eventTop"><div class="eventDate"><strong>${esc(day)}</strong><span>${esc(mon)}</span></div><div class="eventBody"><div class="eventState"><i></i>${esc(state)}</div><h3>${esc(item.title)}</h3><div class="eventType">${esc(portalEventDisplayCategory(item)==='event'?'通常イベント':item.type==='RELAY EVENT BASE'?'大会 ／ 駅伝 EVENT BASE':item.type==='OTHER'?'大会': '大会 ／ '+item.type)}</div><span class="portalEventCardMetrics">${esc(portalEventDateLabel(item))}${portalEventDisplayCategory(item)==='event'?' ／ 参加予定の確認':item.raceEntryEnabled===false?' ／ 開催種目：'+esc(eventRaceMetricNames(item).join(' ／ ')||'未定'):' ／ '+esc(eventRaceMetricsText(item))}</span><span class="portalEventParticipation ${responseClass}"><span class="portalAttendancePiece">${esc(v199Label)}：<b>${esc(v199Value)}</b></span>${item.previewOnly?`<span class="portalAttendancePiece">出走：<b>${esc(raceStatus)}</b></span>`:''}</span></div></div>${rsvpOpen}${v199EntryBtn}${missingConnection}${action}</article>`;
   }
   function bindEventCardActions(box){
     box.querySelectorAll('[data-event-connect-from-list]').forEach(b=>b.addEventListener('click',()=>portalStartEventConnectionFromList(b.dataset.eventConnectFromList)));
