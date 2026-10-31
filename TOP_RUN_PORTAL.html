@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v209 | 2026-11-01 | Parent v208. UI ONLY: (1) 出欠回答：受付前のイベントは回答ボタンを出さず「受付前」表示、未回答件数に含めない（受付開始/停止の修正に連動）。(2) 管理画面：scrollIntoView が overflow-x:hidden の祖先を横にずらし右側が切れて戻せない不具合を、横位置を自動で0へ戻して解消（全画面共通）。(3) 練習登録の状態表示が変わるたびに下へスクロールしていた監視処理から練習の状態表示を除外。(4) Matte/Winter の管理画面入力欄の文字が見えない→明るい文字に。(5) 未回答バッジを周囲の色に合わせて控えめに。Rules unchanged. -->
 <!-- TOP RUN PORTAL v208 | 2026-11-01 | Parent v207. (1) 個人記録：pastRecords/<uid> の記録で profileId が旧ID（再登録前）でも subjectUid がそのuidと一致すれば表示（表示のみ・旧ID記録は修正削除ボタンなし・書込なし）。原因確認パネルに旧ID記録件数。(2) タイムの目安「目標欄へ」：iOS慣性スクロールを止めて目標設定の先頭へ（複数回）。目標一覧・下部ボタンも同様。(3) 一覧：練習の題名「—」を場所/練習に、出欠ボタンを一覧と同じ落ち着いたデザインへ（未回答は件数バッジ）。(4) 場所に 美浜町運動公園陸上競技場・知多運動公園 を追加。Rules unchanged. -->
 <!-- TOP RUN PORTAL v207 | 2026-10-31 | Parent v206. (1) 練習予定の登録・一括登録が成功したら入力欄の先頭へ上スクロール（押した瞬間の下スクロールを削除）。(2) 個人記録「0件」原因確認パネル（開発者のみ）：対象uid有無、pastRecords 取得数と除外理由、本人入力記録の取得数/エラー、EVENT BASE件数、画面集計件数を表示し、再読込ボタン付き。読取のみ・書込なし。Rules unchanged. -->
 <!-- TOP RUN PORTAL v206 | 2026-10-31 | Parent v205. UI ONLY: 出欠回答の表示は終わりではなく切替表示。ボタン「出欠回答」⇔「通常表示」、回答可能な未回答があれば「未回答あり」（強調）。押すと最初の未回答へ移動（2か月以上先なら追加表示を開く）。カレンダー⇔一覧の切替で出欠回答表示を解除しない。Rules unchanged. -->
@@ -5652,6 +5653,27 @@ html #screen-goal-tools .portalToolSplitRow button[data-lap-adjust].is-edited{co
 .portalAgendaBulkToggle[aria-pressed="true"]{background:#313837!important;border-color:#313837!important;color:#fff!important}
 .portalAgendaBulkCount{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:#f4edce;color:#766320;font-size:11px;font-weight:950;line-height:1}
 </style>
+<script>
+/* v209: scrollIntoView は overflow-x:hidden の祖先まで横にずらすことがあり、戻せなくなる。縦の移動は残し、横位置だけ0へ戻す。 */
+(function(){
+  const orig=Element.prototype.scrollIntoView;if(!orig||orig.__v209)return;
+  const resetX=el=>{for(let p=el&&el.parentElement;p&&p!==document.documentElement;p=p.parentElement){
+    if(p.scrollLeft){const ox=getComputedStyle(p).overflowX;if(ox==='hidden'||ox==='clip'||p.classList.contains('portalScreen'))p.scrollLeft=0;}}};
+  const wrapped=function(arg){const r=orig.apply(this,arguments);const el=this;resetX(el);setTimeout(()=>resetX(el),60);setTimeout(()=>resetX(el),450);return r;};
+  wrapped.__v209=true;Element.prototype.scrollIntoView=wrapped;
+})();
+</script>
+<style>
+/* v209: Matte / Winter 管理画面の入力文字 */
+html:is([data-portal-personal-color="matte"],[data-portal-personal-color="winter"]) #screen-management :is(input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea){color:#f6efe9!important;-webkit-text-fill-color:#f6efe9!important;opacity:1!important;color-scheme:dark}
+html:is([data-portal-personal-color="matte"],[data-portal-personal-color="winter"]) #screen-management textarea{background:rgba(255,255,255,.06)!important}
+html:is([data-portal-personal-color="matte"],[data-portal-personal-color="winter"]) #screen-management :is(input,textarea)::placeholder{color:rgba(246,239,233,.5)!important;-webkit-text-fill-color:rgba(246,239,233,.5)!important}
+html:is([data-portal-personal-color="matte"],[data-portal-personal-color="winter"]) #screen-management select option{background:#24201f;color:#f6efe9}
+/* v209: 未回答バッジは控えめに */
+.portalAgendaBulkCount{background:rgba(128,128,128,.22)!important;color:inherit!important;font-weight:900!important}
+.portalAgendaBulkToggle{font-weight:800!important}
+.portalAgendaStatus.pre{opacity:.75}
+</style>
 </head>
 <body>
 <div id="portalFirstPaintAuthOverlay" role="status" aria-live="polite" aria-label="TOP RUN PORTAL 認証中">
@@ -6192,7 +6214,7 @@ html #screen-goal-tools .portalToolSplitRow button[data-lap-adjust].is-edited{co
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v208</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v209</b></div>
   </div>
 </div>
 
@@ -6383,7 +6405,7 @@ html #screen-goal-tools .portalToolSplitRow button[data-lap-adjust].is-edited{co
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v208</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v209</b></div>
   </div>
 </div>
 
@@ -7742,17 +7764,18 @@ html #screen-goal-tools .portalToolSplitRow button[data-lap-adjust].is-edited{co
       const answer=row.rawAnswer||'';
       const registered=isEvent&&portalHasOwnRaceEntry(row.eventId);
       const options=category==='event'?[['join','参加する'],['decline','参加しない']]:[['join','参加する'],['decline','参加しない'],['support','帯同・応援']];
+      const preOpen=isEvent&&!!item&&!portalEventAttendanceOpen(item);
       const lockReason=isEvent&&!portalEventCanRespond(item,'join')?portalEventLockReason(item):'';
       const answered=['join','support','decline'].includes(answer);
-      const badge=registered?['出走予定','join']:answered?['回答済み','join']:lockReason?['回答不可','decline']:['未回答','maybe'];
+      const badge=registered?['出走予定','join']:answered?['回答済み','join']:preOpen?['受付前','pre']:lockReason?['回答不可','decline']:['未回答','maybe'];
       const multi=isEvent&&portalEventDates(item).filter(x=>x>=todayDateKey()).length>1;
       const typeLabel=row.kind==='practice'?(row.practiceMode==='record'?'記録練習':'練習'):(category==='event'?'通常イベント':'大会');
       const buttons=options.map(([id,label])=>{
         const chosen=answer===id||(category==='event'&&id==='join'&&answer==='support');
         return `<button type="button" data-bulk-answer="${id}" class="${chosen?'chosen':''}" aria-pressed="${chosen}" ${lockReason?`aria-disabled="true" data-bulk-locked="${esc(lockReason)}"`:''}>${label}</button>`;
       }).join('');
-      const note=registered?'出走登録済みのため、ここでは変更できません。':lockReason?esc(lockReason):multi?'複数日の大会です。回答は全日共通です。':'';
-      return `<div class="portalAgendaItem ${row.kind} portalAgendaBulkCard" data-bulk-key="${esc(key)}" data-bulk-kind="${row.kind}" data-bulk-date="${esc(row.date)}"${isEvent?` data-bulk-event="${esc(row.eventId)}"`:''}><span class="portalAgendaWhen"><b>${Number(m)}/${Number(d)}</b><small>${esc(dayLabel)}</small></span><span class="portalAgendaInfo"><span class="portalAgendaTop"><span class="portalAgendaType">${typeLabel}</span><span class="portalAgendaStatus ${badge[1]}">${badge[0]}</span></span><span class="portalAgendaName">${esc(row.title)}</span>${subtitle?`<span class="portalAgendaPlace">${esc(subtitle)}</span>`:''}</span><div class="portalRsvpOptions${options.length===2?' trRsvpCols2':''}" role="group" aria-label="${esc(row.title)}への回答">${buttons}</div>${note?`<p class="portalAgendaBulkNote">${note}</p>`:''}</div>`;
+      const note=registered?'出走登録済みのため、ここでは変更できません。':preOpen?'受付が始まると回答できます。':lockReason?esc(lockReason):multi?'複数日の大会です。回答は全日共通です。':'';
+      return `<div class="portalAgendaItem ${row.kind} portalAgendaBulkCard" data-bulk-key="${esc(key)}" data-bulk-kind="${row.kind}" data-bulk-date="${esc(row.date)}"${isEvent?` data-bulk-event="${esc(row.eventId)}"`:''}><span class="portalAgendaWhen"><b>${Number(m)}/${Number(d)}</b><small>${esc(dayLabel)}</small></span><span class="portalAgendaInfo"><span class="portalAgendaTop"><span class="portalAgendaType">${typeLabel}</span><span class="portalAgendaStatus ${badge[1]}">${badge[0]}</span></span><span class="portalAgendaName">${esc(row.title)}</span>${subtitle?`<span class="portalAgendaPlace">${esc(subtitle)}</span>`:''}</span>${preOpen&&!answered?'':`<div class="portalRsvpOptions${options.length===2?' trRsvpCols2':''}" role="group" aria-label="${esc(row.title)}への回答">${buttons}</div>`}${note?`<p class="portalAgendaBulkNote">${note}</p>`:''}</div>`;
     };
     const renderAgendaItems=agendaRows=>agendaRows.map(row=>{
       const [y,m,d]=row.date.split('-');
@@ -19942,6 +19965,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
 (function(){const seen=new WeakMap();
  const watch=()=>document.querySelectorAll('.portalManageState,#bulkPracticeState,#manageEventState,#managePracticeState').forEach(el=>{
    if(seen.has(el))return;seen.set(el,true);
+   if(el.id==='managePracticeState'||el.id==='bulkPracticeState')return; // v209: 練習は登録後に上へ戻すため除外
    new MutationObserver(()=>{if((el.textContent||'').trim()&&el.offsetParent){try{el.scrollIntoView({block:'nearest',behavior:'smooth'})}catch(_){}}}).observe(el,{childList:true,characterData:true,subtree:true});
  });
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',watch);else watch();})();
