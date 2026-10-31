@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v207 | 2026-10-31 | Parent v206. (1) 練習予定の登録・一括登録が成功したら入力欄の先頭へ上スクロール（押した瞬間の下スクロールを削除）。(2) 個人記録「0件」原因確認パネル（開発者のみ）：対象uid有無、pastRecords 取得数と除外理由、本人入力記録の取得数/エラー、EVENT BASE件数、画面集計件数を表示し、再読込ボタン付き。読取のみ・書込なし。Rules unchanged. -->
 <!-- TOP RUN PORTAL v206 | 2026-10-31 | Parent v205. UI ONLY: 出欠回答の表示は終わりではなく切替表示。ボタン「出欠回答」⇔「通常表示」、回答可能な未回答があれば「未回答あり」（強調）。押すと最初の未回答へ移動（2か月以上先なら追加表示を開く）。カレンダー⇔一覧の切替で出欠回答表示を解除しない。Rules unchanged. -->
 <!-- TOP RUN PORTAL v205 | 2026-10-31 | Parent v204. UI ONLY: CALENDAR 一覧の切替ボタン名を「まとめて入力／入力を終える」→「出欠回答／完了」。説明文を削除。下部ボタンは「上に戻る」（モードは維持し見出しへスクロール）。Rules unchanged. -->
 <!-- TOP RUN PORTAL v204 | 2026-10-31 | Parent v203. UI ONLY (目標を立てる): (1) 目標設定の重複説明を整理し注意は1か所に短縮、参加者向け文面から「Firebase」表記を削除（保存処理は不変）。(2) 距離選択下の説明を削除、駅伝案内を短文化。(3) タイムの目安「目標欄へ」で目標設定の先頭へ移動（保存ボタンへスクロールしない）。(4) ラップ換算：区間タイムを主役に、「この区間の時間を調整」を小さな「調整 ›」リンクへ。Rules unchanged. -->
@@ -5632,6 +5633,17 @@ html #screen-goal-tools .portalToolSplitRow button[data-lap-adjust].is-edited{co
 .portalAgendaBulkToggle.hasPending{background:#f2cf4a!important;color:#2d2613!important;border-color:#c9a21e!important;display:inline-flex;align-items:center;gap:6px}
 .portalAgendaBulkToggle.hasPending::before{content:"";width:7px;height:7px;border-radius:50%;background:#c43d2f;flex:none}
 </style>
+<style>
+/* v207: 開発者用 記録原因確認 */
+.v207RecDiag{margin:10px 0 14px;border:1px dashed #b39a4a;border-radius:12px;background:#fffbea;padding:8px 12px;font-size:12px;color:#3d3a2c}
+.v207RecDiag summary{font-weight:900;cursor:pointer;padding:4px 0}
+.v207Row{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid #eee3bf}
+.v207Row span{color:#6b6550;flex:none}
+.v207Row b{text-align:right;overflow-wrap:anywhere}
+.v207Row.bad b{color:#b3261e}
+#v207RecDiagReload{margin-top:8px;width:100%;min-height:38px;border:1px solid #c9aa43;border-radius:9px;background:#fff3ca;font-weight:900;color:#403716}
+.v207RecDiagHint{margin:6px 0 0;font-size:11px;color:#7c817e}
+</style>
 </head>
 <body>
 <div id="portalFirstPaintAuthOverlay" role="status" aria-live="polite" aria-label="TOP RUN PORTAL 認証中">
@@ -6064,6 +6076,7 @@ html #screen-goal-tools .portalToolSplitRow button[data-lap-adjust].is-edited{co
       <div class="crHeroStats"><div><small>大会記録</small><b id="crRecordCount">0<em>件</em></b></div><div><small>駅伝</small><b id="crRelayCount">0<em>大会</em></b></div></div>
     </section>
     <p id="v88DeveloperMyPageNote" class="v88DeveloperNote" hidden></p>
+    <details id="v207RecDiag" class="v207RecDiag" hidden><summary>開発者：記録が表示されない原因を確認</summary><div id="v207RecDiagBody"></div><button type="button" id="v207RecDiagReload">この人の記録を再読込</button><p class="v207RecDiagHint">この画面をスクリーンショットで送ってください。</p></details>
     <div id="rpPersonBanner" hidden style="margin:12px 0;padding:14px;border-radius:16px;border:2px solid #d8b52a;background:rgba(216,181,42,.12);line-height:1.7"></div>
     <section class="crSection" data-cr-section="pb"><div class="crSectionHead"><div><small>PERSONAL BEST</small><h3>自己ベスト</h3></div><div class="crHeadActions"><span>タップで詳細</span><button type="button" data-cr-collapse>非表示</button></div></div><div class="crSectionBody"><div class="crPbGrid" id="crPbGrid"></div><div class="v88SecondaryPb"><small>その他の種目（大会記録）</small><div class="crPbGrid" id="crSecondaryPbGrid"></div></div></div></section>
     <section class="crSection collapsed" data-cr-section="official"><div class="crSectionHead"><div><small>CERTIFIED PERSONAL BEST</small><h3>公認ベスト</h3></div><div class="crHeadActions"><span>公認記録のみ</span><button type="button" data-cr-collapse>表示</button></div></div><div class="crSectionBody"><p class="portalHelp">PORTALの大会設定が現在「公認」の大会記録だけを集計します。EVENT BASEの正式結果確定だけでは公認になりません。未紐付けの過去記録は公認対象に自動算入しません。</p><div class="portalOfficialGrid" id="crOfficialGrid"></div></div></section>
@@ -6171,7 +6184,7 @@ html #screen-goal-tools .portalToolSplitRow button[data-lap-adjust].is-edited{co
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v206</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v207</b></div>
   </div>
 </div>
 
@@ -6362,7 +6375,7 @@ html #screen-goal-tools .portalToolSplitRow button[data-lap-adjust].is-edited{co
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v206</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v207</b></div>
   </div>
 </div>
 
@@ -9612,10 +9625,15 @@ if(view==='list')portalApplyManageSearch(kind);
     return true;
   }
   $('manageNoticeAdd').addEventListener('click',portalSaveExistingNotice);
+  // v207: 登録後は入力欄の先頭へ（下へ流れない）
+  function portalPracticeScrollTop(){
+    const top=$('practiceEntrySingle')?.closest('.portalWorkflowArea')?.querySelector('.portalWorkflowTop')||$('practiceEntrySingle');
+    const go=()=>{try{top?.scrollIntoView({block:'start',behavior:'smooth'});}catch(_){}};
+    requestAnimationFrame(go);setTimeout(go,250);
+  }
   $('managePracticeAdd').addEventListener('click',async()=>{
     // v131: the button always answers — a reason or progress is shown right under it, never "nothing happens".
     const pState=$('managePracticeState');pState.textContent='確認中…';pState.setAttribute('role','status');
-    try{pState.scrollIntoView({block:'nearest',behavior:'smooth'});}catch(_){}
     if(!canManage){pState.textContent='管理者として確認できていません。PORTALを開き直してから、もう一度押してください。';showActionFeedback('登録できません','管理者の確認ができていません。');return;}
     const date=$('managePracticeDate').value,place=placeValue('managePracticePlace','managePracticeCustomPlace'),start=$('managePracticeStart').value,end=$('managePracticeEnd').value,other=$('managePracticeOther').value.trim()||'—',practiceMode=$('managePracticeMode').value,recordKind=$('managePracticeRecordKind').value;
     if(!date||!place||!start||!end){const miss=[!date&&'日付',!place&&'練習場所',!start&&'開始時間',!end&&'終了時間'].filter(Boolean).join('・');$('managePracticeState').textContent='未入力があります：'+miss;showActionFeedback('未入力があります',miss);return;}
@@ -9649,7 +9667,8 @@ if(view==='list')portalApplyManageSearch(kind);
     portalPracticeUpdateMode();
     practiceListMonth=date.slice(0,7);$('managePracticeMonth').value=practiceListMonth;
     renderHomeCalendar();renderFullCalendar();renderManagePractices();
-    showActionFeedback('Firebaseに保存しました','練習予定のサーバー応答を確認しました。');
+    portalPracticeScrollTop();
+    showActionFeedback('保存しました','練習予定を登録しました。');
   });
   $('bulkPracticeAdd').addEventListener('click',async()=>{
     if(!canManage){$('bulkPracticeState').textContent='管理者として確認できていません。PORTALを開き直してから、もう一度押してください。';showActionFeedback('登録できません','管理者の確認ができていません。');return;}
@@ -9675,6 +9694,7 @@ if(view==='list')portalApplyManageSearch(kind);
     practiceListMonth=from.slice(0,7);$('managePracticeMonth').value=practiceListMonth;
     $('bulkPracticeState').textContent=`Firebase保存成功 ${added}件。${skippedPractice?` 既存練習${skippedPractice}件は上書きせず除外しました。`:''}`;
     renderHomeCalendar();renderFullCalendar();renderManagePractices();
+    portalPracticeScrollTop();
     if(added)showActionFeedback('Firebaseに保存しました',`練習予定 ${added}件のサーバーACKを確認しました。`);
   });
   let portalEventPendingNoticeId='';
@@ -10399,6 +10419,7 @@ const gateway=window.__TR_PORTAL_SYNC__;
     $('crPersonName').textContent=isSelf?displayName:(person?.name||'名前未登録');
     const devInfo=$('v88DeveloperMyPageNote');if(devInfo){devInfo.hidden=!portalV88DeveloperRecordAdmin();devInfo.textContent=portalV88DeveloperRecordAdmin()?'開発者確認：'+(isSelf?'自分':person?.name||'選手')+'の個人記録です。管理登録記録のみここから修正・削除できます。参加者には管理操作を表示しません。':'';}
     try{rpPersonBanner(isSelf?null:person);}catch(_){}
+    try{portalRenderRecDiag();}catch(_){}
     const logo=$('crTeamLogo'),src=document.querySelector('.logoWrap img');
     if(src?.src&&!logo.querySelector('img')){logo.innerHTML='';const img=document.createElement('img');img.src=src.src;img.alt='TOP RUN';logo.appendChild(img)}
     const personal=portalRecFor();portalUpdateRecordMetricOptions();const raceRows=personal.filter(portalIsRaceRecord);$('crRecordCount').innerHTML=raceRows.length+'<em>件</em>';$('crRelayCount').innerHTML=raceRows.filter(r=>r.metric==='relay').length+'<em>大会</em>';
@@ -10411,6 +10432,47 @@ const gateway=window.__TR_PORTAL_SYNC__;
     renderPortalPersonalOverview();
     $('crRecentList').innerHTML=raceRows.slice().reverse().slice(0,1).map(portalRecordRow).join('')||'<div class="portalEmpty">大会記録はありません。</div>';
   }
+  function portalRenderRecDiag(){
+    const box=$('v207RecDiag'),body=$('v207RecDiagBody');if(!box||!body)return;
+    const on=portalV88DeveloperRecordAdmin();box.hidden=!on;if(!on)return;
+    const pid=portalPersonalTargetId,isSelf=pid===portalSelfProfileId,gate=window.__TR_PORTAL_SYNC__;
+    const person=isSelf?{profileId:pid,uid:gate?.uid,name:'本人'}:portalAthletes.find(x=>x.profileId===pid);
+    const D=(window.__TR_REC_DIAG__||{})[pid]||null;
+    let eb=0;for(const rows of portalEventBaseReadRecords.values())for(const r of rows)if(r.profileId===pid)eb++;
+    const ext=flowState.external.filter(r=>r.actorId===pid);
+    const prAll=portalPersonalRecords.filter(r=>r.profileId===pid);
+    const verified=person?.uid||'';
+    const uidMismatch=prAll.filter(r=>r.subjectUid&&r.subjectUid!==verified).length;
+    const shown=portalRecFor();
+    const L=(k,v,bad)=>`<div class="v207Row${bad?' bad':''}"><span>${esc(k)}</span><b>${esc(String(v))}</b></div>`;
+    const t=n=>n?new Date(n).toLocaleTimeString('ja-JP'):'—';
+    body.innerHTML=[
+      L('対象profileId',pid||'なし',!pid),
+      L('対象uid',verified?verified.slice(0,6)+'…':'なし（読込できません）',!verified),
+      L('名簿に存在',person?'あり':'なし',!person),
+      L('読込',D?('実行 '+t(D.at)+(D.done?'':' 実行中')):'未実行',!D),
+      D?.error?L('読込エラー',D.error,true):'',
+      D?L('管理権限（読込時）',D.staffAllowed?'あり':'なし',!D.staffAllowed):'',
+      D&&D.pastRaw!=null?L('管理登録記録（取得）',D.pastRaw+'件 → 採用 '+D.pastKept+'件',D.pastRaw>D.pastKept):'',
+      D&&D.pastRaw>D.pastKept?L('除外の内訳','uid不一致 '+D.pastDropSubject+' ／ profileId不一致 '+D.pastDropProfile+' ／ ID形式 '+D.pastDropId,true):'',
+      D?.pastOtherProfileIds?.length?L('記録側のprofileId',D.pastOtherProfileIds.join(', '),true):'',
+      D&&!isSelf?L('本人入力記録（取得）',D.selfError?'エラー：'+D.selfError:(D.selfRaw??'—')+'件',!!D.selfError):'',
+      L('EVENT BASE結果',eb+'件',false),
+      L('端末に読込済みの記録',ext.length+'件',false),
+      L('集計対象',prAll.length+'件',false),
+      uidMismatch?L('uid不一致で非表示',uidMismatch+'件',true):'',
+      L('画面に表示',shown.length+'件（大会 '+shown.filter(portalIsRaceRecord).length+'件）',!shown.length)
+    ].join('');
+  }
+  $('v207RecDiagReload')?.addEventListener('click',async()=>{
+    const pid=portalPersonalTargetId,gate=window.__TR_PORTAL_SYNC__;
+    const person=pid===portalSelfProfileId?{uid:gate?.uid,profileId:pid}:portalAthletes.find(x=>x.profileId===pid);
+    if(!person?.uid){showActionFeedback('再読込できません','この人のuidが名簿にありません。');portalRenderRecDiag();return;}
+    if(!gate?.loadPastRecordsFor){showActionFeedback('再読込できません','接続を確認中です。');return;}
+    try{await gate.loadPastRecordsFor(person.uid,person.profileId);showActionFeedback('再読込しました','');}
+    catch(err){showActionFeedback('再読込に失敗しました',String(err?.message||err).slice(0,120));}
+    renderPortalPersonalRecord();
+  });
   function renderPortalPersonalOverview(){
     portalRenderGraphModeControls();$('crProgressHeading').textContent=portalRecordMetricLabel(portalPersonalMetric)+' 記録推移';
     $('crChartMetric').textContent=portalRecordMetricLabel(portalPersonalMetric);
@@ -14532,6 +14594,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
       flowRefreshAll();
       if(currentScreen()?.id==='screen-flow-manager'&&$('flowMgrExtAthlete')?.value===profileId)flowRenderManagerExternalList();
     },
+    refreshRecDiag(){try{portalRenderRecDiag();}catch(_){}},
     applyStaffSelfRecordsV202({uid,profileId,records,error}){
       if(!canManage||portalParticipantPreviewMode||!uid||!profileId)return;
       flowState.external=flowState.external.filter(r=>!(r.staffViewV202===true&&r.actorId===profileId));
@@ -16603,7 +16666,15 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
     // v120: "この記録はあなたのです" — a developer attaches an EVENT BASE race row to a person as
     // pastRecords/<uid>/local-flow-claim-<event>-<player> (existing staff write path and Rules).
     gate.claimRecordId=(eventId,playerId)=>('local-flow-claim-'+String(eventId)+'-'+String(playerId)).replace(/[^A-Za-z0-9_-]/g,'_').slice(0,111);
+    // v207: 開発者向け原因確認（読取結果の件数だけを記録。書込なし）
     gate.loadPastRecordsFor=async(uid,profileId)=>{
+      const store=(window.__TR_REC_DIAG__=window.__TR_REC_DIAG__||{});
+      const D=store[String(profileId||'')]={at:Date.now(),uid:String(uid||''),staffAllowed:!!staffPastAllowed(),roleVerified:!!gate.roleVerified};
+      try{return await loadPastRecordsForCore(uid,profileId,D);}
+      catch(e){D.error=String(e?.code||e?.message||e).slice(0,160);throw e;}
+      finally{D.done=Date.now();try{ui?.refreshRecDiag?.();}catch(_){}}
+    };
+    const loadPastRecordsForCore=async(uid,profileId,D={})=>{
       uid=String(uid||'');profileId=String(profileId||'');
       if(!/^[A-Za-z0-9_-]{6,128}$/.test(uid)||!profileId||profileId.length>120)throw Error('対象者の本人IDがありません');
       if(auth.currentUser?.uid!==gate.uid||!gate.roleVerified||(!staffPastAllowed()&&(uid!==gate.uid||profileId!==gate.profileId)))throw Error('他人の記録は閲覧できません');
@@ -16611,14 +16682,20 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       const result=(await dbMod.get(ref(pastRoot+uid))).val()||{};
       if(currentGeneration!==generation||auth.currentUser?.uid!==currentUid)throw Error('認証が切り替わったためREADを破棄しました');
       const records=Object.fromEntries(Object.entries(result).filter(([id,r])=>r&&r.subjectUid===uid&&r.profileId===profileId&&/^local-flow-[A-Za-z0-9_-]{8,100}$/.test(id)));
+      {const all=Object.entries(result);D.pastRaw=all.length;D.pastKept=Object.keys(records).length;
+       D.pastDropSubject=all.filter(([,r])=>r&&r.subjectUid!==uid).length;
+       D.pastDropProfile=all.filter(([,r])=>r&&r.subjectUid===uid&&r.profileId!==profileId).length;
+       D.pastDropId=all.filter(([id,r])=>r&&r.subjectUid===uid&&r.profileId===profileId&&!/^local-flow-[A-Za-z0-9_-]{8,100}$/.test(id)).length;
+       D.pastOtherProfileIds=[...new Set(all.map(([,r])=>r?.profileId).filter(p=>p&&p!==profileId))].slice(0,3);}
       ui?.applySharedPastRecords({uid,profileId,records});
       // v202: the person's own entered past races live in profiles/<uid>/portalSelf/externalRecords.
       // Staff could never read them, so the staff view showed 0. Read-only; needs Rules v202.
       if(staffPastAllowed()&&uid!==gate.uid){
         try{
           const ex=(await dbMod.get(dbMod.ref(db,'profiles/'+uid+'/portalSelf/externalRecords'))).val()||{};
+          D.selfRaw=Object.keys(ex).length;
           if(currentGeneration===generation&&auth.currentUser?.uid===currentUid)ui?.applyStaffSelfRecordsV202?.({uid,profileId,records:ex,error:''});
-        }catch(err){ui?.applyStaffSelfRecordsV202?.({uid,profileId,records:{},error:String(err?.code||err?.message||err)});}
+        }catch(err){D.selfError=String(err?.code||err?.message||err).slice(0,120);ui?.applyStaffSelfRecordsV202?.({uid,profileId,records:{},error:String(err?.code||err?.message||err)});}
       }
       if(uid===gate.uid&&profileId===gate.profileId){
         const ids=new Set(Object.keys(records).filter(id=>id.startsWith('local-flow-claim-')));
