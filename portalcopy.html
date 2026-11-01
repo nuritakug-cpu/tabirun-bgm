@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PORTALのURLをコピー | TOP RUN PORTAL</title>
+<style>
+:root{color-scheme:dark;--bg:#1d2421;--card:#242c29;--line:#4a5249;--gold:#d8c35a;--text:#f3f1e6;--muted:#b9b6a6;--ok:#7fd49a;--ng:#f0a35a}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text)}
+body{font-family:"Hiragino Sans","Noto Sans JP",system-ui,sans-serif;line-height:1.75;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+main{max-width:480px;margin:0 auto;padding:26px 18px 40px}
+small.brand{display:block;color:var(--gold);font-weight:800;margin-bottom:4px}
+h1{font-size:22px;line-height:1.45;margin:0 0 16px}
+h2{font-size:17px;margin:0 0 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin:0 0 16px}
+#url{display:block;width:100%;min-height:64px;padding:12px;border-radius:10px;border:2px solid var(--gold);background:#fff;color:#1d2421;font-size:15px;line-height:1.5;resize:none;word-break:break-all}
+#copyBtn{display:block;width:100%;min-height:60px;margin-top:12px;border:0;border-radius:12px;background:var(--gold);color:#1d2421;font-size:19px;font-weight:900}
+#copyBtn:focus-visible,#url:focus-visible{outline:3px solid #fff;outline-offset:2px}
+#state{min-height:1.6em;margin:10px 0 0;font-weight:800}
+#state.ok{color:var(--ok)}
+#state.ng{color:var(--ng)}
+ol{margin:0;padding-left:1.4em}
+li{margin-bottom:10px}
+li b{color:var(--gold)}
+.os{display:block;margin-top:4px;font-size:14px}
+.note{color:var(--muted);font-size:13px;margin:6px 0 0}
+</style>
+</head>
+<body>
+<main>
+  <small class="brand">TOP RUN PORTAL</small>
+  <h1>PORTALのURLをコピーします</h1>
+
+  <section class="card">
+    <h2>① 黄色いボタンを押す</h2>
+    <textarea id="url" readonly rows="2" aria-label="PORTALのURL"></textarea>
+    <button id="copyBtn" type="button">URLをコピーする</button>
+    <p id="state" role="status" aria-live="polite"></p>
+    <p class="note">「コピーできませんでした」と出たら、白い枠の中を長押しして「コピー」を押してください。</p>
+  </section>
+
+  <section class="card">
+    <h2>② コピーできたら</h2>
+    <ol>
+      <li>BANDを閉じる</li>
+      <li><b>iPhone</b>は「Safari」、<b>Android</b>は「Chrome」を開く</li>
+      <li>上のアドレス欄を長押しする
+        <span class="os">🍎 iPhone：「ペーストして開く」</span>
+        <span class="os">🤖 Android：「貼り付け」→ キーボードの「→」</span>
+      </li>
+      <li>「アイコンから開いてください」と出たら、正しく開けています👌<br>案内のとおり、アイコンを作ってください</li>
+    </ol>
+    <p class="note">検索結果が出たときは、もう一度このページから①をやり直してください。</p>
+  </section>
+</main>
+
+<script>
+(function(){
+  'use strict';
+  // PORTALのURL（ここだけ確認してください）
+  var PORTAL_URL='https://nuritakug-cpu.github.io/tabirun-bgm/TOP_RUN_PORTAL.html';
+
+  var box=document.getElementById('url');
+  var btn=document.getElementById('copyBtn');
+  var state=document.getElementById('state');
+  box.value=PORTAL_URL;
+
+  function selectBox(){
+    box.focus();
+    box.select();
+    try{box.setSelectionRange(0,PORTAL_URL.length);}catch(e){}
+  }
+  box.addEventListener('click',selectBox);
+
+  function oldCopy(){
+    try{
+      selectBox();
+      var ok=document.execCommand('copy');
+      return !!ok;
+    }catch(e){return false;}
+  }
+  function show(ok){
+    if(ok){
+      state.className='ok';
+      state.textContent='コピーできました。下の②へ進んでください。';
+      btn.textContent='コピーできました ✓';
+    }else{
+      state.className='ng';
+      state.textContent='コピーできませんでした。白い枠の中を長押しして「コピー」を押してください。';
+      selectBox();
+    }
+  }
+  btn.addEventListener('click',function(){
+    // まず昔ながらの方法（BANDの中でも動きやすい）、だめなら新しい方法
+    if(oldCopy()){show(true);return;}
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(PORTAL_URL).then(function(){show(true);},function(){show(false);});
+    }else{show(false);}
+  });
+})();
+</script>
+</body>
+</html>
