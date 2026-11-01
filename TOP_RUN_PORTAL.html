@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v223 | 2026-11-01 | Parent v222. REQUIRES Rules v223 (TOPRUNRULESv223.json: portalCommon/topRun/memberSeen を追加。本人だけ書ける・開発者/管理者だけ読める)。(1) 開発者「参加承認の申請を確認」：申請日時を表示、件数の後に「（新しい申請が上）」。(2) 承認された本人がPORTALに入ると memberSeen/<uid> に日時を記録（6時間に1回、失敗しても画面に影響なし）。(3) 「チャットの参加者を選ぶ」：「入室 日付／まだ入っていません」と末尾6桁を表示。承認だけでまだ入っていない人は「承認済み・まだ入っていない人」にたたむ（選択済み・管理者は常に表示）。ルール未反映でも従来どおり動く。 -->
 <!-- TOP RUN PORTAL v222 | 2026-11-01 | Parent v221. 「以前の管理画面」を廃止し、機能を各メニューへ統合：(0) 記録の紐付け画面で、画面内のどこをタップしても画面を開き直していた不具合（戻るボタンで戻れない原因）を修正。(1) 出走の確認・帳票＝イベント→参加者・出走者。一覧を端末内の試作データではなく、正式な出走登録（EVENT BASE）と本人の参加回答から表示（出走登録・参加するのに未登録・応援帯同・行かない・未定・未回答）。修正・登録漏れは選手メニューの正式画面へ移動するボタン。(2) 過去大会記録＝選手→過去大会記録。(3) 記録の紐付け＝選手→記録の紐付け。(4) 試作の個別入力・試用データのリセット・操作選択は表示しない（データは消さない）。保存処理・Rules は変更なし。 -->
 <!-- TOP RUN PORTAL v221 | 2026-11-01 | Parent v220. 管理画面「イベント」→「参加者・出走者を確認」のボタンが、開発者には記録の紐付け画面（参加者・記録）を開いていた件：この入口からは「大会出走登録確認・帳票」（大会を選んで、出走予定・応援帯同・行かない・未定未回答を確認）だけを表示し、見出しも「参加者・出走者」に。記録の紐付けは「選手」→「記録の紐付け（開発者）」からのみ。表示の切り替えだけで保存処理・Rules は変更なし。 -->
 <!-- TOP RUN PORTAL v220 | 2026-11-01 | Parent v219. (1) 管理画面の左上の戻るボタンを段階式に：中の画面では「← 操作選択」（修正画面は「← 一覧へ」）、項目のメニューでは「← 管理画面」、最初の画面でだけ「← PORTAL」。いきなりPORTALへ戻る誤タップを防ぐ。(2) お知らせ「大会別のお知らせ」：参加者用のお知らせ画面へ飛んでいたのをやめ、イベントの一覧で大会を選ぶ→修正画面の下に「大会のお知らせ」原稿を出す流れに（保存は既存のお知らせ保存を使用）。Rules は変更なし。 -->
@@ -6290,7 +6291,7 @@ html body .trEvPick .trEvPickRow small{position:static!important;margin-top:3px!
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v222</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v223</b></div>
   </div>
 </div>
 
@@ -6481,7 +6482,7 @@ html body .trEvPick .trEvPickRow small{position:static!important;margin-top:3px!
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v222</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v223</b></div>
   </div>
 </div>
 
@@ -17684,10 +17685,22 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         return {athletes:athletes.sort(byName),others:others.sort(byName)};
       };
       // v137: developer curates the chat participant list (管理画面の設定). Same-name registrations: newest approval first.
+      // v223: 本人がPORTALに入ったことを memberSeen/<uid> に記録（6時間に1回まで）。失敗しても画面には影響しない。
+      gate.markPortalSeen=async()=>{
+        try{
+          const uid=auth.currentUser?.uid||'';if(!rUid(uid))return;
+          const k='trPortalSeenAt_'+uid;let last=0;try{last=Number(localStorage.getItem(k))||0;}catch(_){}
+          if(Date.now()-last<6*3600*1000)return;
+          await dbMod.set(ref('memberSeen/'+uid),{at:Date.now()});
+          try{localStorage.setItem(k,String(Date.now()));}catch(_){}
+        }catch(e){console.warn('[TOP RUN v223] memberSeen write skipped',String(e?.code||e?.message||e).slice(0,80));}
+      };
       gate.chatPeopleCandidates=async()=>{
         if(!rDev()||gate.role!=='developer')throw Error('開発者の権限が必要です');
         const [rq,ac,se,cp]=await Promise.all([dbMod.get(ref('memberRequests')),dbMod.get(ref('memberAccess')),dbMod.get(ref('athleteSelections')),dbMod.get(ref('chatPeople'))]);
         const reqs=rq.val()||{},acc=ac.val()||{},sel=se.val()||{},cur=cp.val()||{};
+        // v223: PORTALに入った記録（ルール未反映なら読めないので null）
+        let seenMap=null;try{seenMap=(await dbMod.get(ref('memberSeen'))).val()||{};}catch(_){seenMap=null;}
         const athleteUids=new Set(Object.values(sel.items||{}).map(it=>String(it?.uid||'')));
         const chosen=cur.items||{},rows=[],seen=new Set(),bindNames={};
         const nameOf=uid=>{
@@ -17702,7 +17715,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
           if(!rUid(uid)||seen.has(uid))return;
           const name=nameOf(uid)||(role!=='participant'?'登録名なし（末尾'+uid.slice(-6)+'）':'');
           if(!name||name.length>24)return;
-          seen.add(uid);rows.push({uid,name,at,role,selected:!!chosen[uid]});
+          seen.add(uid);rows.push({uid,name,at,role,selected:!!chosen[uid],seenAt:Number(seenMap?.[uid]?.at)||0});
         };
         // v142: the developer (this device) is listed too, so admins can invite the developer to their rooms.
         if(gate.displayName){bindNames[gate.uid]=gate.displayName;add(gate.uid,'developer',0);}
@@ -17729,7 +17742,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
           const role=roles[i]?.role;
           if(role==='admin'||role==='developer')add(uid,role,Number(roles[i]?.boundAt)||Number(reqs[uid]?.requestedAt)||0);
         });
-        return {rows,revision:Number(cur.revision)||0};
+        return {rows,revision:Number(cur.revision)||0,seenOk:seenMap!==null};
       };
       gate.chatPeopleSave=async(list)=>{
         if(!rDev()||gate.role!=='developer'||auth.currentUser?.uid!==gate.uid)throw Error('開発者の権限が必要です');
@@ -18481,6 +18494,7 @@ try{
         }else gate.memberApproved=true;
         ui?.applyVerifiedRole(gate.role,uid);
         window.dispatchEvent(new Event('tr-portal-authorized'));
+        try{void gate.markPortalSeen?.();}catch(_){} // v223: PORTALに入った記録
         // First-event owner binding: user-initiated recovery in the EXISTING unified gate.
         // Reading self binding is allowed; no automatic change in boot and no new Auth.
         const recoveryBox=document.getElementById('portalOwnerBindingRecovery');
@@ -19842,7 +19856,7 @@ setInterval(display,1000);
       const box=document.createElement('div');
       box.style.cssText='padding:12px;border:1px solid #686d67;border-radius:10px;display:grid;gap:7px';
       const title=document.createElement('strong');
-      title.textContent='申請 '+row.uid.slice(-6)+' / '+row.name+' / 確認コード '+row.suffix;box.append(title);
+      title.textContent='申請 '+row.uid.slice(-6)+' / '+row.name+' / 確認コード '+row.suffix;box.append(title); /* v223: 申請日時を表示 */ { const at=document.createElement('small'); at.style.cssText='display:block;font-size:13px;opacity:.85'; at.textContent=row.requestedAt?'申請日時：'+new Date(row.requestedAt).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo',month:'numeric',day:'numeric',weekday:'short',hour:'2-digit',minute:'2-digit'}):'申請日時：不明'; box.append(at); }
       if(row.sameNameApproved){
         const warn=document.createElement('p');warn.style.cssText='margin:0;padding:8px;border-radius:8px;background:rgba(216,181,42,.18);font-weight:700;line-height:1.6';
         const d=row.sameNameLatest?new Date(row.sameNameLatest).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'})+'承認':'';
@@ -19886,7 +19900,7 @@ setInterval(display,1000);
       };
       box.append(delButton);mList.append(box);
     }
-    return rows.length?rows.length+'件の承認待ちがあります。':'承認待ちの申請はありません。';
+    return rows.length?rows.length+'件の承認待ちがあります。（新しい申請が上）':'承認待ちの申請はありません。';
   },mLog);
   $('portalMemberApprovalRefresh')?.addEventListener('click',refreshMembers);
   // P105: EVENT BASE result correction (staff). Time/place are pull-downs only (no free typing).
@@ -20814,7 +20828,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
   const norm=v=>String(v||'').normalize('NFKC').replace(/[\s\u3000]/g,'');
   const day=t=>t?new Date(t).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'}):'日付不明';
   const gate=()=>window.__TR_PORTAL_SYNC__;
-  let rows=[],busy=false;
+  let rows=[],busy=false,seenOk=false; // v223
   const withLimit=p=>Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(Error('通信に時間がかかっています。電波を確認して、もう一度押してください')),20000))]);
   function mount(){
     if($('trChatPeopleSection'))return true;
@@ -20850,14 +20864,19 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
   const say=t=>{const el=$('trChatPeopleState');if(el)el.textContent=t||'';};
   function count(){const el=$('trCpCount');if(el)el.textContent='選んでいる人：'+rows.filter(r=>r.selected).length+'人';}
   function rowHtml(r,same){
+    // v223: 入室（PORTALに入った）の表示と、見分け用の末尾6桁
+    const me=r.uid===gate()?.uid;
+    let sub=me?'この端末（あなた）':'登録 '+esc(day(r.at));
+    if(!me&&seenOk&&r.role==='participant')sub+=r.seenAt?'・入室 '+esc(day(r.seenAt)):'・まだ入っていません';
+    if(!me)sub+='・末尾'+esc(String(r.uid).slice(-6));
     return '<label class="trCpRow"><input type="checkbox" data-cp="'+esc(r.uid)+'"'+(r.selected?' checked':'')+'><span>'+esc(r.name)+
-      '<small>'+(r.uid===gate()?.uid?'この端末（あなた）':'登録 '+esc(day(r.at)))+'</small></span>'+(same?'<em class="trCpSame">同名あり</em>':'')+'</label>';
+      '<small>'+sub+'</small></span>'+(same?'<em class="trCpSame">同名あり</em>':'')+'</label>';
   }
   function render(){
     // Same name = same person: show the newest approval; older ones go into a closed section.
     const groups=new Map();
     for(const r of rows){const k=norm(r.name);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(r);}
-    const main=[],older=[];
+    let main=[];const older=[];
     for(const list of groups.values()){
       list.sort((a,b)=>b.at-a.at);
       main.push({r:list[0],same:list.length>1});
@@ -20865,7 +20884,17 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
     }
     main.sort((a,b)=>a.r.name.localeCompare(b.r.name,'ja'));
     older.sort((a,b)=>a.name.localeCompare(b.name,'ja')||b.at-a.at);
-    let html=main.length?main.map(x=>rowHtml(x.r,x.same)).join(''):'<p style="font-size:13px">選べる人がいません。</p>';
+    // v223: 承認だけで、まだPORTALに入っていない人はたたむ（選択済みの人・管理者・この端末は常に表示）
+    const waiting=[];
+    if(seenOk){
+      const keep=[];
+      for(const x of main){const r=x.r;
+        if(r.selected||r.role!=='participant'||r.seenAt||r.uid===gate()?.uid)keep.push(x);else waiting.push(x);}
+      main=keep;
+    }
+    let html=seenOk?'':'<p style="font-size:12px">入室の記録はまだ読めません（Firebaseのルールの更新が必要です）。</p>';
+    html+=main.length?main.map(x=>rowHtml(x.r,x.same)).join(''):'<p style="font-size:13px">選べる人がいません。</p>';
+    if(waiting.length)html+='<details class="trCpOlder"><summary>承認済み・まだ入っていない人（'+waiting.length+'人）</summary>'+waiting.map(x=>rowHtml(x.r,x.same)).join('')+'</details>';
     if(older.length)html+='<details class="trCpOlder"><summary>同じ名前の古い登録（'+older.length+'件）</summary>'+older.map(r=>rowHtml(r,true)).join('')+'</details>';
     html+='<p class="trCpCount" id="trCpCount"></p>';
     $('trChatPeopleList').innerHTML=html;
@@ -20874,7 +20903,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
   }
   async function load(){
     if(busy)return;busy=true;$('trChatPeopleLoad').disabled=true;say('読み込み中…');
-    try{const res=await withLimit(gate().chatPeopleCandidates());rows=res.rows;render();say('読み込みました：'+rows.length+'人');}
+    try{const res=await withLimit(gate().chatPeopleCandidates());rows=res.rows;seenOk=res.seenOk===true;render();say('読み込みました：'+rows.length+'人');}
     catch(e){say('読み込めませんでした：'+String(e?.message||e?.code||e).slice(0,120));}
     finally{busy=false;$('trChatPeopleLoad').disabled=false;}
   }
