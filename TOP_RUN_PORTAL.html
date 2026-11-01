@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v216 | 2026-11-01 | Parent v215. (1) 記録の紐付け：大会一覧の行で開催日が枠からはみ出す→行の高さを自動に。一覧内の入れ子スクロールをやめ、画面全体で戻れるように。(2) 記録練習：保存できなかった理由を画面下の小さい文字だけでなく、通知（ポップアップ）でも表示。記録の種別は練習予定の種別に自動で合わせる。Rules unchanged. -->
 <!-- TOP RUN PORTAL v215 | 2026-11-01 | Parent v214. (1) 大会名の表記：v211 の「第N回」変換を取り消し、既存 v157 の「大会名（N回）」(trEventLabel) に統一。EVENT BASE の紐付け記録（local-flow-claim-<大会>-…）は保存時の古い名前ではなく大会名（N回）で表示。(2) 未接続表示の整理：お知らせ画面の模擬「通知の確認」を非表示、HOME画像の「Firebase未接続」表示を削除（実際は保存済みの機能）、通知診断の古い「未実装」文を削除。保存処理は不変。Rules unchanged. -->
 <!-- TOP RUN PORTAL v214 | 2026-11-01 | Parent v213. ファイル名 TOPRUNPORTAL.html（記号なし）でも動くように、通知バッジ処理のパス判定を TOP_RUN_PORTAL.html / TOPRUNPORTAL.html の両方に。旧URLは転送ページで新ファイルへ。Rules unchanged. -->
 <!-- TOP RUN PORTAL v213 | 2026-11-01 | Parent v212. 記録練習の記録が反映されない件: (1) 保存時、名簿のprofileIdではなく本人の正式profileId（memberAccess/<uid>、開発者は既存 rpCheckMember で取得）を使う。名簿と本人登録でIDが違う選手はRulesで保存拒否されていた。(2) 「この日の登録記録」一覧が名簿のprofileIdと一致する記録しか出さなかったのを、同じuidなら表示。(3) 保存失敗の文面を分かりやすく。Rules unchanged. -->
@@ -5719,6 +5720,24 @@ document.addEventListener('click',function(ev){
 /* v215: 模擬データだけの「通知の確認」は表示しない */
 #portalNotificationPreview{display:none!important}
 </style>
+<script>
+/* v216: 記録練習の保存結果をポップアップでも知らせる（見落とし防止）。表示だけ。 */
+(function(){
+  const hook=()=>{const el=document.getElementById('managePracticeRecordStatus');if(!el||el.dataset.v216)return;el.dataset.v216='1';
+    let last='';new MutationObserver(()=>{const t=(el.textContent||'').trim();if(!t||t===last)return;last=t;
+      const showActionFeedback=window.showActionFeedback;if(typeof showActionFeedback!=='function')return;
+      if(/^保存しました/.test(t))showActionFeedback('記録を保存しました',t.replace(/^保存しました。?/,''));
+      else if(/できません|してください|確認|失敗|未確認|拒否/.test(t)&&!/中…$/.test(t))showActionFeedback('記録を保存できませんでした',t.slice(0,160),6000);
+    }).observe(el,{childList:true,characterData:true,subtree:true});};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',hook);else hook();
+})();
+</script>
+<style>
+/* v216: 大会一覧の行がはみ出さない／入れ子スクロールをやめる */
+html body .trEvPick .trEvPickList{max-height:none!important;overflow:visible!important}
+html body .trEvPick .trEvPickRow{display:block!important;height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important;white-space:normal!important;line-height:1.4!important}
+html body .trEvPick .trEvPickRow small{position:static!important;margin-top:3px!important;white-space:normal!important}
+</style>
 </head>
 <body>
 <div id="portalFirstPaintAuthOverlay" role="status" aria-live="polite" aria-label="TOP RUN PORTAL 認証中">
@@ -6259,7 +6278,7 @@ document.addEventListener('click',function(ev){
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v215</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v216</b></div>
   </div>
 </div>
 
@@ -6450,7 +6469,7 @@ document.addEventListener('click',function(ev){
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v215</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v216</b></div>
   </div>
 </div>
 
@@ -9313,7 +9332,7 @@ if(view==='list')portalApplyManageSearch(kind);
     const date=$('managePracticeDate').value,recordDate=$('managePracticeRecordDate').value,gate=window.__TR_PORTAL_SYNC__;
     const sourceKey=schedules[date]?._sourceKey||date;
     const target=portalPastChoice($('managePracticeRecordAthlete').value),distance=Number($('managePracticeRecordDistance').value),time=$('managePracticeRecordTime').value;
-    const current=schedules[date];const category=$('managePracticeRecordKind').value,notes=$('managePracticeRecordNote').value.trim();
+    const current=schedules[date];if(!portalPracticeEditRecord&&current?.practiceMode==='record'&&current.recordKind)$('managePracticeRecordKind').value=current.recordKind;const category=$('managePracticeRecordKind').value,notes=$('managePracticeRecordNote').value.trim();
     const status=$('managePracticeRecordStatus'),button=$('managePracticeRecordSave');
     if(!gate?.roleVerified||!['developer','admin'].includes(gate.role)||!target){status.textContent='本人確認済みの選手を選択してください。';return;}
     if(!portalPracticeEditRecord&&(!current||current.kind!=='practice'||current.practiceMode!=='record'||current.recordKind!==category)){status.textContent='新規記録は、先に記録練習の開催情報を保存してください。';return;}
@@ -9339,6 +9358,7 @@ if(view==='list')portalApplyManageSearch(kind);
       (portalPracticeEditRecord&&(!current||current.practiceMode!=='record')?'。現在のFirebase Rulesが開催区分を条件としている場合、予定変更後の訂正は拒否されます。記録は削除せず保持しています。':'。重複防止のため記録一覧を確認してください。');}
     finally{button.disabled=false;}
   });
+  window.showActionFeedback=window.showActionFeedback||showActionFeedback; // v216: 他の小さな処理からも使えるように
   bindCommonPlace('managePracticePlace','managePracticeCustomPlaceRow');
   bindCommonPlace('bulkPracticePlace','bulkPracticeCustomPlaceRow');
   bindCommonPlace('manageEventPlace','manageEventCustomPlaceRow');
