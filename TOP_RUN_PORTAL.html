@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v218 | 2026-11-01 | Parent v217. (1) 記録の紐付け・過去大会記録：画面上部（← 管理画面）の見出しを入力欄より必ず手前に表示（日付欄が見出しに重なって突き抜ける・戻るボタンが押せない対策）。iPhoneで入力欄を触ったときの自動拡大と、ボタンの2回タップ拡大を止める（指での拡大は可能）。(2) 記録の紐付け：「並べ替え」（名前順／PORTAL登録が新しい順／古い順）を追加。①の一覧・②の「誰の記録？」・③の一覧に反映。過去大会記録の「対象選手」も名前順。(3) 通知送信・バッジの正規URL判定に TOPRUNPORTAL.html（版数付きも）を追加。保存処理・Rules は変更なし。 -->
 <!-- TOP RUN PORTAL v217 | 2026-11-01 | Parent v216. お知らせ：「駅伝BASEのお知らせを受信できません」の案内を参加者には表示しない（開発者だけ表示）。表示条件だけの変更。読み込み・認証・Firebaseは変更なし。 -->
 <!-- TOP RUN PORTAL v216 | 2026-11-01 | Parent v215. (1) 記録の紐付け：大会一覧の行で開催日が枠からはみ出す→行の高さを自動に。一覧内の入れ子スクロールをやめ、画面全体で戻れるように。(2) 記録練習：保存できなかった理由を画面下の小さい文字だけでなく、通知（ポップアップ）でも表示。記録の種別は練習予定の種別に自動で合わせる。Rules unchanged. -->
 <!-- TOP RUN PORTAL v215 | 2026-11-01 | Parent v214. (1) 大会名の表記：v211 の「第N回」変換を取り消し、既存 v157 の「大会名（N回）」(trEventLabel) に統一。EVENT BASE の紐付け記録（local-flow-claim-<大会>-…）は保存時の古い名前ではなく大会名（N回）で表示。(2) 未接続表示の整理：お知らせ画面の模擬「通知の確認」を非表示、HOME画像の「Firebase未接続」表示を削除（実際は保存済みの機能）、通知診断の古い「未実装」文を削除。保存処理は不変。Rules unchanged. -->
@@ -289,6 +290,12 @@ NO FIREBASE / NO RULES / NO AUTH CHANGE / NO profileId CHANGE / NO binding CHANG
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>/* v218: iPhone は入力欄を触ったときの自動拡大を止める（指での拡大は iOS 側で可能なまま）。名前の並べ替え用の共通関数。 */
+(function(){try{var ios=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);var m=document.querySelector('meta[name="viewport"]');if(ios&&m&&!/maximum-scale/.test(m.content))m.content+=',maximum-scale=1';}catch(_){}
+ var col=null;try{col=new Intl.Collator('ja',{numeric:true,sensitivity:'base'});}catch(_){}
+ window.trNameKeyV218=function(v){return String(v||'').normalize('NFKC').replace(/[\s\u3000]/g,'').replace(/[\u30a1-\u30f6]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-0x60);});};
+ window.trNameCmpV218=function(a,b){var x=window.trNameKeyV218(a),y=window.trNameKeyV218(b);return col?col.compare(x,y):x.localeCompare(y,'ja');};
+})();</script>
 <meta name="theme-color" content="#2f3534">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" sizes="180x180" href="top-run-180.png">
@@ -6279,7 +6286,7 @@ html body .trEvPick .trEvPickRow small{position:static!important;margin-top:3px!
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v217</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v218</b></div>
   </div>
 </div>
 
@@ -6470,7 +6477,7 @@ html body .trEvPick .trEvPickRow small{position:static!important;margin-top:3px!
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v217</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v218</b></div>
   </div>
 </div>
 
@@ -6987,6 +6994,7 @@ html body .trEvPick .trEvPickRow small{position:static!important;margin-top:3px!
     </div>
     <p id="rpHelp" class="portalHelp"></p>
     <label class="portalFlowLabel">名前で絞り込み <input id="rpSearch" type="search" autocomplete="off" placeholder="例：山田"></label>
+    <label class="portalFlowLabel">並べ替え <select id="rpSort"><option value="name">名前順（あいうえお）</option><option value="new">PORTAL登録が新しい順</option><option value="old">PORTAL登録が古い順</option></select></label>
     <div id="rpTools" class="rpRow"></div>
     <p id="rpStatus" class="portalFlowStatus" aria-live="polite" style="font-weight:800"></p>
     <div id="rpList" aria-live="polite"></div>
@@ -13909,6 +13917,15 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
   const rpToday=()=>new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Tokyo'});
   const rpSay=t=>{const el=$('rpStatus');if(el)el.textContent=t||'';};
   const rpMetricName=m=>m==='relay'?'駅伝':m==='other'?'その他':(m?m+'m':'');
+  // v218: 並べ替え（名前順／PORTAL登録が新しい順／古い順）。登録日が分からない人は最後。
+  function rpSortList(list,get){
+    const mode=$('rpSort')?.value||'name',cmp=window.trNameCmpV218||((a,b)=>String(a).localeCompare(String(b),'ja'));
+    return [...list].sort((a,b)=>{
+      const A=get(a)||{},B=get(b)||{};
+      if(mode!=='name'){const x=Number(A.at)||0,y=Number(B.at)||0;if(x!==y){if(!x)return 1;if(!y)return -1;return mode==='new'?y-x:x-y;}}
+      return cmp(A.name,B.name);
+    });
+  }
   function rpEvents(){
     const ui=window.__TR_COMMON_PILOT_UI__,list=[],seen=new Set();
     for(const t of (ui?.officialTargets?.()||[])){
@@ -14016,7 +14033,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
     if(!rpLoaded){list.innerHTML='<p class="portalHelp">読み込み中…</p>';return;}
     const missingRoster=rpEvents().filter(e=>e.base).some(e=>rpRoster(e)===null);
     if(rpTab==='all'){
-      const props=rpProposals().filter(p=>hit(p.m.name));
+      const props=rpSortList(rpProposals().filter(p=>hit(p.m.name)),p=>p.m);
       let todo=0;
       const cards=props.map(({m,dup,old,newest,rows})=>{
         const fold=(status,body)=>`<details class="rpCard rpFold" data-rp-fold="${esc(m.uid)}"${rpOpenCards.has(m.uid)?' open':''}><summary><b>${esc(m.name)}</b><span class="rpSub">${status}</span></summary>${body}</details>`;
@@ -14068,13 +14085,13 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
         const owner=rpClaims.get(r.id);
         if(owner)return `<div class="rpCard">${head}<span class="rpOk">紐付け：${esc(rpMemberByUid(owner)?.name||'別の人')}</span><div class="rpRow"><button type="button" class="portalFlowSecondary" data-rp-act="unlink" data-id="${esc(r.id)}">紐付けを外す</button></div>${tools(r)}</div>`;
         const same=idx.get(rpNorm(r.name))||[],pre=same.length===1?same[0].uid:(rpPrimary(same)?.uid||'');
-        return `<div class="rpCard">${head}<div class="rpRow"><select data-rp-pick="${esc(r.id)}"><option value="">誰の記録？（PORTALの参加者）</option>${mem.filter(m=>!rpHidden(m,idx)).map(m=>`<option value="${esc(m.uid)}" ${m.uid===pre?'selected':''}>${esc(m.name)}${(idx.get(rpNorm(m.name))||[]).length>1?'（'+esc(rpDay(m.at)||'日付不明')+'登録）':''}</option>`).join('')}</select><button type="button" class="portalPrimary" data-rp-act="link" data-id="${esc(r.id)}">紐付ける</button></div>${tools(r)}</div>`;
+        return `<div class="rpCard">${head}<div class="rpRow"><select data-rp-pick="${esc(r.id)}"><option value="">誰の記録？（PORTALの参加者）</option>${rpSortList(mem.filter(m=>!rpHidden(m,idx)),m=>m).map(m=>`<option value="${esc(m.uid)}" ${m.uid===pre?'selected':''}>${esc(m.name)}${(idx.get(rpNorm(m.name))||[]).length>1?'（'+esc(rpDay(m.at)||'日付不明')+'登録）':''}</option>`).join('')}</select><button type="button" class="portalPrimary" data-rp-act="link" data-id="${esc(r.id)}">紐付ける</button></div>${tools(r)}</div>`;
       }).join('')||'<p class="portalHelp">この大会の出走登録はありません。</p>';
       return;
     }
     const rows=rpAllRows(),byUid=new Map();
     for(const r of rows){const u=rpClaims.get(r.id);if(u){if(!byUid.has(u))byUid.set(u,[]);byUid.get(u).push(r);}}
-    const ppl=[...byUid.entries()].map(([uid,rs])=>({uid,name:rpMemberByUid(uid)?.name||'（PORTALの参加者）',rs})).filter(p=>hit(p.name)).sort((a,b)=>a.name.localeCompare(b.name,'ja'));
+    const ppl=rpSortList([...byUid.entries()].map(([uid,rs])=>({uid,name:rpMemberByUid(uid)?.name||'（PORTALの参加者）',at:rpMemberByUid(uid)?.at||0,rs})).filter(p=>hit(p.name)),p=>p);
     list.innerHTML=ppl.length?ppl.map(p=>`<details class="rpCard"><summary><b>${esc(p.name)}</b><span class="rpSub">記録${p.rs.length}件</span></summary>${p.rs.sort((a,b)=>a.date.localeCompare(b.date)).map(r=>`<div class="rpLine"><span>${rpRecLine(r)}</span><button type="button" class="portalFlowSecondary" data-rp-act="unlink" data-id="${esc(r.id)}">外す</button></div>`).join('')}</details>`).join(''):'<p class="portalHelp">まだ紐付けた人はいません。①で「これでよいので紐付ける」を押してください。</p>';
   }
   async function rpWrite(member,row){
@@ -14226,6 +14243,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
   };
   $('rpEvent')?.addEventListener('change',()=>{rpRetry=0;rpSay('');rpRender();});
   $('rpSearch')?.addEventListener('input',rpRender);
+  $('rpSort')?.addEventListener('change',rpRender); // v218
   document.querySelectorAll('[data-rp-tab]').forEach(b=>b.addEventListener('click',()=>{rpTab=b.dataset.rpTab;rpRetry=0;rpSay('');rpRender();}));
   $('rpPanel')?.addEventListener('click',e=>{const b=e.target.closest('[data-rp-act]');if(b)rpAct(b);});
   $('rpPanel')?.addEventListener('toggle',e=>{const d=e.target;if(!d?.dataset?.rpFold)return;if(d.open)rpOpenCards.add(d.dataset.rpFold);else rpOpenCards.delete(d.dataset.rpFold);},true); // v137
@@ -14421,7 +14439,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
     portalPastRenderEventChoices();
     const roster=portalPastVerifiedChoices();
     const query=$('flowMgrExtAthleteSearch').value.trim().toLocaleLowerCase('ja-JP');
-    const filtered=roster.filter(a=>!query||a.name.toLocaleLowerCase('ja-JP').includes(query));
+    const filtered=roster.filter(a=>!query||a.name.toLocaleLowerCase('ja-JP').includes(query)).sort((a,b)=>(window.trNameCmpV218?window.trNameCmpV218(a.name,b.name):String(a.name).localeCompare(String(b.name),'ja'))); // v218: 名前順
     const picker=$('flowMgrExtAthlete'),last=picker.value;
     picker.innerHTML='<option value="">本人確認済みの選手を選択</option>'+filtered.map(a=>`<option value="${esc(a.id)}">${esc(a.name)}</option>`).join('');
     picker.value=filtered.some(a=>a.id===last)?last:'';
@@ -18712,7 +18730,7 @@ try{
  const sendToken=document.getElementById('trPushAdminToken');
  if(!section||!button||!state||!input||!sendBox||!sendButton||!sendToken)return;
  const say=message=>{state.textContent=String(message).slice(0,260);};
- const isPortalSite=()=>location.origin===ORIGIN&&location.pathname.startsWith('/tabirun-bgm/TOP_RUN_PORTAL');
+ const isPortalSite=()=>location.origin===ORIGIN&&/^\/tabirun-bgm\/(?:TOP_RUN_PORTAL|TOPRUNPORTAL)/.test(location.pathname); // v218: 記号なしのファイル名も正規URL
  const isiOS=()=>/iPad|iPhone|iPod/.test(navigator.userAgent)||(/Mac/.test(navigator.platform)&&navigator.maxTouchPoints>1);
  const standalone=()=>window.matchMedia?.('(display-mode: standalone)')?.matches===true||navigator.standalone===true;
  const developerOK=()=>{
@@ -18997,7 +19015,7 @@ setInterval(display,1000);
  };
  const isIOS=()=>/iPad|iPhone|iPod/.test(navigator.userAgent)||(/Mac/.test(navigator.platform)&&navigator.maxTouchPoints>1);
  const standalone=()=>window.matchMedia?.('(display-mode: standalone)')?.matches===true||navigator.standalone===true;
- const onSite=()=>location.origin===ORIGIN&&location.pathname.startsWith('/tabirun-bgm/TOP_RUN_PORTAL');
+ const onSite=()=>location.origin===ORIGIN&&/^\/tabirun-bgm\/(?:TOP_RUN_PORTAL|TOPRUNPORTAL)/.test(location.pathname); // v218
  let manager=null,publicKey=null,epoch=0,busy=false;
  const disable=()=>{register.disabled=true;status.disabled=true;revoke.disabled=true;};
  function keyBytes(raw){
@@ -19367,7 +19385,7 @@ setInterval(display,1000);
   'use strict';
   const BASE='https://top-run-notify.nuritaku-g.workers.dev';
   const ORIGIN='https://nuritakug-cpu.github.io';
-  if(location.origin!==ORIGIN||!/^\/tabirun-bgm\/(?:TOP_RUN_PORTAL|TOPRUNPORTAL)\.html$/.test(location.pathname))return;
+  if(location.origin!==ORIGIN||!/^\/tabirun-bgm\/(?:TOP_RUN_PORTAL|TOPRUNPORTAL)(?:v\d+)?\.html$/.test(location.pathname))return; // v218: 版数付きも
   const clearBadge=()=>{
     if(typeof navigator.clearAppBadge!=='function')return;
     try{Promise.resolve(navigator.clearAppBadge()).catch(()=>{});}catch{}
@@ -22908,5 +22926,13 @@ html[data-portal-personal-color="matte"] :is(#screen-notification-settings,#scre
   });
 })();
 </script>
+<style id="v218-head-front">
+/* v218: 見出し（← 管理画面）を入力欄（日付など）より必ず手前に。iPhoneで日付欄が見出しに重なり、戻るボタンが押せなくなるのを防ぐ。チャットは対象外。 */
+.portalScreen:not(#screen-chat)>.portalScreenHead{z-index:45;isolation:isolate;-webkit-transform:translateZ(0);transform:translateZ(0)}
+/* v218: ボタン類の2回タップで画面が拡大されないように（指での拡大はそのまま） */
+button,a,label,summary,select,input,textarea,[role="button"]{touch-action:manipulation}
+/* v218: 記録の紐付けの入力欄は16px（iPhoneの自動拡大を防ぐ） */
+#rpPanel select,#rpPanel input:not([type="checkbox"]):not([type="radio"]){font-size:16px}
+</style>
 </body>
 </html>
