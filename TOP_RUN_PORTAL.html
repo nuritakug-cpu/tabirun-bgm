@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v252 | 2026-11-02 | Parent v251. 本当の原因：チャット画面を開いている間は、チャット以外の画面部品を見えなくする仕組み（body.portalChatIsolated）があり、写真の「送りますか？」・写真の拡大表示（保存）・アイコンの拡大表示がその対象になって見えていなかった（ホームに戻ると見えた）。これらを見える対象に追加。v251の画面を戻す処理と記録は不要になったため削除。Rules v240 のまま。 -->
 <!-- TOP RUN PORTAL v251 | 2026-11-02 | Parent v250. 写真を選ぶとホームに出る件（送信はできる＝読み込み直しではなく、画面だけがホームに切り替わっている）：写真を選ぶ画面を開いたときの画面（チャット・ルーム・マイページ）を覚え、選んだ／やめた後に別の画面に変わっていたら元に戻す（0.3秒・1.2秒・2.5秒後に確認）。あわせて、その間にチャット画面・ルームを閉じた処理の場所を記録し、開発者にだけ表示（原因の特定用）。Rules v240 のまま。 -->
 <!-- TOP RUN PORTAL v250 | 2026-11-02 | Parent v249. 写真を選ぶとホームに出たまま戻らない件：(1) 戻り先の記録を端末の保存（localStorage）だけでなくクッキーにも書く。iPhoneが画面を強制的に読み込み直すと、直前の localStorage の書き込みが消えることがあるため。(2) 戻す処理を確実に：本人確認が終わり閲覧制限が外れるまで待ち、チャット→ルームが実際に開いたかを確かめて、開いていなければ数回やり直す。案内はルームが開いてから出す。Rules v240 のまま。 -->
 <!-- TOP RUN PORTAL v249 | 2026-11-02 | Parent v248. 写真を選ぶとチャットから出てしまう件：(1) 写真の読み込みを軽く（大きな写真を丸ごと展開する createImageBitmap をやめ、<img>で読んで必要な大きさだけ描く。縮小は描いた画像からくり返し、元の写真を何度も描かない）。チャットの写真・アイコンの両方。(2) 拡大表示で読んだ写真本体は最新4枚だけ手元に残す（メモリ節約）。(3) 写真を選んだあとの処理中に読み込み直されても元のルーム／マイページに戻す（これまでは選んだ時点で戻り先を消していた）。(4) 開発者には、読み込み直しが「写真を選ぶ画面」と「写真の処理中」のどちらで起きたかを表示。Rules v240 のまま。 -->
@@ -6427,7 +6428,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v251</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v252</b></div>
   </div>
 </div>
 
@@ -6618,7 +6619,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v251</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v252</b></div>
   </div>
 </div>
 
@@ -24339,56 +24340,9 @@ body.portalChatIsolated.portalFieldInputActive #screen-chat>main.chatMain{
 #trAvCrop .trCropBtns button{min-height:48px;border-radius:12px;font-size:16px;font-weight:800;border:1px solid rgba(255,255,255,.4);background:transparent;color:#fff}
 #trAvCrop .trCropBtns button.trOk{background:#d8b52a;border-color:#d8b52a;color:#1d2421}
 </style>
-<script id="v251-pick-keep-screen">
-/* v251: 写真を選ぶ画面を開いたときの画面を覚え、選んだ／やめた後に別の画面に変わっていたら元に戻す。
-   その間にチャット画面・ルームを閉じた処理の場所を記録し、開発者にだけ表示する（原因の特定用）。 */
-(function(){
-  'use strict';
-  const say=(t,m)=>{try{window.showActionFeedback?window.showActionFeedback(t,m):alert(t+'\n'+m);}catch(_){}};
-  const vis=id=>{const el=document.getElementById(id);return !!el&&!el.hidden&&!el.classList.contains('hidden')&&el.getClientRects().length>0;}; // 画面は position:fixed のため offsetParent では判定できない
-  const isDev=()=>{const x=window.__TR_PORTAL_SYNC__;return x?.role==='developer'&&x.roleVerified===true;};
-  let snap=null,trace=[],told=false;
-  const watching=()=>!!snap&&Date.now()-snap.at<180000;
-  let quietUntil=0;
-  function rec(what){
-    if(!watching()||Date.now()<quietUntil)return; // 戻す操作そのものは記録しない
-    try{const st=String(new Error().stack||'').split('\n').map(x=>x.trim()).filter(x=>x&&!/rec@|rec \(|v251/.test(x)).slice(1,5).join(' / ');
-      trace.push(what+'：'+st.slice(0,300));if(trace.length>6)trace.shift();
-      localStorage.setItem('trHideTrace',JSON.stringify({at:Date.now(),trace}));}catch(_){}
-  }
-  // チャット画面を閉じる処理（aria-hidden="true" を付ける）とルームを閉じる処理（hidden）を記録
-  const oSet=Element.prototype.setAttribute;
-  Element.prototype.setAttribute=function(n,v){
-    try{if(n==='aria-hidden'&&String(v)==='true'&&watching()&&(this.id==='screen-chat'||this.id==='screen-mypage'))rec(this.id);}catch(_){}
-    return oSet.call(this,n,v);
-  };
-  try{
-    const hd=Object.getOwnPropertyDescriptor(HTMLElement.prototype,'hidden');
-    if(hd&&hd.set)Object.defineProperty(HTMLElement.prototype,'hidden',{configurable:true,enumerable:hd.enumerable,get:hd.get,set:function(v){try{if(v&&this.id==='trRoomView'&&watching())rec('room');}catch(_){}return hd.set.call(this,v);}});
-  }catch(_){}
-  function restore(){
-    if(!snap)return;const s=snap;let did='';
-    try{
-      if((s.chat&&!vis('screen-chat'))||(s.room&&!vis('trRoomView'))||(s.mypage&&!vis('screen-mypage')))quietUntil=Date.now()+1500;
-      if(s.chat&&!vis('screen-chat')){document.querySelector('nav.portalBottomTabs [data-bottom-target="chat"]')?.click();did='チャット';}
-      if(s.room&&!vis('trRoomView')){setTimeout(()=>{try{if(!vis('trRoomView'))window.__trOpenRoom?.(s.room);}catch(_){}},did?400:0);did='ルーム';}
-      if(s.mypage&&!vis('screen-mypage')){document.querySelector('[data-screen="mypage"]')?.click();did='マイページ';}
-    }catch(_){}
-    if(did&&isDev()&&!told){told=true;setTimeout(()=>say('画面を戻しました（開発者用）','写真を選んだ後に画面が「'+did+'」から切り替わっていたため戻しました。\n閉じた処理：\n'+(trace.join('\n')||'記録なし')),1600);}
-  }
-  function check(){[300,1200,2500].forEach(ms=>setTimeout(restore,ms));}
-  function after(){check();setTimeout(()=>{snap=null;},4000);}
-  const orig=window.__trFilePickStart;
-  window.__trFilePickStart=function(input){
-    snap={at:Date.now(),chat:vis('screen-chat'),mypage:vis('screen-mypage'),room:vis('trRoomView')?(window.__TR_PORTAL_SYNC__?.roomReactCtx?.().openId||''):''};
-    trace=[];told=false;
-    try{input.addEventListener('change',after,{once:true});input.addEventListener('cancel',after,{once:true});}catch(_){}
-    return orig?orig.apply(this,arguments):undefined;
-  };
-  // 写真の画面から戻ったとき（選ぶ前に戻った場合も）確認
-  window.addEventListener('focus',()=>{if(watching())check();});
-  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&watching())check();});
-})();
-</script>
+<style id="v252-chat-overlays">
+/* v252: チャット画面を開いている間も、写真の送信確認・拡大表示（保存）・アイコンの表示と設定を見えるようにする */
+body.portalChatIsolated > :is(#trImgSend,#trImgView,#trAvView,#trAvSheet,#trAvCrop){visibility:visible!important;opacity:1!important;pointer-events:auto!important}
+</style>
 </body>
 </html>
