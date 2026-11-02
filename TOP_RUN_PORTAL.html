@@ -1,3 +1,5 @@
+<!-- TOP RUN PORTAL v254 | 2026-11-02 | Parent v253. 動作を軽く：(1) チャットの写真：メッセージが届くたびに一覧を作り直しても、一度表示した写真は同じ画像部品を使い回し、画像の展開（デコード）をやり直さない。画像は文字列（data URL）ではなく端末内のURL（blob）で表示。(2) アイコン：同じ人のアイコンは同じ端末内URLを使い、展開を共有。読み込み済みなら灰色のシルエットを挟まずすぐ表示。(3) 入力欄の下余白を測り直す処理（v241）が、チャット以外の画面の変化や1文字ごとの変化でも動いていたのを、チャット画面の変化だけに。(4) 入力中、メンション候補が閉じたままなら何もしない。(5) 送る前の確認は1枚でも見本（小さい画像）で表示。Rules v240 のまま。 -->
+<!-- TOP RUN PORTAL v253 | 2026-11-02 | Parent v252. 1枚だけの写真の下が切れていた（高さ340pxで切り取り表示）：切らずに全体を表示。縦長の写真は高さ340pxに収まるよう幅を狭める。表示だけ。Rules v240 のまま。 -->
 <!-- TOP RUN PORTAL v252 | 2026-11-02 | Parent v251. 本当の原因：チャット画面を開いている間は、チャット以外の画面部品を見えなくする仕組み（body.portalChatIsolated）があり、写真の「送りますか？」・写真の拡大表示（保存）・アイコンの拡大表示がその対象になって見えていなかった（ホームに戻ると見えた）。これらを見える対象に追加。v251の画面を戻す処理と記録は不要になったため削除。Rules v240 のまま。 -->
 <!-- TOP RUN PORTAL v251 | 2026-11-02 | Parent v250. 写真を選ぶとホームに出る件（送信はできる＝読み込み直しではなく、画面だけがホームに切り替わっている）：写真を選ぶ画面を開いたときの画面（チャット・ルーム・マイページ）を覚え、選んだ／やめた後に別の画面に変わっていたら元に戻す（0.3秒・1.2秒・2.5秒後に確認）。あわせて、その間にチャット画面・ルームを閉じた処理の場所を記録し、開発者にだけ表示（原因の特定用）。Rules v240 のまま。 -->
 <!-- TOP RUN PORTAL v250 | 2026-11-02 | Parent v249. 写真を選ぶとホームに出たまま戻らない件：(1) 戻り先の記録を端末の保存（localStorage）だけでなくクッキーにも書く。iPhoneが画面を強制的に読み込み直すと、直前の localStorage の書き込みが消えることがあるため。(2) 戻す処理を確実に：本人確認が終わり閲覧制限が外れるまで待ち、チャット→ルームが実際に開いたかを確かめて、開いていなければ数回やり直す。案内はルームが開いてから出す。Rules v240 のまま。 -->
@@ -6428,7 +6430,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v252</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v254</b></div>
   </div>
 </div>
 
@@ -6619,7 +6621,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v252</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v254</b></div>
   </div>
 </div>
 
@@ -22263,7 +22265,7 @@ html[data-portal-personal-color="matte"] #screen-chat #trRoomThread .trReadIssue
   async function onType(ctx){
     const b=bars(ctx);if(!b)return;
     const v=b.input.value,pos=b.input.selectionStart??v.length,mm=/@([^\s@]*)$/.exec(v.slice(0,pos));
-    if(!mm){b.list.hidden=true;return;}
+    if(!mm){if(!b.list.hidden)b.list.hidden=true;return;} // v254: 閉じたままなら何もしない
     const q=mm[1].normalize('NFKC'),all=await people(ctx);
     const hit=all.filter(x=>!q||x.name.normalize('NFKC').includes(q)).slice(0,30);
     b.list.innerHTML=hit.map(x=>`<button type="button" data-mu="${esc(x.uid)}" data-mn="${esc(x.name)}">@${esc(x.name)}</button>`).join('');
@@ -23560,18 +23562,34 @@ window.__trFilePickStart=function(input){
           const cls='trImgs'+(arr.length===1?' trOne':'')+(arr.length>1&&arr.length%2===1?' trOdd':'');
           const ids=arr.map(x=>x.id).join(',');
           h+=(h?'<br>':'')+'<span class="'+cls+'">'+arr.map((x,i)=>{const w=Math.max(1,Number(x.w)||4),hh=Math.max(1,Number(x.h)||3);
-            return '<span class="trImg" data-img="'+x.id+'" data-set="'+ids+'" data-i="'+i+'" style="aspect-ratio:'+w+'/'+hh+'" role="button" aria-label="写真を開く"></span>';}).join('')+'</span>';
+            return '<span class="trImg" data-img="'+x.id+'" data-set="'+ids+'" data-i="'+i+'" style="aspect-ratio:'+w+'/'+hh+(arr.length===1?';max-width:'+Math.max(80,Math.round(340*w/hh))+'px':'')+'" role="button" aria-label="写真を開く"></span>';}).join('')+'</span>';
         }
       }catch(_){}
       return h;
     };
     D.__v233=true;return true;
   }
+  // v254: 一度表示した写真は同じ画像部品を使い回す（一覧を作り直しても展開し直さない）。表示は端末内URL（blob）。
+  const urls=new Map(),els=new Map();
+  function blobUrl(k,v){
+    if(urls.has(k))return urls.get(k);
+    let u=v;
+    try{const m=/^data:([^;,]+);base64,(.*)$/.exec(v);if(m){const bin=atob(m[2]);const a=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)a[i]=bin.charCodeAt(i);u=URL.createObjectURL(new Blob([a],{type:m[1]}));}}catch(_){u=v;}
+    urls.set(k,u);return u;
+  }
+  function put(el,k,v){
+    let im=els.get(k);
+    if(im&&im.isConnected&&im.parentNode!==el)im=im.cloneNode(false);
+    if(!im){im=document.createElement('img');im.alt='写真';im.decoding='async';im.src=blobUrl(k,v);}
+    if(!els.get(k)||!els.get(k).isConnected)els.set(k,im);
+    el.textContent='';el.appendChild(im);
+  }
   function fill(el){
     if(el.dataset.trFilled)return;el.dataset.trFilled='1';
-    const id=el.dataset.img;
+    const id=el.dataset.img,k='thumb:'+id;
+    if(mem.has(k)&&mem.get(k)){put(el,k,mem.get(k));return;}
     load(id,'thumb').then(v=>{
-      if(v){el.innerHTML='<img alt="写真" src="'+v+'">';}
+      if(v){put(el,k,v);}
       else if(v===''){el.classList.add('trImgGone');el.textContent='写真は保存期間（'+KEEP_DAYS+'日）を過ぎたため削除されました';}
       else{const n=(tries.get(id)||0)+1;tries.set(id,n);if(n<2)el.dataset.trFilled='';}
     });
@@ -23705,7 +23723,7 @@ window.__trFilePickStart=function(input){
       let s=document.getElementById('trImgSend');if(s)s.remove();
       s=document.createElement('div');s.id='trImgSend';
       s.innerHTML='<div class="trImgCard"><b>'+(list.length>1?list.length+'枚の写真':'この写真')+'を送りますか？</b><div class="trSendGrid'+(list.length===1?' trOne':'')+'"></div><p>'+(cut?'選んだうち'+list.length+'枚だけ送ります（1日'+LIMIT+'枚まで）。':'')+(caption?'入力中の文も一緒に送ります。':'')+'今日はあと'+Math.max(0,LIMIT-used())+'枚送れます。写真は'+KEEP_DAYS+'日で自動的に消えます。</p><div class="trImgBtns"><button type="button" data-a="no">やめる</button><button type="button" class="trOk" data-a="ok">送信</button></div></div>';
-      const grid=s.querySelector('.trSendGrid');list.forEach(r=>{const im=document.createElement('img');im.alt='送る写真';im.src=list.length===1?r.full:r.thumb;grid.appendChild(im);});
+      const grid=s.querySelector('.trSendGrid');list.forEach(r=>{const im=document.createElement('img');im.alt='送る写真';im.src=r.thumb;/* v254: 1枚でも見本で表示（軽く） */grid.appendChild(im);});
       document.body.appendChild(s);
       s.addEventListener('click',e=>{const a=e.target.closest('[data-a]')?.dataset.a;if(!a)return;s.remove();res(a==='ok');});
     });
@@ -23858,9 +23876,20 @@ window.__trFilePickStart=function(input){
   function initial(name){const s=String(name||'').replace(/[\s\u3000（(].*$/,'').trim()||String(name||'').trim();return s?Array.from(s)[0]:'？';}
   // v244: 未登録はシンプルな灰色のシルエット（色付きの頭文字はやめる）
   const SIL='<svg viewBox="0 0 40 40" width="100%" height="100%" aria-hidden="true" style="display:block"><circle cx="20" cy="15" r="7.2" fill="#f4f5f6"/><path d="M6.5 36c1.6-7.6 7-11.6 13.5-11.6S31.9 28.4 33.5 36" fill="#f4f5f6"/></svg>';
+  // v254: 同じ人のアイコンは同じ端末内URL（blob）を使い、展開を共有。読み込み済みならシルエットを挟まずすぐ表示。
+  const avUrls=new Map();
+  function avUrl(k,v){
+    if(avUrls.has(k))return avUrls.get(k);
+    let u=v;
+    try{const m=/^data:([^;,]+);base64,(.*)$/.exec(v);if(m){const bin=atob(m[2]);const a=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)a[i]=bin.charCodeAt(i);u=URL.createObjectURL(new Blob([a],{type:m[1]}));}}catch(_){u=v;}
+    avUrls.set(k,u);return u;
+  }
+  function setImg(el,k,v){el.style.background='#ddd';el.innerHTML='<img alt="" decoding="async" src="'+avUrl(k,v)+'">';}
   function paint(el,uid,name){
+    const at=Number(ver[uid])||0,k=uid+':'+at,v=at?mem.get(k):'';
+    if(v){setImg(el,k,v);return;}
     el.style.background='#b9bdc2';el.innerHTML=SIL;
-    avatarOf(uid).then(v=>{if(v&&el.isConnected){el.style.background='#ddd';el.innerHTML='<img alt="" src="'+v+'">';}});
+    avatarOf(uid).then(v=>{if(v&&el.isConnected)setImg(el,uid+':'+(Number(ver[uid])||0),v);});
   }
   // ---- チャット：送った人のアイコンを吹き出しの左に
   const midUid=new Map();
@@ -24209,7 +24238,8 @@ body.portalChatIsolated.portalFieldInputActive #screen-chat>main.chatMain{
   document.addEventListener('focusin',later,true);
   document.addEventListener('focusout',()=>setTimeout(reserve,120),true);
   document.addEventListener('input',e=>{if(e.target&&e.target.closest&&e.target.closest('#screen-chat .chatComposer'))later();},true);
-  new MutationObserver(later).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','hidden','style']});
+  // v254: チャット画面・下のメニュー・body の変化のときだけ測り直す（ほかの画面の変化では動かさない）
+  new MutationObserver(rs=>{for(const r of rs){const t=r.target;if(t===body||(t.closest&&(t.closest('#screen-chat')||t.closest('nav.portalBottomTabs')))){if(t.id==='trRoomInput'||t.id==='portalChatInput')continue;later();return;}}}).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','hidden','style']});
   reserve();setTimeout(reserve,300);setTimeout(reserve,900);
 
   function keepLatestVisible(){
@@ -24343,6 +24373,12 @@ body.portalChatIsolated.portalFieldInputActive #screen-chat>main.chatMain{
 <style id="v252-chat-overlays">
 /* v252: チャット画面を開いている間も、写真の送信確認・拡大表示（保存）・アイコンの表示と設定を見えるようにする */
 body.portalChatIsolated > :is(#trImgSend,#trImgView,#trAvView,#trAvSheet,#trAvCrop){visibility:visible!important;opacity:1!important;pointer-events:auto!important}
+</style>
+<style id="v253-single-image">
+/* v253: 1枚の写真は切らずに全体を表示（縦長は高さ340pxに収まる幅に） */
+.trImgs.trOne{width:fit-content!important;max-width:100%}
+.trImgs.trOne .trImg{width:min(260px,64vw);max-height:none!important}
+.trImgs.trOne .trImg img{object-fit:contain!important;height:100%!important}
 </style>
 </body>
 </html>
