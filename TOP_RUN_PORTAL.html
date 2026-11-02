@@ -1,3 +1,5 @@
+<!-- TOP RUN PORTAL v240 | 2026-11-02 | Parent v239. REQUIRES Rules v240。(1) チャットのアイコンが消えていた不具合を修正（アイコンを<span>で入れていたため名前用の配置CSSが当たり見えなくなっていた→<i>に変更）。(2) マイページのアイコン欄を「チャットでの表示名」の下へ、「消す」を「アイコンを設定」の横へ。(3) 写真の見本を長辺320→640px（約40〜60KB）にしてくっきり表示。ルールの見本の上限を40000→90000文字に。 -->
+<!-- TOP RUN PORTAL v239 | 2026-11-02 | Parent v238. REQUIRES Rules v239。ルームの権限変更：(1) 開発者が管理画面の設定「ルームを作れる人」で許可した参加者（roomCreators/<uid>、管理者とは別）はルームを作れる。(2) 開発者以外（管理者・ルームを作れる人）は、自分が作ったルームだけ招待・外す・名前の変更・削除ができる。(3) 管理者はほかの人のルームを見られない（ルールでも開発者だけに）。(4) 開発者は今までどおり全ルームを見て管理できる。 -->
 <!-- TOP RUN PORTAL v238 | 2026-11-02 | Parent v237. REQUIRES Rules v238。テストしやすく：開発者は写真の1日5枚の上限なし、アイコンの10分に1回の制限なし（ルールでも開発者は除外）。参加者の制限は変えない。 -->
 <!-- TOP RUN PORTAL v237 | 2026-11-02 | Parent v236. REQUIRES Rules v237。(1) 写真：入力欄のボタンをシルエット1つに（iPhoneはタップで写真・カメラを選べる）、複数枚（1回5枚まで・1日5枚まで）を選んで1つのメッセージで送り並べて表示（images[]、古い版のため1枚目を image にも）。拡大表示で前後に移動。写真だけのメッセージは枠なし。入力欄の文字切れを直す（高さ・プレースホルダー短縮）。(2) アイコン：吹き出しの左ではなく名前の左に小さく（22px）、リアクション位置がずれない。マイページの設定欄は「表示名・プロフィールを編集する」の中へ。 -->
 <!-- TOP RUN PORTAL v236 | 2026-11-02 | Parent v235. 不具合修正：iPhoneで写真・スクショを選ぶとホーム画面に戻り、アイコン・写真が保存できない。原因＝写真の画面を開くとページを離れた扱い（pagehide/pageshow）になり、接続のリセットと再読み込みが走っていた。写真・カメラの画面を開いている間（最大3分、選択・取消で解除）は、リセットと再読み込みをしない。ルールは v235 のまま。 -->
@@ -6408,7 +6410,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v238</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v240</b></div>
   </div>
 </div>
 
@@ -6599,7 +6601,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v238</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v240</b></div>
   </div>
 </div>
 
@@ -17502,7 +17504,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       if(!/^i[A-Za-z0-9_]{8,60}$/.test(String(id||'')))throw Error('画像IDが不正です');
       const pre='data:image/jpeg;base64,';
       if(typeof full!=='string'||!full.startsWith(pre)||full.length>360000)throw Error('画像が大きすぎます');
-      if(typeof thumb!=='string'||!thumb.startsWith(pre)||thumb.length>40000)throw Error('見本の画像が大きすぎます');
+      if(typeof thumb!=='string'||!thumb.startsWith(pre)||thumb.length>90000)throw Error('見本の画像が大きすぎます');
       const at=Date.now();
       await dbMod.set(ref('chatImages/'+id),{uid:gate.uid,at,data:full});
       await dbMod.set(ref('chatImageThumbs/'+id),{uid:gate.uid,at,data:thumb});
@@ -17617,6 +17619,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       const RM={subs:new Map(),own:null,all:null,cn:null,common:'all',msg:null,mem:null,openId:'',mine:{},meta:{},allMeta:{},openMembers:{},memberReady:false,readKeys:{},readBusy:{},readErr:'',msgs:[],msgErr:'',err:'',uid:'',readTimer:null,counts:{},countKey:{}};
       const rOk=()=>gate.roleVerified===true&&!!gate.uid&&!!gate.profileId&&auth.currentUser?.uid===gate.uid&&gate.hasOperationalAccess();
       const rDev=()=>rOk()&&['developer','admin'].includes(gate.role); // v134: developer and admin manage rooms
+      const rMaker=()=>rDev()||(rOk()&&gate.roomCreator===true); // v239: 開発者が許可した「ルームを作れる人」も作れる
       const rId=id=>/^r[A-Za-z0-9_]{6,60}$/.test(String(id||''));
       const rUid=u=>/^[A-Za-z0-9_-]{6,128}$/.test(String(u||''));
       const CATS=['admin','parent','participant','personal','other'];
@@ -17708,6 +17711,8 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         if(RM.own&&RM.uid===gate.uid)return true;
         gate.roomsStop();
         const uid=gate.uid;RM.uid=uid;
+        // v239: ルームを作れる人か（1回だけ読む・数十バイト）
+        dbMod.get(ref('roomCreators/'+uid)).then(s=>{if(RM.uid!==uid)return;gate.roomCreator=s.val()?.active===true;emit();}).catch(()=>{gate.roomCreator=false;});
         if(gate.role==='developer'){
           RM.all=p94WatchValue(ref('roomMeta'),s=>{
             if(RM.uid!==uid)return;
@@ -17727,7 +17732,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         return true;
       };
       gate.roomsState=()=>{
-        const dev=rDev();
+        const dev=rMaker();
         const ids=new Set(Object.keys(RM.mine));
         if(isDevRole())Object.keys(RM.allMeta).forEach(id=>ids.add(id));
         const rooms=[...ids].filter(rId).map(id=>{
@@ -17739,7 +17744,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
           const nmode=['mention','off'].includes(me?.notify)?me.notify:'all';
           const count=pending?(RM.counts[id]===undefined||RM.countKey[id]!==lastAt+'|'+readAt?1:RM.counts[id]):0;
           return {id,name:String(m?.name||''),category:CATS.includes(m?.category)?m.category:'other',status,lastAt,readAt,
-            unread:count>0,count,notify:nmode,loaded:!!m};
+            unread:count>0,count,notify:nmode,loaded:!!m,manage:isDevRole()||(!!m&&m.createdBy===gate.uid&&rMaker())};
         }).filter(r=>r.loaded&&(r.status==='invited'||r.status==='joined'||r.status==='view'))
           .sort((a,b)=>({invited:0,joined:1,view:2}[a.status]??3)-({invited:0,joined:1,view:2}[b.status]??3)||b.lastAt-a.lastAt||a.name.localeCompare(b.name,'ja'));
         return {ready:rOk()&&!!RM.own,isDev:dev,uid:gate.uid,rooms,openId:RM.openId,msgs:RM.msgs.slice(),openMembers:{...(RM.openMembers||{})},readErr:RM.readErr,msgErr:RM.msgErr,err:RM.err};
@@ -17796,7 +17801,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       };
       gate.roomSend=async(id,value)=>{
         if(!rOk()||!rId(id)||auth.currentUser?.uid!==gate.uid)throw Error('本人認証が確認できません');
-        if(RM.mine[id]?.status!=='joined'&&!rDev())throw Error('このルームには入室していません');
+        if(RM.mine[id]?.status!=='joined'&&!isDevRole())throw Error('このルームには入室していません');
         const text=String(value||'').trim().slice(0,1000);if(!text)throw Error('本文を入力してください');
         const mid='m'+Date.now()+'_'+Math.random().toString(36).slice(2,11);
         const ex=window.__trChatExtras?.take?.('room:'+id,text)||{};
@@ -17838,7 +17843,9 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
           .map(([uid,m])=>({uid,name:String(m.name||''),status:String(m.status||'')}))
           .sort((a,b)=>({joined:0,invited:1,left:2}[a.status]??3)-({joined:0,invited:1,left:2}[b.status]??3)||a.name.localeCompare(b.name,'ja'));
       };
-      const devOnly=()=>{if(!rDev())throw Error('この操作は開発者・管理者だけができます');};
+      const devOnly=()=>{if(!rMaker())throw Error('この操作は、ルームを作れる人だけができます');};
+      // v239: 開発者以外は、自分が作ったルームだけ変更できる
+      const ownOnly=id=>{if(isDevRole())return;const m=metaOf(id);if(!m||m.createdBy!==gate.uid)throw Error('自分が作ったルームだけ変更できます');};
       // v134: approved-member picker for developer AND admin (same two one-shot reads as the developer roster; no listener, no write).
       // v137: picker in two developer-curated groups.
       // athletes = 管理画面「選手」 (athleteSelections); participants = 管理画面の設定「チャットの参加者」 (chatPeople).
@@ -17867,6 +17874,22 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
           await dbMod.set(ref('memberSeen/'+uid),{at:Date.now()});
           try{localStorage.setItem(k,String(Date.now()));}catch(_){}
         }catch(e){console.warn('[TOP RUN v223] memberSeen write skipped',String(e?.code||e?.message||e).slice(0,80));}
+      };
+      // v239: 「ルームを作れる人」（開発者だけ読み書き）
+      gate.roomCreatorsLoad=async()=>{
+        if(!isDevRole())throw Error('開発者の権限が必要です');
+        return (await dbMod.get(ref('roomCreators'))).val()||{};
+      };
+      gate.roomCreatorsSave=async(list)=>{
+        if(!isDevRole()||auth.currentUser?.uid!==gate.uid)throw Error('開発者の権限が必要です');
+        const u={},now=Date.now();let n=0;
+        for(const p of (Array.isArray(list)?list:[])){
+          if(!rUid(p?.uid))continue;
+          if(p.on){u['roomCreators/'+p.uid]={active:true,name:String(p.name||'名前なし').slice(0,24)||'名前なし',at:now};n++;}
+          else u['roomCreators/'+p.uid]=null;
+        }
+        if(Object.keys(u).length)await dbMod.update(dbMod.ref(db,root),u);
+        return n;
       };
       gate.chatPeopleCandidates=async()=>{
         if(!rDev()||gate.role!=='developer')throw Error('開発者の権限が必要です');
@@ -17944,6 +17967,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         name=String(name||'').trim();
         if(name.length<1||name.length>30)throw Error('ルーム名を1～30文字で入力してください');
         if(!CATS.includes(category))category='other'; // v139: no room type; name is free text
+        if(category==='admin'&&!rDev())category='other'; // v239
         const list=(Array.isArray(members)?members:[]).filter(m=>rUid(m?.uid)&&m.uid!==gate.uid);
         if(list.length>80)throw Error('一度に招待できるのは80人までです');
         const id='r'+Date.now()+'_'+Math.random().toString(36).slice(2,9),now=Date.now();
@@ -17957,7 +17981,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         return id;
       };
       gate.roomInvite=async(id,members)=>{
-        devOnly();if(!rId(id)||!metaOf(id))throw Error('ルームが見つかりません');
+        devOnly();if(!rId(id)||!metaOf(id))throw Error('ルームが見つかりません');ownOnly(id);
         const current=(await dbMod.get(ref('roomMembers/'+id))).val()||{};
         const list=(Array.isArray(members)?members:[]).filter(m=>rUid(m?.uid)&&!['joined','invited'].includes(current[m.uid]?.status));
         if(!list.length)return 0;
@@ -17968,7 +17992,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         return list.length;
       };
       gate.roomRename=async(id,name)=>{
-        devOnly();if(!rId(id)||!metaOf(id))throw Error('ルームが見つかりません');
+        devOnly();if(!rId(id)||!metaOf(id))throw Error('ルームが見つかりません');ownOnly(id);
         name=String(name||'').trim();
         if(name.length<1||name.length>30)throw Error('ルーム名を1～30文字で入力してください');
         await dbMod.set(ref('roomMeta/'+id+'/name'),name);
@@ -17998,11 +18022,11 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         return list.length;
       };
       gate.roomRemoveMember=async(id,uid)=>{
-        devOnly();if(!rId(id)||!rUid(uid))throw Error('メンバーを確認できません');
+        devOnly();if(!rId(id)||!rUid(uid))throw Error('メンバーを確認できません');ownOnly(id);
         await dbMod.update(dbMod.ref(db,root),{['roomMembers/'+id+'/'+uid]:null,['userRooms/'+uid+'/'+id]:null});
       };
       gate.roomDelete=async id=>{
-        devOnly();if(!rId(id))throw Error('ルームを確認できません');
+        devOnly();if(!rId(id))throw Error('ルームを確認できません');ownOnly(id);
         const current=(await dbMod.get(ref('roomMembers/'+id))).val()||{};
         const u={['roomMeta/'+id]:null,['roomMembers/'+id]:null,['roomMessages/'+id]:null};
         Object.keys(current).filter(rUid).forEach(uid=>{u['userRooms/'+uid+'/'+id]=null;});
@@ -20564,11 +20588,11 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
     if(setTab==='members')return back;
     const item=(attr,icon,title,sub,cls='')=>'<button type="button" class="trRoomBtn trSetItem'+cls+'" '+attr+'><span class="trSetIcon" aria-hidden="true">'+icon+'</span><span class="trSetText"><b>'+title+'</b>'+(sub?'<small>'+sub+'</small>':'')+'</span><span class="trSetGo" aria-hidden="true">›</span></button>';
     let h='<div class="trRoomCard trSetCard"><b class="trCardTitle">'+esc(common?'共通チャット':r.name)+' の設定</b>';
-    if(!common)h+=item('data-set-tab="members"',silhouettes.people,'メンバー',s?.isDev?'確認・招待・外す':'メンバーを確認');
+    if(!common)h+=item('data-set-tab="members"',silhouettes.people,'メンバー',(s?.isDev&&r?.manage)?'確認・招待・外す':'メンバーを確認');
     if(canNotify)h+=item('data-set-tab="notify"',silhouettes.bell,'通知','現在：'+notifyText(mode));
-    if(!common&&s?.isDev)h+=item('data-room-rename',silhouettes.pencil,'ルーム名を変更','');
+    if(!common&&s?.isDev&&r?.manage)h+=item('data-room-rename',silhouettes.pencil,'ルーム名を変更','');
     if(!common&&r.status==='joined')h+=item('data-room-leave',silhouettes.leave,'退室','もう一度招待されるまで入れません',' warn');
-    if(!common&&s?.isDev)h+=item('data-room-delete',silhouettes.trash,'このルームを削除','メッセージもすべて消えます',' warn');
+    if(!common&&s?.isDev&&r?.manage)h+=item('data-room-delete',silhouettes.trash,'このルームを削除','メッセージもすべて消えます',' warn');
     h+='</div><div class="trRoomRow"><button type="button" class="trRoomBtn main" '+(common?'data-room-common':'data-settings-open')+'>'+(common?'共通チャットへ':'ルームを開く')+'</button></div>';
     return h;
   }
@@ -20848,14 +20872,15 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
   }
   async function renderMembers(){
     const box=$('trRoomMembersBox'),id=rid(),s=state();
+    const mg=!!(s?.isDev&&roomOf(s,id)?.manage); // v239: 自分のルームだけ
     box.hidden=false;box.innerHTML='<p class="trRoomNote">メンバーを確認中です。</p>';
     let list=[];
     try{list=await gate().roomMembers(id);}catch(e){if(rid()===id)box.innerHTML='<p class="trRoomNote">メンバーを確認できません：'+esc(errText(e))+'</p>';return;}
     if(rid()!==id)return;
     const label={joined:'入室中',invited:'招待中',left:'退室'};
     let html='<b class="trCardTitle">メンバー</b>'+list.map(m=>'<div class="trMemberRow"><span>'+esc(window.trChatNameLabel?window.trChatNameLabel(m.uid,m.name):(m.name||'参加者'))+'<small>'+esc(label[m.status]||'')+'</small></span>'+
-      (s?.isDev&&m.uid!==s.uid?'<button type="button" class="trRoomBtn warn" data-member-remove="'+esc(m.uid)+'" data-name="'+esc(m.name)+'">外す</button>':'')+'</div>').join('');
-    if(s?.isDev){
+      (mg&&m.uid!==s.uid?'<button type="button" class="trRoomBtn warn" data-member-remove="'+esc(m.uid)+'" data-name="'+esc(m.name)+'">外す</button>':'')+'</div>').join('');
+    if(mg){
       html+='<div class="trRoomRow"><button type="button" class="trRoomBtn" data-invite-more>招待を追加</button></div><div id="trRoomMorePick"></div>';
     }
     box.innerHTML=html;
@@ -23461,7 +23486,7 @@ window.__trFilePickStart=function(input){
   'use strict';
   const COMMON_ON=false; // まずルームだけ。共通チャットにも出すときは true にする
   const g=()=>window.__TR_PORTAL_SYNC__;
-  const LIMIT=5,PER_MSG=5,FULL_MAX=1600,FULL_BYTES=250*1024,THUMB_MAX=320,KEEP_DAYS=30;
+  const LIMIT=5,PER_MSG=5,FULL_MAX=1600,FULL_BYTES=250*1024,THUMB_MAX=640,KEEP_DAYS=30; // v240: 見本を320→640pxに（くっきり表示）
   const ID_RE=/^i[A-Za-z0-9_]{8,60}$/;
   const PLACE=/^📷 写真( ?\d+枚)?$/;
   const say=(t,m)=>{try{window.showActionFeedback?window.showActionFeedback(t,m):alert(t+'\n'+m);}catch(_){}};
@@ -23574,8 +23599,7 @@ window.__trFilePickStart=function(input){
       max=Math.round(max*0.8);
     }
     if(full.length>355000||full.indexOf('data:image/jpeg;base64,')!==0)throw Error('画像を小さくできませんでした');
-    let thumb=draw(src,THUMB_MAX).toDataURL('image/jpeg',0.6);
-    if(thumb.length>38000)thumb=draw(src,240).toDataURL('image/jpeg',0.5);
+    let thumb='';for(const [mx,q] of [[THUMB_MAX,0.72],[THUMB_MAX,0.6],[520,0.6],[400,0.55]]){thumb=draw(src,mx).toDataURL('image/jpeg',q);if(thumb.length<=85000)break;}
     try{src.close&&src.close();}catch(_){}
     return {full,thumb,w:c.width,h:c.height};
   }
@@ -23659,13 +23683,13 @@ window.__trFilePickStart=function(input){
 <style id="v235-avatar-style">
 /* v235: アイコン（チャットの名前の横・マイページ） */
 #screen-chat :is(#portalChatThread,#trRoomThread) .msg.trHasAv{margin-top:14px!important}
-#screen-chat :is(#portalChatThread,#trRoomThread) .msg .msgHead span:first-child .trAv{display:inline-flex!important;vertical-align:middle;width:22px;height:22px;margin-right:6px;border-radius:50%;overflow:hidden;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;cursor:pointer;box-sizing:border-box;border:1px solid rgba(128,128,128,.3);pointer-events:auto}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg .msgHead span:first-child i.trAv{position:static!important;font-style:normal;display:inline-flex!important;vertical-align:middle;width:22px;height:22px;margin-right:6px;border-radius:50%;overflow:hidden;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;cursor:pointer;box-sizing:border-box;border:1px solid rgba(128,128,128,.3);pointer-events:auto}
 .trAv img{width:100%;height:100%;object-fit:cover;display:block}
 .trAv img,.trAvBig img{width:100%;height:100%;object-fit:cover;display:block}
-#trAvatarPanel{margin:0 0 14px;padding:0!important;border:0!important;box-shadow:none!important;background:transparent!important}
-#trAvatarPanel .trAvRow{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-#trAvatarPanel .trAvBig{width:64px;height:64px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:#fff;flex:none;border:1px solid rgba(128,128,128,.35)}
-#trAvatarPanel button{min-height:42px;padding:0 14px;border-radius:11px;font-weight:800}
+#trAvatarPanel{margin:16px 0 0;padding:14px 0 0!important;border-top:1px solid rgba(128,128,128,.3)!important;border:0!important;box-shadow:none!important;background:transparent!important}
+#trAvatarPanel .trAvRow{display:flex;gap:10px;align-items:center;flex-wrap:nowrap}
+#trAvatarPanel .trAvBig{width:56px;height:56px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:#fff;flex:none;border:1px solid rgba(128,128,128,.35)}
+#trAvatarPanel button{min-height:40px;padding:0 12px;border-radius:11px;font-weight:800;font-size:14px;white-space:nowrap}
 #trAvatarPanel p{font-size:12px;opacity:.8;margin:8px 0 0}
 #trAvSheet{position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:16px}
 #trAvSheet .trAvCard{background:#faf9f5;color:#222;border-radius:16px;padding:16px;width:min(360px,100%);box-sizing:border-box;text-align:center}
@@ -23756,7 +23780,7 @@ window.__trFilePickStart=function(input){
     const key=uid+':'+(Number(ver[uid])||0);
     if(av&&av.dataset.key===key)return;
     const name=(av?nameEl.textContent.replace(av.textContent,''):nameEl.textContent).trim();
-    if(!av){av=document.createElement('span');av.className='trAv';av.setAttribute('role','button');av.setAttribute('aria-label','アイコンを見る');nameEl.insertBefore(av,nameEl.firstChild);msg.classList.add('trHasAv');}
+    if(!av){av=document.createElement('i');av.className='trAv';av.setAttribute('role','button');av.setAttribute('aria-label','アイコンを見る');nameEl.insertBefore(av,nameEl.firstChild);msg.classList.add('trHasAv');}
     av.dataset.key=key;av.dataset.uid=uid;av.dataset.name=name;
     paint(av,uid,name);
   }
@@ -23830,15 +23854,74 @@ window.__trFilePickStart=function(input){
   function addPanel(){
     if(document.getElementById('trAvatarPanel'))return;
     const box=document.querySelector('#portalProfileEditorDisclosure .portalProfileEditorContent');if(!box)return;
+    const after=document.getElementById('trChatNameBox');
     const sec=document.createElement('section');sec.className='portalPanel';sec.id='trAvatarPanel';
-    sec.innerHTML='<div class="portalPanelHead"><small>ICON</small><b>アイコン</b></div><div class="trAvRow"><span class="trAvBig"></span><button type="button" data-a="set">アイコンを設定</button><button type="button" data-a="del" hidden>アイコンを消す</button></div><p>チャットで名前の横に表示されます。顔写真でなくても大丈夫です。変更は10分に1回までです。</p>';
-    box.insertBefore(sec,box.firstChild);
+    sec.innerHTML='<div class="portalPanelHead"><small>ICON</small><b>アイコン</b></div><div class="trAvRow"><span class="trAvBig"></span><button type="button" data-a="set">アイコンを設定</button><button type="button" data-a="del" hidden>消す</button></div><p>チャットで名前の横に表示されます。顔写真でなくても大丈夫です。変更は10分に1回までです。</p>';
+    if(after&&box.contains(after))after.insertAdjacentElement('afterend',sec);else box.appendChild(sec); // v240: チャットでの表示名の下
     sec.addEventListener('click',e=>{const a=e.target.closest('[data-a]')?.dataset.a;if(!a)return;const gate=g();if(!gate?.canSendChat?.()){say('設定できません','本人接続と参加の承認が必要です。');return;}if(a==='set')openSet();if(a==='del')removeMine();});
     paintMine();
   }
   function tick(){hookNames();hookDecor();addPanel();paintMine();}
   tick();
   let n=0;const iv=setInterval(()=>{tick();if(++n>120)clearInterval(iv);},1000);
+  window.addEventListener('tr-portal-authorized',tick);
+})();
+</script>
+
+<script id="v239-room-creators">
+/* v239: 管理画面の設定「ルームを作れる人（開発者）」。チャットの参加者から選び、roomCreators/<uid> に保存（開発者だけ書ける）。 */
+(function(){
+  'use strict';
+  const $=id=>document.getElementById(id);
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const g=()=>window.__TR_PORTAL_SYNC__;
+  const isDev=()=>{const x=g();return x?.role==='developer'&&x.roleVerified===true;};
+  let busy=false;
+  function mount(){
+    if($('trRoomCreatorsSection'))return true;
+    const anchor=$('trChatPeopleSection');if(!anchor)return false;
+    anchor.insertAdjacentHTML('afterend',
+      '<section id="trRoomCreatorsSection" class="portalManagementSettingsSection" hidden>'+
+        '<div class="portalPanelHead"><small>CHAT / ROOMS</small><b>ルームを作れる人（開発者）</b></div>'+
+        '<details class="portalManageAccessDisclosure" id="trRoomCreatorsDetails"><summary>ルームを作れる人を選ぶ</summary>'+
+          '<div class="portalIdentityLinkBody">'+
+            '<p style="font-size:13px">保護者どうし・個人・少人数のやりとりのために、ルームを作れる人を選びます（管理者の権限とは別です）。作った人は、自分のルームだけ招待・外す・名前の変更・削除ができます。ほかの人のルームは見られません。開発者はすべてのルームを見られます。招待できる人は「チャットの参加者」に選んだ人です。</p>'+
+            '<button id="trRoomCreatorsLoad" type="button" style="min-height:43px">読み込む</button>'+
+            '<div id="trRoomCreatorsList"></div>'+
+            '<button id="trRoomCreatorsSave" type="button" style="min-height:43px;margin-top:12px;width:100%" hidden>保存する</button>'+
+            '<p id="trRoomCreatorsState" role="status" style="white-space:pre-wrap;font-size:12px"></p>'+
+          '</div>'+
+        '</details>'+
+      '</section>');
+    $('trRoomCreatorsLoad').addEventListener('click',load);
+    $('trRoomCreatorsSave').addEventListener('click',save);
+    return true;
+  }
+  const say=t=>{const p=$('trRoomCreatorsState');if(p)p.textContent=t;};
+  async function load(){
+    if(busy)return;busy=true;say('読み込み中です。');
+    try{
+      const [roster,cur]=await Promise.all([g().roomRoster(),g().roomCreatorsLoad()]);
+      const people=[...(roster.athletes||[]),...(roster.others||[])];
+      const seen=new Set(people.map(p=>p.uid));
+      for(const [uid,it] of Object.entries(cur||{}))if(!seen.has(uid)&&it?.active)people.push({uid,name:String(it.name||'名前なし')+'（チャットの参加者にいません）'});
+      $('trRoomCreatorsList').innerHTML=people.length?people.map(p=>'<label class="trCpRow" style="display:flex;gap:10px;align-items:center;padding:8px 0"><input type="checkbox" data-rc="'+esc(p.uid)+'" data-name="'+esc(String(p.name).replace(/（チャットの参加者にいません）$/,''))+'"'+(cur?.[p.uid]?.active?' checked':'')+'><span>'+esc(p.name)+'</span></label>').join(''):'<p style="font-size:13px">「チャットの参加者」に選んだ人がいません。</p>';
+      $('trRoomCreatorsSave').hidden=!people.length;
+      say(Object.values(cur||{}).filter(x=>x?.active).length+'人が許可されています。');
+    }catch(e){say('読み込めません：'+String(e?.code||e?.message||e).slice(0,80));}
+    finally{busy=false;}
+  }
+  async function save(){
+    if(busy)return;busy=true;say('保存中です。');
+    try{
+      const list=[...document.querySelectorAll('#trRoomCreatorsList input[data-rc]')].map(el=>({uid:el.dataset.rc,name:el.dataset.name,on:el.checked}));
+      const n=await g().roomCreatorsSave(list);
+      say('保存しました（'+n+'人が許可されています）。許可された人は、PORTALを開き直すとルームを作れます。');
+    }catch(e){say('保存できません：'+String(e?.code||e?.message||e).slice(0,80));}
+    finally{busy=false;}
+  }
+  function tick(){if(!mount())return;$('trRoomCreatorsSection').hidden=!isDev();}
+  tick();let n=0;const iv=setInterval(()=>{tick();if(++n>120)clearInterval(iv);},1000);
   window.addEventListener('tr-portal-authorized',tick);
 })();
 </script>
