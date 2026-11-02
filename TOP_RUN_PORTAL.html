@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v248 | 2026-11-02 | Parent v247. (1) チャットの既読・時刻が画面の右端で切れる：ほかの人の吹き出しの最大幅を、アイコン分＋既読・時刻分（58px）を引いた幅に（自分の吹き出しも同じ58px）。既読・時刻は折り返さない。リアクションは吹き出しの下の行のままで重ならない。(2) 写真の「保存」で共有画面を開くとiPhoneが読み込み直してホームに戻る：共有画面の間も写真選択と同じく切断・再読み込みをしない。読み込み直されたときは元のルームに戻す。iPhoneでは別ページを開く保存方法を使わない。(3) 写真の拡大表示：背景を黒に、写真はボタンにかからない大きさに縮小、ボタンを濃い色に、保存ボタンを下中央に。(4) アイコン：選んだ写真を動かして丸い枠に合わせる切り取り画面（指で移動、2本指・スライダーで拡大）。保存は最大256px、段階的に縮めて粗さを防ぐ（データの上限は今までと同じ）。Rules v240 のまま。 -->
 <!-- TOP RUN PORTAL v247 | 2026-11-02 | Parent v246. チャット：メッセージとリアクションの間の余白を詰める、チームロゴのリアクションを18→26pxに。見た目だけ、ほかは変更なし。Rules v240 のまま。 -->
 <!-- TOP RUN PORTAL v246 | 2026-11-02 | Parent v245. (1) 写真を選ぶとホームに戻る件：コード側の再読み込みはv236で止めたが、iPhone自体がPORTALを読み込み直している（メモリ不足など）。3分以内の読み込み直しなら元のルーム／マイページに戻し「もう一度選んでください」と案内。(2) 複数枚の写真を切らずに全体を縮小して並べる。Rules v240 のまま。 -->
 <!-- TOP RUN PORTAL v245 | 2026-11-02 | Parent v244. (1) 画面の拡大ができなかった：v218 で iPhone に maximum-scale=1 を付けていたため（ホーム画面のアプリでは指での拡大も止まる）。付けるのをやめ、入力時の自動拡大は入力欄の文字を16px以上にして防ぐ。(2) 写真の拡大表示：指2本で拡大、2回タップで拡大／戻す、拡大中は指1本で移動。(3) 写真の「保存」ボタン（共有画面から写真に保存）。保存は表示中の画像を使うので通信は増えない。Rules v240 のまま。 -->
@@ -6423,7 +6424,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v247</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v248</b></div>
   </div>
 </div>
 
@@ -6614,7 +6615,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v247</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v248</b></div>
   </div>
 </div>
 
@@ -23573,6 +23574,8 @@ window.__trFilePickStart=function(input){
   function view(ids,start){
     // v245: 指2本で拡大・2回タップで拡大／戻す・拡大中は指1本で移動。「保存」ボタン（端末の共有画面から写真に保存）。
     let v=document.getElementById('trImgView');if(v)v.remove();
+    const ctxRoom=(document.querySelector('#trRoomThread')&&g()?.roomReactCtx?.().openId)||''; // v248: 読み込み直されたときに戻るルーム
+    const isIOS=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
     v=document.createElement('div');v.id='trImgView';
     v.innerHTML='<div class="trImgStage"><img alt="写真" draggable="false"></div><button type="button" class="trImgClose" aria-label="閉じる">✕</button><button type="button" class="trImgSave" aria-label="写真を保存">保存</button>'+(ids.length>1?'<button type="button" class="trImgPrev" aria-label="前の写真">‹</button><button type="button" class="trImgNext" aria-label="次の写真">›</button>':'')+'<div class="trImgNote"></div>';
     document.body.appendChild(v);
@@ -23592,7 +23595,16 @@ window.__trFilePickStart=function(input){
       try{
         const blob=await (await fetch(src)).blob();
         const file=new File([blob],'toprun_'+Date.now()+'.jpg',{type:'image/jpeg'});
-        if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file]});return;}
+        if(navigator.canShare&&navigator.canShare({files:[file]})){
+          // v248: 共有画面の間にページを離れた扱いになり、切断・再読み込みでホームに戻っていた。写真選択と同じ印を付けて止める。
+          window.__trFilePicking=Date.now();
+          try{localStorage.setItem('trPickReturn',JSON.stringify({ctx:'save',roomId:ctxRoom,at:Date.now()}));}catch(_){}
+          try{await navigator.share({files:[file]});}
+          finally{setTimeout(()=>{window.__trFilePicking=0;},1500);try{localStorage.removeItem('trPickReturn');}catch(_){}}
+          return;
+        }
+        // v248: iPhoneで別ページ（ダウンロード）を開くとアプリの外に出てホームに戻るため使わない
+        if(isIOS){say('保存の方法','写真を長押しして「写真に追加」を選んでください。');return;}
         const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=file.name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);
       }catch(e){if(e&&e.name==='AbortError')return;say('保存できませんでした','写真を長押しして保存してください。');}
     }
@@ -23875,13 +23887,69 @@ window.__trFilePickStart=function(input){
     try{if(window.createImageBitmap)return await createImageBitmap(file,{imageOrientation:'from-image'});}catch(_){}
     return await new Promise((res,rej)=>{const u=URL.createObjectURL(file);const im=new Image();im.onload=()=>res(im);im.onerror=()=>rej(Error('画像を読み込めません'));im.src=u;});
   }
-  async function makeIcon(file){
-    const src=await decode(file);const sw=src.width||src.naturalWidth,sh=src.height||src.naturalHeight;const s=Math.min(sw,sh);
-    const c=document.createElement('canvas');c.width=128;c.height=128;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,128,128);
-    x.drawImage(src,(sw-s)/2,(sh-s)/2,s,s,0,0,128,128);try{src.close&&src.close();}catch(_){}
-    let d='';for(const q of [0.82,0.72,0.6,0.5]){d=c.toDataURL('image/jpeg',q);if(d.length<=26000)break;}
-    if(d.length>26000||d.indexOf('data:image/jpeg;base64,')!==0)throw Error('アイコンを小さくできませんでした');
-    return d;
+  // v248: アイコンの切り取り。選んだ写真を指で動かして丸い枠に合わせる（2本指・スライダーで拡大）。
+  //   扱う見本は長辺1400pxに縮める（iPhoneのメモリ不足による読み込み直しを防ぐ）。保存は最大256px、半分ずつ縮めて粗さを防ぐ。データの上限は今までと同じ。
+  const hq=x=>{x.imageSmoothingEnabled=true;try{x.imageSmoothingQuality='high';}catch(_){}return x;};
+  async function previewOf(file){
+    const src=await decode(file);const sw=src.width||src.naturalWidth,sh=src.height||src.naturalHeight;
+    const k=Math.min(1,1400/Math.max(sw,sh));const c=document.createElement('canvas');c.width=Math.max(1,Math.round(sw*k));c.height=Math.max(1,Math.round(sh*k));
+    const x=hq(c.getContext('2d'));x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(src,0,0,c.width,c.height);try{src.close&&src.close();}catch(_){}
+    return c;
+  }
+  function shrink(src,sx,sy,side,out){
+    let size=Math.max(out,Math.min(Math.round(side),out*4));
+    let cur=document.createElement('canvas');cur.width=size;cur.height=size;
+    let x=hq(cur.getContext('2d'));x.fillStyle='#fff';x.fillRect(0,0,size,size);x.drawImage(src,sx,sy,side,side,0,0,size,size);
+    while(size>out){const ns=Math.max(out,Math.round(size/2));const n=document.createElement('canvas');n.width=ns;n.height=ns;hq(n.getContext('2d')).drawImage(cur,0,0,size,size,0,0,ns,ns);cur=n;size=ns;}
+    return cur;
+  }
+  function encodeIcon(src,sx,sy,side){
+    for(const out of [256,224,192,160,128]){
+      const c=shrink(src,sx,sy,side,out);
+      for(const q of [0.9,0.84,0.78,0.72]){const d=c.toDataURL('image/jpeg',q);if(d.length<=26000&&d.indexOf('data:image/jpeg;base64,')===0)return d;}
+    }
+    throw Error('アイコンを小さくできませんでした');
+  }
+  function cropIcon(file){
+    return new Promise(async res=>{
+      let pc;try{pc=await previewOf(file);}catch(e){say('アイコンにできませんでした','別の写真でお試しください。');res('');return;}
+      const W=pc.width,H=pc.height;
+      let o=document.getElementById('trAvCrop');if(o)o.remove();
+      o=document.createElement('div');o.id='trAvCrop';o.setAttribute('role','dialog');o.setAttribute('aria-label','アイコンの切り取り');
+      o.innerHTML='<div class="trCropHead"><b>位置と大きさを合わせる</b><span>写真を指で動かして、丸い枠に合わせてください</span></div><div class="trCropStage"><div class="trCropRing"></div></div><div class="trCropZoom"><span aria-hidden="true">－</span><input type="range" min="1" max="4" step="0.01" value="1" aria-label="大きさ"><span aria-hidden="true">＋</span></div><div class="trCropBtns"><button type="button" data-a="no">やめる</button><button type="button" class="trOk" data-a="ok">このアイコンにする</button></div>';
+      document.body.appendChild(o);
+      const stage=o.querySelector('.trCropStage'),ring=o.querySelector('.trCropRing'),range=o.querySelector('input[type=range]');
+      pc.className='trCropImg';pc.style.width=W+'px';pc.style.height=H+'px';stage.insertBefore(pc,ring);
+      let F=200,base=1,z=1,cx=W/2,cy=H/2; // cx,cy：枠の中心が指している写真の位置
+      const clamp=()=>{const hw=F/2/(base*z);cx=Math.min(W-hw,Math.max(hw,cx));cy=Math.min(H-hw,Math.max(hw,cy));};
+      const draw=()=>{const r=stage.getBoundingClientRect(),s=base*z;pc.style.transform='translate('+(r.width/2-cx*s)+'px,'+(r.height/2-cy*s)+'px) scale('+s+')';};
+      const layout=()=>{const r=stage.getBoundingClientRect();F=Math.max(120,Math.round(Math.min(r.width,r.height)*0.86));ring.style.width=ring.style.height=F+'px';base=F/Math.min(W,H);clamp();draw();};
+      requestAnimationFrame(layout);const onResize=()=>layout();window.addEventListener('resize',onResize);
+      const pts=new Map();let g0=null;
+      const mid=a=>({x:a.reduce((t,p)=>t+p.x,0)/a.length,y:a.reduce((t,p)=>t+p.y,0)/a.length});
+      const gap=a=>Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);
+      const begin=()=>{const a=[...pts.values()];g0=a.length?{c:mid(a),d:a.length>1?gap(a):0,z,cx,cy}:null;};
+      const move=()=>{
+        if(!g0)return;const a=[...pts.values()];if(!a.length)return;const c=mid(a);
+        if(a.length>1&&g0.d>0)z=Math.min(4,Math.max(1,g0.z*gap(a)/g0.d));
+        const r=stage.getBoundingClientRect(),mx=r.left+r.width/2,my=r.top+r.height/2,s0=base*g0.z,s=base*z;
+        const px=g0.cx+(g0.c.x-mx)/s0,py=g0.cy+(g0.c.y-my)/s0;
+        cx=px-(c.x-mx)/s;cy=py-(c.y-my)/s;clamp();draw();range.value=String(z);
+      };
+      stage.addEventListener('pointerdown',e=>{e.preventDefault();try{stage.setPointerCapture(e.pointerId);}catch(_){}pts.set(e.pointerId,{x:e.clientX,y:e.clientY});begin();});
+      stage.addEventListener('pointermove',e=>{if(!pts.has(e.pointerId))return;e.preventDefault();pts.set(e.pointerId,{x:e.clientX,y:e.clientY});move();});
+      const up=e=>{if(!pts.has(e.pointerId))return;pts.delete(e.pointerId);begin();};
+      stage.addEventListener('pointerup',up);stage.addEventListener('pointercancel',up);
+      stage.addEventListener('wheel',e=>{e.preventDefault();z=Math.min(4,Math.max(1,z*(e.deltaY<0?1.08:1/1.08)));clamp();draw();range.value=String(z);},{passive:false});
+      range.addEventListener('input',()=>{z=Number(range.value)||1;clamp();draw();});
+      const finish=v=>{window.removeEventListener('resize',onResize);o.remove();res(v);};
+      o.addEventListener('click',e=>{
+        const a=e.target.closest('[data-a]')?.dataset.a;if(!a)return;
+        if(a==='no'){finish('');return;}
+        const side=F/(base*z);
+        try{finish(encodeIcon(pc,cx-side/2,cy-side/2,side));}catch(err){say('アイコンにできませんでした','別の写真でお試しください。');finish('');}
+      });
+    });
   }
   function sheet(html){let s=document.getElementById('trAvSheet');if(s)s.remove();s=document.createElement('div');s.id='trAvSheet';s.innerHTML='<div class="trAvCard">'+html+'</div>';document.body.appendChild(s);return s;}
   function pick(capture){
@@ -23889,16 +23957,10 @@ window.__trFilePickStart=function(input){
     f.style.display='none';document.body.appendChild(f);
     f.addEventListener('change',async()=>{
       const file=f.files&&f.files[0];f.remove();if(!file)return;
-      let d='';try{d=await makeIcon(file);}catch(e){say('アイコンにできませんでした','別の写真でお試しください。');return;}
-      const s=sheet('<b>このアイコンにしますか？</b><div class="trAvPrev"><img alt="アイコンの見本"></div><div class="trAvBtns"><button type="button" class="trOk" data-a="ok">このアイコンにする</button><button type="button" data-a="no">やめる</button></div>');
-      s.querySelector('img').src=d;
-      s.addEventListener('click',async e=>{
-        const a=e.target.closest('[data-a]')?.dataset.a;if(!a)return;
-        if(a==='no'){s.remove();return;}
-        e.target.disabled=true;
-        try{const at=await g().avatarPut(d);ver[g().uid]=at;mem.set(g().uid+':'+at,d);cput(g().uid+':'+at,d);s.remove();refreshAll();say('アイコンを設定しました','チャットで名前の横に表示されます。');}
-        catch(err){s.remove();const m=String(err?.message||'');const code=String(err?.code||m||'').slice(0,40);say('設定できませんでした',/10分/.test(m)?m:'通信状態を確認して、もう一度お試しください。（変更は10分に1回までです）'+(code?'\n原因：'+code:''));}
-      });
+      const d=await cropIcon(file); // v248: 切り取り画面で「このアイコンにする」を押すとそのまま保存
+      if(!d)return;
+      try{const at=await g().avatarPut(d);ver[g().uid]=at;mem.set(g().uid+':'+at,d);cput(g().uid+':'+at,d);refreshAll();say('アイコンを設定しました','チャットで名前の横に表示されます。');}
+      catch(err){const m=String(err?.message||'');const code=String(err?.code||m||'').slice(0,40);say('設定できませんでした',/10分/.test(m)?m:'通信状態を確認して、もう一度お試しください。（変更は10分に1回までです）'+(code?'\n原因：'+code:''));}
     });
     window.__trFilePickStart?.(f);try{localStorage.setItem('trPickReturn',JSON.stringify({ctx:'avatar',at:Date.now()}));}catch(_){}
     f.addEventListener('change',()=>{try{localStorage.removeItem('trPickReturn');}catch(_){}},{once:true});f.click();
@@ -24176,10 +24238,10 @@ body.portalChatIsolated.portalFieldInputActive #screen-chat>main.chatMain{
           setTimeout(()=>{const d=document.getElementById('portalProfileEditorDisclosure');if(d)d.open=true;document.getElementById('trAvatarPanel')?.scrollIntoView({block:'center'});},500);
         }else{
           document.querySelector('nav.portalBottomTabs [data-bottom-target="chat"]')?.click();
-          if(info.ctx==='room'&&info.roomId)setTimeout(()=>{try{window.__trOpenRoom?.(info.roomId);}catch(_){}},700);
+          if((info.ctx==='room'||info.ctx==='save')&&info.roomId)setTimeout(()=>{try{window.__trOpenRoom?.(info.roomId);}catch(_){}},700);
         }
       }catch(_){}
-      setTimeout(()=>say('もう一度選んでください',msg),1200);
+      setTimeout(()=>{if(info.ctx==='save')say('ルームに戻りました','保存の画面を開いている間に、iPhoneが画面を読み込み直しました。保存できていなければ、もう一度「保存」を押してください。');else say('もう一度選んでください',msg);},1200); // v248: 保存のとき
     },600);
   }
   window.addEventListener('tr-portal-authorized',go);
@@ -24197,6 +24259,34 @@ body.portalChatIsolated.portalFieldInputActive #screen-chat>main.chatMain{
 /* v247: メッセージとリアクションの間を詰める／チームロゴのリアクションを少し大きく（ほかは変更なし） */
 #screen-chat :is(#portalChatThread,#trRoomThread) .msg + .trReacts{margin-top:-9px!important}
 #screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trTeam{width:26px!important;height:26px!important}
+</style>
+<style id="v248-read-viewer-crop">
+/* v248: (1) 既読・時刻が右端で切れないよう、吹き出しの最大幅から既読・時刻の分（58px）を引く。リアクションは吹き出しの下の行のまま。 */
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg.trHasAv:not(.mine){max-width:min(calc(100% - 108px),600px)!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg:not(.mine):not(.trHasAv){max-width:min(calc(100% - 58px),600px)!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg.mine{max-width:min(calc(100% - 58px),620px)!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg .trReadMini,#screen-chat :is(#portalChatThread,#trRoomThread) .msg .msgHead span:last-child{white-space:nowrap!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg .trImgs{max-width:100%}
+/* (2) 写真の拡大表示：黒い背景、写真はボタンにかからない大きさに縮小、ボタンは濃い色、保存は下の中央 */
+#trImgView{background:#0b0d0c!important}
+#trImgView .trImgStage{padding:calc(66px + env(safe-area-inset-top,0px)) 6px calc(86px + env(safe-area-inset-bottom,0px))!important;box-sizing:border-box!important}
+#trImgView .trImgStage img{max-width:100%!important;max-height:100%!important}
+#trImgView button{background:rgba(26,30,28,.94)!important;border:1px solid rgba(255,255,255,.42)!important;color:#fff!important;-webkit-text-fill-color:#fff!important;z-index:2}
+#trImgView .trImgSave{top:auto!important;left:50%!important;transform:translateX(-50%)!important;bottom:calc(18px + env(safe-area-inset-bottom,0px))!important;min-width:160px!important;height:48px!important;background:#d8b52a!important;border-color:#d8b52a!important;color:#1d2421!important;-webkit-text-fill-color:#1d2421!important;font-size:16px!important}
+#trImgView .trImgNote{bottom:auto!important;top:calc(22px + env(safe-area-inset-top,0px))!important;z-index:2;pointer-events:none}
+/* (3) アイコンの切り取り画面（ホームの配色に合わせる） */
+#trAvCrop{position:fixed;inset:0;z-index:2147483000;background:#111513;color:#fff;display:flex;flex-direction:column;gap:12px;box-sizing:border-box;padding:calc(14px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px))}
+#trAvCrop .trCropHead{text-align:center}
+#trAvCrop .trCropHead b{display:block;font-size:17px;margin-bottom:4px}
+#trAvCrop .trCropHead span{font-size:13px;opacity:.78}
+#trAvCrop .trCropStage{position:relative;flex:1;min-height:0;overflow:hidden;touch-action:none;border-radius:14px;background:#000;cursor:grab}
+#trAvCrop .trCropImg{position:absolute;left:0;top:0;max-width:none!important;transform-origin:0 0;pointer-events:none}
+#trAvCrop .trCropRing{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%;border:2px solid #fff;box-sizing:border-box;box-shadow:0 0 0 9999px rgba(0,0,0,.6);pointer-events:none;z-index:1}
+#trAvCrop .trCropZoom{display:flex;align-items:center;gap:12px;font-size:18px;font-weight:800;padding:0 4px}
+#trAvCrop .trCropZoom input{flex:1;accent-color:#d8b52a;min-height:32px}
+#trAvCrop .trCropBtns{display:grid;grid-template-columns:1fr 1.5fr;gap:10px}
+#trAvCrop .trCropBtns button{min-height:48px;border-radius:12px;font-size:16px;font-weight:800;border:1px solid rgba(255,255,255,.4);background:transparent;color:#fff}
+#trAvCrop .trCropBtns button.trOk{background:#d8b52a;border-color:#d8b52a;color:#1d2421}
 </style>
 </body>
 </html>
