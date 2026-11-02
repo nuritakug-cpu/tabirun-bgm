@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v249 | 2026-11-02 | Parent v248. 写真を選ぶとチャットから出てしまう件：(1) 写真の読み込みを軽く（大きな写真を丸ごと展開する createImageBitmap をやめ、<img>で読んで必要な大きさだけ描く。縮小は描いた画像からくり返し、元の写真を何度も描かない）。チャットの写真・アイコンの両方。(2) 拡大表示で読んだ写真本体は最新4枚だけ手元に残す（メモリ節約）。(3) 写真を選んだあとの処理中に読み込み直されても元のルーム／マイページに戻す（これまでは選んだ時点で戻り先を消していた）。(4) 開発者には、読み込み直しが「写真を選ぶ画面」と「写真の処理中」のどちらで起きたかを表示。Rules v240 のまま。 -->
 <!-- TOP RUN PORTAL v248 | 2026-11-02 | Parent v247. (1) チャットの既読・時刻が画面の右端で切れる：ほかの人の吹き出しの最大幅を、アイコン分＋既読・時刻分（58px）を引いた幅に（自分の吹き出しも同じ58px）。既読・時刻は折り返さない。リアクションは吹き出しの下の行のままで重ならない。(2) 写真の「保存」で共有画面を開くとiPhoneが読み込み直してホームに戻る：共有画面の間も写真選択と同じく切断・再読み込みをしない。読み込み直されたときは元のルームに戻す。iPhoneでは別ページを開く保存方法を使わない。(3) 写真の拡大表示：背景を黒に、写真はボタンにかからない大きさに縮小、ボタンを濃い色に、保存ボタンを下中央に。(4) アイコン：選んだ写真を動かして丸い枠に合わせる切り取り画面（指で移動、2本指・スライダーで拡大）。保存は最大256px、段階的に縮めて粗さを防ぐ（データの上限は今までと同じ）。Rules v240 のまま。 -->
 <!-- TOP RUN PORTAL v247 | 2026-11-02 | Parent v246. チャット：メッセージとリアクションの間の余白を詰める、チームロゴのリアクションを18→26pxに。見た目だけ、ほかは変更なし。Rules v240 のまま。 -->
 <!-- TOP RUN PORTAL v246 | 2026-11-02 | Parent v245. (1) 写真を選ぶとホームに戻る件：コード側の再読み込みはv236で止めたが、iPhone自体がPORTALを読み込み直している（メモリ不足など）。3分以内の読み込み直しなら元のルーム／マイページに戻し「もう一度選んでください」と案内。(2) 複数枚の写真を切らずに全体を縮小して並べる。Rules v240 のまま。 -->
@@ -6424,7 +6425,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v248</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v249</b></div>
   </div>
 </div>
 
@@ -6615,7 +6616,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v248</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v249</b></div>
   </div>
 </div>
 
@@ -23526,6 +23527,7 @@ window.__trFilePickStart=function(input){
       let v=await cget(k);
       if(!v){try{v=await g()?.chatImageGet?.(id,kind);}catch(e){v=null;}if(v)cput(k,v);}
       if(v!==null&&v!==undefined)mem.set(k,v);
+      if(kind==='full'){const ks=[...mem.keys()].filter(x=>x.indexOf('full:')===0);while(ks.length>4)mem.delete(ks.shift());} // v249: 本体は最新4枚だけ手元に
       inflight.delete(k);return v===undefined?null:v;
     })();
     inflight.set(k,p);return p;
@@ -23655,28 +23657,36 @@ window.__trFilePickStart=function(input){
     X.take=function(k,text){const out=o(k,text)||{};if(pending&&pending.k===k){out.image=pending.images[0];out.images=pending.images;pending=null;}return out;};
     X.__v233=true;return true;
   }
+  // v249: 大きな写真を丸ごと展開しない（iPhoneのメモリ不足で読み込み直されるのを防ぐ）。<img>で読み、必要な大きさだけ描く。
   async function decode(file){
-    try{if(window.createImageBitmap)return await createImageBitmap(file,{imageOrientation:'from-image'});}catch(_){}
-    return await new Promise((res,rej)=>{const u=URL.createObjectURL(file);const im=new Image();im.onload=()=>res(im);im.onerror=()=>rej(Error('画像を読み込めません'));im.src=u;});
+    try{
+      return await new Promise((res,rej)=>{const u=URL.createObjectURL(file);const im=new Image();im.decoding='async';im.onload=()=>{im.__trUrl=u;res(im);};im.onerror=()=>{try{URL.revokeObjectURL(u);}catch(_){}rej(Error('画像を読み込めません'));};im.src=u;});
+    }catch(e){
+      if(window.createImageBitmap)return await createImageBitmap(file,{imageOrientation:'from-image'});
+      throw e;
+    }
   }
+  function release(src){try{if(src&&src.__trUrl){URL.revokeObjectURL(src.__trUrl);src.__trUrl='';src.removeAttribute&&src.removeAttribute('src');}else if(src&&src.close)src.close();}catch(_){}}
   function draw(src,max){
-    const sw=src.width||src.naturalWidth,sh=src.height||src.naturalHeight;
+    const sw=src.naturalWidth||src.width,sh=src.naturalHeight||src.height;
     const s=Math.min(1,max/Math.max(sw,sh));const w=Math.max(1,Math.round(sw*s)),h=Math.max(1,Math.round(sh*s));
     const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,w,h);x.drawImage(src,0,0,w,h);return c;
   }
   async function compress(file){
+    // v249: 元の写真から描くのは1回だけ。小さくするときは描いた画像から縮める（元の大きな写真を何度も描かない）。
     const src=await decode(file);
-    let max=FULL_MAX,full='',c=null;
+    let c;try{c=draw(src,FULL_MAX);}finally{release(src);}
+    const fits=d=>d.length*0.75<=FULL_BYTES&&d.length<=355000;
+    let full='';
     for(let i=0;i<5;i++){
-      c=draw(src,max);
-      for(const q of [0.8,0.7,0.6,0.5]){full=c.toDataURL('image/jpeg',q);if(full.length*0.75<=FULL_BYTES&&full.length<=355000)break;}
-      if(full.length*0.75<=FULL_BYTES&&full.length<=355000)break;
-      max=Math.round(max*0.8);
+      for(const q of [0.8,0.7,0.6,0.5]){full=c.toDataURL('image/jpeg',q);if(fits(full))break;}
+      if(fits(full))break;
+      c=draw(c,Math.round(Math.max(c.width,c.height)*0.8));
     }
-    if(full.length>355000||full.indexOf('data:image/jpeg;base64,')!==0)throw Error('画像を小さくできませんでした');
-    let thumb='';for(const [mx,q] of [[THUMB_MAX,0.72],[THUMB_MAX,0.6],[520,0.6],[400,0.55]]){thumb=draw(src,mx).toDataURL('image/jpeg',q);if(thumb.length<=85000)break;}
-    try{src.close&&src.close();}catch(_){}
-    return {full,thumb,w:c.width,h:c.height};
+    if(!fits(full)||full.indexOf('data:image/jpeg;base64,')!==0)throw Error('画像を小さくできませんでした');
+    let thumb='';for(const [mx,q] of [[THUMB_MAX,0.72],[THUMB_MAX,0.6],[520,0.6],[400,0.55]]){thumb=draw(c,mx).toDataURL('image/jpeg',q);if(thumb.length<=85000)break;}
+    const w=c.width,h=c.height;
+    return {full,thumb,w,h};
   }
   const today=()=>new Date(Date.now()+9*3600e3).toISOString().slice(0,10);
   const countKey=()=>'trChatImgCount_'+(g()?.uid||'')+'_'+today();
@@ -23738,7 +23748,11 @@ window.__trFilePickStart=function(input){
     if(input.placeholder&&input.placeholder.length>10)input.placeholder='メッセージを入力';
     const btn=wrap.querySelector('button'),f=wrap.querySelector('input');
     btn.addEventListener('click',e=>{e.stopPropagation();f.value='';window.__trFilePickStart?.(f);try{localStorage.setItem('trPickReturn',JSON.stringify({ctx,roomId:ctx==='room'?(g()?.roomReactCtx?.().openId||''):'',at:Date.now()}));}catch(_){}f.click();});
-    f.addEventListener('change',()=>{try{localStorage.removeItem('trPickReturn');}catch(_){}onFiles(ctx,f.files,btn);});
+    f.addEventListener('change',async()=>{
+      // v249: 選んだあとの処理中に読み込み直されても戻れるよう、戻り先は処理が終わるまで残す
+      try{const r=JSON.parse(localStorage.getItem('trPickReturn')||'null');if(r){r.stage='work';r.at=Date.now();localStorage.setItem('trPickReturn',JSON.stringify(r));}}catch(_){}
+      try{await onFiles(ctx,f.files,btn);}finally{try{localStorage.removeItem('trPickReturn');}catch(_){}}
+    });
   }
   async function cleanup(){
     const gate=g();if(gate?.role!=='developer'||!gate.roleVerified||!gate.chatImageCleanup)return;
@@ -23883,17 +23897,23 @@ window.__trFilePickStart=function(input){
   }
   document.addEventListener('click',e=>{const av=e.target.closest&&e.target.closest('.trAv[data-uid]');if(!av)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();view(av.dataset.uid,av.dataset.name||'');},true);
   // ---- マイページ：アイコンの設定
+  // v249: 大きな写真を丸ごと展開しない（iPhoneのメモリ不足で読み込み直されるのを防ぐ）。<img>で読み、必要な大きさだけ描く。
   async function decode(file){
-    try{if(window.createImageBitmap)return await createImageBitmap(file,{imageOrientation:'from-image'});}catch(_){}
-    return await new Promise((res,rej)=>{const u=URL.createObjectURL(file);const im=new Image();im.onload=()=>res(im);im.onerror=()=>rej(Error('画像を読み込めません'));im.src=u;});
+    try{
+      return await new Promise((res,rej)=>{const u=URL.createObjectURL(file);const im=new Image();im.decoding='async';im.onload=()=>{im.__trUrl=u;res(im);};im.onerror=()=>{try{URL.revokeObjectURL(u);}catch(_){}rej(Error('画像を読み込めません'));};im.src=u;});
+    }catch(e){
+      if(window.createImageBitmap)return await createImageBitmap(file,{imageOrientation:'from-image'});
+      throw e;
+    }
   }
+  function release(src){try{if(src&&src.__trUrl){URL.revokeObjectURL(src.__trUrl);src.__trUrl='';src.removeAttribute&&src.removeAttribute('src');}else if(src&&src.close)src.close();}catch(_){}}
   // v248: アイコンの切り取り。選んだ写真を指で動かして丸い枠に合わせる（2本指・スライダーで拡大）。
   //   扱う見本は長辺1400pxに縮める（iPhoneのメモリ不足による読み込み直しを防ぐ）。保存は最大256px、半分ずつ縮めて粗さを防ぐ。データの上限は今までと同じ。
   const hq=x=>{x.imageSmoothingEnabled=true;try{x.imageSmoothingQuality='high';}catch(_){}return x;};
   async function previewOf(file){
-    const src=await decode(file);const sw=src.width||src.naturalWidth,sh=src.height||src.naturalHeight;
+    const src=await decode(file);const sw=src.naturalWidth||src.width,sh=src.naturalHeight||src.height;
     const k=Math.min(1,1400/Math.max(sw,sh));const c=document.createElement('canvas');c.width=Math.max(1,Math.round(sw*k));c.height=Math.max(1,Math.round(sh*k));
-    const x=hq(c.getContext('2d'));x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(src,0,0,c.width,c.height);try{src.close&&src.close();}catch(_){}
+    const x=hq(c.getContext('2d'));x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(src,0,0,c.width,c.height);release(src);
     return c;
   }
   function shrink(src,sx,sy,side,out){
@@ -23912,7 +23932,8 @@ window.__trFilePickStart=function(input){
   }
   function cropIcon(file){
     return new Promise(async res=>{
-      let pc;try{pc=await previewOf(file);}catch(e){say('アイコンにできませんでした','別の写真でお試しください。');res('');return;}
+      let pc;try{pc=await previewOf(file);}catch(e){try{localStorage.removeItem('trPickReturn');}catch(_){}say('アイコンにできませんでした','別の写真でお試しください。');res('');return;}
+      try{localStorage.removeItem('trPickReturn');}catch(_){} // v249: 切り取り画面まで来たら戻り先は不要
       const W=pc.width,H=pc.height;
       let o=document.getElementById('trAvCrop');if(o)o.remove();
       o=document.createElement('div');o.id='trAvCrop';o.setAttribute('role','dialog');o.setAttribute('aria-label','アイコンの切り取り');
@@ -23963,7 +23984,7 @@ window.__trFilePickStart=function(input){
       catch(err){const m=String(err?.message||'');const code=String(err?.code||m||'').slice(0,40);say('設定できませんでした',/10分/.test(m)?m:'通信状態を確認して、もう一度お試しください。（変更は10分に1回までです）'+(code?'\n原因：'+code:''));}
     });
     window.__trFilePickStart?.(f);try{localStorage.setItem('trPickReturn',JSON.stringify({ctx:'avatar',at:Date.now()}));}catch(_){}
-    f.addEventListener('change',()=>{try{localStorage.removeItem('trPickReturn');}catch(_){}},{once:true});f.click();
+    f.addEventListener('change',()=>{try{const r=JSON.parse(localStorage.getItem('trPickReturn')||'null');if(r){r.stage='work';r.at=Date.now();localStorage.setItem('trPickReturn',JSON.stringify(r));}}catch(_){}},{once:true});f.click(); // v249: 戻り先は切り取り画面が出るまで残す
   }
   function openSet(){
     const s=sheet('<b>アイコンを設定</b><div class="trAvBtns"><button type="button" data-a="cam">カメラで撮る</button><button type="button" data-a="pic">写真を選ぶ</button><button type="button" data-a="no">やめる</button></div>');
@@ -24241,7 +24262,14 @@ body.portalChatIsolated.portalFieldInputActive #screen-chat>main.chatMain{
           if((info.ctx==='room'||info.ctx==='save')&&info.roomId)setTimeout(()=>{try{window.__trOpenRoom?.(info.roomId);}catch(_){}},700);
         }
       }catch(_){}
-      setTimeout(()=>{if(info.ctx==='save')say('ルームに戻りました','保存の画面を開いている間に、iPhoneが画面を読み込み直しました。保存できていなければ、もう一度「保存」を押してください。');else say('もう一度選んでください',msg);},1200); // v248: 保存のとき
+      setTimeout(()=>{
+        const dev=(()=>{const x=window.__TR_PORTAL_SYNC__;return x?.role==='developer'&&x.roleVerified===true;})();
+        const where=info.stage==='work'?'写真の処理中':(info.ctx==='save'?'保存の画面':'写真を選ぶ画面');
+        const tail=dev?'\n（開発者用：読み込み直しが起きたのは「'+where+'」）':''; // v249
+        if(info.ctx==='save')say('ルームに戻りました','保存の画面を開いている間に、iPhoneが画面を読み込み直しました。保存できていなければ、もう一度「保存」を押してください。'+tail);
+        else if(info.stage==='work')say('もう一度選んでください','写真を読み込んでいる間に、iPhoneが画面を読み込み直しました。お手数ですが、もう一度選んでください。（1枚ずつ選ぶと起きにくくなります）'+tail);
+        else say('もう一度選んでください',msg+tail);
+      },1200);
     },600);
   }
   window.addEventListener('tr-portal-authorized',go);
