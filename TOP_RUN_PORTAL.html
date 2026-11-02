@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v262 | 2026-11-02 | Parent v261. iPhoneでリアクションが押しにくい件：(1) メッセージを長押ししたときにiPhone標準の「コピー・調べる・翻訳」や画像のメニューが出て、PORTALの枠とぶつかっていた：チャットのメッセージではiPhone標準の文字選択・長押しメニューを出さない（コピーはPORTALの「コピー」「一部コピー」で）。(2) 長押しで枠が出た直後に、指を離したときのタップで枠が閉じていた：出てから0.5秒は外側のタップで閉じない。写真はタップで拡大表示、長押しでリアクション。Rules v240 のまま。 -->
 <!-- TOP RUN PORTAL v261 | 2026-11-02 | Parent v260. リアクションをBANDのように：メッセージをタップ（長押し）すると、そのメッセージのすぐ近くに小さな枠が出る。よく使うリアクション6つ＋「…」、その下に「返信・コピー・一部コピー」。「…」で全部のリアクションの画面。全部の画面は画面の下に固定せず中央に表示し、候補は「もっと見る」なしで全部をその中でスクロール。上のメッセージは1行（名前＋最初の言葉）だけ。表示と操作だけ。Rules v240 のまま。 -->
 <!-- TOP RUN PORTAL v260 | 2026-11-02 | Parent v259. 共通チャットとルームで吹き出しの枠が違っていた：共通チャットでは開発者・管理者のメッセージ（staff）だけ左の枠線が4pxの太線だった。ルームに合わせて1pxに統一。表示だけ。Rules v240 のまま。 -->
 <!-- TOP RUN PORTAL v259 | 2026-11-02 | Parent v258. マイページ上部のチームロゴの枠をプロフィール画像に：アイコンを設定している人は、ロゴの代わりに自分のアイコンを丸く表示（チャットと同じ画像1つを使うので通信は増えない）。枠を押すとアイコンの設定（写真を選ぶ→切り取り）。未設定のときはチームロゴのまま、右下に＋。枠の位置をやや下げた。案内文を「マイページとチャットに表示されます」に。Rules v240 のまま。 -->
@@ -6437,7 +6438,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v261</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v262</b></div>
   </div>
 </div>
 
@@ -6628,7 +6629,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v261</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v262</b></div>
   </div>
 </div>
 
@@ -22318,7 +22319,7 @@ html[data-portal-personal-color="matte"] #screen-chat #trRoomThread .trReadIssue
     closeSheet();
     const mine=m.reactions?.[myUid()]?.e||'';
     const picks=allPicks('frequent','all').slice(0,6);
-    const q=document.createElement('div');q.id='trQuick';
+    const q=document.createElement('div');q.id='trQuick';const openedAt=Date.now(); // v262
     q.innerHTML='<div class="trQBack"></div><div class="trQCard" role="dialog" aria-label="リアクション"><div class="trQRow">'+
       picks.map(e=>'<button type="button" class="trQBtn'+(isText(e)?' txt trPickTone-'+reactTone(e):'')+(e===mine?' on':'')+'" data-re="'+esc(e)+'" aria-label="'+esc(isTeam(e)?'TOP RUN AGUI '+reactionLabel(e):e)+'" aria-pressed="'+(e===mine)+'"><span class="trTileFace">'+face(e)+'</span></button>').join('')+
       '<button type="button" class="trQBtn trQMore" data-act="more" aria-label="ほかのリアクション">…</button></div>'+
@@ -22339,7 +22340,7 @@ html[data-portal-personal-color="matte"] #screen-chat #trRoomThread .trReadIssue
     left=Math.max(8,Math.min(vw-W-8,left));
     card.style.top=Math.round(top)+'px';card.style.left=Math.round(left)+'px';
     q.addEventListener('click',e=>{
-      if(e.target.classList.contains('trQBack')){closeQuick();return;}
+      if(e.target.classList.contains('trQBack')){if(Date.now()-openedAt<500)return;closeQuick();return;} // v262: 長押しの指を離したタップでは閉じない
       const r=e.target.closest('[data-re]');if(r){const v=r.dataset.re;react(ctx,mid,v===mine?null:v,r);return;}
       const a=e.target.closest('[data-act]')?.dataset.act;if(!a)return;
       if(a==='more'){closeQuick();openActions(ctx,mid);return;}
@@ -24503,6 +24504,12 @@ body.portalChatIsolated > #trQuick{visibility:visible!important;opacity:1!import
 #trMsgSheet.trActMode .trSheetHead strong{display:inline!important}
 #trMsgSheet.trActMode .trEmojiGrid{max-height:min(48dvh,400px)!important;margin-bottom:4px!important}
 #trMsgSheet.trActMode :is(.trPickMore,.trPickInfo,.trSheetBtns){display:none!important}
+</style>
+<style id="v262-no-ios-callout">
+/* v262: チャットのメッセージでは、iPhone標準の文字選択・長押しメニュー（コピー・調べる・翻訳、画像のメニュー）を出さない */
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg,#screen-chat :is(#portalChatThread,#trRoomThread) .msg *{-webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg img{-webkit-user-drag:none}
+#trQuick,#trQuick *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 </style>
 </body>
 </html>
