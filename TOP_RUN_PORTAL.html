@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v242 | 2026-11-02 | Parent v241 (ChatGPT版). 緊急修正：v241で追加された表示調整のブロック（style と script）が、印刷用の一覧表を作るプログラムの文字列の中に入っており、その中の script の終わりの印でメインのプログラムが途中で切れてログインできなくなっていた。ブロックを本当の body の終わりの直前へ移動（内容は変更なし）。あわせて、ログインできない画面に原因確認用の状態表示を追加。Firebase/Rules は変更なし（Rules v240 のまま）。 -->
 <!-- TOP RUN PORTAL v241 | 2026-11-02 | Parent v240. CHAT/ROOM display tuning only. (1) リアクションの大きさを本文より控えめに再調整し、アイコン・文字・カウントのバランスを整理。(2) 送信者アイコンを名前の左でBAND参考の位置関係に寄せ、名前行と本文の見やすさを調整。(3) チャット下端の余白を実測で確保し、メッセージが入力欄の下に潜り込みにくいよう補正。画像の読み込み後も、下端付近を見ているときは最新位置を維持。 Firebase/Auth/RTDB/Rules/通知/保存処理は変更なし。 -->
 <!-- TOP RUN PORTAL v240 | 2026-11-02 | Parent v239. REQUIRES Rules v240。(1) チャットのアイコンが消えていた不具合を修正（アイコンを<span>で入れていたため名前用の配置CSSが当たり見えなくなっていた→<i>に変更）。(2) マイページのアイコン欄を「チャットでの表示名」の下へ、「消す」を「アイコンを設定」の横へ。(3) 写真の見本を長辺320→640px（約40〜60KB）にしてくっきり表示。ルールの見本の上限を40000→90000文字に。 -->
 <!-- TOP RUN PORTAL v239 | 2026-11-02 | Parent v238. REQUIRES Rules v239。ルームの権限変更：(1) 開発者が管理画面の設定「ルームを作れる人」で許可した参加者（roomCreators/<uid>、管理者とは別）はルームを作れる。(2) 開発者以外（管理者・ルームを作れる人）は、自分が作ったルームだけ招待・外す・名前の変更・削除ができる。(3) 管理者はほかの人のルームを見られない（ルールでも開発者だけに）。(4) 開発者は今までどおり全ルームを見て管理できる。 -->
@@ -309,6 +310,12 @@ NO FIREBASE / NO RULES / NO AUTH CHANGE / NO profileId CHANGE / NO binding CHANG
 -->
 <html lang="ja">
 <head>
+<script id="v242-error-log">
+/* v242: 入れないときの原因確認用。画面のエラーを最大6件だけ覚え、「通信を確認してください」の画面に表示する（送信はしない）。 */
+window.__trErrLog=[];
+window.addEventListener('error',function(e){try{var m=(e&&e.message)||'';var f=(e&&e.filename)?String(e.filename).split('/').pop():'';window.__trErrLog.push((m+(e&&e.lineno?' @'+e.lineno:'')).slice(0,140));if(window.__trErrLog.length>6)window.__trErrLog.shift();}catch(_){}} ,true);
+window.addEventListener('unhandledrejection',function(e){try{var r=e&&e.reason;window.__trErrLog.push(('promise: '+((r&&(r.code||r.message))||String(r))).slice(0,140));if(window.__trErrLog.length>6)window.__trErrLog.shift();}catch(_){}});
+</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <script>/* v218: iPhone は入力欄を触ったときの自動拡大を止める（指での拡大は iOS 側で可能なまま）。名前の並べ替え用の共通関数。 */
@@ -6411,7 +6418,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v241</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v242</b></div>
   </div>
 </div>
 
@@ -6602,7 +6609,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v241</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v242</b></div>
   </div>
 </div>
 
@@ -13539,147 +13546,6 @@ html[data-portal-personal-color="matte"] #screen-chat :is(#portalChatThread,#trR
 /* In winter/matte, same readable dark ink on the pale chat backdrop. */
 </style>
 
-<style id="v241-chat-room-visual-tune">
-/* v241: CHAT / ROOM only. Re-balance avatar/name/reaction layout and keep reactions supporting the message. */
-#screen-chat :is(#portalChatThread,#trRoomThread).chatList{gap:12px!important;padding-bottom:8px!important}
-#screen-chat :is(#portalChatThread,#trRoomThread) .msg{
-  max-width:min(calc(100% - 56px),620px)!important;
-  padding:10px 13px 11px!important;
-  overflow:visible!important;
-}
-#screen-chat :is(#portalChatThread,#trRoomThread) .msg:not(.mine){margin-top:18px!important}
-#screen-chat :is(#portalChatThread,#trRoomThread) .msg.trHasAv:not(.mine){margin-top:20px!important}
-#screen-chat :is(#portalChatThread,#trRoomThread) .msg .msgHead span:first-child{
-  left:0!important;
-  bottom:calc(100% + 4px)!important;
-  display:inline-flex!important;
-  align-items:center!important;
-  gap:7px!important;
-  max-width:min(290px,calc(100vw - 104px))!important;
-  font-size:12px!important;
-  font-weight:900!important;
-  letter-spacing:.01em!important;
-  color:#8d9393!important;
-  -webkit-text-fill-color:#8d9393!important;
-}
-#screen-chat :is(#portalChatThread,#trRoomThread) .msg .msgHead span:last-child{
-  bottom:3px!important;
-  left:calc(100% + 8px)!important;
-  font-size:10.5px!important;
-}
-#screen-chat :is(#portalChatThread,#trRoomThread) .msg.mine .msgHead span:last-child{right:calc(100% + 8px)!important}
-#screen-chat :is(#portalChatThread,#trRoomThread) .msg > .trReadMini{bottom:16px!important;font-size:10px!important}
-#screen-chat :is(#portalChatThread,#trRoomThread) .msg p{margin-top:0!important;font-size:15px!important;line-height:1.55!important}
-#screen-chat :is(#portalChatThread,#trRoomThread) .msg .msgHead span:first-child i.trAv{
-  width:20px!important;height:20px!important;flex:0 0 20px!important;
-  margin-right:0!important;font-size:10px!important;border-width:1px!important;
-  transform:translateY(-1px)!important;
-}
-
-/* Reactions: a little smaller and calmer so the message stays primary. */
-#screen-chat :is(#portalChatThread,#trRoomThread) .trReacts{
-  gap:2px!important;
-  margin:-1px 8px 5px!important;
-  align-items:flex-start!important;
-}
-#screen-chat :is(#portalChatThread,#trRoomThread) .trReacts.mine{justify-content:flex-end!important}
-#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact,
-#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact.mine{
-  min-height:24px!important;
-  padding:0 1px!important;
-  gap:2px!important;
-  font-size:16px!important;
-}
-#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact b{
-  font-size:10px!important;
-  line-height:1!important;
-  margin:0 0 0 0!important;
-}
-#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trTeam{
-  width:18px!important;height:18px!important;margin-right:1px!important;
-}
-#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-short.trText-one{font-size:17px!important}
-#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-short:not(.trText-one){font-size:15px!important}
-#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-medium{font-size:12.9px!important}
-#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-long{font-size:11px!important}
-#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-extra{font-size:9.8px!important}
-#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trSealRound.trSealRound-single{
-  width:22px!important;height:22px!important;font-size:13px!important;
-}
-#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trSealRound.trSealRound-horizontal{
-  width:29px!important;height:22px!important;font-size:10px!important;
-}
-#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trSealRound.trSealRound-vertical{
-  width:22px!important;height:28px!important;font-size:10px!important;
-}
-@media(max-width:380px){
-  #screen-chat :is(#portalChatThread,#trRoomThread) .msg{max-width:min(calc(100% - 48px),620px)!important;padding:10px 12px 11px!important}
-  #screen-chat :is(#portalChatThread,#trRoomThread) .msg .msgHead span:first-child{max-width:min(250px,calc(100vw - 96px))!important}
-  #screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-short.trText-one{font-size:16px!important}
-  #screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-short:not(.trText-one){font-size:14.2px!important}
-  #screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-medium{font-size:12.2px!important}
-}
-</style>
-<style id="v241-chat-bottom-reserve-style">
-/* v241: reserve the real height of the composer / tabs so the newest message stays above the input area. */
-#screen-chat>main.chatMain,
-body.portalChatIsolated:not(.portalFieldInputActive) #screen-chat>main.chatMain,
-body.portalChatIsolated.portalFieldInputActive #screen-chat>main.chatMain{
-  padding-bottom:calc(var(--trChatBottomReserve,166px) + env(safe-area-inset-bottom))!important;
-  scroll-padding-bottom:calc(var(--trChatBottomReserve,166px) + env(safe-area-inset-bottom))!important;
-}
-</style>
-<script id="v241-chat-bottom-reserve-script">
-(function(){
-  const root=document.documentElement,body=document.body;
-  const q=s=>document.querySelector(s);
-  function activeComposer(){
-    const room=q('#trRoomComposer');
-    if(body.classList.contains('trRoomOpen') && room && !room.hidden && room.offsetParent!==null) return room;
-    const common=q('#screen-chat .chatComposer:not(#trRoomComposer)');
-    return common&&common.offsetParent!==null?common:null;
-  }
-  function reserve(){
-    const comp=activeComposer();
-    const tabs=q('nav.portalBottomTabs');
-    let h=166;
-    if(comp){
-      const rect=comp.getBoundingClientRect();
-      h=Math.ceil(rect.height)+14;
-    }
-    if(body.classList.contains('portalChatIsolated') && !body.classList.contains('portalFieldInputActive') && tabs && tabs.offsetParent!==null){
-      h += Math.ceil(tabs.getBoundingClientRect().height||tabs.offsetHeight||0);
-    }
-    if(h<166)h=166;
-    root.style.setProperty('--trChatBottomReserve', h+'px');
-  }
-  let t=0;
-  const later=()=>{clearTimeout(t);t=setTimeout(reserve,80);};
-  ['resize','orientationchange','pageshow'].forEach(ev=>window.addEventListener(ev,later));
-  window.visualViewport?.addEventListener('resize',later);
-  window.visualViewport?.addEventListener('scroll',later);
-  document.addEventListener('focusin',later,true);
-  document.addEventListener('focusout',()=>setTimeout(reserve,120),true);
-  document.addEventListener('input',e=>{if(e.target&&e.target.closest&&e.target.closest('#screen-chat .chatComposer'))later();},true);
-  new MutationObserver(later).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','hidden','style']});
-  reserve();setTimeout(reserve,300);setTimeout(reserve,900);
-
-  function keepLatestVisible(){
-    const main=q('#screen-chat > main.chatMain');
-    if(!main||!body.classList.contains('portalChatIsolated'))return;
-    const dist=main.scrollHeight-main.scrollTop-main.clientHeight;
-    if(dist<220){main.scrollTop=main.scrollHeight;}
-  }
-  document.addEventListener('load',e=>{
-    const el=e.target;
-    if(!(el instanceof HTMLImageElement))return;
-    if(!el.closest('#portalChatThread .trImg, #trRoomThread .trImg, #portalChatThread .trAv, #trRoomThread .trAv'))return;
-    reserve();
-    setTimeout(keepLatestVisible,20);
-    setTimeout(keepLatestVisible,180);
-  },true);
-})();
-</script>
 
 </body></html>`;
     tab.document.open();tab.document.write(sheet);tab.document.close();
@@ -15968,6 +15834,12 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
       steps.forEach(s=>{const li=document.createElement('li');li.textContent=s;ol.appendChild(li);});
       box.appendChild(ol);
       if(uidTail){const pp=document.createElement('p');pp.textContent='運営に伝える確認番号：'+uidTail;box.appendChild(pp);}
+          try{ // v242: 原因確認用（運営用）
+            const v=window.__TR_PORTAL_SYNC__,errs=(window.__trErrLog||[]).slice(-4);
+            const st=[v?'接続準備OK':'接続準備なし',v?.uid?'本人ID OK':'本人IDなし',v?.profileId?'プロフィールOK':'プロフィールなし',v?.loaded?.personal?'個人データOK':'個人データ未読込',navigator.onLine?'オンライン':'オフライン'].join('／');
+            const pd=document.createElement('p');pd.style.cssText='font-size:11px;opacity:.85;white-space:pre-wrap;word-break:break-all';
+            pd.textContent='詳しい状態（運営用）：'+st+(errs.length?'\nエラー：'+errs.join('\n'):'');box.appendChild(pd);
+          }catch(_){}
     }
     retry.textContent=btn;
     retry.hidden=false;
@@ -24072,6 +23944,149 @@ window.__trFilePickStart=function(input){
 
 
 
+
+
+<style id="v241-chat-room-visual-tune">
+/* v241: CHAT / ROOM only. Re-balance avatar/name/reaction layout and keep reactions supporting the message. */
+#screen-chat :is(#portalChatThread,#trRoomThread).chatList{gap:12px!important;padding-bottom:8px!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg{
+  max-width:min(calc(100% - 56px),620px)!important;
+  padding:10px 13px 11px!important;
+  overflow:visible!important;
+}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg:not(.mine){margin-top:18px!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg.trHasAv:not(.mine){margin-top:20px!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg .msgHead span:first-child{
+  left:0!important;
+  bottom:calc(100% + 4px)!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  gap:7px!important;
+  max-width:min(290px,calc(100vw - 104px))!important;
+  font-size:12px!important;
+  font-weight:900!important;
+  letter-spacing:.01em!important;
+  color:#8d9393!important;
+  -webkit-text-fill-color:#8d9393!important;
+}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg .msgHead span:last-child{
+  bottom:3px!important;
+  left:calc(100% + 8px)!important;
+  font-size:10.5px!important;
+}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg.mine .msgHead span:last-child{right:calc(100% + 8px)!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg > .trReadMini{bottom:16px!important;font-size:10px!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg p{margin-top:0!important;font-size:15px!important;line-height:1.55!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg .msgHead span:first-child i.trAv{
+  width:20px!important;height:20px!important;flex:0 0 20px!important;
+  margin-right:0!important;font-size:10px!important;border-width:1px!important;
+  transform:translateY(-1px)!important;
+}
+
+/* Reactions: a little smaller and calmer so the message stays primary. */
+#screen-chat :is(#portalChatThread,#trRoomThread) .trReacts{
+  gap:2px!important;
+  margin:-1px 8px 5px!important;
+  align-items:flex-start!important;
+}
+#screen-chat :is(#portalChatThread,#trRoomThread) .trReacts.mine{justify-content:flex-end!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact,
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact.mine{
+  min-height:24px!important;
+  padding:0 1px!important;
+  gap:2px!important;
+  font-size:16px!important;
+}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact b{
+  font-size:10px!important;
+  line-height:1!important;
+  margin:0 0 0 0!important;
+}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trTeam{
+  width:18px!important;height:18px!important;margin-right:1px!important;
+}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-short.trText-one{font-size:17px!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-short:not(.trText-one){font-size:15px!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-medium{font-size:12.9px!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-long{font-size:11px!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-extra{font-size:9.8px!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trSealRound.trSealRound-single{
+  width:22px!important;height:22px!important;font-size:13px!important;
+}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trSealRound.trSealRound-horizontal{
+  width:29px!important;height:22px!important;font-size:10px!important;
+}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trSealRound.trSealRound-vertical{
+  width:22px!important;height:28px!important;font-size:10px!important;
+}
+@media(max-width:380px){
+  #screen-chat :is(#portalChatThread,#trRoomThread) .msg{max-width:min(calc(100% - 48px),620px)!important;padding:10px 12px 11px!important}
+  #screen-chat :is(#portalChatThread,#trRoomThread) .msg .msgHead span:first-child{max-width:min(250px,calc(100vw - 96px))!important}
+  #screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-short.trText-one{font-size:16px!important}
+  #screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-short:not(.trText-one){font-size:14.2px!important}
+  #screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-medium{font-size:12.2px!important}
+}
+</style>
+<style id="v241-chat-bottom-reserve-style">
+/* v241: reserve the real height of the composer / tabs so the newest message stays above the input area. */
+#screen-chat>main.chatMain,
+body.portalChatIsolated:not(.portalFieldInputActive) #screen-chat>main.chatMain,
+body.portalChatIsolated.portalFieldInputActive #screen-chat>main.chatMain{
+  padding-bottom:calc(var(--trChatBottomReserve,166px) + env(safe-area-inset-bottom))!important;
+  scroll-padding-bottom:calc(var(--trChatBottomReserve,166px) + env(safe-area-inset-bottom))!important;
+}
+</style>
+<script id="v241-chat-bottom-reserve-script">
+(function(){
+  const root=document.documentElement,body=document.body;
+  const q=s=>document.querySelector(s);
+  function activeComposer(){
+    const room=q('#trRoomComposer');
+    if(body.classList.contains('trRoomOpen') && room && !room.hidden && room.offsetParent!==null) return room;
+    const common=q('#screen-chat .chatComposer:not(#trRoomComposer)');
+    return common&&common.offsetParent!==null?common:null;
+  }
+  function reserve(){
+    const comp=activeComposer();
+    const tabs=q('nav.portalBottomTabs');
+    let h=166;
+    if(comp){
+      const rect=comp.getBoundingClientRect();
+      h=Math.ceil(rect.height)+14;
+    }
+    if(body.classList.contains('portalChatIsolated') && !body.classList.contains('portalFieldInputActive') && tabs && tabs.offsetParent!==null){
+      h += Math.ceil(tabs.getBoundingClientRect().height||tabs.offsetHeight||0);
+    }
+    if(h<166)h=166;
+    root.style.setProperty('--trChatBottomReserve', h+'px');
+  }
+  let t=0;
+  const later=()=>{clearTimeout(t);t=setTimeout(reserve,80);};
+  ['resize','orientationchange','pageshow'].forEach(ev=>window.addEventListener(ev,later));
+  window.visualViewport?.addEventListener('resize',later);
+  window.visualViewport?.addEventListener('scroll',later);
+  document.addEventListener('focusin',later,true);
+  document.addEventListener('focusout',()=>setTimeout(reserve,120),true);
+  document.addEventListener('input',e=>{if(e.target&&e.target.closest&&e.target.closest('#screen-chat .chatComposer'))later();},true);
+  new MutationObserver(later).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','hidden','style']});
+  reserve();setTimeout(reserve,300);setTimeout(reserve,900);
+
+  function keepLatestVisible(){
+    const main=q('#screen-chat > main.chatMain');
+    if(!main||!body.classList.contains('portalChatIsolated'))return;
+    const dist=main.scrollHeight-main.scrollTop-main.clientHeight;
+    if(dist<220){main.scrollTop=main.scrollHeight;}
+  }
+  document.addEventListener('load',e=>{
+    const el=e.target;
+    if(!(el instanceof HTMLImageElement))return;
+    if(!el.closest('#portalChatThread .trImg, #trRoomThread .trImg, #portalChatThread .trAv, #trRoomThread .trAv'))return;
+    reserve();
+    setTimeout(keepLatestVisible,20);
+    setTimeout(keepLatestVisible,180);
+  },true);
+})();
+</script>
 
 </body>
 </html>
