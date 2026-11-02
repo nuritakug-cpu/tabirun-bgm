@@ -1,3 +1,5 @@
+<!-- TOP RUN PORTAL v232 | 2026-11-02 | Parent v231. 個人記録の大会名をそろえる（表示だけ）：EVENT BASEの大会から紐付けた記録（local-flow-claim-）は、保存時の名前（「第1回 EVENT BASE」「第2回 駅伝」など）ではなく「大会名（N回）」で表示。大会名はEVENT BASE正式名→PORTALのイベント名（event-current／event-relay）の順。保存データ・Firebase/Rules/Authは変更なし。 -->
+<!-- TOP RUN PORTAL v231 | 2026-11-02 | Parent v230. (1) 下のメニュー：スクロール中は位置を計算し直さず、止まって250ms後に合わせ直す（スクロールで動くのを防ぐ）。キーボード・画面サイズ変更時はこれまでどおり。(2) 管理画面の日付欄：iPhoneで文字が重なって残るのを防ぐため、変更時・タップ後に表示だけ描き直す（値は変えない）。Firebase/Rules/Auth・保存処理は変更なし。 -->
 <!-- TOP RUN PORTAL v230 | 2026-11-02 | Parent v229. Correct two stale visible version labels (v226 -> v230). No visual layout, behavior, Firebase, Rules, Auth, storage or JS changes. NOT DEPLOYED. -->
 <!-- TOP RUN PORTAL v229 | 2026-11-01 | Parent v228. Correct excessive whitespace: undo global .shell width, keep slight side padding on HOME only; maintain bold mildly slanted RUN; footer returns native width and safe-area-aware 8px bottom pad. Firebase/Auth/Rules/JS unchanged. NOT DEPLOYED. -->
 <!-- TOP RUN PORTAL v228 | 2026-11-01 | Parent v227. Footer cross-device preview consistency and bottom breathing-room: restore existing v219 visualViewport positioning in preview, +9px minimum safe-area-aware bottom padding in both preview and candidate. v219 production positioning/keyboard/chat/Firebase/Auth/Rules/JS unchanged. NOT DEPLOYED. -->
@@ -5706,6 +5708,24 @@ html[data-portal-personal-color="winter"] #screen-management :is(input:not([type
 html[data-portal-personal-color="matte"] #screen-management :is(input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea){border-color:rgba(232,140,80,.5)!important}
 html:is([data-portal-personal-color="matte"],[data-portal-personal-color="winter"]) #screen-management :is(input,select,textarea):focus{background:rgba(255,255,255,.11)!important}
 </style>
+<script id="v232-past-title">
+/* v232: 個人記録の大会名をそろえる（表示だけ。保存されている名前は変えない）。
+   EVENT BASEの大会から紐付けた記録は「大会名（N回）」で表示。大会名は、EVENT BASEの正式名→PORTALのイベント名の順で使う。 */
+window.trPastTitle=function(id,fallback){
+  try{
+    id=String(id||'');
+    const known=[['eventbase_mu4ujce3_xxx1','event-current',1],['eventbase_ekiden_dev_20261006','event-relay',2],['eventbase_ekiden_next_2026_38fa5537b6','',3]];
+    for(const k of known){
+      const pre=('local-flow-claim-'+k[0]+'-').replace(/[^A-Za-z0-9_-]/g,'_');
+      if(!id.startsWith(pre))continue;
+      if(typeof window.trEventLabel==='function'){const s=String(window.trEventLabel(k[0],'')||'');if(s&&s.indexOf('大会名未取得')!==0)return s;}
+      const g=window.__TR_PORTAL_SYNC__;const title=String((k[1]&&g&&g.eventItems&&g.eventItems[k[1]]&&g.eventItems[k[1]].title)||'').trim();
+      if(title)return title.slice(0,60)+'（'+k[2]+'回）';
+    }
+  }catch(_){}
+  return String(fallback==null?'':fallback);
+};
+</script>
 <script>
 /* v211: 大会名の表記統一「大会名（第N回）」。表示だけ変換し、保存されている名前は変えない。 */
 function portalEventName(name){return String(name==null?'':name);} /* v215: v211の変換は取り消し（表記は v157 の「大会名（N回）」に統一） */
@@ -5717,7 +5737,7 @@ function portalRecordEventName(r){
       for(const ev of ids){const pre='local-flow-claim-'+String(ev).replace(/[^A-Za-z0-9_-]/g,'_')+'-';if(id.startsWith(pre))return window.trEventLabel(ev,r.event);}
     }
   }catch(_){}
-  return String(r&&r.event||'');
+  return window.trPastTitle?window.trPastTitle(r&&r.id,r&&r.event||''):String(r&&r.event||''); // v232
 }
 </script>
 <script>
@@ -6382,7 +6402,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v230</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v232</b></div>
   </div>
 </div>
 
@@ -6573,7 +6593,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v230</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v232</b></div>
   </div>
 </div>
 
@@ -13952,11 +13972,11 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
         ?`<div class="portalFlowRowActions"><button type="button" data-flow-manage-ext="${esc(r.id)}">管理画面で修正・削除</button></div>`:'';
     const metricText=r.practiceDate?(portalRecordMetricLabel(String(r.recordDistanceMeters||r.metric))+'／'+({TT:'TT',selection:'選考',trial:'試走',other:'その他'}[r.recordKind]||'記録練習')):(portalMetricNames[r.metric]||portalRecordMetricLabel(String(r.metric)));
     const ds=String(r.date||'').split('-');const displayDate=ds.length===3?`<small>${esc(ds[0])}年</small><strong>${esc(Number(ds[1]))}/${esc(String(Number(ds[2])).padStart(2,'0'))}</strong>`:esc(r.date||'日付未設定');
-    if(mode==='mgr')return `<div class="portalFlowEntryRow portalHistoryRecordRow"><div class="portalHistoryRecordMain"><time class="portalHistoryRecordDate" datetime="${esc(r.date)}">${displayDate}</time><div class="portalHistoryRecordInfo"><b>${esc(r.name)}</b><span>${esc(metricText)} <strong>${esc(r.status==='DNS'?'DNS（欠場・記録なし）':r.status==='RESERVE_ACCOMPANY'?'補欠（帯同）':r.time||'未設定')}</strong></span>${portalIsCertifiedRecord({ ...r,source:'PORTAL_STAFF_PAST',catalogId:portalStaffCatalogId(r) })?'<small class="isOfficial">公認大会</small>':''}</div></div>${actions}</div>`;
+    if(mode==='mgr')return `<div class="portalFlowEntryRow portalHistoryRecordRow"><div class="portalHistoryRecordMain"><time class="portalHistoryRecordDate" datetime="${esc(r.date)}">${displayDate}</time><div class="portalHistoryRecordInfo"><b>${esc(window.trPastTitle?window.trPastTitle(r.id,r.name):r.name)}</b><span>${esc(metricText)} <strong>${esc(r.status==='DNS'?'DNS（欠場・記録なし）':r.status==='RESERVE_ACCOMPANY'?'補欠（帯同）':r.time||'未設定')}</strong></span>${portalIsCertifiedRecord({ ...r,source:'PORTAL_STAFF_PAST',catalogId:portalStaffCatalogId(r) })?'<small class="isOfficial">公認大会</small>':''}</div></div>${actions}</div>`;
     const projected={...r,source:r.firebaseSource==='portalStaff'?'PORTAL_STAFF_PAST':'PORTAL_LOCAL_PREVIEW',catalogId:portalStaffCatalogId(r)};
     const certified=portalIsCertifiedRecord(projected),pb=r.status==='time'&&r.time&&portalRecBest(r.metric)?.id===r.id;
     const result=r.status==='DNS'?'DNS（欠場・記録なし）':r.status==='RESERVE_ACCOMPANY'?'補欠（帯同）':r.time||'未設定';
-    return `<div class="portalFlowEntryRow portalHistoryRecordRow"><div class="portalHistoryRecordMain"><time class="portalHistoryRecordDate" datetime="${esc(r.date)}">${displayDate}</time><div class="portalHistoryRecordInfo"><b>${esc(r.name)}</b><span class="portalHistoryRecordResult">${esc(metricText)} <strong>${esc(result)}</strong></span><div class="portalHistoryRecordTags"><small class="${certified?'isOfficial':'isUnofficial'}">${certified?'公認大会':'非公認・公認未照合'}</small>${pb?'<small class="isPB">PB・自己ベスト</small>':''}</div>${r.venue?`<small>会場：${esc(r.venue)}</small>`:''}</div></div>${actions}</div>`;
+    return `<div class="portalFlowEntryRow portalHistoryRecordRow"><div class="portalHistoryRecordMain"><time class="portalHistoryRecordDate" datetime="${esc(r.date)}">${displayDate}</time><div class="portalHistoryRecordInfo"><b>${esc(window.trPastTitle?window.trPastTitle(r.id,r.name):r.name)}</b><span class="portalHistoryRecordResult">${esc(metricText)} <strong>${esc(result)}</strong></span><div class="portalHistoryRecordTags"><small class="${certified?'isOfficial':'isUnofficial'}">${certified?'公認大会':'非公認・公認未照合'}</small>${pb?'<small class="isPB">PB・自己ベスト</small>':''}</div>${r.venue?`<small>会場：${esc(r.venue)}</small>`:''}</div></div>${actions}</div>`;
   }
   function flowRenderExternal(){
     flowUpdateRecords();
@@ -23174,14 +23194,26 @@ body.portalChatIsolated:not(.portalFieldInputActive) #screen-chat>main.chatMain{
   document.addEventListener('focusin',()=>setTimeout(sync,0));
   document.addEventListener('focusout',()=>setTimeout(sync,120));
   window.visualViewport?.addEventListener('resize',lift);
-  window.visualViewport?.addEventListener('scroll',lift);
-  window.addEventListener('scroll',lift,{passive:true});
+  // v231: スクロール中は下のメニューを動かさない（止まってから位置を合わせ直す）
+  let liftTimer=0;const liftLater=()=>{clearTimeout(liftTimer);liftTimer=setTimeout(lift,250);};
+  window.visualViewport?.addEventListener('scroll',liftLater);
+  window.addEventListener('scroll',liftLater,{passive:true});
   window.addEventListener('orientationchange',()=>setTimeout(sync,300));
   window.addEventListener('pageshow',sync);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(sync,200);});
   document.addEventListener('touchend',()=>setTimeout(()=>{if(body.classList.contains('portalFieldInputActive')&&!isField(document.activeElement))sync();},350),{passive:true});
   new MutationObserver(lift).observe(body,{attributes:true,attributeFilter:['class']});
   sync();
+})();
+</script>
+<script>
+/* v231: iPhoneで日付欄の文字が重なって残るのを防ぐ（表示の描き直しだけ。値は変えない） */
+(function(){
+  const sel='#screen-management input[type="date"],#screen-management input[type="month"]';
+  function repaint(el){try{el.style.webkitTransform='translateZ(0)';requestAnimationFrame(()=>requestAnimationFrame(()=>{el.style.webkitTransform='';}));}catch(_){}}
+  function repaintAll(){document.querySelectorAll(sel).forEach(el=>{if(el.offsetParent)repaint(el);});}
+  ['change','input','blur'].forEach(type=>document.addEventListener(type,e=>{const el=e.target;if(el&&el.matches&&el.matches(sel))repaint(el);},true));
+  document.addEventListener('click',()=>setTimeout(repaintAll,80),true);
 })();
 </script>
 <style id="v220-event-notice-guide">
