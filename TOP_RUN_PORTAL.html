@@ -1,3 +1,5 @@
+<!-- TOP RUN PORTAL v247 | 2026-11-02 | Parent v246. チャット：メッセージとリアクションの間の余白を詰める、チームロゴのリアクションを18→26pxに。見た目だけ、ほかは変更なし。Rules v240 のまま。 -->
+<!-- TOP RUN PORTAL v246 | 2026-11-02 | Parent v245. (1) 写真を選ぶとホームに戻る件：コード側の再読み込みはv236で止めたが、iPhone自体がPORTALを読み込み直している（メモリ不足など）。3分以内の読み込み直しなら元のルーム／マイページに戻し「もう一度選んでください」と案内。(2) 複数枚の写真を切らずに全体を縮小して並べる。Rules v240 のまま。 -->
 <!-- TOP RUN PORTAL v245 | 2026-11-02 | Parent v244. (1) 画面の拡大ができなかった：v218 で iPhone に maximum-scale=1 を付けていたため（ホーム画面のアプリでは指での拡大も止まる）。付けるのをやめ、入力時の自動拡大は入力欄の文字を16px以上にして防ぐ。(2) 写真の拡大表示：指2本で拡大、2回タップで拡大／戻す、拡大中は指1本で移動。(3) 写真の「保存」ボタン（共有画面から写真に保存）。保存は表示中の画像を使うので通信は増えない。Rules v240 のまま。 -->
 <!-- TOP RUN PORTAL v244 | 2026-11-02 | Parent v243. アイコン未登録の人は、色付きの頭文字ではなく灰色の人型シルエットで表示（チャット・マイページ・拡大表示）。表示だけの変更。Rules v240 のまま。 -->
 <!-- TOP RUN PORTAL v243 | 2026-11-02 | Parent v242. チャットの表示：アイコンをBANDと同じ配置（吹き出しの左、上端を名前にそろえる、40px）に戻して大きく。リアクションも吹き出しの位置にそろえる。メンションの色を、ほかの人の吹き出し（暗い色）では明るい黄色、自分の吹き出しでは濃い青に。表示だけの変更。Rules v240 のまま。 -->
@@ -6421,7 +6423,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v245</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v247</b></div>
   </div>
 </div>
 
@@ -6612,7 +6614,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v245</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v247</b></div>
   </div>
 </div>
 
@@ -20834,6 +20836,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
     $('trRoomMembersBox').hidden=true;$('trRoomMembersBox').innerHTML='';
     setTitle();setOpen(false);
   }
+  window.__trOpenRoom=(id)=>openRoom(id,0,false); // v246: 写真選択で読み込み直されたとき、ルームへ戻すため
   function openRoom(id,tries=0,expect=false){
     const s=state(),r=roomOf(s,id);
     if(!r||(expect&&r.status==='invited')){
@@ -23722,8 +23725,8 @@ window.__trFilePickStart=function(input){
     box.insertBefore(wrap,box.firstChild);box.classList.add('trHasAttach');
     if(input.placeholder&&input.placeholder.length>10)input.placeholder='メッセージを入力';
     const btn=wrap.querySelector('button'),f=wrap.querySelector('input');
-    btn.addEventListener('click',e=>{e.stopPropagation();f.value='';window.__trFilePickStart?.(f);f.click();});
-    f.addEventListener('change',()=>onFiles(ctx,f.files,btn));
+    btn.addEventListener('click',e=>{e.stopPropagation();f.value='';window.__trFilePickStart?.(f);try{localStorage.setItem('trPickReturn',JSON.stringify({ctx,roomId:ctx==='room'?(g()?.roomReactCtx?.().openId||''):'',at:Date.now()}));}catch(_){}f.click();});
+    f.addEventListener('change',()=>{try{localStorage.removeItem('trPickReturn');}catch(_){}onFiles(ctx,f.files,btn);});
   }
   async function cleanup(){
     const gate=g();if(gate?.role!=='developer'||!gate.roleVerified||!gate.chatImageCleanup)return;
@@ -23897,7 +23900,8 @@ window.__trFilePickStart=function(input){
         catch(err){s.remove();const m=String(err?.message||'');const code=String(err?.code||m||'').slice(0,40);say('設定できませんでした',/10分/.test(m)?m:'通信状態を確認して、もう一度お試しください。（変更は10分に1回までです）'+(code?'\n原因：'+code:''));}
       });
     });
-    window.__trFilePickStart?.(f);f.click();
+    window.__trFilePickStart?.(f);try{localStorage.setItem('trPickReturn',JSON.stringify({ctx:'avatar',at:Date.now()}));}catch(_){}
+    f.addEventListener('change',()=>{try{localStorage.removeItem('trPickReturn');}catch(_){}},{once:true});f.click();
   }
   function openSet(){
     const s=sheet('<b>アイコンを設定</b><div class="trAvBtns"><button type="button" data-a="cam">カメラで撮る</button><button type="button" data-a="pic">写真を選ぶ</button><button type="button" data-a="no">やめる</button></div>');
@@ -24153,6 +24157,46 @@ body.portalChatIsolated.portalFieldInputActive #screen-chat>main.chatMain{
 <style id="v245-input-16px">
 /* v245: iPhoneで入力欄を触ったときの自動拡大を防ぐ（16px未満の入力欄だけ16pxに） */
 @supports (-webkit-touch-callout:none){input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea{font-size:max(16px,1em)!important}}
+</style>
+<script id="v246-pick-return">
+/* v246: iPhoneでは写真を選ぶ画面を開くと、メモリ不足などでPORTALが読み込み直されることがある（アプリ側では止められない）。
+   その場合、3分以内なら元の画面（ルーム／マイページ）に戻し、もう一度選ぶよう案内する。 */
+(function(){
+  let info=null;try{info=JSON.parse(localStorage.getItem('trPickReturn')||'null');localStorage.removeItem('trPickReturn');}catch(_){}
+  if(!info||!info.at||Date.now()-info.at>180000)return;
+  const say=(t,m)=>{try{window.showActionFeedback?window.showActionFeedback(t,m):alert(t+'\n'+m);}catch(_){}};
+  const msg='写真を選んでいる間に、iPhoneが画面を読み込み直しました。お手数ですが、もう一度選んでください。（選ぶ枚数を少なくすると起きにくくなります）';
+  let done=false;
+  function go(){
+    if(done)return;const g=window.__TR_PORTAL_SYNC__;if(!g?.roleVerified)return;done=true;
+    setTimeout(()=>{
+      try{
+        if(info.ctx==='avatar'){
+          document.querySelector('[data-screen="mypage"]')?.click();
+          setTimeout(()=>{const d=document.getElementById('portalProfileEditorDisclosure');if(d)d.open=true;document.getElementById('trAvatarPanel')?.scrollIntoView({block:'center'});},500);
+        }else{
+          document.querySelector('nav.portalBottomTabs [data-bottom-target="chat"]')?.click();
+          if(info.ctx==='room'&&info.roomId)setTimeout(()=>{try{window.__trOpenRoom?.(info.roomId);}catch(_){}},700);
+        }
+      }catch(_){}
+      setTimeout(()=>say('もう一度選んでください',msg),1200);
+    },600);
+  }
+  window.addEventListener('tr-portal-authorized',go);
+  let n=0;const iv=setInterval(()=>{go();if(done||++n>60)clearInterval(iv);},500);
+})();
+</script>
+<style id="v246-grid-contain">
+/* v246: 複数枚でも写真を切らずに全体を表示（縮小して並べる） */
+.trImgs:not(.trOne){align-items:start}
+.trImgs:not(.trOne) .trImg{aspect-ratio:auto!important;max-height:none!important;background:rgba(0,0,0,.06)}
+.trImgs.trOdd>.trImg:first-child{aspect-ratio:auto!important}
+.trImgs:not(.trOne) .trImg img{height:auto!important;object-fit:contain!important}
+</style>
+<style id="v247-react-tune">
+/* v247: メッセージとリアクションの間を詰める／チームロゴのリアクションを少し大きく（ほかは変更なし） */
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg + .trReacts{margin-top:-9px!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trTeam{width:26px!important;height:26px!important}
 </style>
 </body>
 </html>
