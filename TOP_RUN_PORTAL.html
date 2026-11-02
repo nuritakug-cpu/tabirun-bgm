@@ -1,3 +1,6 @@
+<!-- TOP RUN PORTAL v261 | 2026-11-02 | Parent v260. リアクションをBANDのように：メッセージをタップ（長押し）すると、そのメッセージのすぐ近くに小さな枠が出る。よく使うリアクション6つ＋「…」、その下に「返信・コピー・一部コピー」。「…」で全部のリアクションの画面。全部の画面は画面の下に固定せず中央に表示し、候補は「もっと見る」なしで全部をその中でスクロール。上のメッセージは1行（名前＋最初の言葉）だけ。表示と操作だけ。Rules v240 のまま。 -->
+<!-- TOP RUN PORTAL v260 | 2026-11-02 | Parent v259. 共通チャットとルームで吹き出しの枠が違っていた：共通チャットでは開発者・管理者のメッセージ（staff）だけ左の枠線が4pxの太線だった。ルームに合わせて1pxに統一。表示だけ。Rules v240 のまま。 -->
+<!-- TOP RUN PORTAL v259 | 2026-11-02 | Parent v258. マイページ上部のチームロゴの枠をプロフィール画像に：アイコンを設定している人は、ロゴの代わりに自分のアイコンを丸く表示（チャットと同じ画像1つを使うので通信は増えない）。枠を押すとアイコンの設定（写真を選ぶ→切り取り）。未設定のときはチームロゴのまま、右下に＋。枠の位置をやや下げた。案内文を「マイページとチャットに表示されます」に。Rules v240 のまま。 -->
 <!-- TOP RUN PORTAL v258 | 2026-11-02 | Parent v257. チャットの吹き出しを横に広く：既読8.5px・時刻9pxに小さく、その分の余白を58→44pxに。アイコン40→36px（吹き出しの左の余白50→42px）。画面の左右の余白11.6→6px、吹き出しの内側の左右12→10px、行間1.55→1.5。375px幅の画面で、ほかの人の吹き出しの1行が約14字→約17字。表示だけ。Rules v240 のまま。 -->
 <!-- TOP RUN PORTAL v257 | 2026-11-02 | Parent v256. Androidでホームがスクロールしなくなった件：v256で入れた「画面全体のはね返りを止める」設定を iPhone・iPad だけに限定（html.trIOS）。Androidには付けない。ほかは v256 と同じ。Rules v240 のまま。 -->
 <!-- TOP RUN PORTAL v256 | 2026-11-02 | Parent v255. (1) ホームで画面の端を越えて引っ張ると、下のメニューごと動いていた（iPhoneのはね返り）：画面全体のはね返りを止める（overscroll-behavior）。(2) 色「マット」で、クラスなしのボタン（アイコンを設定・消す・参加者を読み込む・一覧を読み込む・申請と既存本人一覧を確認 など）が薄い灰色に白文字で見えなかった：濃い背景・オレンジの枠・白文字に。ファイルを選ぶボタンの文字も濃く。(3) 色「マット」で、管理画面の日付が二重に表示されていた（隠していたiPhone標準の日付欄が見えていた）：標準の欄を再び隠す。表示だけ。Rules v240 のまま。 -->
@@ -6434,7 +6437,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v258</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v261</b></div>
   </div>
 </div>
 
@@ -6625,7 +6628,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v258</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v261</b></div>
   </div>
 </div>
 
@@ -22296,9 +22299,53 @@ html[data-portal-personal-color="matte"] #screen-chat #trRoomThread .trReadIssue
     let el=$('trMsgSheet');
     if(!el){el=document.createElement('div');el.id='trMsgSheet';el.hidden=true;el.innerHTML='<div class="trSheetCard" role="dialog" aria-modal="true"></div>';document.body.append(el);
       el.addEventListener('click',e=>{if(e.target===el)el.hidden=true;});}
-    el.querySelector('.trSheetCard').innerHTML=html;el.hidden=false;return el;
+    el.classList.remove('trActMode');el.querySelector('.trSheetCard').innerHTML=html;el.hidden=false;return el;
   }
-  const closeSheet=()=>{const el=$('trMsgSheet');if(el)el.hidden=true;};
+  const closeSheet=()=>{const el=$('trMsgSheet');if(el)el.hidden=true;closeQuick();};
+  // v261: BANDのような小さな枠（よく使う6つ＋「…」、返信・コピー）
+  function closeQuick(){const q=$('trQuick');if(q)q.remove();document.querySelectorAll('.msg.trPicked').forEach(x=>x.classList.remove('trPicked'));}
+  function runAct(ctx,m,a){
+    if(a==='copy'){const t=String(m.text||'');closeSheet();copyText(t);return;}
+    if(a==='select'){closeQuick();openCopyBox(String(m.text||''),'コピーしたい部分を長押しで選んでください');return;}
+    if(a==='reply'){
+      const k=key(ctx);draft[k]=draft[k]||{};delete draft[k].sentAt;
+      draft[k].replyTo={id:m.id,name:String(m.name||'').slice(0,24),text:String(m.text||'').replace(/\s+/g,' ').slice(0,60)};
+      paintBar(ctx);closeSheet();inputOf(ctx)?.focus();
+    }
+  }
+  function openQuick(ctx,mid,msgEl){
+    const m=cache.get(mid);if(!m||!ctx)return;
+    closeSheet();
+    const mine=m.reactions?.[myUid()]?.e||'';
+    const picks=allPicks('frequent','all').slice(0,6);
+    const q=document.createElement('div');q.id='trQuick';
+    q.innerHTML='<div class="trQBack"></div><div class="trQCard" role="dialog" aria-label="リアクション"><div class="trQRow">'+
+      picks.map(e=>'<button type="button" class="trQBtn'+(isText(e)?' txt trPickTone-'+reactTone(e):'')+(e===mine?' on':'')+'" data-re="'+esc(e)+'" aria-label="'+esc(isTeam(e)?'TOP RUN AGUI '+reactionLabel(e):e)+'" aria-pressed="'+(e===mine)+'"><span class="trTileFace">'+face(e)+'</span></button>').join('')+
+      '<button type="button" class="trQBtn trQMore" data-act="more" aria-label="ほかのリアクション">…</button></div>'+
+      '<div class="trQActs"><button type="button" data-act="reply">↩ 返信</button><button type="button" data-act="copy">コピー</button><button type="button" data-act="select">一部コピー</button></div></div>';
+    document.body.append(q);
+    if(msgEl)msgEl.classList.add('trPicked');
+    const card=q.querySelector('.trQCard');
+    const H=card.offsetHeight,W=card.offsetWidth,vh=window.innerHeight,vw=window.innerWidth;
+    const topLim=88,botLim=vh-150;
+    let top=(vh-H)/2,left=(vw-W)/2;
+    if(msgEl){
+      const r=msgEl.getBoundingClientRect();
+      top=r.bottom+8;
+      if(top+H>botLim)top=r.top-H-8;
+      if(top<topLim)top=Math.max(topLim,Math.min(botLim-H,(vh-H)/2));
+      left=msgEl.classList.contains('mine')?r.right-W:r.left;
+    }
+    left=Math.max(8,Math.min(vw-W-8,left));
+    card.style.top=Math.round(top)+'px';card.style.left=Math.round(left)+'px';
+    q.addEventListener('click',e=>{
+      if(e.target.classList.contains('trQBack')){closeQuick();return;}
+      const r=e.target.closest('[data-re]');if(r){const v=r.dataset.re;react(ctx,mid,v===mine?null:v,r);return;}
+      const a=e.target.closest('[data-act]')?.dataset.act;if(!a)return;
+      if(a==='more'){closeQuick();openActions(ctx,mid);return;}
+      closeQuick();runAct(ctx,m,a);
+    });
+  }
   // leaving the chat screen always closes the menu (it must never stay open on HOME)
   const chatScr=$('screen-chat');
   if(chatScr)new MutationObserver(()=>{if(chatScr.classList.contains('hidden'))closeSheet();}).observe(chatScr,{attributes:true,attributeFilter:['class']});
@@ -22327,10 +22374,10 @@ html[data-portal-personal-color="matte"] #screen-chat #trRoomThread .trReadIssue
     const m=cache.get(mid);if(!m)return;
     const mine=m.reactions?.[myUid()]?.e||'';
     // Start with one small, useful row set. No duplicate seven-item QUICK strip.
-    let active='frequent',sub='all',visible=8;
+    let active='frequent',sub='all',visible=999; // v261: もっと見るなしで全部（枠の中でスクロール）
     const tile=e=>`<button type="button" class="${isText(e)?'txt trPickTone-'+reactTone(e)+' ':''}${e===mine?'on':''}" data-re="${esc(e)}" aria-label="${esc(isTeam(e)?'TOP RUN AGUI '+reactionLabel(e):e)}" aria-pressed="${e===mine}"><span class="trTileFace">${face(e)}</span>${reactionLabel(e)?`<span class="trTileLabel">${esc(reactionLabel(e))}</span>`:''}</button>`;
     const el=sheet(`<div class="trSheetTop"><span class="trSheetBrand">TOP RUN · REACTION</span><button class="trSheetClose" type="button" data-act="close" aria-label="閉じる">×</button></div>
-      <p class="trSheetHead"><strong>${esc(m.name||'')}</strong>　${esc(String(m.text||'').replace(/\s+/g,' ').slice(0,56))}</p>
+      <p class="trSheetHead"><strong>${esc(m.name||'')}</strong>　${esc(String(m.text||'').replace(/\s+/g,' ').slice(0,40))}</p>
       <p class="trSheetNote" role="status" aria-live="polite"></p>
       <div class="trCategoryBar" role="tablist" aria-label="リアクションの種類">${Object.entries(PICK_TYPES).map(([k,v])=>`<button type="button" role="tab" data-cat="${k}" class="${k===active?'active':''}" aria-selected="${k===active}">${esc(v.name)}</button>`).join('')}</div>
       <div class="trPickSubBar" aria-label="リアクションの分類" hidden></div>
@@ -22339,6 +22386,7 @@ html[data-portal-personal-color="matte"] #screen-chat #trRoomThread .trReadIssue
       <button class="trPickMore" type="button" data-act="more" hidden></button>
       <p class="trPickInfo" aria-live="polite"></p>
       <div class="trSheetBtns"><button type="button" data-act="reply">↩ 返信する</button><button type="button" data-act="copy">全文コピー</button><button type="button" data-act="select">一部コピー</button><button type="button" data-act="close">閉じる</button></div>`);
+    el.classList.add('trActMode'); // v261: 画面の中央に表示
     const card=el.querySelector('.trSheetCard');
     function draw(){
       const section=PICK_TYPES[active];
@@ -22360,21 +22408,13 @@ html[data-portal-personal-color="matte"] #screen-chat #trRoomThread .trReadIssue
     }
     draw();
     card.onclick=e=>{
-      const tab=e.target.closest('[data-cat]');if(tab){active=tab.dataset.cat;sub='all';visible=8;draw();return;}
-      const filter=e.target.closest('[data-filter]');if(filter){sub=filter.dataset.filter;visible=8;draw();return;}
+      const tab=e.target.closest('[data-cat]');if(tab){active=tab.dataset.cat;sub='all';visible=999;draw();card.querySelector('.trEmojiGrid').scrollTop=0;return;}
+      const filter=e.target.closest('[data-filter]');if(filter){sub=filter.dataset.filter;visible=999;draw();card.querySelector('.trEmojiGrid').scrollTop=0;return;}
       const r=e.target.closest('[data-re]');if(r){react(ctx,mid,r.dataset.re===mine?null:r.dataset.re,r);return;}
       const a=e.target.closest('[data-act]')?.dataset.act;
       if(a==='more'){visible+=8;draw();return;}
       if(a==='close')closeSheet();
-      if(a==='copy'){const t=String(m.text||'');closeSheet();copyText(t);}
-      if(a==='select'){
-        openCopyBox(String(m.text||''),'コピーしたい部分を長押しで選んでください');
-      }
-      if(a==='reply'){
-        const k=key(ctx);draft[k]=draft[k]||{};delete draft[k].sentAt;
-        draft[k].replyTo={id:m.id,name:String(m.name||'').slice(0,24),text:String(m.text||'').replace(/\s+/g,' ').slice(0,60)};
-        paintBar(ctx);closeSheet();inputOf(ctx)?.focus();
-      }
+      if(a==='copy'||a==='select'||a==='reply')runAct(ctx,m,a);
     };
   }
   // v168: full-text copy. Clipboard API first (it was called without waiting before, so failures were reported as success),
@@ -22437,7 +22477,7 @@ html[data-portal-personal-color="matte"] #screen-chat #trRoomThread .trReadIssue
     if(q){const th=q.closest('#trRoomThread,#portalChatThread');if(th){e.preventDefault();jump(th,q.dataset.jump);}return;}
     // v163: a single tap on a message opens the same menu (long press also works)
     const msg=e.target.closest('#portalChatThread .msg[data-mid],#trRoomThread .msg[data-mid]');
-    if(msg&&Date.now()-lpAt>700&&!(window.getSelection&&String(window.getSelection())))openActions(ctxOf(msg),msg.dataset.mid);
+    if(msg&&Date.now()-lpAt>700&&!(window.getSelection&&String(window.getSelection())))openQuick(ctxOf(msg),msg.dataset.mid,msg); // v261
   });
   // long press: 0.4 s, finger may move up to 14px. The tap that ends the long press is swallowed,
   // so it never hits a button of the sheet that just opened.
@@ -22447,7 +22487,7 @@ html[data-portal-personal-color="matte"] #screen-chat #trRoomThread .trReadIssue
   let lpAt=0;
   const start=(msg,x,y)=>{sx=x;sy=y;cancel();
     const ctx=ctxOf(msg),mid=msg.dataset.mid;
-    timer=setTimeout(()=>{timer=null;fired=true;lpAt=Date.now();try{navigator.vibrate?.(12);}catch(_){}try{window.getSelection()?.removeAllRanges();}catch(_){}openActions(ctx,mid);},400);};
+    timer=setTimeout(()=>{timer=null;fired=true;lpAt=Date.now();try{navigator.vibrate?.(12);}catch(_){}try{window.getSelection()?.removeAllRanges();}catch(_){}openQuick(ctx,mid,msg);},400);};
   // every new touch starts clean (a touch that was cancelled by the phone must not block the next one)
   document.addEventListener('touchstart',e=>{fired=false;const msg=target(e);if(!msg||e.touches.length>1){cancel();return;}start(msg,e.touches[0].clientX,e.touches[0].clientY);},{passive:true,capture:true});
   document.addEventListener('touchmove',e=>{if(timer&&e.touches[0]&&(Math.abs(e.touches[0].clientX-sx)>14||Math.abs(e.touches[0].clientY-sy)>14))cancel();},{passive:true});
@@ -22459,7 +22499,7 @@ html[data-portal-personal-color="matte"] #screen-chat #trRoomThread .trReadIssue
   document.addEventListener('mouseup',()=>{cancel();setTimeout(()=>{fired=false;},0);});
   document.addEventListener('contextmenu',e=>{
     const msg=e.target.closest('#portalChatThread .msg[data-mid],#trRoomThread .msg[data-mid]');
-    if(!msg)return;e.preventDefault();if(!fired&&!timer)openActions(ctxOf(msg),msg.dataset.mid);
+    if(!msg)return;e.preventDefault();if(!fired&&!timer)openQuick(ctxOf(msg),msg.dataset.mid,msg);
   });
 })();
 </script>
@@ -24020,7 +24060,7 @@ window.__trFilePickStart=function(input){
       const file=f.files&&f.files[0];f.remove();if(!file)return;
       const d=await cropIcon(file); // v248: 切り取り画面で「このアイコンにする」を押すとそのまま保存
       if(!d)return;
-      try{const at=await g().avatarPut(d);ver[g().uid]=at;mem.set(g().uid+':'+at,d);cput(g().uid+':'+at,d);refreshAll();say('アイコンを設定しました','チャットで名前の横に表示されます。');}
+      try{const at=await g().avatarPut(d);ver[g().uid]=at;mem.set(g().uid+':'+at,d);cput(g().uid+':'+at,d);refreshAll();say('アイコンを設定しました','マイページとチャットに表示されます。');}
       catch(err){const m=String(err?.message||'');const code=String(err?.code||m||'').slice(0,40);say('設定できませんでした',/10分/.test(m)?m:'通信状態を確認して、もう一度お試しください。（変更は10分に1回までです）'+(code?'\n原因：'+code:''));}
     });
     window.__trFilePickStart?.(f);try{window.__trPickSet(JSON.stringify({ctx:'avatar',at:Date.now()}));}catch(_){}
@@ -24034,7 +24074,23 @@ window.__trFilePickStart=function(input){
     if(!confirm('アイコンを消しますか？'))return;
     try{await g().avatarRemove();ver[g().uid]=0;refreshAll();}catch(_){say('消せませんでした','通信状態を確認してください。');}
   }
+  // v259: マイページ上部の枠にも自分のアイコン（チャットと同じ画像）。枠を押すとアイコンの設定。
+  function paintHero(){
+    const slot=document.querySelector('#screen-mypage .portalProfileImageReserve');if(!slot)return;
+    const gate=g();if(!gate?.uid)return;
+    if(!slot.dataset.trAvHook){
+      slot.dataset.trAvHook='1';slot.removeAttribute('aria-hidden');slot.setAttribute('role','button');slot.setAttribute('tabindex','0');slot.setAttribute('aria-label','プロフィール画像（アイコン）を設定');
+      const go=()=>{const x=g();if(!x?.canSendChat?.()){say('設定できません','本人接続と参加の承認が必要です。');return;}openSet();};
+      slot.addEventListener('click',go);slot.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}});
+    }
+    const at=Number(ver[gate.uid])||0,key=gate.uid+':'+at;
+    if(slot.dataset.key===key)return;slot.dataset.key=key;
+    const im=slot.querySelector('img');if(!im)return;
+    if(!at){slot.classList.remove('trHasMyAv');if(window.__TR_LOGO_SRC__)im.src=window.__TR_LOGO_SRC__;return;}
+    avatarOf(gate.uid).then(v=>{if(!v||slot.dataset.key!==key)return;im.src=avUrl(key,v);slot.classList.add('trHasMyAv');});
+  }
   function paintMine(){
+    paintHero();
     const p=document.getElementById('trAvatarPanel');if(!p)return;const gate=g();if(!gate?.uid)return;
     const big=p.querySelector('.trAvBig');const name=gate.chatName||gate.displayName||'';
     const key=gate.uid+':'+(Number(ver[gate.uid])||0)+':'+name;
@@ -24046,7 +24102,7 @@ window.__trFilePickStart=function(input){
     const box=document.querySelector('#portalProfileEditorDisclosure .portalProfileEditorContent');if(!box)return;
     const after=document.getElementById('trChatNameBox');
     const sec=document.createElement('section');sec.className='portalPanel';sec.id='trAvatarPanel';
-    sec.innerHTML='<div class="portalPanelHead"><small>ICON</small><b>アイコン</b></div><div class="trAvRow"><span class="trAvBig"></span><button type="button" data-a="set">アイコンを設定</button><button type="button" data-a="del" hidden>消す</button></div><p>チャットで名前の横に表示されます。顔写真でなくても大丈夫です。変更は10分に1回までです。</p>';
+    sec.innerHTML='<div class="portalPanelHead"><small>ICON</small><b>アイコン</b></div><div class="trAvRow"><span class="trAvBig"></span><button type="button" data-a="set">アイコンを設定</button><button type="button" data-a="del" hidden>消す</button></div><p>マイページの上とチャットの名前の横に表示されます。顔写真でなくても大丈夫です。変更は10分に1回までです。</p>';
     if(after&&box.contains(after))after.insertAdjacentElement('afterend',sec);else box.appendChild(sec); // v240: チャットでの表示名の下
     sec.addEventListener('click',e=>{const a=e.target.closest('[data-a]')?.dataset.a;if(!a)return;const gate=g();if(!gate?.canSendChat?.()){say('設定できません','本人接続と参加の承認が必要です。');return;}if(a==='set')openSet();if(a==='del')removeMine();});
     paintMine();
@@ -24409,6 +24465,44 @@ html[data-portal-personal-color="matte"] body :is(#screen-management,#screen-flo
 #screen-chat :is(#portalChatThread,#trRoomThread) .msg.mine{max-width:min(calc(100% - 44px),620px)!important}
 #screen-chat :is(#portalChatThread,#trRoomThread) .msg > i.trAv.trAvSide{left:-42px!important;width:36px!important;height:36px!important}
 #screen-chat :is(#portalChatThread,#trRoomThread) .msg.trHasAv:not(.mine) + .trReacts{margin-left:50px!important}
+</style>
+<style id="v259-mypage-photo">
+/* v259: マイページ上部の枠＝プロフィール画像（押すと設定）。やや下げる。 */
+#screen-mypage .portalProfileImageReserve{pointer-events:auto!important;cursor:pointer;margin-top:18px;-webkit-tap-highlight-color:transparent}
+#screen-mypage .portalProfileImageReserve.trHasMyAv{border-radius:50%!important;background:#ddd!important}
+#screen-mypage .portalProfileImageReserve.trHasMyAv img{object-fit:cover!important}
+#screen-mypage .portalProfileImageReserve:not(.trHasMyAv)::after{content:'＋';position:absolute;right:2px;bottom:2px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.66);color:#fff;font-size:12px;line-height:18px;text-align:center;font-weight:900}
+</style>
+<style id="v260-same-bubble">
+/* v260: 共通チャットの開発者・管理者の吹き出しの太い左線をやめ、ルームと同じ枠に */
+#screen-chat #portalChatThread .msg.staff{border-left-width:1px!important}
+</style>
+<style id="v261-quick-reactions">
+/* v261: メッセージのすぐ近くに出る小さな枠（BANDのような） */
+#trQuick{position:fixed;inset:0;z-index:9001;font-family:inherit}
+body.portalChatIsolated > #trQuick{visibility:visible!important;opacity:1!important;pointer-events:auto!important}
+#trQuick .trQBack{position:absolute;inset:0;background:rgba(0,0,0,.14)}
+#trQuick .trQCard{position:absolute;box-sizing:border-box;width:min(380px,calc(100vw - 16px));background:#fff;border:1px solid #e3e0d6;border-radius:22px;box-shadow:0 8px 26px rgba(0,0,0,.22);padding:7px}
+#trQuick .trQRow{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
+#trQuick .trQBtn{min-width:0;height:46px;border:0;border-radius:14px;background:transparent;display:grid;place-items:center;padding:0;font-size:27px;line-height:1;overflow:hidden;color:#22292b;touch-action:manipulation}
+#trQuick .trQBtn.on{background:#f6e7ab;box-shadow:inset 0 0 0 1.5px #dfb52e}
+#trQuick .trQBtn .trTileFace{display:grid;place-items:center;max-width:100%;max-height:44px;white-space:nowrap}
+#trQuick .trQBtn .trTileFace img{max-width:40px;max-height:40px}
+#trQuick .trQBtn.txt .trTileFace{font-size:12.5px;font-weight:950;letter-spacing:-.03em}
+#trQuick .trQBtn.busy{opacity:.45}
+#trQuick .trQMore{font-size:20px;font-weight:900;color:#4a5254;background:#f1f0eb}
+#trQuick .trQActs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:6px;padding-top:6px;border-top:1px solid #eeebe3}
+#trQuick .trQActs button{min-width:0;min-height:38px;border:0;border-radius:11px;background:#f4f3ee;color:#22292b;font-size:13px;font-weight:850;touch-action:manipulation}
+#trQuick .trQActs button[data-act="reply"]{background:#e6bc35;color:#101719}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg.trPicked{box-shadow:0 0 0 2px rgba(223,181,46,.9)!important}
+/* v261: 全部のリアクションの画面は中央に。上のメッセージは1行。もっと見る・件数・下のボタンは出さない */
+#trMsgSheet.trActMode{align-items:center!important;box-sizing:border-box;padding:calc(env(safe-area-inset-top,0px) + 60px) 10px calc(env(safe-area-inset-bottom,0px) + 24px)}
+#trMsgSheet.trActMode .trSheetCard{border-radius:20px!important;max-height:100%!important;padding-top:12px!important}
+#trMsgSheet.trActMode .trSheetCard:before{display:none!important}
+#trMsgSheet.trActMode .trSheetHead{display:block!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;max-height:none!important;padding:8px 12px!important}
+#trMsgSheet.trActMode .trSheetHead strong{display:inline!important}
+#trMsgSheet.trActMode .trEmojiGrid{max-height:min(48dvh,400px)!important;margin-bottom:4px!important}
+#trMsgSheet.trActMode :is(.trPickMore,.trPickInfo,.trSheetBtns){display:none!important}
 </style>
 </body>
 </html>
