@@ -1,3 +1,6 @@
+<!-- TOP RUN PORTAL v238 | 2026-11-02 | Parent v237. REQUIRES Rules v238。テストしやすく：開発者は写真の1日5枚の上限なし、アイコンの10分に1回の制限なし（ルールでも開発者は除外）。参加者の制限は変えない。 -->
+<!-- TOP RUN PORTAL v237 | 2026-11-02 | Parent v236. REQUIRES Rules v237。(1) 写真：入力欄のボタンをシルエット1つに（iPhoneはタップで写真・カメラを選べる）、複数枚（1回5枚まで・1日5枚まで）を選んで1つのメッセージで送り並べて表示（images[]、古い版のため1枚目を image にも）。拡大表示で前後に移動。写真だけのメッセージは枠なし。入力欄の文字切れを直す（高さ・プレースホルダー短縮）。(2) アイコン：吹き出しの左ではなく名前の左に小さく（22px）、リアクション位置がずれない。マイページの設定欄は「表示名・プロフィールを編集する」の中へ。 -->
+<!-- TOP RUN PORTAL v236 | 2026-11-02 | Parent v235. 不具合修正：iPhoneで写真・スクショを選ぶとホーム画面に戻り、アイコン・写真が保存できない。原因＝写真の画面を開くとページを離れた扱い（pagehide/pageshow）になり、接続のリセットと再読み込みが走っていた。写真・カメラの画面を開いている間（最大3分、選択・取消で解除）は、リセットと再読み込みをしない。ルールは v235 のまま。 -->
 <!-- TOP RUN PORTAL v235 | 2026-11-02 | Parent v234. REQUIRES Rules v235 (TOPRUNRULESv235.json)。アイコン：マイページに「アイコンを設定（カメラで撮る／写真を選ぶ）」「アイコンを消す」。真ん中を正方形に切り取り128px・20KB以下で avatars/<uid> に保存。変更日時は nameBook/<uid>/avatarAt（syncNameBook は set→update にして消さない）。チャット（共通・ルーム）のほかの人のメッセージ左にアイコン、未設定は頭文字の丸。1人1回だけ読み端末(IndexedDB)に保存、変わった人だけ読み直し、失敗時の読み直しは1回まで。変更は10分に1回まで（ルールでも制限）。開発者はアイコンをタップして他人のアイコンを消せる。 -->
 <!-- TOP RUN PORTAL v234 | 2026-11-02 | Parent v233. 写真の送信ボタン（📷🖼）をルームだけに表示（共通チャットには出さない。COMMON_ON=false）。表示・保存・ルールは v233 と同じ（Rules v233 が必要）。 -->
 <!-- TOP RUN PORTAL v233 | 2026-11-02 | Parent v232. REQUIRES Rules v233 (TOPRUNRULESv233.json). チャットの写真：入力欄に📷（カメラで撮って送る）と🖼（写真を選んで送る）。送る前に縮小（本体250KB以下・長辺1600px、見本は長辺320px）。本体 chatImages／見本 chatImageThumbs／一覧 chatImageIndex（日時だけ）に保存し、メッセージには image{id,w,h} だけ。チャットには見本だけ表示、タップで本体。一度見た画像は端末（IndexedDB）に保存して再読込しない。1人1日5枚まで。30日を過ぎた写真は開発者の端末が1日1回消す。本文は「📷 写真」（文を入れていればその文）。ルールにメッセージの link（リンクのプレビュー用、今は未使用）も追加。 -->
@@ -6405,7 +6408,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v235</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v238</b></div>
   </div>
 </div>
 
@@ -6596,7 +6599,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v235</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v238</b></div>
   </div>
 </div>
 
@@ -15353,8 +15356,8 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
         refreshPilotReady();
       }catch(_){close();setState('認証または接続に失敗しました');}
     });
-    window.addEventListener('pagehide',close);
-    window.addEventListener('pageshow',e=>{if(e.persisted)location.reload();});
+    window.addEventListener('pagehide',()=>{if((window.__trFilePicking&&Date.now()-window.__trFilePicking<180000))return;close();}); // v236: 写真を選んでいる間は切断しない
+    window.addEventListener('pageshow',e=>{if(e.persisted&&!(window.__trFilePicking&&Date.now()-window.__trFilePicking<180000))location.reload();});
   }catch(_){ui?.disableChat();setState('接続の初期化に失敗しました');}
 }
 </script>
@@ -17472,7 +17475,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       if(!gate.canSendChat()||auth.currentUser?.uid!==gate.uid)throw Error('本人認証・利用承認が必要です');
       if(typeof data!=='string'||!data.startsWith('data:image/jpeg;base64,')||data.length>27000)throw Error('アイコンが大きすぎます');
       const prev=Number(gate.nameBookRaw?.[gate.uid]?.avatarAt)||0;
-      if(prev&&Date.now()-prev<600000)throw Error('アイコンの変更は10分に1回までです。少し待ってからお試しください。');
+      if(prev&&Date.now()-prev<600000&&gate.role!=='developer')throw Error('アイコンの変更は10分に1回までです。少し待ってからお試しください。'); // v238: 開発者は制限なし
       const at=Date.now();
       await dbMod.set(ref('avatars/'+gate.uid),{at,data});
       await dbMod.update(ref('nameBook/'+gate.uid),{displayName:gate.displayName,chatName:(gate.chatName||gate.displayName),updatedAt:Date.now(),avatarAt:at});
@@ -18971,8 +18974,8 @@ try{
     };
     unsubs=[];
     authMod.onAuthStateChanged(auth,onUser);
-    window.addEventListener('pagehide',reset);
-    window.addEventListener('pageshow',e=>{if(e.persisted)location.reload();});
+    window.addEventListener('pagehide',()=>{if((window.__trFilePicking&&Date.now()-window.__trFilePicking<180000))return;reset();}); // v236: 写真を選んでいる間は切断しない
+    window.addEventListener('pageshow',e=>{if(e.persisted&&!(window.__trFilePicking&&Date.now()-window.__trFilePicking<180000))location.reload();});
   }catch(error){
     if(error?.message==='PORTAL_MULTIPLE_IDENTITY_CONFLICT'){
       status('複数の既存Firebase UIDが確認されたため、本人の自動選択を停止しました');
@@ -23406,22 +23409,44 @@ document.addEventListener('click',function(e){
   },true);
 })();
 </script>
+<script id="v236-file-picking">
+/* v236: 写真・カメラの画面を開いている間の印。iPhoneはこの間にページを離れた扱いにするため、切断・再読み込みを止める。 */
+window.__trFilePickStart=function(input){
+  window.__trFilePicking=Date.now();
+  const done=()=>{setTimeout(()=>{window.__trFilePicking=0;},1500);};
+  try{input.addEventListener('change',done,{once:true});input.addEventListener('cancel',done,{once:true});}catch(_){}
+};
+</script>
 <style id="v233-chat-image-style">
-/* v233: チャットの写真（カメラ・写真）。送信ボタンの左に📷と🖼を置く */
-.chatBox.trHasAttach{grid-template-columns:auto minmax(0,1fr) 60px!important}
-.trAttach{display:flex;gap:4px;align-items:center}
-.trAttach button{width:38px;height:38px;min-width:38px;padding:0;border-radius:11px;border:1px solid rgba(128,128,128,.45);background:transparent;font-size:19px;line-height:1;cursor:pointer}
-.trAttach button:disabled{opacity:.45}
-.trImg{display:block;width:min(240px,62vw);max-height:320px;margin-top:6px;border-radius:12px;overflow:hidden;background:rgba(128,128,128,.18);cursor:zoom-in}
+/* v237: チャットの写真。入力欄の左にシルエットのボタン1つ（iPhoneは写真・カメラを選べる）。複数枚を並べて表示。写真だけのメッセージは枠なし */
+.chatBox.trHasAttach{grid-template-columns:38px minmax(0,1fr) 60px!important}
+.trAttach{display:flex;align-items:center;justify-content:center}
+.trAttach button{width:38px;height:38px;min-width:38px;padding:0;border:0;background:transparent;color:inherit;opacity:.8;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.trAttach button svg{width:26px;height:26px}
+.trAttach button:disabled{opacity:.35}
+.chatBox.trHasAttach textarea{min-height:42px!important;line-height:1.45!important;padding-top:10px!important;padding-bottom:8px!important}
+.trImgs{display:grid;grid-template-columns:1fr 1fr;gap:3px;width:min(260px,64vw);margin-top:4px;border-radius:12px;overflow:hidden}
+.trImgs.trOne{display:block}
+.trImgs.trOdd>.trImg:first-child{grid-column:1 / span 2;aspect-ratio:2/1!important}
+.trImg{display:block;width:100%;max-height:340px;background:rgba(128,128,128,.18);cursor:zoom-in;overflow:hidden}
+.trImgs:not(.trOne) .trImg{aspect-ratio:1/1!important;max-height:none}
 .trImg img{display:block;width:100%;height:100%;object-fit:cover}
 .trImg.trImgGone{aspect-ratio:auto!important;padding:10px 12px;font-size:12px;opacity:.75;cursor:default}
-#trImgView{position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;touch-action:auto;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg.trImgOnly{background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg.trImgOnly p{margin:0!important}
+#trImgView{position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.94);display:flex;align-items:center;justify-content:center;touch-action:auto}
 #trImgView img{max-width:100vw;max-height:100%;object-fit:contain}
-#trImgView .trImgClose{position:absolute;top:calc(10px + env(safe-area-inset-top,0px));right:12px;width:44px;height:44px;border-radius:22px;border:0;background:rgba(255,255,255,.18);color:#fff;font-size:22px}
-#trImgView .trImgNote{position:absolute;bottom:calc(14px + env(safe-area-inset-bottom,0px));left:0;right:0;text-align:center;color:#fff;font-size:13px;opacity:.8}
+#trImgView button{position:absolute;border:0;background:rgba(255,255,255,.18);color:#fff;border-radius:22px;width:44px;height:44px;font-size:22px}
+#trImgView .trImgClose{top:calc(10px + env(safe-area-inset-top,0px));right:12px}
+#trImgView .trImgPrev{left:8px;top:50%;transform:translateY(-50%)}
+#trImgView .trImgNext{right:8px;top:50%;transform:translateY(-50%)}
+#trImgView .trImgNote{position:absolute;bottom:calc(14px + env(safe-area-inset-bottom,0px));left:0;right:0;text-align:center;color:#fff;font-size:13px;opacity:.85}
 #trImgSend{position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:16px}
 #trImgSend .trImgCard{background:#faf9f5;color:#222;border-radius:16px;padding:14px;width:min(420px,100%);max-height:90vh;overflow:auto;box-sizing:border-box}
-#trImgSend img{display:block;width:100%;max-height:52vh;object-fit:contain;border-radius:10px;background:#ddd}
+#trImgSend .trSendGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+#trImgSend .trSendGrid.trOne{grid-template-columns:1fr}
+#trImgSend .trSendGrid img{display:block;width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:8px;background:#ddd}
+#trImgSend .trSendGrid.trOne img{aspect-ratio:auto;max-height:50vh;object-fit:contain}
 #trImgSend b{display:block;font-size:16px;margin:0 0 8px}
 #trImgSend p{font-size:12px;margin:8px 0;opacity:.8}
 #trImgSend .trImgBtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
@@ -23429,51 +23454,56 @@ document.addEventListener('click',function(e){
 #trImgSend .trImgBtns button.trOk{background:#d8b52a;border-color:#d8b52a;color:#1d2421}
 </style>
 <script id="v233-chat-image">
-/* v233: チャットの写真。
-   画像本体はメッセージとは別の場所（chatImages／見本は chatImageThumbs）。チャットには見本だけ、タップで本体。
-   一度見た画像はこの端末に保存し、二度と読まない。1人1日5枚まで。30日で自動的に消える（開発者の端末が消す）。 */
+/* v237: チャットの写真（複数枚・並べて表示）。
+   本体 chatImages／見本 chatImageThumbs／一覧 chatImageIndex。メッセージには images[{id,w,h}]（古い版のため1枚目を image にも入れる）。
+   チャットには見本だけ、タップで本体。一度見た画像は端末に保存。1人1日5枚まで。30日で自動的に消える。 */
 (function(){
   'use strict';
+  const COMMON_ON=false; // まずルームだけ。共通チャットにも出すときは true にする
   const g=()=>window.__TR_PORTAL_SYNC__;
-  const COMMON_ON=false; // v234: まずルームだけ。共通チャットにも出すときは true にする
-  const LIMIT=5,FULL_MAX=1600,FULL_BYTES=250*1024,THUMB_MAX=320,KEEP_DAYS=30;
+  const LIMIT=5,PER_MSG=5,FULL_MAX=1600,FULL_BYTES=250*1024,THUMB_MAX=320,KEEP_DAYS=30;
   const ID_RE=/^i[A-Za-z0-9_]{8,60}$/;
+  const PLACE=/^📷 写真( ?\d+枚)?$/;
   const say=(t,m)=>{try{window.showActionFeedback?window.showActionFeedback(t,m):alert(t+'\n'+m);}catch(_){}};
-  // ---- この端末への保存（IndexedDB）
   let dbp=null;
   function idb(){if(dbp)return dbp;dbp=new Promise(res=>{try{const r=indexedDB.open('trChatImg',1);r.onupgradeneeded=()=>r.result.createObjectStore('img');r.onsuccess=()=>res(r.result);r.onerror=()=>res(null);}catch(_){res(null);}});return dbp;}
   async function cget(k){const d=await idb();if(!d)return null;return new Promise(res=>{try{const q=d.transaction('img').objectStore('img').get(k);q.onsuccess=()=>res(q.result||null);q.onerror=()=>res(null);}catch(_){res(null);}});}
   async function cput(k,v){const d=await idb();if(!d)return;try{d.transaction('img','readwrite').objectStore('img').put(v,k);}catch(_){}}
   const mem=new Map(),inflight=new Map(),tries=new Map();
-  // 戻り値：文字列＝画像、''＝消えている、null＝今は読めない（通信・権限）
   function load(id,kind){
     const k=kind+':'+id;
     if(mem.has(k))return Promise.resolve(mem.get(k));
     if(inflight.has(k))return inflight.get(k);
     const p=(async()=>{
       let v=await cget(k);
-      if(!v){
-        try{v=await g()?.chatImageGet?.(id,kind);}catch(e){v=null;console.warn('[TOP RUN v233] image read',String(e?.code||e?.message||e).slice(0,60));}
-        if(v)cput(k,v);
-      }
+      if(!v){try{v=await g()?.chatImageGet?.(id,kind);}catch(e){v=null;}if(v)cput(k,v);}
       if(v!==null&&v!==undefined)mem.set(k,v);
-      inflight.delete(k);
-      return v===undefined?null:v;
+      inflight.delete(k);return v===undefined?null:v;
     })();
     inflight.set(k,p);return p;
   }
-  // ---- 表示：メッセージの本文の下に見本を出す
+  function listOf(m){
+    let arr=[];
+    const raw=m&&m.images;
+    if(raw&&typeof raw==='object')arr=(Array.isArray(raw)?raw:Object.keys(raw).sort().map(k=>raw[k]));
+    if(!arr.length&&m&&m.image)arr=[m.image];
+    return arr.filter(x=>x&&ID_RE.test(String(x.id||''))).slice(0,PER_MSG);
+  }
+  const imgOnly=new Set();
   function hookDecor(){
     const D=window.__trChatDecor;if(!D||D.__v233)return !!D;
     const orig=D.text.bind(D);
     D.text=function(m){
       let h=orig(m);
       try{
-        const im=m&&m.image;
-        if(im&&ID_RE.test(String(im.id||''))){
-          const w=Math.max(1,Number(im.w)||4),hh=Math.max(1,Number(im.h)||3);
-          if(String(m.text||'').trim()==='📷 写真')h='';
-          h+=(h?'<br>':'')+'<span class="trImg" data-img="'+im.id+'" style="aspect-ratio:'+w+'/'+hh+'" role="button" aria-label="写真を開く"></span>';
+        const arr=listOf(m);
+        if(arr.length){
+          const only=PLACE.test(String(m.text||'').trim());
+          if(only){h='';imgOnly.add(String(m.id||''));}
+          const cls='trImgs'+(arr.length===1?' trOne':'')+(arr.length>1&&arr.length%2===1?' trOdd':'');
+          const ids=arr.map(x=>x.id).join(',');
+          h+=(h?'<br>':'')+'<span class="'+cls+'">'+arr.map((x,i)=>{const w=Math.max(1,Number(x.w)||4),hh=Math.max(1,Number(x.h)||3);
+            return '<span class="trImg" data-img="'+x.id+'" data-set="'+ids+'" data-i="'+i+'" style="aspect-ratio:'+w+'/'+hh+'" role="button" aria-label="写真を開く"></span>';}).join('')+'</span>';
         }
       }catch(_){}
       return h;
@@ -23489,30 +23519,40 @@ document.addEventListener('click',function(e){
       else{const n=(tries.get(id)||0)+1;tries.set(id,n);if(n<2)el.dataset.trFilled='';}
     });
   }
-  function fillAll(root){(root||document).querySelectorAll('.trImg[data-img]:not([data-tr-filled="1"])').forEach(fill);}
-  new MutationObserver(ms=>{for(const m of ms)for(const n of m.addedNodes){if(n.nodeType!==1)continue;if(n.matches?.('.trImg[data-img]'))fill(n);else if(n.querySelector)fillAll(n);}}).observe(document.documentElement,{childList:true,subtree:true});
-  // ---- 拡大表示（タップで本体を読む）
-  function view(id){
+  function markOnly(){document.querySelectorAll('#portalChatThread .msg[data-mid],#trRoomThread .msg[data-mid]').forEach(el=>{if(imgOnly.has(el.dataset.mid))el.classList.add('trImgOnly');});}
+  function fillAll(root){(root||document).querySelectorAll('.trImg[data-img]:not([data-tr-filled="1"])').forEach(fill);markOnly();}
+  new MutationObserver(ms=>{let hit=false;for(const m of ms)for(const n of m.addedNodes){if(n.nodeType!==1)continue;if(n.matches?.('.trImg[data-img],.msg[data-mid]')||n.querySelector?.('.trImg[data-img]')){hit=true;}}if(hit)fillAll();}).observe(document.documentElement,{childList:true,subtree:true});
+  // ---- 拡大表示（前後の写真へ移動できる）
+  function view(ids,start){
     let v=document.getElementById('trImgView');if(v)v.remove();
     v=document.createElement('div');v.id='trImgView';
-    v.innerHTML='<img alt="写真"><button type="button" class="trImgClose" aria-label="閉じる">✕</button><div class="trImgNote">読み込み中…</div>';
+    v.innerHTML='<img alt="写真"><button type="button" class="trImgClose" aria-label="閉じる">✕</button>'+(ids.length>1?'<button type="button" class="trImgPrev" aria-label="前の写真">‹</button><button type="button" class="trImgNext" aria-label="次の写真">›</button>':'')+'<div class="trImgNote"></div>';
     document.body.appendChild(v);
-    const img=v.querySelector('img'),note=v.querySelector('.trImgNote');
-    const t=mem.get('thumb:'+id);if(t)img.src=t;
-    load(id,'full').then(f=>{if(!v.isConnected)return;if(f){img.src=f;note.textContent='';}else note.textContent=f===''?'写真は削除されました':'読み込めませんでした';});
-    v.addEventListener('click',e=>{if(e.target===v||e.target.closest('.trImgClose'))v.remove();});
+    const img=v.querySelector('img'),note=v.querySelector('.trImgNote');let i=start;
+    function show(){
+      const id=ids[i];const t=mem.get('thumb:'+id);img.src=t||'';
+      note.textContent=(ids.length>1?(i+1)+' / '+ids.length+'　':'')+'読み込み中…';
+      load(id,'full').then(f=>{if(!v.isConnected||ids[i]!==id)return;if(f)img.src=f;note.textContent=(ids.length>1?(i+1)+' / '+ids.length:'')+(f?'':(f===''?'　写真は削除されました':'　読み込めませんでした'));});
+    }
+    const go=d=>{i=(i+d+ids.length)%ids.length;show();};
+    show();
+    v.addEventListener('click',e=>{if(e.target.closest('.trImgPrev'))return go(-1);if(e.target.closest('.trImgNext'))return go(1);if(e.target===v||e.target.closest('.trImgClose'))v.remove();});
+    let sx=0;v.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;},{passive:true});
+    v.addEventListener('touchend',e=>{if(ids.length<2||e.touches.length)return;const dx=(e.changedTouches[0]?.clientX||0)-sx;if(Math.abs(dx)>60)go(dx<0?1:-1);},{passive:true});
   }
   document.addEventListener('click',e=>{
     const el=e.target.closest&&e.target.closest('.trImg[data-img]');
     if(!el||el.classList.contains('trImgGone'))return;
-    e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();view(el.dataset.img);
+    e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+    const ids=String(el.dataset.set||el.dataset.img).split(',').filter(x=>ID_RE.test(x));
+    view(ids.length?ids:[el.dataset.img],Math.max(0,Number(el.dataset.i)||0));
   },true);
-  // ---- 送信：縮小 → 確認 → 画像を保存 → メッセージを送る
+  // ---- 送信
   let pending=null;
   function hookTake(){
     const X=window.__trChatExtras;if(!X||X.__v233)return !!X;
     const o=X.take.bind(X);
-    X.take=function(k,text){const out=o(k,text)||{};if(pending&&pending.k===k){out.image=pending.image;pending=null;}return out;};
+    X.take=function(k,text){const out=o(k,text)||{};if(pending&&pending.k===k){out.image=pending.images[0];out.images=pending.images;pending=null;}return out;};
     X.__v233=true;return true;
   }
   async function decode(file){
@@ -23541,79 +23581,88 @@ document.addEventListener('click',function(e){
   }
   const today=()=>new Date(Date.now()+9*3600e3).toISOString().slice(0,10);
   const countKey=()=>'trChatImgCount_'+(g()?.uid||'')+'_'+today();
-  const used=()=>{try{return Number(localStorage.getItem(countKey()))||0;}catch(_){return 0;}};
-  const addUsed=()=>{try{localStorage.setItem(countKey(),String(used()+1));}catch(_){}};
-  function confirmSend(img,caption){
+  const isDev=()=>{const x=g();return x?.role==='developer'&&x.roleVerified===true;}; // v238: 開発者は1日の上限なし（テスト用）
+  const used=()=>{if(isDev())return 0;try{return Number(localStorage.getItem(countKey()))||0;}catch(_){return 0;}};
+  const addUsed=n=>{try{localStorage.setItem(countKey(),String(used()+n));}catch(_){}};
+  function confirmSend(list,caption,cut){
     return new Promise(res=>{
       let s=document.getElementById('trImgSend');if(s)s.remove();
       s=document.createElement('div');s.id='trImgSend';
-      s.innerHTML='<div class="trImgCard"><b>この写真を送りますか？</b><img alt="送る写真"><p>'+(caption?'入力中の文も一緒に送ります。':'')+'1日'+LIMIT+'枚まで（今日はあと'+Math.max(0,LIMIT-used())+'枚）。写真は'+KEEP_DAYS+'日で自動的に消えます。</p><div class="trImgBtns"><button type="button" data-a="no">やめる</button><button type="button" class="trOk" data-a="ok">送信</button></div></div>';
-      s.querySelector('img').src=img;document.body.appendChild(s);
+      s.innerHTML='<div class="trImgCard"><b>'+(list.length>1?list.length+'枚の写真':'この写真')+'を送りますか？</b><div class="trSendGrid'+(list.length===1?' trOne':'')+'"></div><p>'+(cut?'選んだうち'+list.length+'枚だけ送ります（1日'+LIMIT+'枚まで）。':'')+(caption?'入力中の文も一緒に送ります。':'')+'今日はあと'+Math.max(0,LIMIT-used())+'枚送れます。写真は'+KEEP_DAYS+'日で自動的に消えます。</p><div class="trImgBtns"><button type="button" data-a="no">やめる</button><button type="button" class="trOk" data-a="ok">送信</button></div></div>';
+      const grid=s.querySelector('.trSendGrid');list.forEach(r=>{const im=document.createElement('img');im.alt='送る写真';im.src=list.length===1?r.full:r.thumb;grid.appendChild(im);});
+      document.body.appendChild(s);
       s.addEventListener('click',e=>{const a=e.target.closest('[data-a]')?.dataset.a;if(!a)return;s.remove();res(a==='ok');});
     });
   }
   let busy=false;
-  async function onFile(ctx,file,btns){
-    if(!file||busy)return;
+  async function onFiles(ctx,files,btn){
+    files=[...(files||[])].filter(f=>/^image\//.test(f.type||'image/'));
+    if(!files.length||busy)return;
     if(ctx!=='room'&&!COMMON_ON)return;
     const gate=g();
     if(!gate?.canSendChat?.()){say('送信できません','本人接続が必要です。');return;}
-    if(!/^image\//.test(file.type||'image/')){say('送信できません','写真を選んでください。');return;}
-    if(used()>=LIMIT){say('送信できません','写真は1日'+LIMIT+'枚までです。');return;}
+    const left=Math.min(PER_MSG,LIMIT-used());
+    if(left<=0){say('送信できません','写真は1日'+LIMIT+'枚までです。');return;}
+    const cut=files.length>left;files=files.slice(0,left);
     const roomId=ctx==='room'?(gate.roomReactCtx?.().openId||''):'';
     if(ctx==='room'&&!roomId){say('送信できません','ルームを開き直してください。');return;}
-    busy=true;btns.forEach(b=>b.disabled=true);
+    busy=true;btn.disabled=true;
     try{
-      const r=await compress(file);
+      const list=[];for(const f of files)list.push(await compress(f));
       const input=document.getElementById(ctx==='room'?'trRoomInput':'portalChatInput');
       const caption=String(input?.value||'').trim().slice(0,1000);
-      if(!(await confirmSend(r.thumb.length>1000?r.full:r.thumb,caption)))return;
-      const id='i'+Date.now()+'_'+Math.random().toString(36).slice(2,12).replace(/[^A-Za-z0-9]/g,'x');
-      await gate.chatImagePut(id,r.full,r.thumb);
-      mem.set('full:'+id,r.full);mem.set('thumb:'+id,r.thumb);cput('full:'+id,r.full);cput('thumb:'+id,r.thumb);
-      const k=ctx==='room'?'room:'+roomId:'common';
-      pending={k,image:{id,w:r.w,h:r.h}};
-      const text=caption||'📷 写真';
+      if(!(await confirmSend(list,caption,cut)))return;
+      const images=[];
+      for(const r of list){
+        const id='i'+Date.now()+'_'+Math.random().toString(36).slice(2,12).replace(/[^A-Za-z0-9]/g,'x');
+        await gate.chatImagePut(id,r.full,r.thumb);
+        mem.set('full:'+id,r.full);mem.set('thumb:'+id,r.thumb);cput('full:'+id,r.full);cput('thumb:'+id,r.thumb);
+        images.push({id,w:r.w,h:r.h});
+      }
+      pending={k:ctx==='room'?'room:'+roomId:'common',images};
+      const text=caption||('📷 写真'+(images.length>1?' '+images.length+'枚':''));
       if(ctx==='room')await gate.roomSend(roomId,text);else await gate.sendChat(text);
-      pending=null;addUsed();
+      pending=null;addUsed(images.length);
       if(input&&caption){input.value='';input.dispatchEvent(new Event('input',{bubbles:true}));}
     }catch(e){
-      pending=null;console.warn('[TOP RUN v233] image send',e);
-      say('写真を送れませんでした','通信状態を確認して、もう一度お試しください。');
-    }finally{busy=false;btns.forEach(b=>b.disabled=false);}
+      pending=null;console.warn('[TOP RUN v237] image send',e);
+      say('写真を送れませんでした','通信状態を確認して、もう一度お試しください。'+(e?.code?'\n原因：'+String(e.code).slice(0,40):''));
+    }finally{busy=false;btn.disabled=false;}
   }
+  const ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg>';
   function addButtons(inputId,ctx){
     const input=document.getElementById(inputId);const box=input?.closest('.chatBox');
     if(!box||box.querySelector('.trAttach'))return;
     const wrap=document.createElement('span');wrap.className='trAttach';
-    wrap.innerHTML='<button type="button" data-attach="camera" aria-label="カメラで撮って送る">📷</button><button type="button" data-attach="photo" aria-label="写真を選んで送る">🖼</button>'+
-      '<input type="file" accept="image/*" capture="environment" hidden data-file="camera"><input type="file" accept="image/*" hidden data-file="photo">';
+    wrap.innerHTML='<button type="button" aria-label="写真を送る（撮影・選択）">'+ICON+'</button><input type="file" accept="image/*" multiple hidden>';
     box.insertBefore(wrap,box.firstChild);box.classList.add('trHasAttach');
-    const btns=[...wrap.querySelectorAll('button')];
-    wrap.addEventListener('click',e=>{const b=e.target.closest('[data-attach]');if(!b)return;e.stopPropagation();const f=wrap.querySelector('[data-file="'+b.dataset.attach+'"]');f.value='';f.click();});
-    wrap.querySelectorAll('input[type=file]').forEach(f=>f.addEventListener('change',()=>onFile(ctx,f.files&&f.files[0],btns)));
+    if(input.placeholder&&input.placeholder.length>10)input.placeholder='メッセージを入力';
+    const btn=wrap.querySelector('button'),f=wrap.querySelector('input');
+    btn.addEventListener('click',e=>{e.stopPropagation();f.value='';window.__trFilePickStart?.(f);f.click();});
+    f.addEventListener('change',()=>onFiles(ctx,f.files,btn));
   }
-  // ---- 30日を過ぎた写真を消す（開発者の端末だけ、1日1回）
   async function cleanup(){
     const gate=g();if(gate?.role!=='developer'||!gate.roleVerified||!gate.chatImageCleanup)return;
     const k='trChatImgCleanup_'+today();try{if(localStorage.getItem(k))return;}catch(_){}
-    try{const n=await gate.chatImageCleanup(KEEP_DAYS);try{localStorage.setItem(k,String(n));}catch(_){}}catch(e){console.warn('[TOP RUN v233] cleanup',String(e?.code||e?.message||e).slice(0,60));}
+    try{const n=await gate.chatImageCleanup(KEEP_DAYS);try{localStorage.setItem(k,String(n));}catch(_){}}catch(e){console.warn('[TOP RUN v237] cleanup',String(e?.code||e?.message||e).slice(0,60));}
   }
   function tick(){hookDecor();hookTake();if(COMMON_ON)addButtons('portalChatInput','common');addButtons('trRoomInput','room');fillAll();}
   tick();
   let n=0;const iv=setInterval(()=>{tick();if(++n>120)clearInterval(iv);},1000);
   window.addEventListener('tr-portal-authorized',()=>{tick();setTimeout(cleanup,15000);});
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick();});
-  new MutationObserver(()=>{if(document.getElementById('trRoomInput')&&!document.querySelector('#trRoomInput')?.closest('.chatBox')?.querySelector('.trAttach'))addButtons('trRoomInput','room');}).observe(document.body,{childList:true,subtree:true});
+  new MutationObserver(()=>{const ri=document.getElementById('trRoomInput');if(ri&&!ri.closest('.chatBox')?.querySelector('.trAttach'))addButtons('trRoomInput','room');}).observe(document.body,{childList:true,subtree:true});
 })();
 </script>
 
+
 <style id="v235-avatar-style">
 /* v235: アイコン（チャットの名前の横・マイページ） */
-#portalChatThread .msg.trHasAv,#trRoomThread .msg.trHasAv{position:relative;margin-left:46px!important;overflow:visible!important;max-width:min(calc(86% - 46px),600px)!important}
-.trAv{position:absolute;left:-46px;top:0;width:38px;height:38px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff;cursor:pointer;box-sizing:border-box;border:1px solid rgba(128,128,128,.35)}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg.trHasAv{margin-top:14px!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg .msgHead span:first-child .trAv{display:inline-flex!important;vertical-align:middle;width:22px;height:22px;margin-right:6px;border-radius:50%;overflow:hidden;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;cursor:pointer;box-sizing:border-box;border:1px solid rgba(128,128,128,.3);pointer-events:auto}
+.trAv img{width:100%;height:100%;object-fit:cover;display:block}
 .trAv img,.trAvBig img{width:100%;height:100%;object-fit:cover;display:block}
-#trAvatarPanel{margin:12px 0}
+#trAvatarPanel{margin:0 0 14px;padding:0!important;border:0!important;box-shadow:none!important;background:transparent!important}
 #trAvatarPanel .trAvRow{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 #trAvatarPanel .trAvBig{width:64px;height:64px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:#fff;flex:none;border:1px solid rgba(128,128,128,.35)}
 #trAvatarPanel button{min-height:42px;padding:0 14px;border-radius:11px;font-weight:800}
@@ -23702,12 +23751,13 @@ document.addEventListener('click',function(e){
   function decorate(msg){
     if(msg.classList.contains('mine'))return;
     const uid=midUid.get(msg.dataset.mid||'');if(!uid||!UID_RE.test(uid))return;
-    let av=msg.querySelector(':scope > .trAv');
+    const nameEl=msg.querySelector('.msgHead span:first-child');if(!nameEl)return;
+    let av=nameEl.querySelector('.trAv');
     const key=uid+':'+(Number(ver[uid])||0);
     if(av&&av.dataset.key===key)return;
-    if(!av){av=document.createElement('span');av.className='trAv';av.setAttribute('role','button');av.setAttribute('aria-label','アイコンを見る');msg.insertBefore(av,msg.firstChild);msg.classList.add('trHasAv');}
-    av.dataset.key=key;av.dataset.uid=uid;
-    const name=msg.querySelector('.msgHead span')?.textContent||'';av.dataset.name=name;
+    const name=(av?nameEl.textContent.replace(av.textContent,''):nameEl.textContent).trim();
+    if(!av){av=document.createElement('span');av.className='trAv';av.setAttribute('role','button');av.setAttribute('aria-label','アイコンを見る');nameEl.insertBefore(av,nameEl.firstChild);msg.classList.add('trHasAv');}
+    av.dataset.key=key;av.dataset.uid=uid;av.dataset.name=name;
     paint(av,uid,name);
   }
   function refreshAll(){document.querySelectorAll('#portalChatThread .msg[data-mid],#trRoomThread .msg[data-mid]').forEach(decorate);paintMine();}
@@ -23757,10 +23807,10 @@ document.addEventListener('click',function(e){
         if(a==='no'){s.remove();return;}
         e.target.disabled=true;
         try{const at=await g().avatarPut(d);ver[g().uid]=at;mem.set(g().uid+':'+at,d);cput(g().uid+':'+at,d);s.remove();refreshAll();say('アイコンを設定しました','チャットで名前の横に表示されます。');}
-        catch(err){s.remove();const m=String(err?.message||'');say('設定できませんでした',/10分/.test(m)?m:'通信状態を確認して、もう一度お試しください。（変更は10分に1回までです）');}
+        catch(err){s.remove();const m=String(err?.message||'');const code=String(err?.code||m||'').slice(0,40);say('設定できませんでした',/10分/.test(m)?m:'通信状態を確認して、もう一度お試しください。（変更は10分に1回までです）'+(code?'\n原因：'+code:''));}
       });
     });
-    f.click();
+    window.__trFilePickStart?.(f);f.click();
   }
   function openSet(){
     const s=sheet('<b>アイコンを設定</b><div class="trAvBtns"><button type="button" data-a="cam">カメラで撮る</button><button type="button" data-a="pic">写真を選ぶ</button><button type="button" data-a="no">やめる</button></div>');
@@ -23779,10 +23829,10 @@ document.addEventListener('click',function(e){
   }
   function addPanel(){
     if(document.getElementById('trAvatarPanel'))return;
-    const hero=document.querySelector('#screen-mypage .portalProfileHero');if(!hero)return;
+    const box=document.querySelector('#portalProfileEditorDisclosure .portalProfileEditorContent');if(!box)return;
     const sec=document.createElement('section');sec.className='portalPanel';sec.id='trAvatarPanel';
-    sec.innerHTML='<div class="trAvRow"><span class="trAvBig"></span><button type="button" data-a="set">アイコンを設定</button><button type="button" data-a="del" hidden>アイコンを消す</button></div><p>チャットで名前の横に表示されます。顔写真でなくても大丈夫です。変更は10分に1回までです。</p>';
-    hero.insertAdjacentElement('afterend',sec);
+    sec.innerHTML='<div class="portalPanelHead"><small>ICON</small><b>アイコン</b></div><div class="trAvRow"><span class="trAvBig"></span><button type="button" data-a="set">アイコンを設定</button><button type="button" data-a="del" hidden>アイコンを消す</button></div><p>チャットで名前の横に表示されます。顔写真でなくても大丈夫です。変更は10分に1回までです。</p>';
+    box.insertBefore(sec,box.firstChild);
     sec.addEventListener('click',e=>{const a=e.target.closest('[data-a]')?.dataset.a;if(!a)return;const gate=g();if(!gate?.canSendChat?.()){say('設定できません','本人接続と参加の承認が必要です。');return;}if(a==='set')openSet();if(a==='del')removeMine();});
     paintMine();
   }
