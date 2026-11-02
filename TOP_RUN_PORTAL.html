@@ -1,3 +1,6 @@
+<!-- TOP RUN PORTAL v245 | 2026-11-02 | Parent v244. (1) 画面の拡大ができなかった：v218 で iPhone に maximum-scale=1 を付けていたため（ホーム画面のアプリでは指での拡大も止まる）。付けるのをやめ、入力時の自動拡大は入力欄の文字を16px以上にして防ぐ。(2) 写真の拡大表示：指2本で拡大、2回タップで拡大／戻す、拡大中は指1本で移動。(3) 写真の「保存」ボタン（共有画面から写真に保存）。保存は表示中の画像を使うので通信は増えない。Rules v240 のまま。 -->
+<!-- TOP RUN PORTAL v244 | 2026-11-02 | Parent v243. アイコン未登録の人は、色付きの頭文字ではなく灰色の人型シルエットで表示（チャット・マイページ・拡大表示）。表示だけの変更。Rules v240 のまま。 -->
+<!-- TOP RUN PORTAL v243 | 2026-11-02 | Parent v242. チャットの表示：アイコンをBANDと同じ配置（吹き出しの左、上端を名前にそろえる、40px）に戻して大きく。リアクションも吹き出しの位置にそろえる。メンションの色を、ほかの人の吹き出し（暗い色）では明るい黄色、自分の吹き出しでは濃い青に。表示だけの変更。Rules v240 のまま。 -->
 <!-- TOP RUN PORTAL v242 | 2026-11-02 | Parent v241 (ChatGPT版). 緊急修正：v241で追加された表示調整のブロック（style と script）が、印刷用の一覧表を作るプログラムの文字列の中に入っており、その中の script の終わりの印でメインのプログラムが途中で切れてログインできなくなっていた。ブロックを本当の body の終わりの直前へ移動（内容は変更なし）。あわせて、ログインできない画面に原因確認用の状態表示を追加。Firebase/Rules は変更なし（Rules v240 のまま）。 -->
 <!-- TOP RUN PORTAL v241 | 2026-11-02 | Parent v240. CHAT/ROOM display tuning only. (1) リアクションの大きさを本文より控えめに再調整し、アイコン・文字・カウントのバランスを整理。(2) 送信者アイコンを名前の左でBAND参考の位置関係に寄せ、名前行と本文の見やすさを調整。(3) チャット下端の余白を実測で確保し、メッセージが入力欄の下に潜り込みにくいよう補正。画像の読み込み後も、下端付近を見ているときは最新位置を維持。 Firebase/Auth/RTDB/Rules/通知/保存処理は変更なし。 -->
 <!-- TOP RUN PORTAL v240 | 2026-11-02 | Parent v239. REQUIRES Rules v240。(1) チャットのアイコンが消えていた不具合を修正（アイコンを<span>で入れていたため名前用の配置CSSが当たり見えなくなっていた→<i>に変更）。(2) マイページのアイコン欄を「チャットでの表示名」の下へ、「消す」を「アイコンを設定」の横へ。(3) 写真の見本を長辺320→640px（約40〜60KB）にしてくっきり表示。ルールの見本の上限を40000→90000文字に。 -->
@@ -319,7 +322,7 @@ window.addEventListener('unhandledrejection',function(e){try{var r=e&&e.reason;w
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <script>/* v218: iPhone は入力欄を触ったときの自動拡大を止める（指での拡大は iOS 側で可能なまま）。名前の並べ替え用の共通関数。 */
-(function(){try{var ios=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);var m=document.querySelector('meta[name="viewport"]');if(ios&&m&&!/maximum-scale/.test(m.content))m.content+=',maximum-scale=1';}catch(_){}
+(function(){try{var ios=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);var m=document.querySelector('meta[name="viewport"]');/* v245: 指での画面拡大を止めないよう maximum-scale は付けない（入力時の自動拡大は文字16pxで防ぐ） */}catch(_){}
  var col=null;try{col=new Intl.Collator('ja',{numeric:true,sensitivity:'base'});}catch(_){}
  window.trNameKeyV218=function(v){return String(v||'').normalize('NFKC').replace(/[\s\u3000]/g,'').replace(/[\u30a1-\u30f6]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-0x60);});};
  window.trNameCmpV218=function(a,b){var x=window.trNameKeyV218(a),y=window.trNameKeyV218(b);return col?col.compare(x,y):x.localeCompare(y,'ja');};
@@ -6418,7 +6421,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v242</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v245</b></div>
   </div>
 </div>
 
@@ -6609,7 +6612,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v242</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v245</b></div>
   </div>
 </div>
 
@@ -23565,21 +23568,62 @@ window.__trFilePickStart=function(input){
   new MutationObserver(ms=>{let hit=false;for(const m of ms)for(const n of m.addedNodes){if(n.nodeType!==1)continue;if(n.matches?.('.trImg[data-img],.msg[data-mid]')||n.querySelector?.('.trImg[data-img]')){hit=true;}}if(hit)fillAll();}).observe(document.documentElement,{childList:true,subtree:true});
   // ---- 拡大表示（前後の写真へ移動できる）
   function view(ids,start){
+    // v245: 指2本で拡大・2回タップで拡大／戻す・拡大中は指1本で移動。「保存」ボタン（端末の共有画面から写真に保存）。
     let v=document.getElementById('trImgView');if(v)v.remove();
     v=document.createElement('div');v.id='trImgView';
-    v.innerHTML='<img alt="写真"><button type="button" class="trImgClose" aria-label="閉じる">✕</button>'+(ids.length>1?'<button type="button" class="trImgPrev" aria-label="前の写真">‹</button><button type="button" class="trImgNext" aria-label="次の写真">›</button>':'')+'<div class="trImgNote"></div>';
+    v.innerHTML='<div class="trImgStage"><img alt="写真" draggable="false"></div><button type="button" class="trImgClose" aria-label="閉じる">✕</button><button type="button" class="trImgSave" aria-label="写真を保存">保存</button>'+(ids.length>1?'<button type="button" class="trImgPrev" aria-label="前の写真">‹</button><button type="button" class="trImgNext" aria-label="次の写真">›</button>':'')+'<div class="trImgNote"></div>';
     document.body.appendChild(v);
-    const img=v.querySelector('img'),note=v.querySelector('.trImgNote');let i=start;
+    const img=v.querySelector('img'),note=v.querySelector('.trImgNote');let i=start,full='';
+    let sc=1,tx=0,ty=0;
+    const apply=()=>{img.style.transform='translate('+tx+'px,'+ty+'px) scale('+sc+')';};
+    const reset=()=>{sc=1;tx=0;ty=0;apply();};
     function show(){
-      const id=ids[i];const t=mem.get('thumb:'+id);img.src=t||'';
+      const id=ids[i];const t=mem.get('thumb:'+id);img.src=t||'';full='';reset();
       note.textContent=(ids.length>1?(i+1)+' / '+ids.length+'　':'')+'読み込み中…';
-      load(id,'full').then(f=>{if(!v.isConnected||ids[i]!==id)return;if(f)img.src=f;note.textContent=(ids.length>1?(i+1)+' / '+ids.length:'')+(f?'':(f===''?'　写真は削除されました':'　読み込めませんでした'));});
+      load(id,'full').then(f=>{if(!v.isConnected||ids[i]!==id)return;if(f){img.src=f;full=f;}note.textContent=(ids.length>1?(i+1)+' / '+ids.length:'')+(f?'':(f===''?'　写真は削除されました':'　読み込めませんでした'));});
     }
     const go=d=>{i=(i+d+ids.length)%ids.length;show();};
     show();
-    v.addEventListener('click',e=>{if(e.target.closest('.trImgPrev'))return go(-1);if(e.target.closest('.trImgNext'))return go(1);if(e.target===v||e.target.closest('.trImgClose'))v.remove();});
-    let sx=0;v.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;},{passive:true});
-    v.addEventListener('touchend',e=>{if(ids.length<2||e.touches.length)return;const dx=(e.changedTouches[0]?.clientX||0)-sx;if(Math.abs(dx)>60)go(dx<0?1:-1);},{passive:true});
+    async function save(){
+      const src=full||img.src;if(!src)return;
+      try{
+        const blob=await (await fetch(src)).blob();
+        const file=new File([blob],'toprun_'+Date.now()+'.jpg',{type:'image/jpeg'});
+        if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file]});return;}
+        const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=file.name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);
+      }catch(e){if(e&&e.name==='AbortError')return;say('保存できませんでした','写真を長押しして保存してください。');}
+    }
+    v.addEventListener('click',e=>{
+      if(e.target.closest('.trImgSave'))return void save();
+      if(e.target.closest('.trImgPrev'))return go(-1);
+      if(e.target.closest('.trImgNext'))return go(1);
+      if(e.target.closest('.trImgClose')||(e.target===v&&sc===1)||(e.target.classList.contains('trImgStage')&&sc===1))v.remove();
+    });
+    // 拡大・移動
+    let p0=0,s0=1,mx=0,my=0,tx0=0,ty0=0,sx=0,sy=0,lastTap=0,moved=false;
+    const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
+    const stage=v.querySelector('.trImgStage');
+    stage.addEventListener('touchstart',e=>{
+      moved=false;
+      if(e.touches.length===2){p0=dist(e.touches);s0=sc;mx=(e.touches[0].clientX+e.touches[1].clientX)/2;my=(e.touches[0].clientY+e.touches[1].clientY)/2;tx0=tx;ty0=ty;}
+      else if(e.touches.length===1){sx=e.touches[0].clientX;sy=e.touches[0].clientY;tx0=tx;ty0=ty;}
+    },{passive:true});
+    stage.addEventListener('touchmove',e=>{
+      if(e.touches.length===2){e.preventDefault();moved=true;
+        const cx=(e.touches[0].clientX+e.touches[1].clientX)/2,cy=(e.touches[0].clientY+e.touches[1].clientY)/2;
+        sc=Math.min(5,Math.max(1,s0*dist(e.touches)/p0));tx=tx0+(cx-mx);ty=ty0+(cy-my);if(sc===1){tx=0;ty=0;}apply();}
+      else if(e.touches.length===1&&sc>1){e.preventDefault();moved=true;tx=tx0+(e.touches[0].clientX-sx);ty=ty0+(e.touches[0].clientY-sy);apply();}
+    },{passive:false});
+    stage.addEventListener('touchend',e=>{
+      if(e.touches.length)return;
+      const c=e.changedTouches[0];if(!c)return;
+      if(sc===1&&!moved&&ids.length>1){const dx=c.clientX-sx;if(Math.abs(dx)>60){go(dx<0?1:-1);return;}}
+      if(!moved&&Math.abs(c.clientX-sx)<10&&Math.abs(c.clientY-sy)<10){
+        const now=Date.now();
+        if(now-lastTap<320){if(sc>1)reset();else{sc=2.5;tx=(window.innerWidth/2-c.clientX)*1.5;ty=(window.innerHeight/2-c.clientY)*1.5;apply();}lastTap=0;}
+        else lastTap=now;
+      }
+    },{passive:true});
   }
   document.addEventListener('click',e=>{
     const el=e.target.closest&&e.target.closest('.trImg[data-img]');
@@ -23776,8 +23820,10 @@ window.__trFilePickStart=function(input){
   const COLORS=['#c0573a','#2f7f6f','#5a54b0','#a3456b','#3d6fa5','#7a6a1f','#5f7f2a','#8a4f9c'];
   function colorOf(uid){let h=0;for(const c of String(uid))h=(h*31+c.charCodeAt(0))>>>0;return COLORS[h%COLORS.length];}
   function initial(name){const s=String(name||'').replace(/[\s\u3000（(].*$/,'').trim()||String(name||'').trim();return s?Array.from(s)[0]:'？';}
+  // v244: 未登録はシンプルな灰色のシルエット（色付きの頭文字はやめる）
+  const SIL='<svg viewBox="0 0 40 40" width="100%" height="100%" aria-hidden="true" style="display:block"><circle cx="20" cy="15" r="7.2" fill="#f4f5f6"/><path d="M6.5 36c1.6-7.6 7-11.6 13.5-11.6S31.9 28.4 33.5 36" fill="#f4f5f6"/></svg>';
   function paint(el,uid,name){
-    el.style.background=colorOf(uid);el.textContent=initial(name);
+    el.style.background='#b9bdc2';el.innerHTML=SIL;
     avatarOf(uid).then(v=>{if(v&&el.isConnected){el.style.background='#ddd';el.innerHTML='<img alt="" src="'+v+'">';}});
   }
   // ---- チャット：送った人のアイコンを吹き出しの左に
@@ -23791,12 +23837,13 @@ window.__trFilePickStart=function(input){
   function decorate(msg){
     if(msg.classList.contains('mine'))return;
     const uid=midUid.get(msg.dataset.mid||'');if(!uid||!UID_RE.test(uid))return;
-    const nameEl=msg.querySelector('.msgHead span:first-child');if(!nameEl)return;
-    let av=nameEl.querySelector('.trAv');
+    const nameEl=msg.querySelector('.msgHead span:first-child');
+    let av=msg.querySelector(':scope > i.trAv');
     const key=uid+':'+(Number(ver[uid])||0);
     if(av&&av.dataset.key===key)return;
-    const name=(av?nameEl.textContent.replace(av.textContent,''):nameEl.textContent).trim();
-    if(!av){av=document.createElement('i');av.className='trAv';av.setAttribute('role','button');av.setAttribute('aria-label','アイコンを見る');nameEl.insertBefore(av,nameEl.firstChild);msg.classList.add('trHasAv');}
+    const name=String(nameEl?.textContent||'').trim();
+    // v243: BANDと同じ配置（吹き出しの左・名前の高さから）。アイコンは .msg の直下に置く
+    if(!av){av=document.createElement('i');av.className='trAv trAvSide';av.setAttribute('role','button');av.setAttribute('aria-label','アイコンを見る');msg.insertBefore(av,msg.firstChild);msg.classList.add('trHasAv');}
     av.dataset.key=key;av.dataset.uid=uid;av.dataset.name=name;
     paint(av,uid,name);
   }
@@ -24088,5 +24135,24 @@ body.portalChatIsolated.portalFieldInputActive #screen-chat>main.chatMain{
 })();
 </script>
 
+<style id="v243-band-layout">
+/* v243: BANDと同じ配置。アイコン（38px）を吹き出しの左に、上端を名前の行にそろえる。リアクションも吹き出しの位置にそろえる。メンションの色を読みやすく。 */
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg.trHasAv:not(.mine){margin-left:50px!important;position:relative!important;overflow:visible!important;max-width:min(calc(100% - 66px),600px)!important;margin-top:24px!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg > i.trAv.trAvSide{position:absolute!important;left:-50px!important;top:-22px!important;width:40px!important;height:40px!important;border-radius:50%!important;overflow:hidden!important;display:flex!important;align-items:center!important;justify-content:center!important;font-style:normal!important;font-size:16px!important;font-weight:800!important;color:#fff!important;-webkit-text-fill-color:#fff!important;border:1px solid rgba(128,128,128,.3)!important;box-sizing:border-box!important;cursor:pointer;z-index:1}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg > i.trAv.trAvSide img{width:100%;height:100%;object-fit:cover;display:block}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg.trHasAv:not(.mine) + .trReacts{margin-left:58px!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg:not(.mine) .trAt{color:#ffd76a!important;-webkit-text-fill-color:#ffd76a!important;font-weight:900!important;text-shadow:none!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg.mine .trAt{color:#174a86!important;-webkit-text-fill-color:#174a86!important;font-weight:900!important;text-shadow:none!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) .msg.trImgOnly .trAt{color:inherit!important;-webkit-text-fill-color:inherit!important}
+</style>
+<style id="v245-viewer-zoom">
+#trImgView .trImgStage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;overflow:hidden;touch-action:none}
+#trImgView .trImgStage img{max-width:100vw;max-height:100%;object-fit:contain;transform-origin:center center;transition:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:default}
+#trImgView .trImgSave{position:absolute;top:calc(10px + env(safe-area-inset-top,0px));left:12px;width:auto!important;padding:0 14px;border-radius:22px!important;font-size:15px!important;font-weight:800}
+</style>
+<style id="v245-input-16px">
+/* v245: iPhoneで入力欄を触ったときの自動拡大を防ぐ（16px未満の入力欄だけ16pxに） */
+@supports (-webkit-touch-callout:none){input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea{font-size:max(16px,1em)!important}}
+</style>
 </body>
 </html>
