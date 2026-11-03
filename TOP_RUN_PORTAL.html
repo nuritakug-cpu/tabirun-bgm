@@ -1,3 +1,5 @@
+<!-- TOP RUN PORTAL v286 | 2026-11-03 | Parent v285. Rules v285 のまま。チャット：(1) メッセージ内のURLを押すと開く（リンクジャンプ。共通チャット・ルーム）。リンクを押してもメニューは開かない。(2) メッセージを押したときの枠（リアクション・返信・コピー・修正・削除）をPORTALの配色に合わせたデザインに変更（アイコン付きの操作ボタン）。表示だけの変更。 -->
+<!-- TOP RUN PORTAL v285 | 2026-11-03 | Parent v284. REQUIRES Rules v285（portalCommon/topRun/ekidenLegResults を追加：開発者が書く・開発者と管理者が読む）。第2回駅伝の区間タイム：これまで開くたびに駅伝の設定データ全体（約189KB）を読んで計算していた。計算した区間タイムを一度だけ保存（数KB）し、以後はそれだけを読む。保存がまだない・読めないときだけ、今までどおり設定データから計算する。 -->
 <!-- TOP RUN PORTAL v284 | 2026-11-03 | Parent v283. REQUIRES Rules v284（チャット・ルームのメッセージを、送った本人だけが修正・削除できる）。チャット修正・削除：自分のメッセージを押したときの小さな枠に「修正」「削除」を追加（本人のメッセージだけ）。修正したメッセージは時刻の横に「編集済み」。 -->
 <!-- TOP RUN PORTAL v283 | 2026-11-03 | Parent v282. Rules v266 のまま。開発者の操作を止めていた制限を外した：承認の取り消しは記録が付いている人・管理者も可（記録は消えず残る。記録の紐付けの「付け直す」で移せる）。二重登録の整理も管理者の登録をまとめられる。止めるのは「自分（この端末の開発者）」と「開発者の登録」だけ。 -->
 <!-- TOP RUN PORTAL v282 | 2026-11-03 | Parent v281. Rules v266 のまま。承認の取り消し：管理者の登録も外せるようにした（確認のうえ、管理者の役割を外してから承認を取り消す）。開発者・自分は今までどおり外せない。 -->
@@ -6468,7 +6470,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v284</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v286</b></div>
   </div>
 </div>
 
@@ -6659,7 +6661,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v284</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v286</b></div>
   </div>
 </div>
 
@@ -18873,7 +18875,19 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         if(staff&&info.id==='eventbase_ekiden_dev_20261006'){
           // Existing EVENT BASE ekiden state is a race/leg ledger, not official
           // per-person result approval. Inspect once with existing authenticated DB.
-          void dbMod.get(dbMod.ref(db,'eventEkiden/'+info.id+'/state')).then(snap=>{
+          // v285: 保存済みの区間タイム（数KB）を先に読む。なければ設定データから計算して、開発者なら保存する。
+          const applyPeople=people=>{
+            gate.officialEkidenPeople[info.id]=people;
+            gate.officialReadStatus[info.id]={...gate.officialReadStatus[info.id],ekidenStatus:'ok',ekiden:people.length,ekidenError:''};
+            delete gate.errors['eventEkiden:'+info.id];pushOfficialRoster();statusResources();
+          };
+          void dbMod.get(ref('ekidenLegResults/'+info.id)).then(s2=>{
+            const saved=s2.val();
+            const list=saved&&saved.rows?(Array.isArray(saved.rows)?saved.rows:Object.values(saved.rows)):null;
+            if(list&&list.length){if(seq!==generation||auth.currentUser?.uid!==uid)return;applyPeople(list.filter(x=>x&&typeof x==='object'));return 'done';}
+            return null;
+          }).catch(()=>null).then(done=>{ if(done==='done')return;
+          return dbMod.get(dbMod.ref(db,'eventEkiden/'+info.id+'/state')).then(snap=>{
             if(seq!==generation||auth.currentUser?.uid!==uid)return;
             const state=snap.val()||{};
             const rows=x=>Array.isArray(x)?x:(x&&typeof x==='object'?Object.values(x):[]);
@@ -18904,10 +18918,9 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
                   eventDate:info.canonicalDate||info.date,resultStage:time?'provisional':'unconfirmed'});
               }
             }
-            gate.officialEkidenPeople[info.id]=people;
-            gate.officialReadStatus[info.id]={...gate.officialReadStatus[info.id],ekidenStatus:'ok',ekiden:people.length,ekidenError:''};
-            delete gate.errors['eventEkiden:'+info.id];pushOfficialRoster();statusResources();
-          }).catch(error=>{
+            applyPeople(people);
+            if(gate.role==='developer'&&people.length)void dbMod.set(ref('ekidenLegResults/'+info.id),{at:Date.now(),rows:people}).catch(e=>console.warn('[TOP RUN v285] ekidenLegResults',String(e?.code||e?.message||e).slice(0,60)));
+          });}).catch(error=>{
             if(seq!==generation||auth.currentUser?.uid!==uid)return;
             delete gate.officialEkidenPeople[info.id];
             gate.errors['eventEkiden:'+info.id]=String(error?.code||error?.message||error).slice(0,90);
@@ -22498,7 +22511,9 @@ html[data-portal-personal-color="matte"] #screen-chat #trRoomThread .trReadIssue
       const names=[...new Set(Object.values(m.mentions&&typeof m.mentions==='object'?m.mentions:{}).map(v=>String(v||'')).filter(Boolean))].sort((a,b)=>b.length-a.length);
       for(const n of names){const k=esc('@'+n);if(t.includes(k)){t=t.split(k).join('\u0000'+marks.length+'\u0000');marks.push(k);}}
       t=t.replace(/@([^\s@\u0000]{1,24})/g,'<span class="trAt">@$1</span>');
-      return t.replace(/\u0000(\d+)\u0000/g,(_,i)=>'<span class="trAt">'+marks[Number(i)]+'</span>');},
+      t=t.replace(/\u0000(\d+)\u0000/g,(_,i)=>'<span class="trAt">'+marks[Number(i)]+'</span>');
+      // v286: URLを押せるリンクにする（末尾の句読点・かっこは含めない）
+      return t.replace(/https?:\/\/[^\s<>"'\u3000]+/g,u=>{const m2=u.match(/^(.*?)([)\]）」』】。、，．！？!?,.]*)$/);const url=m2?m2[1]:u,tail=m2?m2[2]:'';if(!url)return u;return '<a class="trLink" href="'+url+'" target="_blank" rel="noopener noreferrer">'+url+'</a>'+tail;});},
     quote(m){
       const r=m.replyTo;if(!r||!r.id)return '';
       const refMsg=cache.get(r.id);
@@ -22669,8 +22684,8 @@ html[data-portal-personal-color="matte"] #screen-chat #trRoomThread .trReadIssue
     q.innerHTML='<div class="trQBack"></div><div class="trQCard" role="dialog" aria-label="リアクション"><div class="trQRow">'+
       picks.map(e=>'<button type="button" class="trQBtn'+(isText(e)?' txt trPickTone-'+reactTone(e):'')+(e===mine?' on':'')+'" data-re="'+esc(e)+'" aria-label="'+esc(isTeam(e)?'TOP RUN AGUI '+reactionLabel(e):e)+'" aria-pressed="'+(e===mine)+'"><span class="trTileFace">'+face(e)+'</span></button>').join('')+
       '<button type="button" class="trQBtn trQMore" data-act="more" aria-label="ほかのリアクション">…</button></div>'+
-      '<div class="trQActs"><button type="button" data-act="reply">↩ 返信</button><button type="button" data-act="copy">コピー</button><button type="button" data-act="select">一部コピー</button>'+
-      (m.senderUid&&m.senderUid===myUid()?'<button type="button" data-act="edit">修正</button><button type="button" data-act="delete">削除</button>':'')+'</div></div>';
+      '<div class="trQActs'+(m.senderUid&&m.senderUid===myUid()?' trQActs5':'')+'">'+'<button type="button" data-act="reply"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 8V4L3 11l7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z"/></svg><span>返信</span></button><button type="button" data-act="copy"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/></svg><span>コピー</span></button><button type="button" data-act="select"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h2V3a2 2 0 0 0-2 2zm0 8h2v-2H3v2zm4 8h2v-2H7v2zM3 9h2V7H3v2zm10-6h-2v2h2V3zm6 0v2h2a2 2 0 0 0-2-2zM5 21v-2H3a2 2 0 0 0 2 2zm-2-4h2v-2H3v2zM9 3H7v2h2V3zm2 18h2v-2h-2v2zm8-8h2v-2h-2v2zm0 8a2 2 0 0 0 2-2h-2v2zm0-12h2V7h-2v2zm0 8h2v-2h-2v2zm-4 4h2v-2h-2v2zm0-16h2V3h-2v2z"/></svg><span>一部コピー</span></button>'+
+      (m.senderUid&&m.senderUid===myUid()?'<button type="button" data-act="edit"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75L3 17.25zM20.7 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg><span>修正</span></button><button type="button" data-act="delete"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg><span>削除</span></button>':'')+'</div></div>';
     document.body.append(q);
     if(msgEl)msgEl.classList.add('trPicked');
     const card=q.querySelector('.trQCard');
@@ -22824,6 +22839,7 @@ html[data-portal-personal-color="matte"] #screen-chat #trRoomThread .trReadIssue
     const q=e.target.closest('.trQuote[data-jump]');
     if(q){const th=q.closest('#trRoomThread,#portalChatThread');if(th){e.preventDefault();jump(th,q.dataset.jump);}return;}
     // v163: a single tap on a message opens the same menu (long press also works)
+    if(e.target.closest('a.trLink'))return; // v286: リンクはそのまま開く
     const msg=e.target.closest('#portalChatThread .msg[data-mid],#trRoomThread .msg[data-mid]');
     if(msg&&Date.now()-lpAt>700&&!(window.getSelection&&String(window.getSelection())))openQuick(ctxOf(msg),msg.dataset.mid,msg); // v261
   });
@@ -22831,7 +22847,7 @@ html[data-portal-personal-color="matte"] #screen-chat #trRoomThread .trReadIssue
   // so it never hits a button of the sheet that just opened.
   let timer=null,sx=0,sy=0,fired=false;
   const cancel=()=>{if(timer){clearTimeout(timer);timer=null;}};
-  const target=e=>{const msg=e.target.closest?.('#portalChatThread .msg[data-mid],#trRoomThread .msg[data-mid]');return msg&&!e.target.closest('.trQuote,.trReact')?msg:null;};
+  const target=e=>{const msg=e.target.closest?.('#portalChatThread .msg[data-mid],#trRoomThread .msg[data-mid]');return msg&&!e.target.closest('.trQuote,.trReact,a.trLink')?msg:null;};
   let lpAt=0;
   const start=(msg,x,y)=>{sx=x;sy=y;cancel();
     const ctx=ctxOf(msg),mid=msg.dataset.mid;
@@ -25273,5 +25289,29 @@ body.portalChatIsolated > #trQuick{visibility:visible!important;opacity:1!import
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
 </script>
+<style id="v286-chat-menu-style">
+/* v286: メッセージの枠をPORTALの配色に合わせる */
+#trQuick .trQBack{background:rgba(0,0,0,.38)!important;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+#trQuick .trQCard{background:color-mix(in srgb,var(--portal-theme-surface-raised,#20262a) 92%,transparent)!important;
+  border:1px solid var(--portal-theme-stroke,rgba(255,255,255,.14))!important;border-radius:22px!important;
+  box-shadow:0 18px 44px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.06)!important;padding:10px!important;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);color:var(--portal-theme-text,#f3f1ea)}
+#trQuick .trQBtn{height:48px!important;border-radius:14px!important;transition:transform .12s}
+#trQuick .trQBtn:active{transform:scale(.92)}
+#trQuick .trQBtn.on{background:color-mix(in srgb,var(--portal-theme-accent,#e6bc35) 22%,transparent)!important;box-shadow:inset 0 0 0 1.5px var(--portal-theme-accent,#e6bc35)!important}
+#trQuick .trQMore{background:rgba(127,127,127,.16)!important;color:var(--portal-theme-text,#f3f1ea)!important}
+#trQuick .trQActs{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:6px!important;margin-top:8px!important;padding-top:8px!important;border-top:1px solid var(--portal-theme-stroke,rgba(255,255,255,.12))!important}
+#trQuick .trQActs.trQActs5{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+#trQuick .trQActs button{display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:58px!important;padding:6px 2px!important;
+  border-radius:14px!important;border:1px solid transparent!important;background:rgba(127,127,127,.12)!important;color:var(--portal-theme-text,#f3f1ea)!important;
+  font-size:11.5px!important;font-weight:800!important;letter-spacing:.02em;transition:transform .12s,background .12s}
+#trQuick .trQActs button:active{transform:scale(.94);background:rgba(127,127,127,.24)!important}
+#trQuick .trQActs button svg{width:21px;height:21px;fill:currentColor;opacity:.92}
+#trQuick .trQActs button span{white-space:nowrap}
+#trQuick .trQActs button[data-act="reply"]{background:var(--portal-theme-accent,#e6bc35)!important;color:var(--portal-theme-accent-on,#101719)!important}
+#trQuick .trQActs button[data-act="delete"]{color:#ff7b6b!important}
+/* リンク */
+.msg a.trLink{color:inherit;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;word-break:break-all;-webkit-touch-callout:default}
+</style>
 </body>
 </html>
