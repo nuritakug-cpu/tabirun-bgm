@@ -1,4 +1,6 @@
-<!-- TOP RUN PORTAL v288 | 2026-11-03 | Parent v287（チャットのリアクション表示）。別チャットの表示修正を統合。Rules v285 のまま。表示だけの変更（認証・保存・Firebase・Rulesは変更なし）。(1) 個人記録の行をスマホで2段にした（上段：日付・大会名・会場／下段：種目・タイム・区間・順位・タグ）。大会名と会場は省略せず折り返す。タイム・DNS・補欠は途中で改行しない。(2) 区間（第N区）と順位（N位・区間N位）を見やすい大きさで表示。区間は記録の区間情報または「第N区間」の表示から、順位は記録に順位の項目があるときだけ表示。(3) 最小の文字を12pxにそろえた（PB・公認大会などのタグ、日付の年、出欠の番号・メモ・回答日時、戻るボタン）。画面上部の英字は入りきらないときは隠す。(4) 出欠一覧：名前は空白の位置で折り返す、回答日時は「登録 …」「変更 …」がそれぞれ途中で切れないようにし、名前より目立たないようにした。 -->
+<!-- TOP RUN PORTAL v290 | 2026-11-03 | Parent v289. Rules v285 のまま。リアクションの文字スタンプ・印鑑をLINEのスタンプ風のポップ体（Google Fonts「Mochiy Pop One」をリアクションの文字だけ読み込み）に。はっきりした色・2文字ずつ改行・正方形1つ分。フォントが読めないときは端末の太字ゴシックで表示。表示だけ。 -->
+<!-- TOP RUN PORTAL v289 | 2026-11-03 | Parent v288. Rules v285 のまま。メッセージを押したときの枠を控えめに：枠を小さく・薄く、リアクションを小さく、操作ボタンは塗りつぶしをやめてアイコン＋小さい文字に（返信はアクセント色の文字、削除は赤い文字）。表示だけ。 -->
+<!-- TOP RUN PORTAL v288 | 2026-11-03 | Parent v287. Rules v285 のまま。リアクションの見た目をLINEのスタンプのように：どのリアクションも1文字分の正方形に収める（横に広がらない）。文字スタンプは2文字ずつ改行して正方形に詰め、太字・色・白いふちで「スタンプ」らしくする。印鑑も正方形（丸）に収める。表示だけ。 -->
 <!-- TOP RUN PORTAL v287 | 2026-11-03 | Parent v286. Rules v285 のまま。チャットのリアクション表示を全面的に作り直し（表示だけ。保存される値・Firebaseは変更なし）：絵文字は囲みなし、文字スタンプは囲みなしの色文字、印鑑（済・祝・承認・感動など）だけ囲み（四角／丸）で、文字数に合わせて枠の中に収まる大きさにする。メッセージを押したときの枠は背景を不透明・周りを暗く。リアクションした人の一覧を、画面下に固定のシートから画面中央のカードに変更。 -->
 <!-- TOP RUN PORTAL v286 | 2026-11-03 | Parent v285. Rules v285 のまま。チャット：(1) メッセージ内のURLを押すと開く（リンクジャンプ。共通チャット・ルーム）。リンクを押してもメニューは開かない。(2) メッセージを押したときの枠（リアクション・返信・コピー・修正・削除）をPORTALの配色に合わせたデザインに変更（アイコン付きの操作ボタン）。表示だけの変更。 -->
 <!-- TOP RUN PORTAL v285 | 2026-11-03 | Parent v284. REQUIRES Rules v285（portalCommon/topRun/ekidenLegResults を追加：開発者が書く・開発者と管理者が読む）。第2回駅伝の区間タイム：これまで開くたびに駅伝の設定データ全体（約189KB）を読んで計算していた。計算した区間タイムを一度だけ保存（数KB）し、以後はそれだけを読む。保存がまだない・読めないときだけ、今までどおり設定データから計算する。 -->
@@ -5921,6 +5923,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
   .portalBottomTabs{padding-left:8px;padding-right:8px;}
 }
 </style>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&display=swap&text=%21ABGIKNOPRTUnu%E3%81%82%E3%81%84%E3%81%86%E3%81%88%E3%81%8A%E3%81%8B%E3%81%8C%E3%81%8F%E3%81%90%E3%81%91%E3%81%93%E3%81%94%E3%81%97%E3%81%99%E3%81%9B%E3%81%A1%E3%81%A3%E3%81%A4%E3%81%A6%E3%81%A8%E3%81%AB%E3%81%AD%E3%81%AE%E3%81%AF%E3%81%B0%E3%81%B8%E3%81%BF%E3%82%81%E3%82%82%E3%82%84%E3%82%88%E3%82%8A%E3%82%8B%E3%82%8C%E3%82%8D%E3%82%92%E3%82%A1%E3%82%A2%E3%82%A4%E3%82%AF%E3%82%B7%E3%82%B9%E3%82%BF%E3%83%81%E3%83%84%E3%83%88%E3%83%89%E3%83%8A%E3%83%95%E3%83%97%E3%83%99%E3%83%9E%E3%83%A0%E3%83%A7%E3%83%A9%E3%83%AA%E3%83%B3%E3%83%BB%E3%83%BC%E4%BA%86%E4%BA%8B%E4%BB%B2%E4%BB%BB%E4%BC%9D%E5%84%AA%E5%8A%A9%E5%8B%95%E5%8B%9D%E5%8D%B0%E5%90%88%E5%90%89%E5%96%9C%E5%A4%A7%E5%A4%A9%E5%AE%8C%E5%B7%B1%E5%B8%B8%E5%BC%B5%E5%BC%B7%E5%BF%85%E5%BF%9C%E5%BF%AB%E6%84%9F%E6%88%90%E6%89%8B%E6%89%BF%E6%8A%BC%E6%8B%8D%E6%8C%81%E6%8F%B4%E6%96%B0%E6%97%A5%E6%99%B4%E6%9B%B4%E6%9C%80%E6%A0%BC%E6%AC%A1%E6%B0%97%E6%B3%A3%E6%B6%99%E6%B8%88%E6%BF%80%E7%83%88%E7%86%B1%E7%9E%AC%E7%9F%A5%E7%9F%AD%E7%A2%BA%E7%A5%9D%E7%A5%9E%E7%AC%91%E7%AD%94%E8%87%AA%E8%A6%8B%E8%A7%A3%E8%A8%98%E8%AA%8D%E8%AA%AC%E8%AC%9D%E8%B5%B0%E8%BF%94%E9%80%9F%E9%81%94%E9%8C%B2%E9%91%91%E9%96%93%E9%A0%91%E9%AB%98%EF%BC%81">
 </head>
 <body>
 <div id="portalFirstPaintAuthOverlay" role="status" aria-live="polite" aria-label="TOP RUN PORTAL 認証中">
@@ -6472,7 +6475,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v288</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v290</b></div>
   </div>
 </div>
 
@@ -6663,7 +6666,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v288</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v290</b></div>
   </div>
 </div>
 
@@ -8414,7 +8417,7 @@ if(prefix==='home'){
     return limitedNote+`<div class="portalParticipationGroups" aria-label="共有出欠・回答日時">${options.map(([answer,label])=>{
       const rows=snapshot.groups[answer]||[];
       const identifier=kind+':'+key+':'+answer;
-      return `<details class="portalRsvpRoster" data-roster-key="${esc(identifier)}"><summary><strong class="portalRsvpGroupLabel">${label}</strong><span class="portalRsvpGroupCount">${rows.length}人</span></summary>${rows.length?`<div class="portalRsvpPeople">${rows.map((row,i)=>`<div class="portalRsvpPerson"><span>${i+1}</span><div class="portalRsvpPersonMain"><b>${esc(row.name)}</b>${row.note?`<small>${esc(row.note)}</small>`:''}<small class="portalRsvpTime">${String(portalAttendanceTimeText(row)).split(' ／ ').map(s=>'<span class="v287NoWrap">'+esc(s)+'</span>').join('<span class="v287Sep"> ／ </span>')}</small></div></div>`).join('')}</div>`:'<p class="portalRsvpEmpty">この回答の人はいません。</p>'}</details>`;
+      return `<details class="portalRsvpRoster" data-roster-key="${esc(identifier)}"><summary><strong class="portalRsvpGroupLabel">${label}</strong><span class="portalRsvpGroupCount">${rows.length}人</span></summary>${rows.length?`<div class="portalRsvpPeople">${rows.map((row,i)=>`<div class="portalRsvpPerson"><span>${i+1}</span><div class="portalRsvpPersonMain"><b>${esc(row.name)}</b>${row.note?`<small>${esc(row.note)}</small>`:''}<small class="portalRsvpTime">${esc(portalAttendanceTimeText(row))}</small></div></div>`).join('')}</div>`:'<p class="portalRsvpEmpty">この回答の人はいません。</p>'}</details>`;
     }).join('')}</div>`;
   }
   function scheduleEventAnswer(eventId,actorId){
@@ -10652,16 +10655,11 @@ const gateway=window.__TR_PORTAL_SYNC__;
     return isDeveloper&&canManage&&!portalParticipantPreviewMode&&!!verifiedPortalUid&&
       gate?.roleVerified===true&&gate.role==='developer'&&gate.uid===verifiedPortalUid;
   }
-  // v287: 区間・順位を見やすく表示（表示だけ。保存データは変えない）
-  function v287Leg(r){const v=r&&(r.leg??r.ekidenLeg??r.legNo);if(v!=null&&String(v).trim()!==''&&/^\d{1,2}$/.test(String(v).trim()))return String(v).trim();const m=String(r&&r.label||'').match(/第(\d{1,2})区間?/);return m?m[1]:'';}
-  function v287Label(r){return String(r&&r.label||'').replace(/第\d{1,2}区間?\s*／\s*/,'').trim();}
-  function v287Num(v){const s=String(v??'').trim();return /^\d{1,4}$/.test(s)?s:'';}
-  function v287LegRank(r){const leg=v287Leg(r),rank=v287Num(r&&(r.rank??r.overallRank)),legRank=v287Num(r&&r.legRank);const parts=[];if(leg)parts.push('<span class="v287Chip">第'+esc(leg)+'区</span>');if(legRank)parts.push('<span class="v287Chip">区間'+esc(legRank)+'位</span>');if(rank)parts.push('<span class="v287Chip">'+esc(rank)+'位</span>');return parts.length?'<span class="v287ChipRow">'+parts.join('')+'</span>':'';}
   function portalRecordRow(r){
     const d=r.date.split('-'),practice=portalIsPracticeRecord(r),best=practice?portalPracticeBest(r.metric):portalRecBest(r.metric);
     const tag=(best?.id===r.id)?(practice?'<span class="crTag">練習参考最速</span>':'<span class="crTag gold">PB</span>'):r.metric==='relay'?'<span class="crTag">区間記録</span>':'';
     const certification=!practice&&portalIsCertifiedRecord(r)?'<span class="crTag gold">公認大会</span>':'';
-    const display=`<button type="button" class="crRecordRow" data-pr-record="${esc(r.id)}"><div class="crDate"><small>${esc(d[0])}</small><b>${esc(d[1]+'.'+d[2])}</b></div><div class="crRecordInfo"><b>${esc(portalRecordEventName(r))}</b><span>${esc((r.practiceDate?String(r.recordDistanceMeters)+'m ／ ':'')+(r.venue||''))}</span></div><div class="crRecordTime"><small>${esc(v287Label(r))}</small><b>${esc(r.status==='DNS'?'DNS（欠場）':r.status==='RESERVE_ACCOMPANY'?'補欠（帯同）':r.status==='ELIMINATED'?'予選敗退':r.time)}</b>${v287LegRank(r)}${tag}${certification}</div></button>`;
+    const display=`<button type="button" class="crRecordRow" data-pr-record="${esc(r.id)}"><div class="crDate"><small>${esc(d[0])}</small><b>${esc(d[1]+'.'+d[2])}</b></div><div class="crRecordInfo"><b>${esc(portalRecordEventName(r))}</b><span>${esc((r.practiceDate?String(r.recordDistanceMeters)+'m ／ ':'')+(r.venue||''))}</span></div><div class="crRecordTime"><small>${esc(r.label)}</small><b>${esc(r.status==='DNS'?'DNS（欠場）':r.status==='RESERVE_ACCOMPANY'?'補欠（帯同）':r.status==='ELIMINATED'?'予選敗退':r.time)}</b>${tag}${certification}</div></button>`;
     // The participant sees their personal record, never the management action.
     if(r.source!=='PORTAL_STAFF_PAST'||!portalV88DeveloperRecordAdmin()||!r.subjectUid||!r.profileId)return display;
     const canonical=flowState.external.find(x=>x.id===r.id&&x.actorId===portalPersonalTargetId&&x.firebaseSource==='portalStaff'&&x.subjectUid===r.subjectUid&&x.profileId===r.profileId);
@@ -22422,14 +22420,18 @@ html[data-portal-personal-color="matte"] #screen-chat #trRoomThread .trReadIssue
     if(!isText(e))return '<span class="trF trF-emoji">'+esc(e)+'</span>';
     {
       const base=reactionBase(e),tone=reactTone(e),chars=Array.from(base),n=chars.length;
+      // v288: どのリアクションも正方形1つ分。文字は行に分けて正方形に詰める（2文字ずつ、多いときは3文字ずつ）。
+      const perLine=n<=2?n:(n<=4?2:(n<=6?2:3));
+      const rows=[];for(let i=0;i<n;i+=perLine)rows.push(chars.slice(i,i+perLine).join(''));
+      const L=rows.length,C=Math.max(...rows.map(r=>Array.from(r).length),1);
+      const body=rows.map(r=>'<span class="trL">'+esc(r)+'</span>').join('');
       if(isRoundSeal(e)||isSealTone(tone)){
         const shape=isRoundSeal(e)?'round':'square',mode=isRoundSeal(e)?roundSealMode(e):'single';
-        const wide=mode!=='vertical'&&shape==='square'&&(n===3||n>4);
-        const cols=mode==='vertical'?1:(wide?n:(n===4?2:Math.min(n,2)));
-        const lines=Math.ceil(n/cols);
-        return '<span class="trF trF-seal trF-'+shape+' trF-'+tone+(mode==='vertical'?' trF-vertical':'')+(wide?' trF-wide':'')+'" style="--c:'+cols+';--l:'+lines+'" aria-label="'+esc(base)+'">'+chars.map(ch=>'<i>'+esc(ch)+'</i>').join('')+'</span>';
+        if(mode==='vertical')return '<span class="trF trF-seal trF-'+shape+' trF-'+tone+'" style="--c:1;--l:'+n+'" aria-label="'+esc(base)+'">'+chars.map(ch=>'<span class="trL">'+esc(ch)+'</span>').join('')+'</span>';
+        if(mode==='horizontal')return '<span class="trF trF-seal trF-'+shape+' trF-'+tone+'" style="--c:'+n+';--l:1" aria-label="'+esc(base)+'"><span class="trL">'+esc(base)+'</span></span>';
+        return '<span class="trF trF-seal trF-'+shape+' trF-'+tone+'" style="--c:'+C+';--l:'+L+'" aria-label="'+esc(base)+'">'+body+'</span>';
       }
-      return '<span class="trF trF-text trF-'+tone+'" style="--n:'+Math.max(1,n)+'">'+esc(base)+'</span>';
+      return '<span class="trF trF-text trF-'+tone+'" style="--c:'+C+';--l:'+L+'" aria-label="'+esc(base)+'">'+body+'</span>';
     }
     if(isRoundSeal(e)){
       const base=roundSealText(e);
@@ -25405,45 +25407,62 @@ body.portalChatIsolated > #trWhoModal,html body > #trWhoModal{visibility:visible
 #trWhoModal .trWBtns [data-act="mine"]{background:var(--portal-theme-accent,#e6bc35);color:var(--portal-theme-accent-on,#101719)}
 #trWhoModal .trWBtns [data-act="close"]{background:rgba(127,127,127,.18);color:inherit}
 </style>
-<style id="v287-display-fix">
-/* v287: 表示だけ。最小12px・途中で切れない・はみ出さない */
-html body :is(#screen-competition-results,#screen-competition-records,#screen-competition-graph-detail) .crRecordRow{
-  display:grid!important;grid-template-columns:56px minmax(0,1fr)!important;grid-template-areas:"date info" "time time"!important;
-  gap:8px 10px!important;padding:12px!important;overflow:visible!important;max-width:100%!important;box-sizing:border-box!important}
-html body :is(#screen-competition-results,#screen-competition-records,#screen-competition-graph-detail) .crDate{grid-area:date!important;align-self:start!important}
-html body :is(#screen-competition-results,#screen-competition-records,#screen-competition-graph-detail) .crDate small{font-size:12px!important}
-html body :is(#screen-competition-results,#screen-competition-records,#screen-competition-graph-detail) .crDate b{font-size:15px!important;white-space:nowrap!important}
-html body :is(#screen-competition-results,#screen-competition-records,#screen-competition-graph-detail) .crRecordInfo{grid-area:info!important;min-width:0!important}
-html body :is(#screen-competition-results,#screen-competition-records,#screen-competition-graph-detail) .crRecordInfo b{font-size:15px!important;line-height:1.45!important;word-break:normal!important;overflow-wrap:anywhere!important;line-break:strict!important}
-html body :is(#screen-competition-results,#screen-competition-records,#screen-competition-graph-detail) .crRecordInfo span{font-size:13px!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;overflow-wrap:anywhere!important;display:-webkit-box!important;-webkit-line-clamp:2!important;-webkit-box-orient:vertical!important}
-html body :is(#screen-competition-results,#screen-competition-records,#screen-competition-graph-detail) .crRecordTime{
-  grid-area:time!important;display:flex!important;flex-wrap:wrap!important;align-items:center!important;gap:6px 8px!important;
-  border-top:1px solid var(--op-line,#e1ddd2)!important;padding-top:8px!important;min-width:0!important;text-align:left!important}
-html body :is(#screen-competition-results,#screen-competition-records,#screen-competition-graph-detail) .crRecordTime small{flex:1 1 100%!important;font-size:12px!important;line-height:1.4!important;white-space:normal!important}
-html body :is(#screen-competition-results,#screen-competition-records,#screen-competition-graph-detail) .crRecordTime b{font-size:20px!important;line-height:1.2!important;white-space:nowrap!important;font-variant-numeric:tabular-nums!important;margin-right:auto!important}
-html body .crTag{font-size:12px!important;line-height:1.3!important;padding:3px 8px!important;margin-top:0!important;white-space:nowrap!important}
-html body .v287ChipRow{display:inline-flex!important;flex-wrap:wrap!important;gap:6px!important}
-html body .v287Chip{display:inline-block!important;font-size:15px!important;font-weight:900!important;line-height:1.3!important;padding:3px 9px!important;border-radius:8px!important;border:1px solid currentColor!important;white-space:nowrap!important}
-html body .portalScreenHead small{font-size:12px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;display:block!important;max-width:100%!important;letter-spacing:.04em!important}
-html body .portalScreenHead>div{min-width:0!important}
-html body .portalScreenHead .portalBack{white-space:nowrap!important;flex-shrink:0!important;font-size:13px!important}
-html body .portalScreenHead{container-type:inline-size}
-@container (max-width:330px){html body .portalScreenHead small{display:none!important}}
-html body .portalRsvpPerson>span{font-size:12px!important}
-html body .portalRsvpPersonMain b{word-break:keep-all!important;overflow-wrap:anywhere!important}
-html body .portalRsvpPersonMain small{font-size:13px!important}
-html body .portalRsvpPersonMain small.portalRsvpTime{font-size:12px!important;font-weight:500!important;opacity:.75!important;line-height:1.5!important}
-html body .v287NoWrap{white-space:nowrap!important;display:inline-block!important}
-html body .v287Sep{white-space:normal!important}
-html body :is(#screen-schedule-detail#screen-schedule-detail,#screen-calendar#screen-calendar,body) .portalRsvpTime :is(.v287NoWrap,.v287Sep){font-size:inherit!important;font-weight:inherit!important;color:inherit!important;margin:0!important;padding:0!important;background:none!important;border:0!important;width:auto!important;height:auto!important;min-width:0!important}
-html body :is(#screen-schedule-detail#screen-schedule-detail,#screen-calendar#screen-calendar) .portalRsvpPersonMain small.portalRsvpTime{font-size:12px!important;font-weight:500!important;opacity:.75!important;line-height:1.5!important}
-html body :is(#screen-schedule-detail#screen-schedule-detail,#screen-calendar#screen-calendar) .portalRsvpPersonMain small:not(.portalRsvpTime){font-size:13px!important}
-html body :is(#screen-schedule-detail#screen-schedule-detail,#screen-calendar#screen-calendar) .portalRsvpPerson>span{font-size:12px!important}
-html body #screen-schedule-detail#screen-schedule-detail .portalScheduleDateRow span{font-size:12px!important}
-html body :is(#screen-schedule-detail#screen-schedule-detail,#screen-calendar#screen-calendar) .portalRsvpCurrent{font-size:13px!important}
-html body :is(#screen-schedule-detail#screen-schedule-detail,#screen-calendar#screen-calendar) .portalRsvpOptions button{font-size:14px!important}
-html body :is(#screen-schedule-detail#screen-schedule-detail,#screen-calendar#screen-calendar) .trRsvpUntap{font-size:12px!important}
-@media(max-width:340px){html body :is(#screen-competition-results,#screen-competition-records,#screen-competition-graph-detail) .crRecordRow{grid-template-columns:48px minmax(0,1fr)!important}}
+<style id="v288-reaction-style">
+/* v288: すべて正方形。横に広がらない。 */
+.trF-text,.trF-seal{width:var(--trFS)!important;height:var(--trFS)!important;min-width:0!important;max-width:none!important;padding:0!important;
+  display:inline-flex!important;flex-direction:column;align-items:center;justify-content:center;overflow:visible}
+.trF .trL{display:block;font-weight:inherit;line-height:1.02;white-space:nowrap;text-align:center}
+.trF-text{font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;font-weight:900;letter-spacing:-.06em;
+  font-size:calc(var(--trFS) * .92 / max(var(--c), var(--l)))!important;
+  text-shadow:
+    .07em 0 0 #fff,-.07em 0 0 #fff,0 .07em 0 #fff,0 -.07em 0 #fff,
+    .05em .05em 0 #fff,-.05em .05em 0 #fff,.05em -.05em 0 #fff,-.05em -.05em 0 #fff,
+    0 .12em .1em rgba(0,0,0,.35)!important}
+.trF-gold{color:#f0a500}.trF-blue{color:#1f6fe0}.trF-indigo{color:#3b2fd1}.trF-teal{color:#00a58e}.trF-orange{color:#ff6a00}.trF-violet{color:#a63cff}
+.trF-seal{border:max(1.6px, calc(var(--trFS) * .07)) solid currentColor;border-radius:50%!important;background:#fffaf1;
+  font-family:"Hiragino Mincho ProN","Yu Mincho","YuMincho",serif;font-weight:800;letter-spacing:-.04em;
+  font-size:calc(var(--trFS) * .66 / max(var(--c), var(--l)))!important;box-shadow:0 1px 2px rgba(0,0,0,.2);text-shadow:none!important}
+.trF-seal.trF-square{border-radius:16%!important}
+.trF-seal .trL{line-height:1}
+.trF-wide{width:var(--trFS)!important}
+/* 置き場所ごとの大きさ（正方形の一辺） */
+#trQuick .trQBtn .trF{--trFS:40px}
+#trMsgSheet .trEmojiGrid button .trF{--trFS:40px}
+.trReact .trF{--trFS:34px}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trF .trL{font-size:inherit!important;color:inherit!important;-webkit-text-fill-color:currentColor!important;margin:0!important;padding:0!important;min-width:0!important;opacity:1!important;font-family:inherit!important;font-weight:inherit!important;line-height:1.02!important}
+#screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trF{flex:0 0 auto!important}
+.trReact .trF-text{font-size:calc(var(--trFS) * .92 / max(var(--c), var(--l)))!important}
+#trWhoModal .trWFace .trF{--trFS:40px}
+#screen-chat :is(#portalChatThread,#trRoomThread) .trReacts{gap:6px!important}
+</style>
+<style id="v289-quick-compact">
+/* v289: 控えめでスタイリッシュな枠 */
+#trQuick .trQBack{background:rgba(0,0,0,.42)!important;backdrop-filter:blur(4px)!important;-webkit-backdrop-filter:blur(4px)!important}
+#trQuick .trQCard{width:min(320px,calc(100vw - 32px))!important;padding:6px 6px 4px!important;border-radius:16px!important;
+  border:1px solid var(--portal-theme-stroke,rgba(255,255,255,.12))!important;box-shadow:0 10px 28px rgba(0,0,0,.32)!important}
+#trQuick .trQRow{gap:0!important}
+#trQuick .trQBtn{height:38px!important;border-radius:10px!important;font-size:22px!important}
+#trQuick .trQBtn .trF{--trFS:28px!important}
+#trQuick .trQBtn.on{background:color-mix(in srgb,var(--portal-theme-accent,#e6bc35) 16%,transparent)!important;box-shadow:inset 0 0 0 1px var(--portal-theme-accent,#e6bc35)!important}
+#trQuick .trQMore{width:30px!important;height:30px!important;margin:auto!important;border-radius:50%!important;font-size:14px!important;background:rgba(127,127,127,.14)!important}
+#trQuick .trQActs,#trQuick .trQActs.trQActs5{gap:0!important;margin-top:4px!important;padding-top:2px!important;border-top:1px solid var(--portal-theme-stroke,rgba(127,127,127,.18))!important}
+#trQuick .trQActs button{min-height:44px!important;padding:4px 0 2px!important;gap:3px!important;border-radius:10px!important;background:transparent!important;
+  color:var(--portal-theme-text-subtle,var(--portal-theme-text,#6b7275))!important;font-size:10px!important;font-weight:700!important;letter-spacing:.02em!important}
+#trQuick .trQActs button svg{width:17px!important;height:17px!important;opacity:.85}
+#trQuick .trQActs button:active{background:rgba(127,127,127,.14)!important;transform:none!important}
+#trQuick .trQActs button[data-act="reply"]{background:transparent!important;color:var(--portal-theme-accent,#c99a12)!important}
+#trQuick .trQActs button[data-act="delete"]{color:#e05a4b!important}
+</style>
+<style id="v290-reaction-pop">
+/* v290: LINEのスタンプ風。ポップ体・はっきりした色・正方形 */
+.trF-text,.trF-seal{font-family:"Mochiy Pop One","Hiragino Maru Gothic ProN","Hiragino Sans","Noto Sans JP",sans-serif!important;font-weight:400!important;letter-spacing:-.03em!important}
+.trF-text{font-size:calc(var(--trFS) * .9 / max(var(--c), var(--l)))!important;
+  text-shadow:.035em 0 0 #fff,-.035em 0 0 #fff,0 .035em 0 #fff,0 -.035em 0 #fff,.025em .025em 0 #fff,-.025em .025em 0 #fff,.025em -.025em 0 #fff,-.025em -.025em 0 #fff!important}
+.trF .trL{line-height:.98!important}
+.trF-gold{color:#ff8a00!important}.trF-blue{color:#1557ff!important}.trF-indigo{color:#2b1fd8!important}
+.trF-teal{color:#00a050!important}.trF-orange{color:#ff3b1f!important}.trF-violet{color:#e0249b!important}
+.trF-seal{background:#fff!important;border-width:max(1.8px, calc(var(--trFS) * .075))!important;font-size:calc(var(--trFS) * .6 / max(var(--c), var(--l)))!important;box-shadow:none!important}
+.trF-seal-red{color:#e3121b!important}.trF-seal-purple{color:#9b2fc9!important}.trF-seal-teal{color:#00a08a!important}
 </style>
 </body>
 </html>
