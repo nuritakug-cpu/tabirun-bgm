@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v270 | 2026-11-03 | Parent v269. Rules v266 のまま。マイページ「家族の記録」をほかの項目と同じ見た目のカードにし、押すと家族の一覧が出る（もう一度押すと閉じる）。表示だけの変更。 -->
 <!-- TOP RUN PORTAL v269 | 2026-11-03 | Parent v268. Rules v266 のまま。同じprofileIdの承認済みが2人以上いる場合（「前の登録とつなぐ」で同じprofileIdになった二重登録）、開発者・管理者が開く個人記録が記録0件の方に当たって0件になる不具合を修正：同じprofileIdの承認済み全員の pastRecords を読み、どのuidに付いた記録でも表示する（表示だけ）。開発者の修正・削除ボタンは、開いている本人uidに付いた記録だけに出す（別uidの記録を誤って書き換えない）。 -->
 <!-- TOP RUN PORTAL v268 | 2026-11-03 | Parent v267. Rules v266 のまま。マイページ「個人記録」の下の「家族の記録」：開発者には、つないだ家族がいなくても枠を表示し、状態（家族なし・読み込めない）と、つなぐ場所（管理画面の設定 → 家族（親子））を案内する。参加者は今までどおり、つながった家族がいる人にだけ表示。 -->
 <!-- TOP RUN PORTAL v267 | 2026-11-03 | Parent v265. Rules v266（v265と同じ権限）のまま。開発者「実際の参加者の個人記録を開く」：同じ名前の承認済みが2人以上いるとき1人しか出ず、間違えて登録した方（記録0件）が開いていた不具合を修正。同じ名前の承認済みは全員を「名前（ID 先頭6…末尾6）」で並べる。 -->
@@ -6162,10 +6163,15 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <span class="portalPanelAction">自分の個人記録を開く ›</span>
       </button>
       <section class="portalPanel" id="trFamilyRecordsPanel" hidden>
-        <div class="portalPanelHead"><small>FAMILY / RECORD</small><b>家族の記録</b></div>
-        <p class="portalHelp">運営がつないだご家族の個人記録を見られます。見るだけで、出走登録・修正はできません。</p>
-        <div id="trFamilyRecordsList"></div>
-        <p class="portalInlineState" id="trFamilyRecordsState" aria-live="polite"></p>
+        <button type="button" class="trFamilyToggle" id="trFamilyToggle" aria-expanded="false" aria-controls="trFamilyBody">
+          <div class="portalPanelHead"><small>FAMILY / RECORD</small><b>家族の記録</b></div>
+          <span class="portalPanelAction" id="trFamilyToggleText">家族の記録を開く ›</span>
+        </button>
+        <div id="trFamilyBody" hidden>
+          <p class="portalHelp">運営がつないだご家族の個人記録を見られます。見るだけで、出走登録・修正はできません。</p>
+          <div id="trFamilyRecordsList"></div>
+          <p class="portalInlineState" id="trFamilyRecordsState" aria-live="polite"></p>
+        </div>
       </section>
 
       <button class="portalPanel portalPanelButton" type="button" data-screen="personal-color">
@@ -6450,7 +6456,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v269</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v270</b></div>
   </div>
 </div>
 
@@ -6641,7 +6647,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v269</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v270</b></div>
   </div>
 </div>
 
@@ -24703,6 +24709,9 @@ body.portalChatIsolated > #trQuick{visibility:visible!important;opacity:1!import
 </style>
 <style id="v263-family-style">
 #trFamilyRecordsList{display:grid;gap:8px;margin-top:10px}
+.trFamilyToggle{display:block;width:100%;margin:0;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.trFamilyToggle .portalPanelAction{display:inline-block}
+#trFamilyBody{margin-top:12px}
 .trFamilyOpen{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:52px;padding:10px 14px;border-radius:12px;border:1px solid var(--portal-theme-stroke,#d6d2c7);background:var(--portal-theme-surface-2,#eeece5);color:inherit;font:inherit;text-align:left;cursor:pointer}
 .trFamilyOpen span{display:flex;flex-direction:column;gap:2px;min-width:0}
 .trFamilyOpen b{font-size:15px;font-weight:900}
@@ -24719,6 +24728,13 @@ body.portalChatIsolated > #trQuick{visibility:visible!important;opacity:1!import
 </style>
 <script id="v263-family-ui">
 (()=>{
+  // v270: 家族の記録はカードを押すと開く（もう一度押すと閉じる）
+  document.addEventListener('click',e=>{
+    const t=e.target.closest?.('#trFamilyToggle');if(!t)return;
+    const body=document.getElementById('trFamilyBody'),txt=document.getElementById('trFamilyToggleText');if(!body)return;
+    const open=body.hidden;body.hidden=!open;t.setAttribute('aria-expanded',String(open));
+    if(txt)txt.textContent=open?'閉じる ⌃':'家族の記録を開く ›';
+  });
   const $=id=>document.getElementById(id);
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const norm=v=>String(v||'').normalize('NFKC').replace(/[\s\u3000]/g,'');
