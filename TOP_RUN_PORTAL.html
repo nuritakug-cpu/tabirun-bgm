@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v277 | 2026-11-03 | Parent v276. Rules v266 のまま。管理画面「選手一覧・個人記録」（開発者）：PORTALの参加承認にいる承認済み全員を一覧にし、「選手を探す」で名前検索→押すとその人の個人記録が開く。これまで開発者にはEVENT BASE由来の公開用チェック一覧が出ていて、PORTALの参加者を検索して開けなかった。公開用チェックは下の折りたたみへ移動。 -->
 <!-- TOP RUN PORTAL v276 | 2026-11-03 | Parent v275. Rules v266 のまま。記録の紐付けの「PORTALの参加者を選ぶ」に、一部の人（公開済みリストの人）しか出なかった不具合を修正：Firebaseの参加承認（memberAccess）にいる承認済み全員を、名前帳・申請の名前で並べる。 -->
 <!-- TOP RUN PORTAL v275 | 2026-11-03 | Parent v274. Rules v266 のまま。記録の紐付けを簡単な1画面に作り直し：大会（EVENT BASE）を選ぶ → 記録のある人ごとに「PORTALの参加者（承認済み）」を選んで紐付け／紐付け済みは相手の名前と［外す］。参加だけの人（記録なし）は人数だけ表示（紐付け不要）。①②③のタブ・登録ID・本人情報の表示はやめた。 -->
 <!-- TOP RUN PORTAL v274 | 2026-11-03 | Parent v273. Rules v266 のまま。v273の一覧の絞り込みを修正：外すのは「PORTALの承認済みと同じ名前のEVENT BASE本人情報」だけ。PORTALに登録していない人（EVENT BASEの記録だけある人）は今までどおり一覧に出す。データは何も削除しない（表示の一覧だけ）。 -->
@@ -6462,7 +6463,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v276</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v277</b></div>
   </div>
 </div>
 
@@ -6653,7 +6654,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v276</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v277</b></div>
   </div>
 </div>
 
@@ -10922,9 +10923,26 @@ const gateway=window.__TR_PORTAL_SYNC__;
       if(valid)return `<button type="button" class="portalDirectoryRow" data-pr-athlete="${esc(person.profileId)}">${label}<strong>›</strong></button>`;
       return `<div class="portalDirectoryRow">${label}<small>記録の個人別閲覧には本人IDと大会READ権限が必要です。</small></div>`;
     }).join('');
+    // v277: 開発者は「PORTALの参加者（承認済み全員）」を一覧にして、押すと個人記録が開く。
+    let devMembersHtml='';
+    if(isDeveloper){
+      const g=window.__TR_PORTAL_SYNC__;
+      if(!Array.isArray(window.__rpAllMembers)&&!window.__trMembersLoading&&g?.listApprovedMembers&&g.roleVerified===true){
+        window.__trMembersLoading=true;
+        g.listApprovedMembers().then(l=>{window.__rpAllMembers=l;window.__trMembersError='';}).catch(e=>{window.__trMembersError=String(e?.message||e).slice(0,100);})
+          .finally(()=>{window.__trMembersLoading=false;try{renderPortalAthleteDirectory();}catch(_){}});
+      }
+      const mem=(window.__rpAllMembers||[]).slice().sort((a,b)=>a.name.localeCompare(b.name,'ja'));
+      const nk=v=>String(v||'').normalize('NFKC').replace(/[\s\u3000]/g,''),cnt=new Map();
+      for(const m of mem)cnt.set(nk(m.name),(cnt.get(nk(m.name))||0)+1);
+      const day=t=>t?new Date(t).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'}):'日付不明';
+      devMembersHtml='<div class="portalDeveloperEmpty" role="status">'+(window.__trMembersLoading&&!mem.length?'PORTALの参加者を読み込み中…':window.__trMembersError?'PORTALの参加者を読み込めません：'+esc(window.__trMembersError):'PORTALの参加者 '+mem.length+'人（名前を押すと個人記録が開きます）')+'</div>'+
+        mem.map(m=>`<button type="button" class="portalDirectoryRow" data-pr-member="${esc(m.uid)}"><span><b>${esc(m.name)}</b><small>${cnt.get(nk(m.name))>1?esc(day(m.at))+'承認（同じ名前が'+cnt.get(nk(m.name))+'人）':'PORTALの参加者'}</small></span><strong>›</strong></button>`).join('');
+    }
     for(const id of ['portalAthleteDirectoryList','portalAthleteInlineList']){
       const target=$(id);if(!target)continue;
-      target.innerHTML='<div class="portalDeveloperEmpty" role="status" style="white-space:pre-line">'+esc(diagnostic)+'</div>'+tool+(html||'<div class="portalEmpty">大会の出走・結果データを取得できません。未取得を0人とは判定しません。</div>');
+      const legacy='<div class="portalDeveloperEmpty" role="status" style="white-space:pre-line">'+esc(diagnostic)+'</div>'+tool+(html||'<div class="portalEmpty">大会の出走・結果データを取得できません。未取得を0人とは判定しません。</div>');
+      target.innerHTML=isDeveloper?devMembersHtml+'<details class="portalDevShareFold" style="margin-top:14px"><summary style="font-weight:800;padding:8px 0">管理者に公開する選手を選ぶ（開発者）</summary>'+legacy+'</details>':legacy;
     }
     const pairs=[['portalAthleteDirectoryList','portalAthleteDirectorySearch'],['portalAthleteInlineList','portalAthleteInlineSearch']];
     for(const [listId,inputId] of pairs){
@@ -10960,6 +10978,19 @@ const gateway=window.__TR_PORTAL_SYNC__;
   $('portalOpenAthleteDirectory').addEventListener('click',()=>{if(canManage&&!portalParticipantPreviewMode)showScreen('athlete-directory')});
   $('portalAthleteDirectorySearch')?.addEventListener('input',renderPortalAthleteDirectory);
   async function portalChooseAthleteFromDirectory(e){
+    const mb=e.target.closest('[data-pr-member]'); // v277: PORTALの参加者を開く
+    if(mb&&canManage&&!portalParticipantPreviewMode){
+      const m=(window.__rpAllMembers||[]).find(x=>x.uid===mb.dataset.prMember),g=window.__TR_PORTAL_SYNC__;
+      if(!m||!g?.loadPastRecordsFor||g.roleVerified!==true)return;
+      (window.__trExtraAthletes=window.__trExtraAthletes||{})[m.profileId]={profileId:m.profileId,uid:m.uid,name:m.name};
+      flowUpdateRecords();
+      portalPersonalTargetId=m.profileId;portalPersonalMetric='3000';portalPersonalFilter='all';
+      portalOfficialListFilter=false;portalPracticeListFilter=false;
+      showScreen('competition-results');
+      try{await g.loadPastRecordsFor(m.uid,m.profileId);}catch(err){showActionFeedback('本人記録の取得に失敗しました',String(err?.message||err).slice(0,180));}
+      renderPortalPersonalRecord();
+      return;
+    }
     const btn=e.target.closest('[data-pr-athlete]');if(!btn||!canManage||portalParticipantPreviewMode)return;
     const person=portalAthletes.find(a=>a.profileId===btn.dataset.prAthlete);
     if(!person)return;
@@ -13072,7 +13103,8 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
     // For staff, only verified canonical EVENT BASE players/timing results.
     const verifiedRoster=(canManage?portalCompetitionAthletes():[]).filter(a=>!!a.profileId).map(a=>({profileId:a.profileId,name:a.name,uid:a.uid||''}));
     const famRoster=Object.entries(window.__TR_PORTAL_SYNC__?.familyChildren||{}).map(([uid,c])=>({profileId:c.profileId,name:(window.__TR_NAMES__?.book?.[uid]?.displayName)||c.name||'家族',uid})); // v263
-    const unique=new Map([...local,...famRoster,...verifiedRoster].map(a=>[a.profileId,a]));
+    const extraRoster=Object.values(window.__trExtraAthletes||{}); // v277: 開発者が一覧から開いたPORTALの参加者（優先）
+    const unique=new Map([...local,...famRoster,...verifiedRoster,...extraRoster].map(a=>[a.profileId,a]));
     portalAthletes.splice(0,portalAthletes.length,...unique.values());
   }
   function flowRenderMyRaces(){
