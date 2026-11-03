@@ -1,3 +1,5 @@
+<!-- TOP RUN PORTAL v267 | 2026-11-03 | Parent v265. Rules v266（v265と同じ権限）のまま。開発者「実際の参加者の個人記録を開く」：同じ名前の承認済みが2人以上いるとき1人しか出ず、間違えて登録した方（記録0件）が開いていた不具合を修正。同じ名前の承認済みは全員を「名前（ID 先頭6…末尾6）」で並べる。 -->
+<!-- TOP RUN PORTAL v265 | 2026-11-03 | Parent v264. REQUIRES Rules v265（memberAccess/<uid> と nameBook/<uid> を開発者が削除できる）。開発者設定「承認の取り消し（開発者）」：間違えて登録・二重登録した承認済みの人を外す（参加承認・申請・名前帳を削除。記録が付いている人・開発者・管理者・自分は外せない）。同じ名前が2人以上いる人を先頭に表示。UIDの表示を「先頭6文字…末尾6文字」にそろえた（付け替え・家族・原因確認）。 -->
 <!-- TOP RUN PORTAL v264 | 2026-11-03 | Parent v263. Rules v263 のまま（変更なし）。開発者設定「記録の付け替え（開発者）」：ブラウザで申請・承認・紐付けした後にアプリで入り直した人などのため、pastRecords/<元uid> の記録（大会の紐付け・管理登録記録・記録練習）を pastRecords/<先uid> へ1回の書き込みでまとめて移す（先に同じ記録があるものは元から外すだけ、内容が違うものは移さず残す）。確認画面→確認ダイアログ→実行。出走登録・承認・本人入力の記録は移さない。 -->
 <!-- TOP RUN PORTAL v263 | 2026-11-03 | Parent v262. REQUIRES Rules v263 (TOPRUNRULESv263.json: portalCommon/topRun/familyOf を追加。開発者だけ書ける・保護者は自分の分だけ読める。pastRecords/<子uid> と profiles/<子uid>/portalSelf/externalRecords を、つながった保護者も読める)。家族（親子）：(1) 開発者設定「家族（親子）」で保護者と子ども（走る本人）をつなぐ・外す。保護者は何人でも（両親・祖父母など）、子どもも何人でも。(2) 保護者のマイページ「個人記録」の下に「家族の記録」。押すと子どもの個人記録を表示（見るだけ。出走登録・修正・削除はできない）。認証・UID・出走登録・記録の書き込みは変更なし。 -->
 <!-- TOP RUN PORTAL v262 | 2026-11-02 | Parent v261. iPhoneでリアクションが押しにくい件：(1) メッセージを長押ししたときにiPhone標準の「コピー・調べる・翻訳」や画像のメニューが出て、PORTALの枠とぶつかっていた：チャットのメッセージではiPhone標準の文字選択・長押しメニューを出さない（コピーはPORTALの「コピー」「一部コピー」で）。(2) 長押しで枠が出た直後に、指を離したときのタップで枠が閉じていた：出てから0.5秒は外側のタップで閉じない。写真はタップで拡大表示、長押しでリアクション。Rules v240 のまま。 -->
@@ -6446,7 +6448,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v264</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v267</b></div>
   </div>
 </div>
 
@@ -6637,7 +6639,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v264</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v267</b></div>
   </div>
 </div>
 
@@ -10737,7 +10739,7 @@ const gateway=window.__TR_PORTAL_SYNC__;
     const t=n=>n?new Date(n).toLocaleTimeString('ja-JP'):'—';
     body.innerHTML=[
       L('対象profileId',pid||'なし',!pid),
-      L('対象uid',verified?verified.slice(0,6)+'…':'なし（読込できません）',!verified),
+      L('対象uid',verified?verified.slice(0,6)+'…'+verified.slice(-6):'なし（読込できません）',!verified),
       L('名簿に存在',person?'あり':'なし',!person),
       L('読込',D?('実行 '+t(D.at)+(D.done?'':' 実行中')):'未実行',!D),
       D?.error?L('読込エラー',D.error,true):'',
@@ -11069,11 +11071,18 @@ const gateway=window.__TR_PORTAL_SYNC__;
     const approved=new Set(portalApprovedMemberRows.map(m=>m.uid)),accPid=new Map(portalApprovedMemberRows.map(m=>[m.uid,m.profileId])),byName=new Map();
     // v129: the same person can appear with an old profileId from a race row; the approval record's profileId wins.
     const score=p=>accPid.get(p.uid)===p.profileId?2:approved.has(p.uid)?1:0;
+    // v267: 同じ名前の承認済みが2人以上なら、1人に絞らず全員をIDつきで並べる（間違えて開くのを防ぐ）。
     for(const p of byProfile.values()){
-      const k=String(p.name||'').normalize('NFKC').replace(/[\s\u3000]/g,''),prev=byName.get(k);
-      if(!prev||score(p)>score(prev))byName.set(k,p);
+      const k=String(p.name||'').normalize('NFKC').replace(/[\s\u3000]/g,'');
+      if(!byName.has(k))byName.set(k,[]);byName.get(k).push(p);
     }
-    return [...byName.values()].sort((a,b)=>a.name.localeCompare(b.name,'ja'));
+    const out=[];
+    for(const list of byName.values()){
+      const best=Math.max(...list.map(score)),keep=list.filter(p=>score(p)===best);
+      if(keep.length===1)out.push(keep[0]);
+      else for(const p of keep)out.push({...p,name:(p.name||'登録者')+'（ID '+p.uid.slice(0,6)+'…'+p.uid.slice(-6)+'）'});
+    }
+    return out.sort((a,b)=>a.name.localeCompare(b.name,'ja'));
   }
   function refreshPortalDevVerifiedPicker(note=''){
     const sel=$('portalDevVerifiedSelector'),btn=$('portalDevVerifiedOpen'),status=$('portalDevVerifiedStatus');
@@ -17133,6 +17142,39 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       for(const x of p.dup)u[pastRoot+p.fromUid+'/'+x.id]=null;
       await dbMod.update(dbMod.ref(db,'portalCommon/topRun'),u);
       return {moved:p.move.length,dupRemoved:p.dup.length,conflict:p.conflict.length};
+    };
+    // v265: 承認の取り消し（開発者だけ）。memberAccess → memberRequests → nameBook の順に削除。記録が付いている人・スタッフ・自分は不可。
+    const rvDev=()=>{if(gate.roleVerified!==true||gate.role!=='developer'||auth.currentUser?.uid!==gate.uid)throw Error('開発者の権限が必要です');};
+    gate.revokeCandidates=async()=>{
+      rvDev();
+      const read=p=>dbMod.get(ref(p)).then(x=>x.val()||{});
+      const [ac,rq,nb,past]=await Promise.all([read('memberAccess'),read('memberRequests').catch(()=>({})),read('nameBook').catch(()=>({})),read('pastRecords').catch(()=>({}))]);
+      const uids=Object.keys(ac).filter(u=>/^[A-Za-z0-9_-]{6,128}$/.test(u)&&ac[u]?.active===true);
+      const roles={};
+      await Promise.all(uids.map(u=>dbMod.get(dbMod.ref(db,'portalRoles/'+u)).then(x=>{roles[u]=x.val()?.role||'';}).catch(()=>{roles[u]='?';})));
+      const norm=v=>String(v||'').normalize('NFKC').replace(/[\s\u3000]/g,'');
+      const rows=uids.map(u=>({uid:u,name:String(nb[u]?.displayName||rq[u]?.displayName||'').trim()||'名前不明',chat:String(nb[u]?.chatName||'').trim(),
+        reg:String(rq[u]?.displayName||'').trim(),records:Object.keys(past[u]||{}).length,role:u===gate.uid?'developer':roles[u],approvedAt:Number(ac[u]?.approvedAt)||0}));
+      const count=new Map();for(const r of rows){const k=norm(r.name);count.set(k,(count.get(k)||0)+1);}
+      for(const r of rows)r.sameName=count.get(norm(r.name))>1;
+      return rows;
+    };
+    gate.revokeMember=async uid=>{
+      rvDev();
+      uid=String(uid||'');
+      if(!/^[A-Za-z0-9_-]{6,128}$/.test(uid))throw Error('UIDの形式が不正です');
+      if(uid===gate.uid)throw Error('自分の承認は取り消せません');
+      let role='';try{role=(await dbMod.get(dbMod.ref(db,'portalRoles/'+uid))).val()?.role||'';}catch(_){throw Error('役割を確認できません');}
+      if(role==='developer'||role==='admin')throw Error('開発者・管理者は取り消せません（先に管理者を外してください）');
+      const recs=(await dbMod.get(ref('pastRecords/'+uid))).val()||{};
+      if(Object.keys(recs).length)throw Error('記録が'+Object.keys(recs).length+'件付いています。先に「記録の付け替え」で移してください');
+      const a=(await dbMod.get(ref('memberAccess/'+uid))).val();
+      if(a)await dbMod.remove(ref('memberAccess/'+uid));
+      if((await dbMod.get(ref('memberAccess/'+uid))).exists())throw Error('参加承認を削除できませんでした');
+      const out={access:!!a,request:false,name:false};
+      try{const r=(await dbMod.get(ref('memberRequests/'+uid))).val();if(r){await dbMod.remove(ref('memberRequests/'+uid));out.request=true;}}catch(e){out.requestError=String(e?.code||e?.message||e).slice(0,60);}
+      try{const n=(await dbMod.get(ref('nameBook/'+uid))).val();if(n){await dbMod.remove(ref('nameBook/'+uid));out.name=true;}}catch(e){out.nameError=String(e?.code||e?.message||e).slice(0,60);}
+      return out;
     };
     gate.saveNoticeRead=async({key,version})=>{
       if(!gate.hasOperationalAccess()||gate.loaded.personal!==true||
@@ -24657,7 +24699,7 @@ body.portalChatIsolated > #trQuick{visibility:visible!important;opacity:1!import
   const withLimit=p=>Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(Error('通信に時間がかかっています。電波を確認して、もう一度押してください')),20000))]);
   const RELS=['父','母','祖父','祖母','兄弟姉妹','その他'];
   let data=null,busy=false;
-  const label=p=>{const d=p.disp||p.chat;return d+(p.chat&&p.disp&&norm(p.chat)!==norm(p.disp)?'（チャット名：'+p.chat+'）':'')+'｜末尾'+p.uid.slice(-6);};
+  const label=p=>{const d=p.disp||p.chat;return d+(p.chat&&p.disp&&norm(p.chat)!==norm(p.disp)?'（チャット名：'+p.chat+'）':'')+'｜ID '+p.uid.slice(0,6)+'…'+p.uid.slice(-6);};
   const nameOf=uid=>{const p=data?.people.find(x=>x.uid===uid);return p?(p.disp||p.chat):'（名前不明・末尾'+String(uid).slice(-6)+'）';};
   function mount(){
     if($('trFamilySection'))return true;
@@ -24795,8 +24837,8 @@ body.portalChatIsolated > #trQuick{visibility:visible!important;opacity:1!import
   function fill(){
     const src=data.sources.slice().sort((a,b)=>(a.name||'~').localeCompare(b.name||'~','ja'));
     const dst=data.people.slice().sort((a,b)=>a.name.localeCompare(b.name,'ja'));
-    $('trRecMoveFrom').innerHTML='<option value="">選んでください</option>'+src.map(x=>'<option value="'+esc(x.uid)+'">'+esc((x.name||'名前不明')+'｜記録'+x.count+'件｜'+(x.active?'承認済':'未承認・取消')+'｜末尾'+x.uid.slice(-6))+'</option>').join('');
-    $('trRecMoveTo').innerHTML='<option value="">選んでください</option>'+dst.map(x=>'<option value="'+esc(x.uid)+'">'+esc(x.name+'｜記録'+x.count+'件｜'+(x.active?'承認済':'未承認')+'｜末尾'+x.uid.slice(-6))+'</option>').join('');
+    $('trRecMoveFrom').innerHTML='<option value="">選んでください</option>'+src.map(x=>'<option value="'+esc(x.uid)+'">'+esc((x.name||'名前不明')+'｜記録'+x.count+'件｜'+(x.active?'承認済':'未承認・取消')+'｜ID '+x.uid.slice(0,6)+'…'+x.uid.slice(-6))+'</option>').join('');
+    $('trRecMoveTo').innerHTML='<option value="">選んでください</option>'+dst.map(x=>'<option value="'+esc(x.uid)+'">'+esc(x.name+'｜記録'+x.count+'件｜'+(x.active?'承認済':'未承認')+'｜ID '+x.uid.slice(0,6)+'…'+x.uid.slice(-6))+'</option>').join('');
     $('trRecMoveForm').hidden=false;$('trRecMoveRun').hidden=true;$('trRecMovePreview').innerHTML='';previewKey='';
   }
   async function load(){
@@ -24838,6 +24880,98 @@ body.portalChatIsolated > #trQuick{visibility:visible!important;opacity:1!import
       busy=false;await load();
     }catch(e){say('付け替えできませんでした（何も変わっていません）：'+String(e?.message||e?.code||e).slice(0,160));}
     finally{busy=false;$('trRecMoveRun').disabled=false;}
+  }
+  window.addEventListener('tr-portal-authorized',visible);
+  const start=()=>{
+    visible();
+    const screen=$('screen-management-settings');
+    if(screen)new MutationObserver(()=>{if(!screen.classList.contains('hidden'))visible();}).observe(screen,{attributes:true,attributeFilter:['class']});
+  };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+})();
+</script>
+<style id="v265-revoke-style">
+#trRevokeSection select{width:100%;min-height:42px;font-size:16px;margin:4px 0 10px;border-radius:10px;padding:6px 8px}
+#trRevokeSection label{display:block;font-size:12px;font-weight:900;margin-top:4px}
+#trRevokeInfo{font-size:13px;line-height:1.7;margin:6px 0}
+#trRevokeInfo .bad{color:#c0392b;font-weight:900}
+#trRevokeRun{min-height:43px;margin-top:6px}
+</style>
+<script id="v265-revoke-ui">
+(()=>{
+  const $=id=>document.getElementById(id);
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const gate=()=>window.__TR_PORTAL_SYNC__;
+  const withLimit=p=>Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(Error('通信に時間がかかっています。電波を確認して、もう一度押してください')),20000))]);
+  const id6=u=>u.slice(0,6)+'…'+u.slice(-6);
+  const day=t=>t?new Date(t).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'}):'日付不明';
+  const ROLE={developer:'開発者',admin:'管理者'};
+  let rows=[],busy=false;
+  function mount(){
+    if($('trRevokeSection'))return true;
+    const anchor=$('trRecMoveSection')||$('trFamilySection')||document.querySelector('#screen-management-settings .portalScreenBody > section');
+    if(!anchor)return false;
+    anchor.insertAdjacentHTML('afterend',
+      '<section id="trRevokeSection" class="portalManagementSettingsSection" hidden>'+
+        '<div class="portalPanelHead"><small>APPROVAL</small><b>承認の取り消し（開発者）</b></div>'+
+        '<details class="portalManageAccessDisclosure" id="trRevokeDetails"><summary>間違えて登録・二重登録した人を外す</summary>'+
+          '<div class="portalIdentityLinkBody">'+
+            '<p style="font-size:12px;line-height:1.6">承認済みの人の参加承認を取り消します（申請と名前帳も削除）。外された端末は、次に開いたとき承認前の状態になります。<br>記録が付いている人は外せません。先に「記録の付け替え」で残す方へ移してください。開発者・管理者・自分も外せません。<br>同じ名前が2人以上いる人を先頭に表示します。</p>'+
+            '<button id="trRevokeLoad" type="button" style="min-height:43px">一覧を読み込む</button>'+
+            '<div id="trRevokeForm" hidden>'+
+              '<label for="trRevokePick">外す人</label><select id="trRevokePick"></select>'+
+              '<div id="trRevokeInfo"></div>'+
+              '<button id="trRevokeRun" type="button" hidden>この人の承認を取り消す</button>'+
+            '</div>'+
+            '<p id="trRevokeState" role="status" style="white-space:pre-wrap;font-size:12px"></p>'+
+          '</div>'+
+        '</details>'+
+      '</section>');
+    $('trRevokeLoad').addEventListener('click',load);
+    $('trRevokePick').addEventListener('change',info);
+    $('trRevokeRun').addEventListener('click',run);
+    return true;
+  }
+  const say=t=>{const el=$('trRevokeState');if(el)el.textContent=t||'';};
+  function visible(){
+    if(!mount())return;
+    const g=gate();
+    $('trRevokeSection').hidden=!(g?.roleVerified===true&&g?.role==='developer'&&!window.__TR_COMMON_PILOT_UI__?.isParticipantPreview?.());
+  }
+  const blockReason=r=>r.role==='developer'||r.role==='admin'?(ROLE[r.role]+'のため外せません'):r.uid===gate()?.uid?'自分は外せません':r.records?('記録が'+r.records+'件付いています。先に「記録の付け替え」で移してください'):'';
+  function fill(){
+    const sorted=rows.slice().sort((a,b)=>(b.sameName-a.sameName)||a.name.localeCompare(b.name,'ja')||a.approvedAt-b.approvedAt);
+    $('trRevokePick').innerHTML='<option value="">選んでください</option>'+sorted.map(r=>'<option value="'+esc(r.uid)+'">'+esc((r.sameName?'【同じ名前あり】':'')+r.name+'｜記録'+r.records+'件｜'+day(r.approvedAt)+'承認｜ID '+id6(r.uid))+'</option>').join('');
+    $('trRevokeForm').hidden=false;info();
+  }
+  function info(){
+    const r=rows.find(x=>x.uid===$('trRevokePick').value);
+    if(!r){$('trRevokeInfo').innerHTML='';$('trRevokeRun').hidden=true;return;}
+    const why=blockReason(r);
+    $('trRevokeInfo').innerHTML='名前（表示名）：<b>'+esc(r.name)+'</b><br>'+(r.reg&&r.reg!==r.name?'登録名：'+esc(r.reg)+'<br>':'')+(r.chat&&r.chat!==r.name?'チャット名：'+esc(r.chat)+'<br>':'')+
+      '承認：'+esc(day(r.approvedAt))+'　記録：'+r.records+'件<br>ID：'+esc(id6(r.uid))+(ROLE[r.role]?'<br>役割：'+ROLE[r.role]:'')+(why?'<br><span class="bad">'+esc(why)+'</span>':'');
+    $('trRevokeRun').hidden=!!why;
+  }
+  async function load(){
+    if(busy)return;busy=true;$('trRevokeLoad').disabled=true;say('読み込み中…');
+    try{rows=await withLimit(gate().revokeCandidates());fill();say('承認済み '+rows.length+'人（同じ名前あり '+rows.filter(r=>r.sameName).length+'人）');}
+    catch(e){say('読み込めませんでした：'+String(e?.message||e?.code||e).slice(0,160));}
+    finally{busy=false;$('trRevokeLoad').disabled=false;}
+  }
+  async function run(){
+    if(busy)return;
+    const r=rows.find(x=>x.uid===$('trRevokePick').value);if(!r)return;
+    if(blockReason(r)){info();return;}
+    if(!confirm('外す人：'+r.name+'（ID '+id6(r.uid)+'・'+day(r.approvedAt)+'承認）\n\nこの人の参加承認を取り消します。元に戻すには、その端末からもう一度申請・承認が必要です。よろしいですか？'))return;
+    busy=true;$('trRevokeRun').disabled=true;say('取り消しています…');
+    try{
+      const out=await withLimit(gate().revokeMember(r.uid));
+      say('取り消しました：'+r.name+'（ID '+id6(r.uid)+'）'+(out.request?'・申請も削除':'')+(out.name?'・名前帳も削除':'')+
+        (out.requestError?'\n申請は残りました（'+out.requestError+'）':'')+(out.nameError?'\n名前帳は残りました（'+out.nameError+'）':'')+
+        '\n出走登録がある場合は、イベント →「参加者・出走者」で取り消してください。');
+      busy=false;await load();
+    }catch(e){say('取り消せませんでした（何も変わっていません）：'+String(e?.message||e?.code||e).slice(0,160));}
+    finally{busy=false;$('trRevokeRun').disabled=false;}
   }
   window.addEventListener('tr-portal-authorized',visible);
   const start=()=>{
