@@ -1,3 +1,5 @@
+<!-- TOP RUN PORTAL v264 | 2026-11-03 | Parent v263. Rules v263 のまま（変更なし）。開発者設定「記録の付け替え（開発者）」：ブラウザで申請・承認・紐付けした後にアプリで入り直した人などのため、pastRecords/<元uid> の記録（大会の紐付け・管理登録記録・記録練習）を pastRecords/<先uid> へ1回の書き込みでまとめて移す（先に同じ記録があるものは元から外すだけ、内容が違うものは移さず残す）。確認画面→確認ダイアログ→実行。出走登録・承認・本人入力の記録は移さない。 -->
+<!-- TOP RUN PORTAL v263 | 2026-11-03 | Parent v262. REQUIRES Rules v263 (TOPRUNRULESv263.json: portalCommon/topRun/familyOf を追加。開発者だけ書ける・保護者は自分の分だけ読める。pastRecords/<子uid> と profiles/<子uid>/portalSelf/externalRecords を、つながった保護者も読める)。家族（親子）：(1) 開発者設定「家族（親子）」で保護者と子ども（走る本人）をつなぐ・外す。保護者は何人でも（両親・祖父母など）、子どもも何人でも。(2) 保護者のマイページ「個人記録」の下に「家族の記録」。押すと子どもの個人記録を表示（見るだけ。出走登録・修正・削除はできない）。認証・UID・出走登録・記録の書き込みは変更なし。 -->
 <!-- TOP RUN PORTAL v262 | 2026-11-02 | Parent v261. iPhoneでリアクションが押しにくい件：(1) メッセージを長押ししたときにiPhone標準の「コピー・調べる・翻訳」や画像のメニューが出て、PORTALの枠とぶつかっていた：チャットのメッセージではiPhone標準の文字選択・長押しメニューを出さない（コピーはPORTALの「コピー」「一部コピー」で）。(2) 長押しで枠が出た直後に、指を離したときのタップで枠が閉じていた：出てから0.5秒は外側のタップで閉じない。写真はタップで拡大表示、長押しでリアクション。Rules v240 のまま。 -->
 <!-- TOP RUN PORTAL v261 | 2026-11-02 | Parent v260. リアクションをBANDのように：メッセージをタップ（長押し）すると、そのメッセージのすぐ近くに小さな枠が出る。よく使うリアクション6つ＋「…」、その下に「返信・コピー・一部コピー」。「…」で全部のリアクションの画面。全部の画面は画面の下に固定せず中央に表示し、候補は「もっと見る」なしで全部をその中でスクロール。上のメッセージは1行（名前＋最初の言葉）だけ。表示と操作だけ。Rules v240 のまま。 -->
 <!-- TOP RUN PORTAL v260 | 2026-11-02 | Parent v259. 共通チャットとルームで吹き出しの枠が違っていた：共通チャットでは開発者・管理者のメッセージ（staff）だけ左の枠線が4pxの太線だった。ルームに合わせて1pxに統一。表示だけ。Rules v240 のまま。 -->
@@ -6155,6 +6157,12 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         
         <span class="portalPanelAction">自分の個人記録を開く ›</span>
       </button>
+      <section class="portalPanel" id="trFamilyRecordsPanel" hidden>
+        <div class="portalPanelHead"><small>FAMILY / RECORD</small><b>家族の記録</b></div>
+        <p class="portalHelp">運営がつないだご家族の個人記録を見られます。見るだけで、出走登録・修正はできません。</p>
+        <div id="trFamilyRecordsList"></div>
+        <p class="portalInlineState" id="trFamilyRecordsState" aria-live="polite"></p>
+      </section>
 
       <button class="portalPanel portalPanelButton" type="button" data-screen="personal-color">
         <div class="portalPanelHead"><small>PORTAL COLOR</small><b>ポータルのカラーを選ぶ</b></div>
@@ -6438,7 +6446,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v262</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v264</b></div>
   </div>
 </div>
 
@@ -6629,7 +6637,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v262</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v264</b></div>
   </div>
 </div>
 
@@ -10692,7 +10700,7 @@ const gateway=window.__TR_PORTAL_SYNC__;
 }
   function renderPortalPersonalRecord(){
     // Non-staff never get to select another person's page.
-    if(!canManage || portalParticipantPreviewMode)portalPersonalTargetId=portalSelfProfileId;
+    if((!canManage || portalParticipantPreviewMode)&&!(window.__trFamilyPids?.().has(portalPersonalTargetId)))portalPersonalTargetId=portalSelfProfileId; // v263: 家族の記録
     const isSelf=portalPersonalTargetId===portalSelfProfileId;
     const enteredName=String($('portalMyPageName')?.textContent||'').trim();
     const displayName=enteredName && enteredName!=='表示名' ? enteredName : '名前未登録';
@@ -11109,6 +11117,34 @@ const gateway=window.__TR_PORTAL_SYNC__;
     }catch(error){
       refreshPortalDevVerifiedPicker('本人記録を読み込めません：'+String(error?.message||error).slice(0,160));
     }finally{btn.disabled=false;}
+  });
+  // v263: 家族の記録（保護者のマイページ「個人記録」の下）。見るだけ。
+  window.__trFamilyPids=()=>{const g=window.__TR_PORTAL_SYNC__;return new Set(Object.values(g?.familyChildren||{}).map(c=>c&&c.profileId).filter(Boolean));};
+  function trRenderFamilyPanel(){
+    const g=window.__TR_PORTAL_SYNC__,box=$('trFamilyRecordsPanel'),list=$('trFamilyRecordsList');if(!box||!list)return;
+    const kids=Object.entries(g?.familyChildren||{});
+    box.hidden=!kids.length||portalParticipantPreviewMode;
+    const html=kids.map(([uid,c])=>{const nm=(window.__TR_NAMES__?.book?.[uid]?.displayName)||c.name||'家族';
+      return `<button type="button" class="trFamilyOpen" data-family-uid="${esc(uid)}" data-family-pid="${esc(c.profileId)}"><span><b>${esc(nm)}</b></span><strong>記録を開く ›</strong></button>`;}).join('');
+    if(list.innerHTML!==html)list.innerHTML=html;
+  }
+  window.addEventListener('tr-family-updated',()=>{trRenderFamilyPanel();try{flowUpdateRecords();}catch(_){}});
+  window.addEventListener('tr-names-updated',trRenderFamilyPanel);
+  document.addEventListener('click',async e=>{
+    const b=e.target.closest?.('.trFamilyOpen');if(!b)return;
+    const g=window.__TR_PORTAL_SYNC__,uid=b.dataset.familyUid,pid=b.dataset.familyPid,st=$('trFamilyRecordsState');
+    if(!g?.isFamilyChild?.(uid,pid)||!g.loadPastRecordsFor){if(st)st.textContent='家族のつながりを確認できません。開き直してください。';return;}
+    b.disabled=true;if(st)st.textContent='読み込んでいます…';
+    try{
+      await g.loadPastRecordsFor(uid,pid);
+      flowUpdateRecords();
+      portalPersonalTargetId=pid;portalPersonalMetric='3000';portalPersonalFilter='all';
+      portalOfficialListFilter=false;portalPracticeListFilter=false;
+      showScreen('competition-results');
+      renderPortalPersonalRecord();
+      if(st)st.textContent='';
+    }catch(err){if(st)st.textContent='記録を読み込めません：'+String(err?.message||err?.code||err).slice(0,120);}
+    finally{b.disabled=false;}
   });
   function savePortalDevPreviewUsers(){
     try{localStorage.setItem(PORTAL_PREVIEW_USERS_KEY,JSON.stringify(portalDevPreviewUsers));return true}
@@ -12976,8 +13012,9 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
       portalPersonalRecords.push({id:r.id,profileId:r.actorId,metric:r.practiceDate?String(r.recordDistanceMeters):r.metric,date:r.date,event:r.name,venue:r.venue||'',label:r.practiceDate?(('【'+({TT:'TT',selection:'選考',trial:'試走',other:'その他'}[r.recordKind]||'記録練習')+'】 '+String(r.recordDistanceMeters||r.metric)+'m ／ 非公認練習記録')+(r.recordNote?' ／ '+r.recordNote:'')):r.firebaseSource==='portalStaff'?(official?'管理登録・公認申告':'管理登録・非公認'):official?'公認申告・過去大会（本人照合前）':'非公認申告・過去大会（本人照合前）',time:r.status==='time'?r.time:'',status:r.status||'time',subjectUid:r.subjectUid||'',practiceDate:r.practiceDate||'',recordDistanceMeters:r.recordDistanceMeters||0,recordKind:r.recordKind||'',recordNote:r.recordNote||'',catalogId:r.firebaseSource==='portalStaff'?portalStaffCatalogId(r):'',official:false,source:r.firebaseSource==='portalStaff'?'PORTAL_STAFF_PAST':r.firebaseSource==='portalSelf'?'PORTAL_SELF_DECLARED':'PORTAL_LOCAL_PREVIEW'});
     }
     // EVENT BASE results remain authoritative and are never written by this screen.
+    const famPids=window.__trFamilyPids?window.__trFamilyPids():new Set(); // v263
     for(const records of portalEventBaseReadRecords.values()){
-      for(const row of records){if(row.profileId===flowBaseSelfId||(canManage&&!portalParticipantPreviewMode))portalPersonalRecords.push(row);} // v200: staff view of another person
+      for(const row of records){if(row.profileId===flowBaseSelfId||(canManage&&!portalParticipantPreviewMode)||famPids.has(row.profileId))portalPersonalRecords.push(row);} // v200: staff view of another person / v263: family
     }
     // P106: the same race can exist twice - EVENT BASE (authoritative) and a manual 過去大会 entry. Hide ONLY the
     // manual copy (display only; nothing is deleted) when the same person has the same date AND the same time.
@@ -12994,7 +13031,8 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
     const local=flowActorRoster().filter(a=>a.id===flowBaseSelfId).map(a=>({profileId:a.id,name:a.name,uid:window.__TR_PORTAL_SYNC__?.uid||''}));
     // For staff, only verified canonical EVENT BASE players/timing results.
     const verifiedRoster=(canManage?portalCompetitionAthletes():[]).filter(a=>!!a.profileId).map(a=>({profileId:a.profileId,name:a.name,uid:a.uid||''}));
-    const unique=new Map([...local,...verifiedRoster].map(a=>[a.profileId,a]));
+    const famRoster=Object.entries(window.__TR_PORTAL_SYNC__?.familyChildren||{}).map(([uid,c])=>({profileId:c.profileId,name:(window.__TR_NAMES__?.book?.[uid]?.displayName)||c.name||'家族',uid})); // v263
+    const unique=new Map([...local,...famRoster,...verifiedRoster].map(a=>[a.profileId,a]));
     portalAthletes.splice(0,portalAthletes.length,...unique.values());
   }
   function flowRenderMyRaces(){
@@ -14987,7 +15025,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
         flowState.external=flowState.external.filter(r=>r.firebaseSource!=='portalStaff');
         return;
       }
-      if(!uid||!profileId||(!canManage&&gate.uid!==uid))return;
+      if(!uid||!profileId||(!canManage&&gate.uid!==uid&&!gate.isFamilyChild?.(uid,profileId)))return; // v263: family
       const rows=records&&typeof records==='object'&&!Array.isArray(records)?records:{};
       flowState.external=flowState.external.filter(r=>!(r.firebaseSource==='portalStaff'&&r.actorId===profileId));
       for(const [recordId,row] of Object.entries(rows)){
@@ -15001,7 +15039,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
     },
     refreshRecDiag(){try{portalRenderRecDiag();}catch(_){}},
     applyStaffSelfRecordsV202({uid,profileId,records,error}){
-      if(!canManage||portalParticipantPreviewMode||!uid||!profileId)return;
+      if(((!canManage||portalParticipantPreviewMode)&&!window.__TR_PORTAL_SYNC__?.isFamilyChild?.(uid,profileId))||!uid||!profileId)return; // v263: family
       flowState.external=flowState.external.filter(r=>!(r.staffViewV202===true&&r.actorId===profileId));
       if(error){try{showActionFeedback('本人入力の記録を読めません','Rules v202 が公開されているか確認してください（'+String(error).slice(0,60)+'）');}catch(_){}flowRefreshAll();return;}
       for(const [recordId,row] of Object.entries(records&&typeof records==='object'?records:{})){
@@ -17020,6 +17058,82 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       }).filter(r=>r.reg||r.disp||r.chat||r.role);
       return {rows,bookReadable:nb!==null};
     };
+    // v263: 家族（保護者→子ども）。familyOf/<保護者uid>/<子どもuid> = {profileId,name,rel,at,byUid}。書けるのは開発者だけ。
+    gate.familyChildren=gate.familyChildren||{};
+    gate.isFamilyChild=(uid,pid)=>{const c=gate.familyChildren?.[String(uid||'')];return !!c&&!!pid&&c.profileId===String(pid);};
+    const famUidOk=u=>/^[A-Za-z0-9_-]{6,128}$/.test(String(u||''));
+    const famDev=()=>{if(gate.roleVerified!==true||gate.role!=='developer'||auth.currentUser?.uid!==gate.uid)throw Error('開発者の権限が必要です');};
+    gate.familyAll=async()=>{
+      famDev();
+      const read=p=>dbMod.get(ref(p)).then(x=>x.val()||{});
+      let links;
+      try{links=await read('familyOf');}catch(e){throw Error('家族の一覧を読めません。Rules v263 を反映してください（'+String(e?.code||e?.message||e).slice(0,60)+'）');}
+      const [ac,nb]=await Promise.all([read('memberAccess').catch(()=>({})),read('nameBook').catch(()=>({}))]);
+      const uids=[...new Set([...Object.keys(ac).filter(u=>ac[u]?.active===true),...Object.keys(nb),gate.uid])].filter(famUidOk);
+      const people=uids.map(u=>({uid:u,disp:String(nb[u]?.displayName||'').trim(),chat:String(nb[u]?.chatName||'').trim(),active:ac[u]?.active===true||u===gate.uid}))
+        .filter(p=>p.disp||p.chat);
+      return {links,people};
+    };
+    gate.familySet=async(guardianUid,childUid,rel)=>{
+      famDev();
+      guardianUid=String(guardianUid||'');childUid=String(childUid||'');rel=String(rel||'').trim().slice(0,12)||'その他';
+      if(!famUidOk(guardianUid)||!famUidOk(childUid))throw Error('保護者と子どもを選んでください');
+      if(guardianUid===childUid)throw Error('同じ人どうしはつなげません');
+      const pid=(await dbMod.get(dbMod.ref(db,'profiles/'+childUid+'/profileId'))).val();
+      if(typeof pid!=='string'||!pid)throw Error('子どものプロフィールを確認できません');
+      const nb=(await dbMod.get(ref('nameBook/'+childUid))).val()||{};
+      const name=String(nb.displayName||nb.chatName||'').trim().slice(0,24)||'名前未登録';
+      await dbMod.set(ref('familyOf/'+guardianUid+'/'+childUid),{profileId:pid,name,rel,at:Date.now(),byUid:gate.uid});
+      return {name};
+    };
+    gate.familyRemove=async(guardianUid,childUid)=>{
+      famDev();
+      if(!famUidOk(guardianUid)||!famUidOk(childUid))throw Error('対象を確認できません');
+      await dbMod.remove(ref('familyOf/'+guardianUid+'/'+childUid));
+    };
+    // v264: 記録の付け替え（開発者だけ）。pastRecords/<元uid>/<id> → pastRecords/<先uid>/<id>（1回の書き込み）。
+    const mvDev=()=>{if(gate.roleVerified!==true||gate.role!=='developer'||auth.currentUser?.uid!==gate.uid)throw Error('開発者の権限が必要です');};
+    const mvUid=u=>/^[A-Za-z0-9_-]{6,128}$/.test(String(u||''));
+    const mvStable=v=>JSON.stringify(v,(k,x)=>x&&typeof x==='object'&&!Array.isArray(x)?Object.fromEntries(Object.keys(x).sort().map(n=>[n,x[n]])):x);
+    const mvCore=r=>{const c={...r};for(const k of ['subjectUid','profileId','updatedAt','updatedByUid'])delete c[k];return mvStable(c);};
+    gate.recMoveSources=async()=>{
+      mvDev();
+      const read=p=>dbMod.get(ref(p)).then(x=>x.val()||{});
+      const [past,ac,rq,nb]=await Promise.all([read('pastRecords'),read('memberAccess').catch(()=>({})),read('memberRequests').catch(()=>({})),read('nameBook').catch(()=>({}))]);
+      const nm=u=>String(nb[u]?.displayName||rq[u]?.displayName||'').trim();
+      const sources=Object.entries(past).filter(([u,v])=>mvUid(u)&&v&&typeof v==='object')
+        .map(([u,v])=>({uid:u,count:Object.keys(v).filter(id=>/^local-flow-[A-Za-z0-9_-]{8,100}$/.test(id)).length,name:nm(u),active:ac[u]?.active===true})).filter(x=>x.count>0);
+      const people=[...new Set([...Object.keys(ac).filter(u=>ac[u]?.active===true),...Object.keys(nb)])].filter(mvUid)
+        .map(u=>({uid:u,name:nm(u),active:ac[u]?.active===true,count:Object.keys(past[u]||{}).length})).filter(p=>p.name);
+      return {sources,people};
+    };
+    const mvPlan=async(fromUid,toUid)=>{
+      mvDev();
+      fromUid=String(fromUid||'');toUid=String(toUid||'');
+      if(!mvUid(fromUid)||!mvUid(toUid))throw Error('移す元と移す先を選んでください');
+      if(fromUid===toUid)throw Error('同じ人には付け替えできません');
+      const toPid=(await dbMod.get(dbMod.ref(db,'profiles/'+toUid+'/profileId'))).val();
+      if(typeof toPid!=='string'||!toPid)throw Error('移す先のプロフィールを確認できません');
+      const [src,dst]=await Promise.all([dbMod.get(ref(pastRoot+fromUid)).then(x=>x.val()||{}),dbMod.get(ref(pastRoot+toUid)).then(x=>x.val()||{})]);
+      const move=[],dup=[],conflict=[];
+      for(const [id,r] of Object.entries(src)){
+        if(!/^local-flow-[A-Za-z0-9_-]{8,100}$/.test(id)||!r||typeof r!=='object')continue;
+        const row={id,date:String(r.date||''),name:String(r.name||''),time:String(r.status==='time'?(r.time||''):(r.status||'')),practice:!!r.practiceDate,rec:r};
+        if(dst[id])(mvCore(dst[id])===mvCore(r)?dup:conflict).push(row);else move.push(row);
+      }
+      const by=(a,b)=>a.date.localeCompare(b.date);
+      return {fromUid,toUid,toPid,move:move.sort(by),dup:dup.sort(by),conflict:conflict.sort(by)};
+    };
+    gate.recMovePreview=async(fromUid,toUid)=>{const p=await mvPlan(fromUid,toUid);const strip=x=>x.map(({rec,...r})=>r);return {move:strip(p.move),dup:strip(p.dup),conflict:strip(p.conflict)};};
+    gate.recMove=async(fromUid,toUid)=>{
+      const p=await mvPlan(fromUid,toUid);
+      if(!p.move.length&&!p.dup.length)throw Error('付け替える記録がありません');
+      const now=Date.now(),u={};
+      for(const x of p.move){u[pastRoot+p.toUid+'/'+x.id]={...x.rec,subjectUid:p.toUid,profileId:p.toPid,updatedAt:Math.max(now,Number(x.rec.createdAt)||0),updatedByUid:gate.uid};u[pastRoot+p.fromUid+'/'+x.id]=null;}
+      for(const x of p.dup)u[pastRoot+p.fromUid+'/'+x.id]=null;
+      await dbMod.update(dbMod.ref(db,'portalCommon/topRun'),u);
+      return {moved:p.move.length,dupRemoved:p.dup.length,conflict:p.conflict.length};
+    };
     gate.saveNoticeRead=async({key,version})=>{
       if(!gate.hasOperationalAccess()||gate.loaded.personal!==true||
          !/^(?:p|e)_[A-Za-z0-9_-]{1,298}$/.test(String(key||''))||
@@ -17088,7 +17202,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
     const loadPastRecordsForCore=async(uid,profileId,D={})=>{
       uid=String(uid||'');profileId=String(profileId||'');
       if(!/^[A-Za-z0-9_-]{6,128}$/.test(uid)||!profileId||profileId.length>120)throw Error('対象者の本人IDがありません');
-      if(auth.currentUser?.uid!==gate.uid||!gate.roleVerified||(!staffPastAllowed()&&(uid!==gate.uid||profileId!==gate.profileId)))throw Error('他人の記録は閲覧できません');
+      if(auth.currentUser?.uid!==gate.uid||!gate.roleVerified||(!staffPastAllowed()&&!gate.isFamilyChild?.(uid,profileId)&&(uid!==gate.uid||profileId!==gate.profileId)))throw Error('他人の記録は閲覧できません'); // v263: family
       const currentGeneration=generation,currentUid=gate.uid;
       const result=(await dbMod.get(ref(pastRoot+uid))).val()||{};
       if(currentGeneration!==generation||auth.currentUser?.uid!==currentUid)throw Error('認証が切り替わったためREADを破棄しました');
@@ -17104,7 +17218,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       ui?.applySharedPastRecords({uid,profileId,records});
       // v202: the person's own entered past races live in profiles/<uid>/portalSelf/externalRecords.
       // Staff could never read them, so the staff view showed 0. Read-only; needs Rules v202.
-      if(staffPastAllowed()&&uid!==gate.uid){
+      if((staffPastAllowed()||gate.isFamilyChild?.(uid,profileId))&&uid!==gate.uid){ // v263: family
         try{
           const ex=(await dbMod.get(dbMod.ref(db,'profiles/'+uid+'/portalSelf/externalRecords'))).val()||{};
           D.selfRaw=Object.keys(ex).length;
@@ -18968,6 +19082,13 @@ try{
             if(!mine||mine.displayName!==gate.displayName||mine.chatName!==(gate.chatName||gate.displayName))
               gate.syncNameBook().catch(e=>console.warn('[TOP RUN v190] nameBook write rejected',e?.code||e));
           },e=>{window.__TR_NAMES__?.apply(null,e);console.warn('[TOP RUN v190] nameBook read rejected',e?.code||e);});
+          // v263: 自分につながった家族（子ども）。数十バイト。読めない（Rules未反映・家族なし）ときは空。
+          try{gate.__familyStop?.();}catch(_){}
+          gate.__familyStop=p94WatchValue(ref('familyOf/'+gate.uid),snap=>{
+            const v=snap.val()||{},out={};
+            for(const [u,c] of Object.entries(v)){if(/^[A-Za-z0-9_-]{6,128}$/.test(u)&&c&&typeof c.profileId==='string'&&c.profileId)out[u]={profileId:c.profileId,name:String(c.name||'').slice(0,24),rel:String(c.rel||'').slice(0,12)};}
+            gate.familyChildren=out;try{window.dispatchEvent(new Event('tr-family-updated'));}catch(_){}
+          },e=>{gate.familyChildren={};try{window.dispatchEvent(new Event('tr-family-updated'));}catch(_){}console.warn('[TOP RUN v263] familyOf read rejected',e?.code||e);});
         }else{ui?.applyNotices([]);ui?.applyChat([]);ui?.disableChat();}
       }catch(error){if(seq!==generation)return;reset();status('本人READ不可：'+String(error?.code||error?.message||error));window.__TR_PARTICIPANT_ENTRY__?.failed('既存の本人情報を読み込めません。元の端末の登録と権限を確認してください。');}
     };
@@ -24511,5 +24632,221 @@ body.portalChatIsolated > #trQuick{visibility:visible!important;opacity:1!import
 #screen-chat :is(#portalChatThread,#trRoomThread) .msg img{-webkit-user-drag:none}
 #trQuick,#trQuick *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 </style>
+<style id="v263-family-style">
+#trFamilyRecordsList{display:grid;gap:8px;margin-top:10px}
+.trFamilyOpen{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:52px;padding:10px 14px;border-radius:12px;border:1px solid var(--portal-theme-stroke,#d6d2c7);background:var(--portal-theme-surface-2,#eeece5);color:inherit;font:inherit;text-align:left;cursor:pointer}
+.trFamilyOpen span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.trFamilyOpen b{font-size:15px;font-weight:900}
+.trFamilyOpen small{font-size:11.5px;opacity:.75}
+.trFamilyOpen strong{flex:none;font-size:12.5px;font-weight:900;color:var(--gold-deep,#8a6d10)}
+.trFamilyOpen:disabled{opacity:.6}
+#trFamilySection select{width:100%;min-height:42px;font-size:16px;margin:4px 0 10px;border-radius:10px;padding:6px 8px}
+#trFamilySection label{display:block;font-size:12px;font-weight:900;margin-top:4px}
+#trFamilyLinks{margin-top:12px;display:grid;gap:8px}
+.trFamGroup{border:1px solid rgba(127,127,127,.3);border-radius:10px;padding:8px 10px;font-size:13px}
+.trFamGroup>b{display:block;margin-bottom:4px}
+.trFamRow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 0;border-top:1px solid rgba(127,127,127,.18)}
+.trFamRow button{min-height:34px;padding:4px 12px;border-radius:9px;font-size:12px;font-weight:900}
+</style>
+<script id="v263-family-ui">
+(()=>{
+  const $=id=>document.getElementById(id);
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const norm=v=>String(v||'').normalize('NFKC').replace(/[\s\u3000]/g,'');
+  const gate=()=>window.__TR_PORTAL_SYNC__;
+  const withLimit=p=>Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(Error('通信に時間がかかっています。電波を確認して、もう一度押してください')),20000))]);
+  const RELS=['父','母','祖父','祖母','兄弟姉妹','その他'];
+  let data=null,busy=false;
+  const label=p=>{const d=p.disp||p.chat;return d+(p.chat&&p.disp&&norm(p.chat)!==norm(p.disp)?'（チャット名：'+p.chat+'）':'')+'｜末尾'+p.uid.slice(-6);};
+  const nameOf=uid=>{const p=data?.people.find(x=>x.uid===uid);return p?(p.disp||p.chat):'（名前不明・末尾'+String(uid).slice(-6)+'）';};
+  function mount(){
+    if($('trFamilySection'))return true;
+    const anchor=$('trNameDirSection')||$('trChatPeopleSection')||document.querySelector('#screen-management-settings .portalScreenBody > section');
+    if(!anchor)return false;
+    anchor.insertAdjacentHTML('afterend',
+      '<section id="trFamilySection" class="portalManagementSettingsSection" hidden>'+
+        '<div class="portalPanelHead"><small>FAMILY</small><b>家族（親子）（開発者）</b></div>'+
+        '<details class="portalManageAccessDisclosure" id="trFamilyDetails"><summary>保護者と子どもをつなぐ</summary>'+
+          '<div class="portalIdentityLinkBody">'+
+            '<p style="font-size:12px;line-height:1.6">つなぐと、保護者のマイページ「個人記録」の下に「家族の記録」が出て、子どもの個人記録を見られます（見るだけ）。保護者は何人でもつなげます（父・母・祖父母など）。出走登録・記録は子ども本人のアカウントに付きます。</p>'+
+            '<button id="trFamilyLoad" type="button" style="min-height:43px">一覧を読み込む</button>'+
+            '<div id="trFamilyForm" hidden>'+
+              '<label for="trFamilyGuardian">保護者（記録を見る人）</label><select id="trFamilyGuardian"></select>'+
+              '<label for="trFamilyChild">子ども（走る本人）</label><select id="trFamilyChild"></select>'+
+              '<label for="trFamilyRel">保護者は、子どもの</label><select id="trFamilyRel">'+RELS.map(r=>'<option>'+r+'</option>').join('')+'</select>'+
+              '<button id="trFamilyAdd" type="button" style="min-height:43px">つなぐ</button>'+
+            '</div>'+
+            '<div id="trFamilyLinks"></div>'+
+            '<p id="trFamilyState" role="status" style="white-space:pre-wrap;font-size:12px"></p>'+
+          '</div>'+
+        '</details>'+
+      '</section>');
+    $('trFamilyLoad').addEventListener('click',load);
+    $('trFamilyAdd').addEventListener('click',add);
+    $('trFamilyLinks').addEventListener('click',remove);
+    return true;
+  }
+  const say=t=>{const el=$('trFamilyState');if(el)el.textContent=t||'';};
+  function visible(){
+    if(!mount())return;
+    const g=gate();
+    $('trFamilySection').hidden=!(g?.roleVerified===true&&g?.role==='developer'&&!window.__TR_COMMON_PILOT_UI__?.isParticipantPreview?.());
+  }
+  function render(){
+    const people=data.people.slice().sort((a,b)=>(a.disp||a.chat).localeCompare(b.disp||b.chat,'ja'));
+    const opts='<option value="">選んでください</option>'+people.map(p=>'<option value="'+esc(p.uid)+'">'+esc(label(p))+'</option>').join('');
+    for(const id of ['trFamilyGuardian','trFamilyChild']){const el=$(id),before=el.value;el.innerHTML=opts;if(people.some(p=>p.uid===before))el.value=before;}
+    $('trFamilyForm').hidden=false;
+    const groups=Object.entries(data.links||{}).filter(([,kids])=>kids&&typeof kids==='object'&&Object.keys(kids).length)
+      .sort((a,b)=>nameOf(a[0]).localeCompare(nameOf(b[0]),'ja'));
+    $('trFamilyLinks').innerHTML=groups.length?groups.map(([g,kids])=>
+      '<div class="trFamGroup"><b>保護者：'+esc(nameOf(g))+'</b>'+
+      Object.entries(kids).map(([c,v])=>'<div class="trFamRow"><span>→ '+esc(v?.name||nameOf(c))+(v?.rel?'（保護者は'+esc(v.rel)+'）':'')+'</span>'+
+        '<button type="button" data-fam-remove="'+esc(g)+'|'+esc(c)+'">外す</button></div>').join('')+
+      '</div>').join(''):'<p style="font-size:13px">まだつないだ家族はいません。</p>';
+  }
+  async function load(){
+    if(busy)return;busy=true;$('trFamilyLoad').disabled=true;say('読み込み中…');
+    try{data=await withLimit(gate().familyAll());render();
+      const n=Object.values(data.links||{}).reduce((t,k)=>t+Object.keys(k||{}).length,0);say('読み込みました：つないだ家族 '+n+'件');}
+    catch(e){say('読み込めませんでした：'+String(e?.message||e?.code||e).slice(0,160));}
+    finally{busy=false;$('trFamilyLoad').disabled=false;}
+  }
+  async function add(){
+    if(busy)return;
+    const gu=$('trFamilyGuardian').value,cu=$('trFamilyChild').value,rel=$('trFamilyRel').value;
+    if(!gu||!cu){say('保護者と子どもを選んでください。');return;}
+    if(gu===cu){say('同じ人どうしはつなげません。');return;}
+    if(data?.links?.[gu]?.[cu]){say('すでにつながっています。');return;}
+    if(!confirm('保護者：'+nameOf(gu)+'（'+rel+'）\n子ども：'+nameOf(cu)+'\n\nつなぎますか？保護者のマイページに子どもの個人記録が表示されます。'))return;
+    busy=true;$('trFamilyAdd').disabled=true;say('保存しています…');
+    try{await withLimit(gate().familySet(gu,cu,rel));busy=false;await load();say('つなぎました：'+nameOf(gu)+' → '+nameOf(cu));}
+    catch(e){say('つなげませんでした：'+String(e?.message||e?.code||e).slice(0,160));}
+    finally{busy=false;$('trFamilyAdd').disabled=false;}
+  }
+  async function remove(e){
+    const b=e.target.closest?.('[data-fam-remove]');if(!b||busy)return;
+    const [gu,cu]=b.dataset.famRemove.split('|');
+    if(!confirm('保護者：'+nameOf(gu)+'\n子ども：'+(data?.links?.[gu]?.[cu]?.name||nameOf(cu))+'\n\nこのつながりを外しますか？（記録は消えません。保護者の画面に表示されなくなるだけです）'))return;
+    busy=true;b.disabled=true;say('外しています…');
+    try{await withLimit(gate().familyRemove(gu,cu));busy=false;await load();say('外しました。');}
+    catch(err){say('外せませんでした：'+String(err?.message||err?.code||err).slice(0,160));}
+    finally{busy=false;b.disabled=false;}
+  }
+  window.addEventListener('tr-portal-authorized',visible);
+  const start=()=>{
+    visible();
+    const screen=$('screen-management-settings');
+    if(screen)new MutationObserver(()=>{if(!screen.classList.contains('hidden'))visible();}).observe(screen,{attributes:true,attributeFilter:['class']});
+  };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+})();
+</script>
+<style id="v264-recmove-style">
+#trRecMoveSection select{width:100%;min-height:42px;font-size:16px;margin:4px 0 10px;border-radius:10px;padding:6px 8px}
+#trRecMoveSection label{display:block;font-size:12px;font-weight:900;margin-top:4px}
+#trRecMovePreview{margin-top:10px;font-size:12.5px;line-height:1.6}
+#trRecMovePreview h4{margin:10px 0 4px;font-size:13px}
+#trRecMovePreview li{margin-left:1.1em}
+#trRecMoveRun{margin-top:10px;min-height:43px}
+</style>
+<script id="v264-recmove-ui">
+(()=>{
+  const $=id=>document.getElementById(id);
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const gate=()=>window.__TR_PORTAL_SYNC__;
+  const withLimit=p=>Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(Error('通信に時間がかかっています。電波を確認して、もう一度押してください')),20000))]);
+  let data=null,busy=false,previewKey='';
+  const nameOf=uid=>{const p=data?.people.find(x=>x.uid===uid)||data?.sources.find(x=>x.uid===uid);return (p&&p.name)||'名前不明';};
+  function mount(){
+    if($('trRecMoveSection'))return true;
+    const anchor=$('trFamilySection')||$('trNameDirSection')||document.querySelector('#screen-management-settings .portalScreenBody > section');
+    if(!anchor)return false;
+    anchor.insertAdjacentHTML('afterend',
+      '<section id="trRecMoveSection" class="portalManagementSettingsSection" hidden>'+
+        '<div class="portalPanelHead"><small>RECORD MOVE</small><b>記録の付け替え（開発者）</b></div>'+
+        '<details class="portalManageAccessDisclosure" id="trRecMoveDetails"><summary>紐付けた記録を別の本人へ移す</summary>'+
+          '<div class="portalIdentityLinkBody">'+
+            '<p style="font-size:12px;line-height:1.6">ブラウザで申請・承認・紐付けした後、アプリで入り直した人などに使います。移す元の個人記録（大会の紐付け・管理登録の記録・記録練習）を、まとめて移す先へ移します。<br>移さないもの：出走登録（今後の大会）・参加の承認・本人が自分で入れた記録。出走登録は「出走の確認」から取消・追加し直してください。</p>'+
+            '<button id="trRecMoveLoad" type="button" style="min-height:43px">一覧を読み込む</button>'+
+            '<div id="trRecMoveForm" hidden>'+
+              '<label for="trRecMoveFrom">移す元（記録が付いている古い方）</label><select id="trRecMoveFrom"></select>'+
+              '<label for="trRecMoveTo">移す先（今アプリで使っている方）</label><select id="trRecMoveTo"></select>'+
+              '<button id="trRecMoveCheck" type="button" style="min-height:43px">内容を確認する</button>'+
+              '<div id="trRecMovePreview"></div>'+
+              '<button id="trRecMoveRun" type="button" hidden>この内容で付け替える</button>'+
+            '</div>'+
+            '<p id="trRecMoveState" role="status" style="white-space:pre-wrap;font-size:12px"></p>'+
+          '</div>'+
+        '</details>'+
+      '</section>');
+    $('trRecMoveLoad').addEventListener('click',load);
+    $('trRecMoveCheck').addEventListener('click',check);
+    $('trRecMoveRun').addEventListener('click',run);
+    for(const id of ['trRecMoveFrom','trRecMoveTo'])$(id).addEventListener('change',()=>{previewKey='';$('trRecMoveRun').hidden=true;$('trRecMovePreview').innerHTML='';});
+    return true;
+  }
+  const say=t=>{const el=$('trRecMoveState');if(el)el.textContent=t||'';};
+  function visible(){
+    if(!mount())return;
+    const g=gate();
+    $('trRecMoveSection').hidden=!(g?.roleVerified===true&&g?.role==='developer'&&!window.__TR_COMMON_PILOT_UI__?.isParticipantPreview?.());
+  }
+  function fill(){
+    const src=data.sources.slice().sort((a,b)=>(a.name||'~').localeCompare(b.name||'~','ja'));
+    const dst=data.people.slice().sort((a,b)=>a.name.localeCompare(b.name,'ja'));
+    $('trRecMoveFrom').innerHTML='<option value="">選んでください</option>'+src.map(x=>'<option value="'+esc(x.uid)+'">'+esc((x.name||'名前不明')+'｜記録'+x.count+'件｜'+(x.active?'承認済':'未承認・取消')+'｜末尾'+x.uid.slice(-6))+'</option>').join('');
+    $('trRecMoveTo').innerHTML='<option value="">選んでください</option>'+dst.map(x=>'<option value="'+esc(x.uid)+'">'+esc(x.name+'｜記録'+x.count+'件｜'+(x.active?'承認済':'未承認')+'｜末尾'+x.uid.slice(-6))+'</option>').join('');
+    $('trRecMoveForm').hidden=false;$('trRecMoveRun').hidden=true;$('trRecMovePreview').innerHTML='';previewKey='';
+  }
+  async function load(){
+    if(busy)return;busy=true;$('trRecMoveLoad').disabled=true;say('読み込み中…');
+    try{data=await withLimit(gate().recMoveSources());fill();say('読み込みました：記録がある本人 '+data.sources.length+'人');}
+    catch(e){say('読み込めませんでした：'+String(e?.message||e?.code||e).slice(0,160));}
+    finally{busy=false;$('trRecMoveLoad').disabled=false;}
+  }
+  const li=x=>'<li>'+esc(x.date+'　'+(x.practice?'【記録練習】':'')+x.name+'　'+(x.time||''))+'</li>';
+  async function check(){
+    if(busy)return;
+    const f=$('trRecMoveFrom').value,t=$('trRecMoveTo').value;
+    if(!f||!t){say('移す元と移す先を選んでください。');return;}
+    if(f===t){say('同じ人には付け替えできません。');return;}
+    busy=true;$('trRecMoveCheck').disabled=true;say('確認しています…');
+    try{
+      const p=await withLimit(gate().recMovePreview(f,t));
+      $('trRecMovePreview').innerHTML=
+        '<b>'+esc(nameOf(f))+'（末尾'+esc(f.slice(-6))+'） → '+esc(nameOf(t))+'（末尾'+esc(t.slice(-6))+'）</b>'+
+        '<h4>移す記録：'+p.move.length+'件</h4>'+(p.move.length?'<ul>'+p.move.map(li).join('')+'</ul>':'')+
+        (p.dup.length?'<h4>移す先にすでにある（元から外すだけ）：'+p.dup.length+'件</h4><ul>'+p.dup.map(li).join('')+'</ul>':'')+
+        (p.conflict.length?'<h4>移す先に内容の違う同じ記録がある（移さず元に残す）：'+p.conflict.length+'件</h4><ul>'+p.conflict.map(li).join('')+'</ul>':'');
+      const ok=p.move.length+p.dup.length>0;
+      previewKey=ok?f+'|'+t:'';$('trRecMoveRun').hidden=!ok;
+      say(ok?'内容を確かめて「この内容で付け替える」を押してください。':'付け替える記録はありません。');
+    }catch(e){say('確認できませんでした：'+String(e?.message||e?.code||e).slice(0,160));}
+    finally{busy=false;$('trRecMoveCheck').disabled=false;}
+  }
+  async function run(){
+    if(busy)return;
+    const f=$('trRecMoveFrom').value,t=$('trRecMoveTo').value;
+    if(!previewKey||previewKey!==f+'|'+t){say('先に「内容を確認する」を押してください。');return;}
+    if(!confirm('移す元：'+nameOf(f)+'（末尾'+f.slice(-6)+'）\n移す先：'+nameOf(t)+'（末尾'+t.slice(-6)+'）\n\n確認した記録を移します。よろしいですか？'))return;
+    busy=true;$('trRecMoveRun').disabled=true;say('付け替えています…');
+    try{
+      const r=await withLimit(gate().recMove(f,t));
+      $('trRecMoveRun').hidden=true;previewKey='';
+      say('付け替えました：移した記録 '+r.moved+'件'+(r.dupRemoved?'・元から外した重複 '+r.dupRemoved+'件':'')+(r.conflict?'・移さず残した記録 '+r.conflict+'件':'')+'\n移す先の人の個人記録で確認してください。');
+      busy=false;await load();
+    }catch(e){say('付け替えできませんでした（何も変わっていません）：'+String(e?.message||e?.code||e).slice(0,160));}
+    finally{busy=false;$('trRecMoveRun').disabled=false;}
+  }
+  window.addEventListener('tr-portal-authorized',visible);
+  const start=()=>{
+    visible();
+    const screen=$('screen-management-settings');
+    if(screen)new MutationObserver(()=>{if(!screen.classList.contains('hidden'))visible();}).observe(screen,{attributes:true,attributeFilter:['class']});
+  };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+})();
+</script>
 </body>
 </html>
