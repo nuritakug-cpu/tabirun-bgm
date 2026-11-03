@@ -1,3 +1,5 @@
+<!-- TOP RUN PORTAL v269 | 2026-11-03 | Parent v268. Rules v266 のまま。同じprofileIdの承認済みが2人以上いる場合（「前の登録とつなぐ」で同じprofileIdになった二重登録）、開発者・管理者が開く個人記録が記録0件の方に当たって0件になる不具合を修正：同じprofileIdの承認済み全員の pastRecords を読み、どのuidに付いた記録でも表示する（表示だけ）。開発者の修正・削除ボタンは、開いている本人uidに付いた記録だけに出す（別uidの記録を誤って書き換えない）。 -->
+<!-- TOP RUN PORTAL v268 | 2026-11-03 | Parent v267. Rules v266 のまま。マイページ「個人記録」の下の「家族の記録」：開発者には、つないだ家族がいなくても枠を表示し、状態（家族なし・読み込めない）と、つなぐ場所（管理画面の設定 → 家族（親子））を案内する。参加者は今までどおり、つながった家族がいる人にだけ表示。 -->
 <!-- TOP RUN PORTAL v267 | 2026-11-03 | Parent v265. Rules v266（v265と同じ権限）のまま。開発者「実際の参加者の個人記録を開く」：同じ名前の承認済みが2人以上いるとき1人しか出ず、間違えて登録した方（記録0件）が開いていた不具合を修正。同じ名前の承認済みは全員を「名前（ID 先頭6…末尾6）」で並べる。 -->
 <!-- TOP RUN PORTAL v265 | 2026-11-03 | Parent v264. REQUIRES Rules v265（memberAccess/<uid> と nameBook/<uid> を開発者が削除できる）。開発者設定「承認の取り消し（開発者）」：間違えて登録・二重登録した承認済みの人を外す（参加承認・申請・名前帳を削除。記録が付いている人・開発者・管理者・自分は外せない）。同じ名前が2人以上いる人を先頭に表示。UIDの表示を「先頭6文字…末尾6文字」にそろえた（付け替え・家族・原因確認）。 -->
 <!-- TOP RUN PORTAL v264 | 2026-11-03 | Parent v263. Rules v263 のまま（変更なし）。開発者設定「記録の付け替え（開発者）」：ブラウザで申請・承認・紐付けした後にアプリで入り直した人などのため、pastRecords/<元uid> の記録（大会の紐付け・管理登録記録・記録練習）を pastRecords/<先uid> へ1回の書き込みでまとめて移す（先に同じ記録があるものは元から外すだけ、内容が違うものは移さず残す）。確認画面→確認ダイアログ→実行。出走登録・承認・本人入力の記録は移さない。 -->
@@ -6448,7 +6450,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v267</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v269</b></div>
   </div>
 </div>
 
@@ -6639,7 +6641,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v267</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v269</b></div>
   </div>
 </div>
 
@@ -10616,7 +10618,7 @@ const gateway=window.__TR_PORTAL_SYNC__;
     const sameSelf=portalPersonalTargetId===portalSelfProfileId;
     const verifiedTarget=sameSelf?gate?.uid:portalAthletes.find(p=>p.profileId===portalPersonalTargetId)?.uid;
     const all=portalPersonalRecords.filter(r=>r.profileId===portalPersonalTargetId&&
-      (!r.subjectUid||(verifiedTarget&&r.subjectUid===verifiedTarget))&&
+      (!r.subjectUid||(verifiedTarget&&r.subjectUid===verifiedTarget)||(!sameSelf&&window.__trPidUids?.[portalPersonalTargetId]?.has(r.subjectUid)))&&
       (r.time||r.status==='DNS'||r.status==='RESERVE_ACCOMPANY'||r.status==='ELIMINATED'));
     return (metric ? all.filter(r=>r.metric===metric):all).sort((a,b)=>a.date.localeCompare(b.date));
   }
@@ -10637,6 +10639,7 @@ const gateway=window.__TR_PORTAL_SYNC__;
     if(r.source!=='PORTAL_STAFF_PAST'||!portalV88DeveloperRecordAdmin()||!r.subjectUid||!r.profileId)return display;
     const canonical=flowState.external.find(x=>x.id===r.id&&x.actorId===portalPersonalTargetId&&x.firebaseSource==='portalStaff'&&x.subjectUid===r.subjectUid&&x.profileId===r.profileId);
     if(!canonical||!Number.isFinite(Number(canonical.updatedAt)))return display;
+    if(canonical.subjectUid!==portalAthletes.find(x=>x.profileId===portalPersonalTargetId)?.uid)return display; // v269: 別uid（二重登録）の記録は表示だけ
     return `<div class="v88ManagedRecord">${display}<div class="v88RecordActions"><button type="button" data-v88-dev-record-edit="${esc(r.id)}">開発者：修正</button><button type="button" data-v88-dev-record-delete="${esc(r.id)}">開発者：削除</button></div></div>`;
   }
   function portalRecordTabs(id,metrics,selected,includeAll=false){
@@ -10740,6 +10743,7 @@ const gateway=window.__TR_PORTAL_SYNC__;
     body.innerHTML=[
       L('対象profileId',pid||'なし',!pid),
       L('対象uid',verified?verified.slice(0,6)+'…'+verified.slice(-6):'なし（読込できません）',!verified),
+      ...(D&&(D.sameProfileUids||D.sameProfileError)?[L('同じprofileIdの別登録',D.sameProfileError?'読めません：'+D.sameProfileError:(D.sameProfileUids+'人・記録'+(D.sameProfileRecords||0)+'件を表示に追加'),!!D.sameProfileError)]:[]),
       L('名簿に存在',person?'あり':'なし',!person),
       L('読込',D?('実行 '+t(D.at)+(D.done?'':' 実行中')):'未実行',!D),
       D?.error?L('読込エラー',D.error,true):'',
@@ -11132,13 +11136,19 @@ const gateway=window.__TR_PORTAL_SYNC__;
   function trRenderFamilyPanel(){
     const g=window.__TR_PORTAL_SYNC__,box=$('trFamilyRecordsPanel'),list=$('trFamilyRecordsList');if(!box||!list)return;
     const kids=Object.entries(g?.familyChildren||{});
-    box.hidden=!kids.length||portalParticipantPreviewMode;
+    let dev=false;try{dev=portalV88DeveloperRecordAdmin();}catch(_){}
+    box.hidden=(!kids.length&&!dev)||portalParticipantPreviewMode;
+    if(!kids.length){const st=$('trFamilyRecordsState');
+      const msg=dev?'（開発者にだけ表示）この端末の本人につながった家族はいません。保護者と子どもは「管理画面の設定 → 家族（親子）（開発者）」でつなぎます。参加者には、家族がつながった保護者にだけこの枠が出ます。':'';
+      if(list.innerHTML!=='')list.innerHTML='';if(st&&st.textContent!==msg&&!st.dataset.busy)st.textContent=msg;return;}
     const html=kids.map(([uid,c])=>{const nm=(window.__TR_NAMES__?.book?.[uid]?.displayName)||c.name||'家族';
       return `<button type="button" class="trFamilyOpen" data-family-uid="${esc(uid)}" data-family-pid="${esc(c.profileId)}"><span><b>${esc(nm)}</b></span><strong>記録を開く ›</strong></button>`;}).join('');
     if(list.innerHTML!==html)list.innerHTML=html;
   }
   window.addEventListener('tr-family-updated',()=>{trRenderFamilyPanel();try{flowUpdateRecords();}catch(_){}});
   window.addEventListener('tr-names-updated',trRenderFamilyPanel);
+  window.addEventListener('tr-portal-authorized',()=>setTimeout(trRenderFamilyPanel,0));
+  document.addEventListener('click',e=>{if(e.target.closest?.('[data-screen="mypage"],[data-back]'))setTimeout(trRenderFamilyPanel,0);});
   document.addEventListener('click',async e=>{
     const b=e.target.closest?.('.trFamilyOpen');if(!b)return;
     const g=window.__TR_PORTAL_SYNC__,uid=b.dataset.familyUid,pid=b.dataset.familyPid,st=$('trFamilyRecordsState');
@@ -15027,7 +15037,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
       portalNumberRegistrationState=state||{expected:0,checked:0,errors:[]};
       renderDeveloperParticipants();
     },
-    applySharedPastRecords({uid,profileId,records}){
+    applySharedPastRecords({uid,profileId,records,uids}){
       const gate=window.__TR_PORTAL_SYNC__;
       if(!gate)return;
       if(!uid&&!profileId){
@@ -15036,10 +15046,12 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
       }
       if(!uid||!profileId||(!canManage&&gate.uid!==uid&&!gate.isFamilyChild?.(uid,profileId)))return; // v263: family
       const rows=records&&typeof records==='object'&&!Array.isArray(records)?records:{};
+      const okUids=new Set(Array.isArray(uids)&&canManage?uids:[uid]); // v269: 同じprofileIdの二重登録（スタッフ表示のみ）
+      (window.__trPidUids=window.__trPidUids||{})[profileId]=okUids;
       flowState.external=flowState.external.filter(r=>!(r.firebaseSource==='portalStaff'&&r.actorId===profileId));
       for(const [recordId,row] of Object.entries(rows)){
         // v208: 旧profileIdの記録も同じuidなら表示（row.profileId は元のまま残すため修正・削除ボタンは出ない）
-        if(!/^local-flow-[A-Za-z0-9_-]{8,100}$/.test(recordId)||!row||row.subjectUid!==uid)continue;
+        if(!/^local-flow-[A-Za-z0-9_-]{8,100}$/.test(recordId)||!row||!okUids.has(row.subjectUid))continue;
         if(!/^\d{4}-\d{2}-\d{2}$/.test(row.date||''))continue;
         flowState.external.push({...row,id:recordId,actorId:profileId,source:'manager-external',firebaseSource:'portalStaff'});
       }
@@ -17257,7 +17269,22 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
        D.pastDropId=all.filter(([id,r])=>r&&r.subjectUid===uid&&r.profileId===profileId&&!/^local-flow-[A-Za-z0-9_-]{8,100}$/.test(id)).length;
        D.practiceRaw=all.filter(([,r])=>r&&r.practiceDate).length;D.practiceKept=Object.values(records).filter(r=>r.practiceDate).length;
        D.pastOtherProfileIds=[...new Set(all.map(([,r])=>r?.profileId).filter(p=>p&&p!==profileId))].slice(0,3);}
-      ui?.applySharedPastRecords({uid,profileId,records});
+      // v269: 同じprofileIdの承認済みが他にもいる（二重登録）ときは、その人たちの記録も読む（表示だけ・スタッフのみ）。
+      const sameUids=[uid];
+      if(staffPastAllowed()){
+        try{
+          const acc=(await dbMod.get(ref('memberAccess'))).val()||{};
+          const sibs=Object.keys(acc).filter(u=>u!==uid&&/^[A-Za-z0-9_-]{6,128}$/.test(u)&&acc[u]?.active===true&&acc[u]?.profileId===profileId);
+          for(const sib of sibs){
+            const more=(await dbMod.get(ref(pastRoot+sib))).val()||{};
+            let n=0;
+            for(const [id,r] of Object.entries(more)){if(r&&r.subjectUid===sib&&/^local-flow-[A-Za-z0-9_-]{8,100}$/.test(id)&&!records[id]){records[id]=r;n++;}}
+            sameUids.push(sib);D.sameProfileUids=(D.sameProfileUids||0)+1;D.sameProfileRecords=(D.sameProfileRecords||0)+n;
+          }
+          if(currentGeneration!==generation||auth.currentUser?.uid!==currentUid)throw Error('認証が切り替わったためREADを破棄しました');
+        }catch(e){if(String(e?.message||'').includes('認証が切り替わった'))throw e;D.sameProfileError=String(e?.code||e?.message||e).slice(0,80);}
+      }
+      ui?.applySharedPastRecords({uid,profileId,records,uids:sameUids});
       // v202: the person's own entered past races live in profiles/<uid>/portalSelf/externalRecords.
       // Staff could never read them, so the staff view showed 0. Read-only; needs Rules v202.
       if((staffPastAllowed()||gate.isFamilyChild?.(uid,profileId))&&uid!==gate.uid){ // v263: family
