@@ -1,3 +1,6 @@
+<!-- TOP RUN PORTAL v275 | 2026-11-03 | Parent v274. Rules v266 のまま。記録の紐付けを簡単な1画面に作り直し：大会（EVENT BASE）を選ぶ → 記録のある人ごとに「PORTALの参加者（承認済み）」を選んで紐付け／紐付け済みは相手の名前と［外す］。参加だけの人（記録なし）は人数だけ表示（紐付け不要）。①②③のタブ・登録ID・本人情報の表示はやめた。 -->
+<!-- TOP RUN PORTAL v274 | 2026-11-03 | Parent v273. Rules v266 のまま。v273の一覧の絞り込みを修正：外すのは「PORTALの承認済みと同じ名前のEVENT BASE本人情報」だけ。PORTALに登録していない人（EVENT BASEの記録だけある人）は今までどおり一覧に出す。データは何も削除しない（表示の一覧だけ）。 -->
+<!-- TOP RUN PORTAL v273 | 2026-11-03 | Parent v272. Rules v266 のまま。開発者が個人記録を開く一覧（選手の個人記録を閲覧・実際の参加者の個人記録を開く）を、PORTALで承認済みの登録だけにした。EVENT BASEの本人情報（PORTAL未承認）は人として並べない（EVENT BASEの記録は紐付けでPORTALの本人に付ける）。 -->
 <!-- TOP RUN PORTAL v272 | 2026-11-03 | Parent v271. Rules v266 のまま。開発者設定「二重登録の整理（開発者）」：同じ名前の承認済みをまとめて表示し、残す登録を選んで1回押すだけで、ほかの登録の記録を残す方へ移し、ほかの登録の承認を取り消す（付け替え＋承認取り消しを1つにした）。「記録の付け替え」の欄はこれに統合したので表示しない（機能は残す）。 -->
 <!-- TOP RUN PORTAL v271 | 2026-11-03 | Parent v270. Rules v266 のまま。記録の紐付け：同じ名前の登録が2つ以上あるとき、「新しい方が本人」の自動判断で片方を隠していたため、本人の登録が一覧・②の選択肢に出ない不具合を修正。同じ名前の登録は全部「名前（承認日・ID 先頭6…末尾6）」で表示し、どちらへ紐付けるか・移すかを開発者が選ぶ（自動で隠さない・自動で移す先を決めない）。承認済みなのに承認日の情報がない登録も一覧から外さない。 -->
 <!-- TOP RUN PORTAL v270 | 2026-11-03 | Parent v269. Rules v266 のまま。マイページ「家族の記録」をほかの項目と同じ見た目のカードにし、押すと家族の一覧が出る（もう一度押すと閉じる）。表示だけの変更。 -->
@@ -6458,7 +6461,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v272</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v275</b></div>
   </div>
 </div>
 
@@ -6649,7 +6652,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v272</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v275</b></div>
   </div>
 </div>
 
@@ -10896,7 +10899,11 @@ const gateway=window.__TR_PORTAL_SYNC__;
   function renderPortalAthleteDirectory(){
     if(!canManage||portalParticipantPreviewMode)return;
     const available=portalCompetitionAthletes();
-    const visible=isDeveloper?portalSharedCandidateRows():portalPublishedAthletesReady?portalPublishedAthletes.items:[];
+    // v274: PORTALの承認済みと同じ名前のEVENT BASE本人情報だけ外す（PORTAL未登録で記録だけある人は残す）
+    const apprUids=new Set(portalApprovedMemberRows.map(m=>m.uid)),nk=v=>String(v||'').normalize('NFKC').replace(/[\s\u3000]/g,'');
+    const sharedRows=isDeveloper?portalSharedCandidateRows():[];
+    const apprNames=new Set(sharedRows.filter(p=>p.uid&&apprUids.has(p.uid)).map(p=>nk(p.name)));
+    const visible=isDeveloper?sharedRows.filter(p=>(p.uid&&apprUids.has(p.uid))||!apprNames.has(nk(p.name))):portalPublishedAthletesReady?portalPublishedAthletes.items:[];
     const info=portalRosterSourceState;
     const perEvent=(info.details||[]).map(r=>String(r.title||r.id)+': 出走 '+(r.playersStatus==='ok'?r.players+'件':r.playersStatus==='error'?'拒否 '+String(r.playerError||''): '読込待ち')+' ／ 結果 '+(r.timingStatus==='ok'?r.timing+'件':r.timingStatus==='error'?'拒否 '+String(r.timingError||''):'読込待ち')+(r.id==='eventbase_ekiden_dev_20261006'?' ／ 駅伝記録 '+(r.ekidenStatus==='ok'?r.ekiden+'人（計測値）':r.ekidenStatus==='error'?'READ拒否':'確認待ち'):'')+' ／ 大会名 '+(r.titleStatus==='ok'?'正本取得':'未確認')).join('\n');
     const partial=info.received!==info.events||(info.errors||[]).length>0||(info.details||[]).some(x=>x.timingStatus!=='ok'||x.playersStatus!=='ok');
@@ -11081,6 +11088,11 @@ const gateway=window.__TR_PORTAL_SYNC__;
     // v126: one person = one name. If a PORTAL-approved member and an old EVENT BASE browser identity share a name,
     // only the PORTAL member is listed (that is the person who has the MY PAGE).
     const approved=new Set(portalApprovedMemberRows.map(m=>m.uid)),accPid=new Map(portalApprovedMemberRows.map(m=>[m.uid,m.profileId])),byName=new Map();
+    { // v274: PORTALの承認済みと同じ名前のEVENT BASE本人情報だけ外す（PORTAL未登録で記録だけある人は残す）
+      const nk=v=>String(v||'').normalize('NFKC').replace(/[\s\u3000]/g,'');
+      const apprNames=new Set([...byProfile.values()].filter(p=>approved.has(p.uid)).map(p=>nk(p.name)));
+      for(const [pid,p] of [...byProfile])if(!approved.has(p.uid)&&apprNames.has(nk(p.name)))byProfile.delete(pid);
+    }
     // v129: the same person can appear with an old profileId from a race row; the approval record's profileId wins.
     const score=p=>accPid.get(p.uid)===p.profileId?2:approved.has(p.uid)?1:0;
     // v267: 同じ名前の承認済みが2人以上なら、1人に絞らず全員をIDつきで並べる（間違えて開くのを防ぐ）。
@@ -14298,16 +14310,17 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
   }
   function rpHidden(m,idx){return false;} // v271: 同じ名前の登録を自動で隠さない（開発者が選ぶ）
   async function rpLoadClaims(){
-    const all=await rpG().loadPastEventOverview();rpClaims=new Map();
-    for(const [uid,recs] of Object.entries(all||{}))for(const id of Object.keys(recs||{}))if(id.startsWith('local-flow-claim-'))rpClaims.set(id,uid);
+    const all=await rpG().loadPastEventOverview();rpClaims=new Map();window.__rpClaimPid=new Map();
+    for(const [uid,recs] of Object.entries(all||{}))for(const [id,rec] of Object.entries(recs||{}))if(id.startsWith('local-flow-claim-')){rpClaims.set(id,uid);window.__rpClaimPid.set(id,String(rec?.profileId||''));}
     rpLoaded=true;
   }
   function rpFillEvents(){
     const sel=$('rpEvent');if(!sel)return;
-    const list=rpEvents(),keep=sel.value,sig=list.map(e=>e.id+e.title).join('|');
+    const list=rpEvents().filter(e=>e.base),keep=sel.value,sig=list.map(e=>e.id+e.title).join('|'); // v275: EVENT BASEの大会だけ
     if(sel.dataset.sig!==sig){
       sel.innerHTML=list.map(e=>`<option value="${esc(e.id)}" data-date="${esc(e.date)}">${esc(portalEventName(e.title))}</option>`).join('');sel.dataset.sig=sig;
-      const cur=list.find(e=>e.id==='eventbase_ekiden_next_2026_38fa5537b6')||list[list.length-1];
+      const withRec=list.filter(e=>(rpRoster(e)||[]).some(r=>r.time));
+      const cur=withRec[0]||list[0];
       sel.value=list.some(e=>e.id===keep)?keep:(cur?.id||'');
     }
   }
@@ -14327,6 +14340,33 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
     const panel=$('rpPanel');if(!panel)return;
     panel.hidden=!rpIsDev();if(panel.hidden)return;
     rpFillEvents();
+    { // v275: 簡単な1画面。大会の「記録のある人」→ PORTALの参加者に紐付けるだけ。
+      const tabs=document.querySelector('#rpPanel .rpTabs');if(tabs)tabs.hidden=true;
+      $('rpEvent').closest('label').hidden=false;
+      $('rpHelp').textContent='大会を選び、記録のある人ごとに「PORTALの参加者」を選んで［紐付け］を押します。名前が同じ人は最初から選ばれています。紐付けた記録は、その人のマイページに出ます。';
+      const q=rpNorm($('rpSearch')?.value),hit=n=>!q||rpNorm(n).includes(q);
+      const list=$('rpList'),tools=$('rpTools');tools.innerHTML='';
+      if(!rpLoaded){list.innerHTML='<p class="portalHelp">読み込み中…</p>';return;}
+      const ev=rpEvent(),roster=rpRoster(ev);
+      if(!ev){list.innerHTML='<p class="portalHelp">EVENT BASEの大会がありません。</p>';return;}
+      if(roster===null){list.innerHTML='<p class="portalHelp">大会の記録を読み込み中です…</p>';if(rpRetry++<8)setTimeout(rpRender,2000);return;}
+      const mem=rpMembers().slice().sort((a,b)=>a.name.localeCompare(b.name,'ja'));
+      const cnt=new Map();for(const m of mem){const k=rpNorm(m.name);cnt.set(k,(cnt.get(k)||0)+1);}
+      const label=m=>m.name+(cnt.get(rpNorm(m.name))>1?'（'+(rpDay(m.at)||'日付不明')+'承認）':'');
+      const recs=roster.filter(r=>r.time),onlyN=roster.length-recs.length;
+      const rows=recs.filter(r=>hit(r.name)||hit(rpMemberByUid(rpClaims.get(r.id))?.name||'')).map(r=>{
+        const what=`${esc(rpMetricName(r.metric))}${r.leg?' 第'+esc(r.leg)+'区':''}｜<b>${esc(r.time)}</b>`;
+        const owner=rpClaims.get(r.id);
+        if(owner){const m=rpMemberByUid(owner);
+          if(!m)return `<div class="rpCard"><b>${esc(r.name)}</b><span class="rpSub">${what}</span><span class="rpSub rpWarn">いまはPORTALで承認されていない登録に付いています。正しい参加者を選んで付け直してください。</span><div class="rpRow"><select data-rp-pick="${esc(r.id)}"><option value="">PORTALの参加者を選ぶ</option>${mem.map(x=>`<option value="${esc(x.uid)}" ${rpNorm(x.name)===rpNorm(r.name)&&mem.filter(y=>rpNorm(y.name)===rpNorm(r.name)).length===1?'selected':''}>${esc(label(x))}</option>`).join('')}</select><button type="button" class="portalPrimary" data-rp-act="relink" data-id="${esc(r.id)}">付け直す</button></div></div>`;
+          return `<div class="rpCard"><b>${esc(r.name)}</b><span class="rpSub">${what}</span><div class="rpRow"><span class="rpOk">→ ${esc(label(m))}（紐付け済み）</span><button type="button" class="portalFlowSecondary" data-rp-act="unlink" data-id="${esc(r.id)}">外す</button></div></div>`;}
+        const same=mem.filter(m=>rpNorm(m.name)===rpNorm(r.name)),pre=same.length===1?same[0].uid:'';
+        return `<div class="rpCard"><b>${esc(r.name)}</b><span class="rpSub">${what}</span><div class="rpRow"><select data-rp-pick="${esc(r.id)}"><option value="">PORTALの参加者を選ぶ</option>${mem.map(m=>`<option value="${esc(m.uid)}" ${m.uid===pre?'selected':''}>${esc(label(m))}</option>`).join('')}</select><button type="button" class="portalPrimary" data-rp-act="link" data-id="${esc(r.id)}">紐付け</button></div></div>`;
+      }).join('');
+      const linkedN=recs.filter(r=>rpClaims.has(r.id)).length;
+      list.innerHTML=`<p class="portalHelp">記録のある人 ${recs.length}人（紐付け済み ${linkedN}人）｜参加だけの人 ${onlyN}人（記録なし・紐付け不要）</p>`+(rows||'<p class="portalHelp">この大会に記録のある人はいません。</p>');
+      return;
+    }
     document.querySelectorAll('[data-rp-tab]').forEach(b=>b.classList.toggle('active',b.dataset.rpTab===rpTab));
     $('rpEvent').closest('label').hidden=rpTab!=='entry';
     const help={all:'PORTALの参加者ごとに、名前が一致する過去の記録を出しています。内容を見て、よければ「これでよいので紐付ける」を押してください。違う記録はタップしてチェックを外します。',
@@ -14430,7 +14470,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
       const m=rpMemberByUid(sel?.value||''),row=(rpRoster(rpEvent())||[]).find(r=>r.id===id);
       if(!m)return rpSay('「誰の記録？」でPORTALの参加者を選んでください。');
       if(!row)return rpSay('記録が見つかりません。');
-      return run(async()=>{await rpLoadClaims();if(rpClaims.has(id))throw Error('すでに紐付けられています');await rpWrite(m,row);rpSay(`紐付けました：${row.name} の記録 → ${m.name}`);});
+      return run(async()=>{await rpLoadClaims();if(rpClaims.has(id))throw Error('すでに紐付けられています');await rpWrite(m,row);rpSay(`紐付けました：${row.name} の記録 → ${m.name}`);rpRender();});
     }
     if(act==='move'){
       const id=btn.dataset.id,from=rpMemberByUid(rpClaims.get(id)),to=rpMemberByUid(btn.dataset.to);
@@ -14467,6 +14507,18 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
         :`「${btn.dataset.name}」の出走登録を削除しますか？\n本人は、必要ならもう一度出走登録できます。`;
       if(!confirm(q))return;
       return run(async()=>{const r=await rpG().staffRemoveEntry(ev.id,pid);rpSay(r.keptResult?'出走登録から外しました（記録は残しています）':'出走登録を削除しました');done();});
+    }
+    if(act==='relink'){ // v275: 承認されていない登録に付いた記録を、選んだPORTALの参加者へ付け直す
+      const id=btn.dataset.id,fromUid=rpClaims.get(id),fromPid=window.__rpClaimPid?.get(id)||'',sel=document.querySelector(`[data-rp-pick="${CSS.escape(id)}"]`);
+      const to=rpMemberByUid(sel?.value||''),row=(rpRoster(rpEvent())||[]).find(r=>r.id===id);
+      if(!to)return rpSay('「PORTALの参加者を選ぶ」で付け直す相手を選んでください。');
+      if(!fromUid||!fromPid||!row)return rpSay('記録を確認できません。画面を開き直してください。');
+      if(!confirm(`この記録（${row.name}）を「${to.name}」さんに付け直しますか？`))return;
+      return run(async()=>{
+        await rpG().saveStaffPastRecord({uid:to.uid,profileId:to.profileId},{id,name:String(row.eventTitle||'大会').slice(0,120),date:row.date,metric:row.metric||'other',time:row.time,status:'time',venue:'',official:!!row.official},null);
+        await rpG().deleteStaffPastRecord({uid:fromUid,profileId:fromPid},id,null);
+        rpClaims.set(id,to.uid);window.__rpClaimPid?.set(id,to.profileId);rpSay(`付け直しました：${row.name} の記録 → ${to.name}`);rpRender();
+      });
     }
     if(act==='unlink'){
       const id=btn.dataset.id,uid=rpClaims.get(id),m=rpMemberByUid(uid);
