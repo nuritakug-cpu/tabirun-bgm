@@ -1,3 +1,6 @@
+<!-- TOP RUN PORTAL v284 | 2026-11-03 | Parent v283. REQUIRES Rules v284（チャット・ルームのメッセージを、送った本人だけが修正・削除できる）。チャット修正・削除：自分のメッセージを押したときの小さな枠に「修正」「削除」を追加（本人のメッセージだけ）。修正したメッセージは時刻の横に「編集済み」。 -->
+<!-- TOP RUN PORTAL v283 | 2026-11-03 | Parent v282. Rules v266 のまま。開発者の操作を止めていた制限を外した：承認の取り消しは記録が付いている人・管理者も可（記録は消えず残る。記録の紐付けの「付け直す」で移せる）。二重登録の整理も管理者の登録をまとめられる。止めるのは「自分（この端末の開発者）」と「開発者の登録」だけ。 -->
+<!-- TOP RUN PORTAL v282 | 2026-11-03 | Parent v281. Rules v266 のまま。承認の取り消し：管理者の登録も外せるようにした（確認のうえ、管理者の役割を外してから承認を取り消す）。開発者・自分は今までどおり外せない。 -->
 <!-- TOP RUN PORTAL v281 | 2026-11-03 | Parent v280. Rules v266 のまま。スマホのブラウザ扱いで開いたときも、新規登録・参加申請を「止めない」に変更（アイコンがブラウザ扱いで開く端末で、申請自体ができなくなる事故を防ぐ）。案内は出し、押したときに1回だけ確認する（OKで進める）。 -->
 <!-- TOP RUN PORTAL v280 | 2026-11-03 | Parent v279. Rules v266 のまま。スマホのブラウザ（Safari・Chrome・BAND/LINEの中）では「参加承認を申請する」も押せないようにした（v120で新規登録・つなぐ申請だけ止めていたため、以前EVENT BASEをブラウザで使った人がブラウザから参加申請できていた）。案内を表示。 -->
 <!-- TOP RUN PORTAL v279 | 2026-11-03 | Parent v276（v277・v278の一覧変更は取り消し）。Rules v266 のまま。選手一覧・個人記録は今までどおり「公開する選手として選んだ人」だけ。選んだ選手の個人記録を開くとき、その選手のPORTALの登録（承認済み・同じ名前）があれば、PORTALの登録の記録を開く（紐付けた記録が表示される）。実際の参加者の個人記録を開く（開発者）も同じ。 -->
@@ -6465,7 +6468,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v281</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v284</b></div>
   </div>
 </div>
 
@@ -6656,7 +6659,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v281</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v284</b></div>
   </div>
 </div>
 
@@ -9088,7 +9091,7 @@ if(practice)entries.push({...practice,kind:'practice',title:'練習',date:key});
       return `${dayBand}${boundary}<div class="msg ${m.staff?'staff ':''}${isMyPortalChat(m)?'mine ':''}${D&&D.mentioned(m)?'trMentioned ':''}" data-chat-ts="${ts}" data-mid="${esc(m.id||'')}">
         <div class="msgHead">
           <span>${esc((window.trChatName?window.trChatName(m.senderUid,m.name):(m.name||'参加者')))}</span>
-          <span>${Number.isFinite(d.getTime())?d.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):''}</span>
+          <span>${Number.isFinite(d.getTime())?d.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):''}${m.editedAt?' 編集済み':''}</span>
         </div>
         ${D?D.quote(m):''}<p>${D?D.text(m):esc(m.text||'')}</p>${portalChatReadMini(m)}
       </div>${D?D.reacts(m,isMyPortalChat(m)):''}`;
@@ -17277,15 +17280,19 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       for(const r of rows)r.sameName=count.get(norm(r.name))>1;
       return rows;
     };
-    gate.revokeMember=async uid=>{
+    gate.revokeMember=async (uid,opt={})=>{
       rvDev();
       uid=String(uid||'');
       if(!/^[A-Za-z0-9_-]{6,128}$/.test(uid))throw Error('UIDの形式が不正です');
       if(uid===gate.uid)throw Error('自分の承認は取り消せません');
       let role='';try{role=(await dbMod.get(dbMod.ref(db,'portalRoles/'+uid))).val()?.role||'';}catch(_){throw Error('役割を確認できません');}
-      if(role==='developer'||role==='admin')throw Error('開発者・管理者は取り消せません（先に管理者を外してください）');
-      const recs=(await dbMod.get(ref('pastRecords/'+uid))).val()||{};
-      if(Object.keys(recs).length)throw Error('記録が'+Object.keys(recs).length+'件付いています。先に「記録の付け替え」で移してください');
+      if(role==='developer')throw Error('開発者は取り消せません');
+      if(role==='admin'){
+        if(opt.removeAdmin!==true)throw Error('管理者のため、管理者を外す確認が必要です');
+        await dbMod.remove(dbMod.ref(db,'portalRoles/'+uid)); // v282: 管理者の役割を外す（Rulesで開発者だけ可）
+        if((await dbMod.get(dbMod.ref(db,'portalRoles/'+uid))).exists())throw Error('管理者の役割を外せませんでした');
+      }
+      // v283: 記録が付いていても取り消せる（記録は消えない）
       const a=(await dbMod.get(ref('memberAccess/'+uid))).val();
       if(a)await dbMod.remove(ref('memberAccess/'+uid));
       if((await dbMod.get(ref('memberAccess/'+uid))).exists())throw Error('参加承認を削除できませんでした');
@@ -17304,7 +17311,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
           const recs=(await dbMod.get(ref('pastRecords/'+u))).val()||{};
           if(Object.keys(recs).length){const m=await gate.recMove(u,keepUid);r.moved=m.moved;r.dupRemoved=m.dupRemoved;r.conflict=m.conflict;}
           if(r.conflict){r.error='内容の違う同じ記録が'+r.conflict+'件あるため、この登録は外していません';}
-          else{await gate.revokeMember(u);r.revoked=true;}
+          else{await gate.revokeMember(u,{removeAdmin:true});r.revoked=true;}
         }catch(e){r.error=String(e?.message||e?.code||e).slice(0,120);}
         results.push(r);
       }
@@ -17870,6 +17877,23 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       return ids.length;
     };
     // v159: one reaction per person per message (LINE / BAND style). emoji=null removes it.
+    // v284: 本人だけ、自分のメッセージを修正・削除
+    gate.chatEditOwn=async(id,text)=>{
+      if(auth.currentUser?.uid!==gate.uid||!gate.uid)throw Error('本人認証が確認できません');
+      if(!/^c[A-Za-z0-9_]+$/.test(String(id||'')))throw Error('メッセージを確認できません');
+      const t=String(text||'').trim();if(!t||t.length>1000)throw Error('1〜1000文字で入力してください');
+      const cur=(await dbMod.get(ref('chat/'+id))).val();
+      if(!cur||cur.senderUid!==gate.uid)throw Error('自分のメッセージだけ修正できます');
+      await dbMod.update(ref('chat/'+id),{text:t,editedAt:Date.now()});
+    };
+    gate.chatDeleteOwn=async id=>{
+      if(auth.currentUser?.uid!==gate.uid||!gate.uid)throw Error('本人認証が確認できません');
+      if(!/^c[A-Za-z0-9_]+$/.test(String(id||'')))throw Error('メッセージを確認できません');
+      const cur=(await dbMod.get(ref('chat/'+id))).val();
+      if(!cur)return;
+      if(cur.senderUid!==gate.uid)throw Error('自分のメッセージだけ削除できます');
+      await dbMod.remove(ref('chat/'+id));
+    };
     gate.chatReact=async(id,emoji)=>{
       if(!gate.canSendChat()||auth.currentUser?.uid!==gate.uid)throw Error('本人認証・利用承認が必要です');
       if(!/^c[A-Za-z0-9_]+$/.test(String(id||'')))throw Error('メッセージを確認できません');
@@ -18152,6 +18176,22 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         });
         // v166: room push (Worker kind "room", id "<room>/<message>"). The Worker checks sender, membership and recipients.
         void window.__TR_STAGE3_NOTIFY__?.('room',id+'/'+mid);
+      };
+      gate.roomEditOwn=async(id,mid,text)=>{ // v284
+        if(!rOk()||!rId(id)||auth.currentUser?.uid!==gate.uid)throw Error('本人認証が確認できません');
+        if(!/^m[A-Za-z0-9_]+$/.test(String(mid||'')))throw Error('メッセージを確認できません');
+        const t=String(text||'').trim();if(!t||t.length>1000)throw Error('1〜1000文字で入力してください');
+        const cur=(await dbMod.get(ref('roomMessages/'+id+'/'+mid))).val();
+        if(!cur||cur.senderUid!==gate.uid)throw Error('自分のメッセージだけ修正できます');
+        await dbMod.update(ref('roomMessages/'+id+'/'+mid),{text:t,editedAt:Date.now()});
+      };
+      gate.roomDeleteOwn=async(id,mid)=>{ // v284
+        if(!rOk()||!rId(id)||auth.currentUser?.uid!==gate.uid)throw Error('本人認証が確認できません');
+        if(!/^m[A-Za-z0-9_]+$/.test(String(mid||'')))throw Error('メッセージを確認できません');
+        const cur=(await dbMod.get(ref('roomMessages/'+id+'/'+mid))).val();
+        if(!cur)return;
+        if(cur.senderUid!==gate.uid)throw Error('自分のメッセージだけ削除できます');
+        await dbMod.remove(ref('roomMessages/'+id+'/'+mid));
       };
       gate.roomReact=async(id,mid,emoji)=>{
         if(!rOk()||!rId(id)||auth.currentUser?.uid!==gate.uid)throw Error('本人認証が確認できません');
@@ -20992,7 +21032,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
       const mine=m.senderUid===uid;
       const time=ts?d.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):'';
       const D=window.__trChatDecor;
-      return band+unreadLine+'<div class="msg'+(mine?' mine':'')+(D&&D.mentioned(m)?' trMentioned':'')+'" data-mid="'+esc(m.id||'')+'"><div class="msgHead"><span>'+esc((window.trChatName?window.trChatName(m.senderUid,m.name):(m.name||'参加者')))+'</span><span>'+esc(time)+'</span></div>'+(D?D.quote(m):'')+'<p>'+(D?D.text(m):esc(m.text||''))+'</p>'+roomReadMini(m,uid,members)+'</div>'+(D?D.reacts(m,mine):'');
+      return band+unreadLine+'<div class="msg'+(mine?' mine':'')+(D&&D.mentioned(m)?' trMentioned':'')+'" data-mid="'+esc(m.id||'')+'"><div class="msgHead"><span>'+esc((window.trChatName?window.trChatName(m.senderUid,m.name):(m.name||'参加者')))+'</span><span>'+esc(time)+(m.editedAt?' 編集済み':'')+'</span></div>'+(D?D.quote(m):'')+'<p>'+(D?D.text(m):esc(m.text||''))+'</p>'+roomReadMini(m,uid,members)+'</div>'+(D?D.reacts(m,mine):'');
     }).join('');
   }
   window.addEventListener('tr-names-updated',()=>{
@@ -21013,7 +21053,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
     const box=$('trRoomThread');
     if(s.msgErr){box.innerHTML='<div class="portalEmpty" role="status">メッセージを受信できません（'+esc(s.msgErr)+'）</div>';shownMsgKey='';return;}
     const receiptKey=Object.entries(s.openMembers||{}).filter(([,m])=>m?.status==='joined').map(([u,m])=>u+':'+Number(m.readAt||0)).sort().join('|');
-    const key=s.msgs.map(m=>m.id+':'+(m.ts||'')+':'+(window.__trChatDecor?.sig?.(m)||'')).join('|')+'|read:'+receiptKey+'|err:'+(s.readErr||'');
+    const key=s.msgs.map(m=>m.id+':'+(m.ts||'')+':'+(m.editedAt||'')+':'+(window.__trChatDecor?.sig?.(m)||'')).join('|')+'|read:'+receiptKey+'|err:'+(s.readErr||'');
     if(key===shownMsgKey)return;
     shownMsgKey=key;
     const receiptWarning=s.readErr?'<div class="trReadIssue" role="status">'+esc(s.readErr)+'</div>':'';
@@ -22585,6 +22625,7 @@ html[data-portal-personal-color="matte"] #screen-chat #trRoomThread .trReadIssue
   // v261: BANDのような小さな枠（よく使う6つ＋「…」、返信・コピー）
   function closeQuick(){const q=$('trQuick');if(q)q.remove();document.querySelectorAll('.msg.trPicked').forEach(x=>x.classList.remove('trPicked'));}
   function runAct(ctx,m,a){
+    if(a==='edit'||a==='delete'){ownAct(ctx,m,a);return;} // v284
     if(a==='copy'){const t=String(m.text||'');closeSheet();copyText(t);return;}
     if(a==='select'){closeQuick();openCopyBox(String(m.text||''),'コピーしたい部分を長押しで選んでください');return;}
     if(a==='reply'){
@@ -22592,6 +22633,32 @@ html[data-portal-personal-color="matte"] #screen-chat #trRoomThread .trReadIssue
       draft[k].replyTo={id:m.id,name:String(m.name||'').slice(0,24),text:String(m.text||'').replace(/\s+/g,' ').slice(0,60)};
       paintBar(ctx);closeSheet();inputOf(ctx)?.focus();
     }
+  }
+  // v284: 自分のメッセージの修正・削除
+  function ownAct(ctx,m,a){
+    closeSheet();
+    if(!m||m.senderUid!==myUid())return;
+    const fb=(t,d)=>{try{window.showActionFeedback?.(t,d||'');}catch(_){}};
+    const limit=p=>Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(Error('通信に時間がかかっています')),12000))]);
+    if(a==='delete'){
+      if(!confirm('このメッセージを削除しますか？'))return;
+      limit(ctx==='room'?g().roomDeleteOwn(roomId(),m.id):g().chatDeleteOwn(m.id)).then(()=>fb('削除しました')).catch(e=>fb('削除できません',String(e?.message||e?.code||e).slice(0,80)));
+      return;
+    }
+    const el=sheet(`<p class="trSheetHead">メッセージを修正</p><textarea class="trCopyBox trEditBox" maxlength="1000" style="-webkit-user-select:text;user-select:text">${esc(String(m.text||''))}</textarea><p class="trSheetNote" role="status" aria-live="polite"></p><div class="trSheetBtns"><button type="button" data-act="save">保存</button><button type="button" data-act="close">閉じる</button></div>`);
+    const box=el.querySelector('.trEditBox'),note=el.querySelector('.trSheetNote');
+    box.readOnly=false;
+    el.querySelector('.trSheetCard').onclick=ev=>{
+      if(ev.target.closest('[data-act="close"]')){closeSheet();return;}
+      const sv=ev.target.closest('[data-act="save"]');if(!sv||sv.disabled)return;
+      const t=box.value.trim();
+      if(!t){note.textContent='文字を入力してください';return;}
+      if(t===String(m.text||'').trim()){closeSheet();return;}
+      sv.disabled=true;note.textContent='保存中…';
+      limit(ctx==='room'?g().roomEditOwn(roomId(),m.id,t):g().chatEditOwn(m.id,t))
+        .then(()=>{closeSheet();fb('修正しました');})
+        .catch(e=>{sv.disabled=false;note.textContent='修正できません：'+String(e?.message||e?.code||e).slice(0,80);});
+    };
   }
   function openQuick(ctx,mid,msgEl){
     const m=cache.get(mid);if(!m||!ctx)return;
@@ -22602,7 +22669,8 @@ html[data-portal-personal-color="matte"] #screen-chat #trRoomThread .trReadIssue
     q.innerHTML='<div class="trQBack"></div><div class="trQCard" role="dialog" aria-label="リアクション"><div class="trQRow">'+
       picks.map(e=>'<button type="button" class="trQBtn'+(isText(e)?' txt trPickTone-'+reactTone(e):'')+(e===mine?' on':'')+'" data-re="'+esc(e)+'" aria-label="'+esc(isTeam(e)?'TOP RUN AGUI '+reactionLabel(e):e)+'" aria-pressed="'+(e===mine)+'"><span class="trTileFace">'+face(e)+'</span></button>').join('')+
       '<button type="button" class="trQBtn trQMore" data-act="more" aria-label="ほかのリアクション">…</button></div>'+
-      '<div class="trQActs"><button type="button" data-act="reply">↩ 返信</button><button type="button" data-act="copy">コピー</button><button type="button" data-act="select">一部コピー</button></div></div>';
+      '<div class="trQActs"><button type="button" data-act="reply">↩ 返信</button><button type="button" data-act="copy">コピー</button><button type="button" data-act="select">一部コピー</button>'+
+      (m.senderUid&&m.senderUid===myUid()?'<button type="button" data-act="edit">修正</button><button type="button" data-act="delete">削除</button>':'')+'</div></div>';
     document.body.append(q);
     if(msgEl)msgEl.classList.add('trPicked');
     const card=q.querySelector('.trQCard');
@@ -25064,7 +25132,7 @@ body.portalChatIsolated > #trQuick{visibility:visible!important;opacity:1!import
     const g=gate();
     $('trRevokeSection').hidden=!(g?.roleVerified===true&&g?.role==='developer'&&!window.__TR_COMMON_PILOT_UI__?.isParticipantPreview?.());
   }
-  const blockReason=r=>r.role==='developer'||r.role==='admin'?(ROLE[r.role]+'のため外せません'):r.uid===gate()?.uid?'自分は外せません':r.records?('記録が'+r.records+'件付いています。先に「記録の付け替え」で移してください'):'';
+  const blockReason=r=>r.uid===gate()?.uid?'自分（この端末）は外せません':r.role==='developer'?'開発者の登録は外せません':'';
   function fill(){
     const sorted=rows.slice().sort((a,b)=>(b.sameName-a.sameName)||a.name.localeCompare(b.name,'ja')||a.approvedAt-b.approvedAt);
     $('trRevokePick').innerHTML='<option value="">選んでください</option>'+sorted.map(r=>'<option value="'+esc(r.uid)+'">'+esc((r.sameName?'【同じ名前あり】':'')+r.name+'｜記録'+r.records+'件｜'+day(r.approvedAt)+'承認｜ID '+id6(r.uid))+'</option>').join('');
@@ -25075,8 +25143,11 @@ body.portalChatIsolated > #trQuick{visibility:visible!important;opacity:1!import
     if(!r){$('trRevokeInfo').innerHTML='';$('trRevokeRun').hidden=true;return;}
     const why=blockReason(r);
     $('trRevokeInfo').innerHTML='名前（表示名）：<b>'+esc(r.name)+'</b><br>'+(r.reg&&r.reg!==r.name?'登録名：'+esc(r.reg)+'<br>':'')+(r.chat&&r.chat!==r.name?'チャット名：'+esc(r.chat)+'<br>':'')+
-      '承認：'+esc(day(r.approvedAt))+'　記録：'+r.records+'件<br>ID：'+esc(id6(r.uid))+(ROLE[r.role]?'<br>役割：'+ROLE[r.role]:'')+(why?'<br><span class="bad">'+esc(why)+'</span>':'');
+      '承認：'+esc(day(r.approvedAt))+'　記録：'+r.records+'件<br>ID：'+esc(id6(r.uid))+(ROLE[r.role]?'<br>役割：'+ROLE[r.role]:'')+(why?'<br><span class="bad">'+esc(why)+'</span>':'')+
+      (!why&&r.role==='admin'?'<br><span class="bad">この登録は管理者です。取り消すと、管理者の役割も外れます。</span>':'')+
+      (!why&&r.records?'<br><span class="bad">記録が'+r.records+'件付いています。記録は消えずに残ります（記録の紐付けの「付け直す」で移せます）。</span>':'');
     $('trRevokeRun').hidden=!!why;
+    $('trRevokeRun').textContent=r.role==='admin'?'管理者を外して、承認を取り消す':'この人の承認を取り消す';
   }
   async function load(){
     if(busy)return;busy=true;$('trRevokeLoad').disabled=true;say('読み込み中…');
@@ -25088,10 +25159,10 @@ body.portalChatIsolated > #trQuick{visibility:visible!important;opacity:1!import
     if(busy)return;
     const r=rows.find(x=>x.uid===$('trRevokePick').value);if(!r)return;
     if(blockReason(r)){info();return;}
-    if(!confirm('外す人：'+r.name+'（ID '+id6(r.uid)+'・'+day(r.approvedAt)+'承認）\n\nこの人の参加承認を取り消します。元に戻すには、その端末からもう一度申請・承認が必要です。よろしいですか？'))return;
+    if(!confirm('外す人：'+r.name+'（ID '+id6(r.uid)+'・'+day(r.approvedAt)+'承認）'+(r.role==='admin'?'\n※この登録は管理者です。管理者の役割も外します。':'')+'\n\nこの人の参加承認を取り消します。元に戻すには、その端末からもう一度申請・承認が必要です。よろしいですか？'))return;
     busy=true;$('trRevokeRun').disabled=true;say('取り消しています…');
     try{
-      const out=await withLimit(gate().revokeMember(r.uid));
+      const out=await withLimit(gate().revokeMember(r.uid,{removeAdmin:r.role==='admin'}));
       say('取り消しました：'+r.name+'（ID '+id6(r.uid)+'）'+(out.request?'・申請も削除':'')+(out.name?'・名前帳も削除':'')+
         (out.requestError?'\n申請は残りました（'+out.requestError+'）':'')+(out.nameError?'\n名前帳は残りました（'+out.nameError+'）':'')+
         '\n出走登録がある場合は、イベント →「参加者・出走者」で取り消してください。');
@@ -25181,7 +25252,7 @@ body.portalChatIsolated > #trQuick{visibility:visible!important;opacity:1!import
     const keep=document.querySelector('input[name="trMg'+gi+'"]:checked')?.value;
     if(!keep){msg.textContent='残す登録を選んでください。';return;}
     const others=g.filter(r=>r.uid!==keep),k=g.find(r=>r.uid===keep);
-    const staff=others.find(r=>ROLE[r.role]);if(staff){msg.textContent=ROLE[staff.role]+'の登録は外せません。残す方に選ぶか、先に役割を外してください。';return;}
+    const dev=others.find(r=>r.role==='developer');if(dev){msg.textContent='開発者の登録は外せません。開発者の登録を残す方に選んでください。';return;}
     const move=others.reduce((t,r)=>t+r.records,0);
     if(!confirm(k.name+'\n\n残す：'+day(k.approvedAt)+'承認（ID '+id6(k.uid)+'）\n外す：'+others.map(r=>day(r.approvedAt)+'承認（ID '+id6(r.uid)+'）').join('、')+'\n\n'+(move?'外す登録の記録'+move+'件を残す方へ移してから、':'')+'外す登録の承認を取り消します。よろしいですか？'))return;
     busy=true;b.disabled=true;msg.textContent='まとめています…';
