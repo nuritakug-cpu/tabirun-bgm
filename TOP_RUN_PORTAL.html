@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v276 | 2026-11-03 | Parent v275. Rules v266 のまま。記録の紐付けの「PORTALの参加者を選ぶ」に、一部の人（公開済みリストの人）しか出なかった不具合を修正：Firebaseの参加承認（memberAccess）にいる承認済み全員を、名前帳・申請の名前で並べる。 -->
 <!-- TOP RUN PORTAL v275 | 2026-11-03 | Parent v274. Rules v266 のまま。記録の紐付けを簡単な1画面に作り直し：大会（EVENT BASE）を選ぶ → 記録のある人ごとに「PORTALの参加者（承認済み）」を選んで紐付け／紐付け済みは相手の名前と［外す］。参加だけの人（記録なし）は人数だけ表示（紐付け不要）。①②③のタブ・登録ID・本人情報の表示はやめた。 -->
 <!-- TOP RUN PORTAL v274 | 2026-11-03 | Parent v273. Rules v266 のまま。v273の一覧の絞り込みを修正：外すのは「PORTALの承認済みと同じ名前のEVENT BASE本人情報」だけ。PORTALに登録していない人（EVENT BASEの記録だけある人）は今までどおり一覧に出す。データは何も削除しない（表示の一覧だけ）。 -->
 <!-- TOP RUN PORTAL v273 | 2026-11-03 | Parent v272. Rules v266 のまま。開発者が個人記録を開く一覧（選手の個人記録を閲覧・実際の参加者の個人記録を開く）を、PORTALで承認済みの登録だけにした。EVENT BASEの本人情報（PORTAL未承認）は人として並べない（EVENT BASEの記録は紐付けでPORTALの本人に付ける）。 -->
@@ -6461,7 +6462,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v275</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v276</b></div>
   </div>
 </div>
 
@@ -6652,7 +6653,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v275</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v276</b></div>
   </div>
 </div>
 
@@ -14275,6 +14276,12 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
   // マイページを持たないので紐付け先にしない。これが「同じ名前が2人」と出ていた原因。
   let rpTimesOk=false;
   function rpMembers(){
+    if(Array.isArray(window.__rpAllMembers)&&window.__rpAllMembers.length){ // v276: Firebaseの承認済み全員
+      const out=window.__rpAllMembers.map(m=>({...m}));
+      const cnt=new Map();for(const x of out){const k=rpNorm(x.name);cnt.set(k,(cnt.get(k)||0)+1);}
+      for(const x of out)x.disp=cnt.get(rpNorm(x.name))>1?x.name+'（'+(x.at?new Date(x.at).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'})+'承認・':'')+'ID '+String(x.uid).slice(0,6)+'…'+String(x.uid).slice(-6)+'）':x.name;
+      return out;
+    }
     // v129: one entry per PORTAL member, and its profileId is the approval record's (= the person's MY PAGE).
     const acc=new Map(portalApprovedMemberRows.map(m=>[m.uid,m.profileId])),seen=new Set(),out=[];
     for(const m of portalPastVerifiedChoices()){
@@ -14310,6 +14317,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
   }
   function rpHidden(m,idx){return false;} // v271: 同じ名前の登録を自動で隠さない（開発者が選ぶ）
   async function rpLoadClaims(){
+    try{const list=await rpG().listApprovedMembers?.();if(Array.isArray(list))window.__rpAllMembers=list;}catch(_){} // v276
     const all=await rpG().loadPastEventOverview();rpClaims=new Map();window.__rpClaimPid=new Map();
     for(const [uid,recs] of Object.entries(all||{}))for(const [id,rec] of Object.entries(recs||{}))if(id.startsWith('local-flow-claim-')){rpClaims.set(id,uid);window.__rpClaimPid.set(id,String(rec?.profileId||''));}
     rpLoaded=true;
@@ -16476,6 +16484,18 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
       const [rq,ac]=await Promise.all([dbMod.get(ref('memberRequests')),dbMod.get(ref('memberAccess'))]);
       const reqs=rq.val()||{},acc=ac.val()||{},out={};
       for(const [uid,a] of Object.entries(acc))if(a?.active===true)out[uid]={at:Number(a.approvedAt)||Number(reqs[uid]?.requestedAt)||0,profileId:typeof a.profileId==='string'?a.profileId:''};
+      return out;
+    };
+    // v276: 承認済み全員（記録の紐付けの選択肢用）。memberAccess active ＋ 名前帳／申請の名前。
+    gate.listApprovedMembers=async()=>{
+      if(!isDeveloper())throw Error('開発者の権限が必要です');
+      const [ac,rq,nb]=await Promise.all([dbMod.get(ref('memberAccess')),dbMod.get(ref('memberRequests')).catch(()=>null),dbMod.get(ref('nameBook')).catch(()=>null)]);
+      const acc=ac.val()||{},reqs=rq?.val?.()||{},book=nb?.val?.()||{},out=[];
+      for(const [uid,a] of Object.entries(acc)){
+        if(a?.active!==true||typeof a.profileId!=='string'||!a.profileId||!/^[A-Za-z0-9_-]{6,128}$/.test(uid))continue;
+        const name=String(book[uid]?.displayName||reqs[uid]?.displayName||'').trim().slice(0,24)||'名前不明';
+        out.push({uid,profileId:a.profileId,id:a.profileId,name,at:Number(a.approvedAt)||Number(reqs[uid]?.requestedAt)||0});
+      }
       return out;
     };
     gate.approveMemberApprovalRequest=async uid=>{
