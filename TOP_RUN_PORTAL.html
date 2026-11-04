@@ -1,3 +1,5 @@
+<!-- TOP RUN PORTAL v318 | 2026-11-05 | Parent v317. REQUIRES Rules v318（v316＋練習の noticeKind・noticeText、中止の練習には参加回答を書けない）。練習の中止・変更を作り直し：(1) v315で練習場所のプルダウンに入れた「中止・変更」を取り消し、場所の一覧を元に戻す。(2) 練習の登録・修正に、場所・その他とは別の「中止・変更」欄（なし／中止／変更＋内容）を作る。(3) 一覧では、中止・変更の内容を【中止】【変更】付きで会場名より前に出し、会場名は下の行にそのまま残す。(4) 「その他」（連絡事項）は一覧に出さない（日付を押した詳細には今までどおり表示）。(5) 中止・変更で保存すると、その練習の参加回答（代理回答も含む）をリセット（保存前に確認）。(6) 中止の練習は、参加する／参加しない／帯同・応援を押せない（未回答の件数にも数えない）。 -->
+<!-- TOP RUN PORTAL v317 | 2026-11-05 | Parent v316. Rules v316 のまま。中止・変更で参加回答が消えない件の対応：(1) リセットの結果（成功・失敗とその理由）を、保存後の大きな通知にもそのまま出す（以前は「保存しました」の通知で失敗が見えなかった）。(2) リセット後にFirebaseを読み直し、回答が残っていれば失敗として知らせる。(3) 練習の修正中に「この練習の参加回答をリセット」ボタンを追加（開発者・管理者）。 -->
 <!-- TOP RUN PORTAL v316 | 2026-11-04 | Parent v315. REQUIRES Rules v316（v315＋開発者が「前の登録とつなぐ申請」を消せる）。(1) iPhone・iPadのブラウザ（Safari、BAND・LINEの中など）と、AndroidのBAND・LINEの中では、新規登録・つなぐ申請・参加承認の申請を止める（アイコンとデータが別になり二重登録になるため）。AndroidのChromeはアイコンと同じデータなので止めない。例外が必要なときは運営がURLの末尾に ?browserok=1 を付けて案内。(2) 開発者がホームを開くと、未処理の参加申請・つなぐ申請の件数を一番上に表示（押すと管理画面の申請一覧を開く）。(3) つなぐ申請の一覧に「この申請を消す」。(4) 設定の並び：通知設定を一番上に。 -->
 <!-- TOP RUN PORTAL v315 | 2026-11-04 | Parent v314. REQUIRES Rules v315（v313＋練習・イベントの参加回答を開発者・管理者が丸ごと消せる、練習の placeKind）。(1) 練習の登録（1件ずつ）の練習場所に「中止・変更」を追加。内容（例：雨のため中止となりました）を入れると、今までどおり場所の代わりに表示される。保存すると、その練習の参加回答（代理回答も含む）をリセットする（保存前に確認）。「その他」は本来の役割（一覧にない場所の名前を入れる）のまま。(2) 練習・イベントを削除したとき、参加回答も一緒に消す（同じ日にあとで登録した練習へ古い回答が出るのを防ぐ）。 -->
 <!-- TOP RUN PORTAL v314 | 2026-11-04 | Parent v313. Rules v313 のまま。iPhoneでスクロールすると下のメニュー（お知らせ・イベント・チャット）が下に潜る・浮く不具合を修正：v219の位置合わせが画面の高さの計算値を使っていたため、アイコンから開いたiPhoneで上部の時計の帯（約20px）分ずれていた。下のメニューの実際の位置を測って、見えている画面の下端との差だけを直す方式に変更（上下どちらにも直す）。表示中は1.5秒ごとに位置を確かめる。画面のスクロールの仕組み（overflow・高さ指定）は変えていないので、Androidのスクロールには影響しない。 -->
@@ -6511,7 +6513,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v316</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v318</b></div>
   </div>
 </div>
 
@@ -6702,7 +6704,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v316</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v318</b></div>
   </div>
 </div>
 
@@ -6835,8 +6837,11 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
           <div class="portalFormRow"><label>開始時間</label><input type="time" id="managePracticeStart" value="19:00"></div>
           <div class="portalFormRow"><label>終了時間</label><input type="time" id="managePracticeEnd" value="20:30"></div>
         </div>
+        <div class="portalFormRow"><label for="managePracticeNoticeKind">中止・変更</label><select id="managePracticeNoticeKind"><option value="">なし</option><option value="cancel">中止</option><option value="change">変更</option></select><p class="portalHelp">中止・変更にすると、一覧で会場名より前に内容が出て、この練習の参加回答はリセットされます。中止の練習は回答できなくなります。</p></div>
+        <div class="portalFormRow hidden" id="managePracticeNoticeRow"><label for="managePracticeNoticeText" id="managePracticeNoticeLabel">内容</label><input type="text" id="managePracticeNoticeText" maxlength="100" placeholder=""></div>
         <div class="portalFormRow"><label>その他</label><textarea id="managePracticeOther" rows="3" placeholder="連絡事項・練習内容"></textarea></div>
         <button class="portalPrimary" type="button" id="managePracticeAdd">追加 / 更新</button>
+        <button type="button" id="managePracticeResetAnswers" hidden style="margin-top:8px;min-height:44px">この練習の参加回答をリセット</button>
         <section class="portalRulePanel hidden" id="managePracticeRecordPanel" aria-label="記録練習の計測結果">
           <div class="portalRuleTitle">記録練習・選手別の計測結果</div>
           <p class="portalHelp">先に上の「追加／更新」で練習日をFirebaseへ保存します。その後、選手ごとに実測値を追加します。予定外の計測も既存の通常練習を「修正」して登録できます。本人確認済み選手だけが対象です。</p>
@@ -7563,7 +7568,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
   function fillCommonPlaceSelects(){
     qsa('[data-common-place]').forEach(sel=>{
       const old=sel.value;
-      sel.innerHTML=commonPlaces.map(x=>`<option value="${x==='その他'?'other':esc(x)}">${esc(x)}</option>`).join('')+(sel.id==='managePracticePlace'?'<option value="change">中止・変更</option>':''); // v315
+      sel.innerHTML=commonPlaces.map(x=>`<option value="${x==='その他'?'other':esc(x)}">${esc(x)}</option>`).join('');
       if(old && [...sel.options].some(o=>o.value===old)) sel.value=old;
       else if([...sel.options].some(o=>o.textContent==='阿久比スポーツ村')) sel.value='阿久比スポーツ村';
     });
@@ -8019,8 +8024,10 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
     Object.entries(schedules).forEach(([key,p])=>{
       if(!PORTAL_PRACTICE_ID_RE.test(key)||p?.kind!=='practice'||p.enabled===false||portalPracticeDay(key,p)<today)return;
       const answer=schedulePracticeResponse(key,actor);
-      const pOther=String(p.other||'').trim(),pHasTitle=pOther&&pOther!=='—'&&pOther!=='-';
-      rows.push({date:portalPracticeDay(key,p),practiceId:key,kind:'practice',rawAnswer:answer,practiceMode:p.practiceMode,recordKind:p.recordKind,title:pHasTitle?pOther:(p.place||'練習'),time:p.start||'',place:pHasTitle?(p.place||''):'',status:answer==='join'?'参加する':answer==='support'?'帯同・応援':answer==='decline'?'参加しない':'未回答',answer:answer==='join'||answer==='support'?'join':answer==='decline'?'decline':'maybe'});
+      // v318: 「その他」は一覧に出さない。中止・変更があるときだけ、その内容を会場名より前に出す（会場名は下の行）
+      const pNotice=(p.noticeKind==='cancel'||p.noticeKind==='change')&&String(p.noticeText||'').trim()?p.noticeKind:'';
+      const pCancelled=pNotice==='cancel';
+      rows.push({date:portalPracticeDay(key,p),practiceId:key,kind:'practice',cancelled:pCancelled,rawAnswer:pCancelled?'':answer,practiceMode:p.practiceMode,recordKind:p.recordKind,title:pNotice?('【'+(pCancelled?'中止':'変更')+'】'+String(p.noticeText).trim()):(p.place||'練習'),time:p.start||'',place:pNotice?(p.place||''):'',status:pCancelled?'中止':answer==='join'?'参加する':answer==='support'?'帯同・応援':answer==='decline'?'参加しない':'未回答',answer:answer==='join'||answer==='support'?'join':answer==='decline'?'decline':'maybe'});
     });
     eventItems.forEach(e=>{
       if(e.enabled===false)return;
@@ -8041,6 +8048,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       const key=row.kind==='event'?'e:'+row.eventId:'p:'+(row.practiceId||row.date);
       if(seen.has(key))return;seen.add(key);
       if(row.kind==='event'){const item=eventItems.find(x=>x.id===row.eventId);if(!portalEventCanRespond(item,'join'))return;}
+      if(row.cancelled)return; // v318: 中止の練習は未回答に数えない
       if(['join','support','decline'].includes(row.rawAnswer))return;
       out.push({...row,bulkKey:key});
     });
@@ -8078,9 +8086,9 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       const answer=(isEvent&&item&&!portalEventAttendanceOpen(item)&&!registered)?'':(row.rawAnswer||'');
       const options=category==='event'?[['join','参加する'],['decline','参加しない']]:[['join','参加する'],['decline','参加しない'],['support','帯同・応援']];
       const preOpen=isEvent&&!!item&&!portalEventAttendanceOpen(item);
-      const lockReason=isEvent&&!portalEventCanRespond(item,'join')?portalEventLockReason(item):'';
+      const lockReason=isEvent&&!portalEventCanRespond(item,'join')?portalEventLockReason(item):(!isEvent&&row.cancelled?'この練習は中止になりました。':''); // v318
       const answered=['join','support','decline'].includes(answer);
-      const badge=registered?['出走予定','join']:preOpen?['受付前','pre']:answered?['回答済み','join']:lockReason?['回答不可','decline']:['未回答','maybe'];
+      const badge=registered?['出走予定','join']:preOpen?['受付前','pre']:row.cancelled?['中止','decline']:answered?['回答済み','join']:lockReason?['回答不可','decline']:['未回答','maybe'];
       const multi=isEvent&&portalEventDates(item).filter(x=>x>=todayDateKey()).length>1;
       const typeLabel=row.kind==='practice'?(row.practiceMode==='record'?'記録練習':'練習'):(category==='event'?'通常イベント':'大会');
       const buttons=options.map(([id,label])=>{
@@ -8175,6 +8183,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
     if(kind==='practice'){
       const pid=card.dataset.bulkPractice||card.dataset.bulkDate,date=portalPracticeDay(pid);
       if(!schedules[pid]||schedules[pid].enabled===false){showActionFeedback('回答できません','この練習予定を確認できません。画面を開き直してください。');return;}
+      if(schedules[pid].noticeKind==='cancel'){showActionFeedback('回答できません','この練習は中止になりました。');return;} // v318
       if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||date<todayDateKey()){showActionFeedback('回答を変更できません','開催済みの練習です。');return;}
       {const proxyChild=portalProxyChild();if(proxyChild){card.classList.add('saving');try{await portalProxySave('practice',pid,answer,proxyChild,clearing);}finally{card.classList.remove('saving');}return;}}
       if(!gateway?.canRespondPractice?.()||gateway.profileId!==actorId){
@@ -8628,6 +8637,7 @@ if(prefix==='home'){
     }
     if(entry.kind==='event'&&!entry.place)rows.push('<div class="portalScheduleEntryRow"><span>会場</span><b>未定</b></div>');
     if(entry.kind==='event'&&!entry.startTime)rows.push('<div class="portalScheduleEntryRow"><span>開始時間</span><b>未定</b></div>');
+    if(entry.kind==='practice'&&(entry.noticeKind==='cancel'||entry.noticeKind==='change')&&String(entry.noticeText||'').trim())rows.push(`<div class="portalScheduleEntryRow trPracticeNotice ${entry.noticeKind}"><span>${entry.noticeKind==='cancel'?'中止':'変更'}</span><b>${esc(String(entry.noticeText).trim())}</b></div>`); // v318
     if(entry.place) rows.push(`<div class="portalScheduleEntryRow"><span>${entry.kind==='event'?'会場':'場所'}</span><b>${esc(entry.place)}</b></div>`);
     if(entry.kind==='event'&&entry.startTime)rows.push(`<div class="portalScheduleEntryRow"><span>開始時間</span><b>${esc(entry.startTime)}</b></div>`);
     if(entry.kind==='practice' && entry.practiceMode==='record')rows.push(`<div class="portalScheduleEntryRow"><span>練習区分</span><b>記録練習 ／ ${esc(({TT:'TT',selection:'選考',trial:'試走',other:'その他'}[entry.recordKind]||'その他'))}</b></div>`);
@@ -8637,8 +8647,9 @@ if(prefix==='home'){
     if(entry.kind==='practice'){
       const proxyChild=portalProxyChild(),answer=schedulePracticeResponse(entry.practiceId||entry.date,portalResponseActor());
       const rosterMarkup=portalAttendanceRosterMarkup('practice',entry.practiceId||entry.date,true);
-      const pastPractice=portalPracticeIsPast(entry.date);
-      action=`<div class="portalRsvpSection${pastPractice?' portalPastLocked':''}"><b class="portalRsvpTitle">練習への参加</b><p class="portalRsvpCurrent">${proxyChild?esc(proxyChild.name)+'さんの回答（代理）':'自分の回答'}：<strong>${esc(answer==='join'?'参加する':answer==='support'?'帯同・応援として参加':answer==='decline'?'参加しない':'未選択')}</strong>${!proxyChild&&portalOwnProxyName('practice',entry.practiceId||entry.date)?`<small class="trProxyByNote">（${esc(portalOwnProxyName('practice',entry.practiceId||entry.date))}さんが代理で回答）</small>`:''}</p>${pastPractice?'<p class="portalHelp">開催済みの練習は回答を変更できません。変更が必要な場合は管理者に連絡してください。</p>':''}<div class="portalRsvpOptions portalPracticeResponseOptions" role="group" aria-label="練習への参加回答">${[['join','参加する'],['decline','参加しない'],['support','<span class="trRsvpTwo"><span>帯同・応援</span><span>として参加</span></span>']].map(([id,label])=>`<button type="button" data-practice-response="${id}" data-practice-date="${esc(entry.practiceId||entry.date)}" class="${answer===id?'chosen':''}" aria-pressed="${answer===id?'true':'false'}" ${pastPractice?'aria-disabled="true" data-rsvp-locked="開催済みの練習のため変更できません。"':''}>${label}</button>`).join('')}</div>${pastPractice?'':'<p class="trRsvpUntap">再タップで解除できます</p>'}${rosterMarkup}</div>`;
+      const cancelledPractice=entry.noticeKind==='cancel'&&!!String(entry.noticeText||'').trim(); // v318
+      const pastPractice=portalPracticeIsPast(entry.date)||cancelledPractice;
+      action=`<div class="portalRsvpSection${pastPractice?' portalPastLocked':''}"><b class="portalRsvpTitle">練習への参加</b><p class="portalRsvpCurrent">${proxyChild?esc(proxyChild.name)+'さんの回答（代理）':'自分の回答'}：<strong>${esc(answer==='join'?'参加する':answer==='support'?'帯同・応援として参加':answer==='decline'?'参加しない':'未選択')}</strong>${!proxyChild&&portalOwnProxyName('practice',entry.practiceId||entry.date)?`<small class="trProxyByNote">（${esc(portalOwnProxyName('practice',entry.practiceId||entry.date))}さんが代理で回答）</small>`:''}</p>${pastPractice?(cancelledPractice?'<p class="portalHelp">この練習は中止になりました。回答はできません。</p>':'<p class="portalHelp">開催済みの練習は回答を変更できません。変更が必要な場合は管理者に連絡してください。</p>'):''}<div class="portalRsvpOptions portalPracticeResponseOptions" role="group" aria-label="練習への参加回答">${[['join','参加する'],['decline','参加しない'],['support','<span class="trRsvpTwo"><span>帯同・応援</span><span>として参加</span></span>']].map(([id,label])=>`<button type="button" data-practice-response="${id}" data-practice-date="${esc(entry.practiceId||entry.date)}" class="${answer===id?'chosen':''}" aria-pressed="${answer===id?'true':'false'}" ${pastPractice?`aria-disabled="true" data-rsvp-locked="${cancelledPractice?'この練習は中止になりました。':'開催済みの練習のため変更できません。'}"`:''}>${label}</button>`).join('')}</div>${pastPractice?'':'<p class="trRsvpUntap">再タップで解除できます</p>'}${rosterMarkup}</div>`;
     }else{
              const proxyChild=portalProxyChild(),item=eventItems.find(x=>x.id===entry.eventId),locallyRecorded=!proxyChild&&!!flowEntry(entry.eventId,flowSelfId()),registered=proxyChild?portalChildHasRaceEntry(entry.eventId,proxyChild):portalHasOwnRaceEntry(entry.eventId),rosterMarkup=portalAttendanceRosterMarkup('event',entry.eventId,portalEventDisplayCategory(item)!=='event');
        const answer=scheduleEventAnswer(entry.eventId,portalResponseActor()),allowRace=portalEventDisplayCategory(item)!=='event'&&item?.raceEntryEnabled!==false,attendanceOpen=portalEventAttendanceOpen(item),attendanceCutoffPassed=flowIsRegistrationClosed(item);
@@ -9444,7 +9455,7 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
       $('manageNoticeAdd').textContent='お知らせを登録';$('manageNoticeState').textContent='';
     }else if(kind==='practice'){
       editingPracticeKey=null;copyingPracticeFromKey=null;
-      $('managePracticeDate').value='';$('managePracticeOther').value='';
+      $('managePracticeDate').value='';$('managePracticeOther').value='';portalNoticeSet('','');
       $('managePracticeMode').value='normal';$('managePracticeRecordKind').value='TT';portalPracticeUpdateMode();portalPracticeResetRecord();$('managePracticeRecordList').innerHTML='';
       $('managePracticeAdd').textContent='練習予定を登録';$('managePracticeState').textContent='';
       qsa('[data-practice-entry-mode]').forEach(b=>b.classList.toggle('active',b.dataset.practiceEntryMode==='single'));
@@ -9785,6 +9796,7 @@ if(view==='list')portalApplyManageSearch(kind);
         $('managePracticeStart').value=item.start||'19:00'; $('managePracticeEnd').value=item.end||'20:30';
         $('managePracticeOther').value=item.other==='—'?'':(item.other||'');
         $('managePracticeMode').value=item.practiceMode==='record'?'record':'normal';$('managePracticeRecordKind').value=item.recordKind||'TT';portalPracticeUpdateMode();portalPracticeResetRecord();$('managePracticeRecordList').innerHTML='';
+        portalNoticeSet('',''); // v318: コピーには中止・変更を引き継がない
         $('managePracticeAdd').textContent='コピーを新規保存';
         $('managePracticeState').textContent='コピー元は残ります。日付や時間など必要箇所を変更して新規保存してください（同じ日には3件まで）。';
         portalOpenManagementFlow('practice','new',{preserve:true});
@@ -9846,7 +9858,7 @@ if(view==='list')portalApplyManageSearch(kind);
         $('managePracticeStart').value=item.start||'19:00'; $('managePracticeEnd').value=item.end||'20:30';
         $('managePracticeOther').value=item.other==='—'?'':(item.other||'');
         $('managePracticeMode').value=item.practiceMode==='record'?'record':'normal';$('managePracticeRecordKind').value=item.recordKind||'TT';portalPracticeUpdateMode();portalPracticeResetRecord();$('managePracticeRecordList').innerHTML='';
-        $('managePracticeAdd').textContent='修正を反映'; $('managePracticeState').textContent='修正中：'+portalPracticeDay(id)+(portalPracticeSessionLabel(id,true)?' '+portalPracticeSessionLabel(id,true):'')+' '+(item.place||'');
+        portalNoticeSet(item.noticeKind,item.noticeText); $('managePracticeAdd').textContent='修正を反映'; $('managePracticeResetAnswers').hidden=false; $('managePracticeState').textContent='修正中：'+portalPracticeDay(id)+(portalPracticeSessionLabel(id,true)?' '+portalPracticeSessionLabel(id,true):'')+' '+(item.place||'');
         portalOpenManagementFlow('practice','edit',{preserve:true});
         qsa('[data-practice-entry-mode]').forEach(b=>b.classList.toggle('active',b.dataset.practiceEntryMode==='single'));
         $('practiceEntrySingle').classList.remove('hidden'); $('practiceEntryBulk').classList.add('hidden');
@@ -9966,7 +9978,7 @@ if(view==='list')portalApplyManageSearch(kind);
     let items=Object.entries(schedules).filter(([,v])=>v.kind==='practice').sort((a,b)=>portalPracticeDay(a[0],a[1]).localeCompare(portalPracticeDay(b[0],b[1]))||String(a[1].start||'').localeCompare(String(b[1].start||''))||a[0].localeCompare(b[0]));
     items=items.filter(([id,v])=>portalListAccept('practice',portalPracticeDay(id,v)));
     const box=$('managePracticeList');
-    box.innerHTML=items.map(([date,v])=>manageRow(portalPracticeDay(date,v)+(portalPracticeSessionLabel(date,true)?'　'+portalPracticeSessionLabel(date,true):''),(v.placeKind==='change'?'【中止・変更】':'')+v.place,`${v.practiceMode==='record'?'【記録練習 '+({TT:'TT',selection:'選考',trial:'試走',other:'その他'}[v.recordKind]||'その他')+'】 ':'通常練習 '}${v.start} - ${v.end}${v.other&&v.other!=='—'?` / ${v.other}`:''}`,date,'practice',v.enabled!==false)).join('') || '<div class="portalEmpty">この条件の練習予定はありません。</div>';
+    box.innerHTML=items.map(([date,v])=>manageRow(portalPracticeDay(date,v)+(portalPracticeSessionLabel(date,true)?'　'+portalPracticeSessionLabel(date,true):''),(v.noticeKind==='cancel'?'【中止】':v.noticeKind==='change'?'【変更】':'')+v.place,`${v.practiceMode==='record'?'【記録練習 '+({TT:'TT',selection:'選考',trial:'試走',other:'その他'}[v.recordKind]||'その他')+'】 ':'通常練習 '}${v.start} - ${v.end}${v.other&&v.other!=='—'?` / ${v.other}`:''}`,date,'practice',v.enabled!==false)).join('') || '<div class="portalEmpty">この条件の練習予定はありません。</div>';
     $('managePracticeCount').textContent=`${portalListFilterLabel('practice')} / ${items.length}件`;
     wireManageCommon(box);portalApplyManageSearch('practice');
 }
@@ -10046,6 +10058,25 @@ if(view==='list')portalApplyManageSearch(kind);
     const go=()=>{try{top?.scrollIntoView({block:'start',behavior:'smooth'});}catch(_){}};
     requestAnimationFrame(go);setTimeout(go,250);
   }
+  // v318: 中止・変更の欄
+  function portalNoticeUi(){
+    const k=$('managePracticeNoticeKind').value;
+    $('managePracticeNoticeRow').classList.toggle('hidden',!k);
+    $('managePracticeNoticeLabel').textContent=k==='cancel'?'中止の内容':k==='change'?'変更の内容':'内容';
+    $('managePracticeNoticeText').placeholder=k==='cancel'?'例：雨のため中止となりました':k==='change'?'例：場所を〇〇に変更します／開始を19:00に変更します':'';
+  }
+  function portalNoticeSet(kind,text){$('managePracticeNoticeKind').value=(kind==='cancel'||kind==='change')?kind:'';$('managePracticeNoticeText').value=$('managePracticeNoticeKind').value?String(text||''):'';portalNoticeUi();}
+  $('managePracticeNoticeKind').addEventListener('change',portalNoticeUi);
+  // v317: 修正中の練習の参加回答を手動でリセット
+  $('managePracticeResetAnswers').addEventListener('click',async()=>{
+    const pState=$('managePracticeState'),gateway=window.__TR_PORTAL_SYNC__,key=editingPracticeKey;
+    if(!key||!schedules[key]){pState.textContent='修正中の練習がありません。一覧の「修正」から選んでください。';return;}
+    const sk=schedules[key]._sourceKey||key,n=Object.keys(gateway?.practiceResponses?.[sk]||{}).length;
+    if(!confirm('この練習の参加回答'+(n?'（'+n+'人）':'')+'をすべてリセットします（代理回答も含む）。\nよろしいですか？'))return;
+    pState.textContent='リセットしています…';
+    try{await gateway.resetPracticeResponses(sk);pState.textContent='参加回答をリセットしました。';showActionFeedback('リセットしました','この練習の参加回答を消しました。');}
+    catch(error){const m=String(error?.code||error?.message||error).slice(0,120);pState.textContent='リセットできませんでした：'+m;showActionFeedback('リセットできませんでした',m);}
+  });
   $('managePracticeAdd').addEventListener('click',async()=>{
     // v131: the button always answers — a reason or progress is shown right under it, never "nothing happens".
     const pState=$('managePracticeState');pState.textContent='確認中…';pState.setAttribute('role','status');
@@ -10063,33 +10094,34 @@ if(view==='list')portalApplyManageSearch(kind);
       $('managePracticeState').textContent='同じ日・同じ開始時刻の練習予定が既にあります。時間を変えるか、一覧の「修正」を使ってください。';return;
     }
     const gateway=window.__TR_PORTAL_SYNC__;
-    // v315: 中止・変更。既存の練習を中止・変更にする（または内容を変える）ときは、参加回答をリセットする
-    const placeKind=$('managePracticePlace').value==='change'?'change':'';
+    // v318: 中止・変更（場所とは別の欄）。中止・変更にする／内容を変えるときは参加回答をリセットする
+    const noticeKind=$('managePracticeNoticeKind').value,noticeText=$('managePracticeNoticeText').value.trim();
+    if(noticeKind&&!noticeText){pState.textContent='中止・変更の内容を入力してください。';showActionFeedback('未入力があります','中止・変更の内容');return;}
     const prevItem=oldKey?schedules[oldKey]:null;
-    const resetAnswers=!!oldKey&&placeKind==='change'&&(prevItem?.placeKind!=='change'||String(prevItem?.place||'')!==place);
+    const resetAnswers=!!oldKey&&!!noticeKind&&(String(prevItem?.noticeKind||'')!==noticeKind||String(prevItem?.noticeText||'')!==noticeText);
     if(resetAnswers){
       const n=Object.keys(gateway?.practiceResponses?.[prevItem?._sourceKey||oldKey]||{}).length;
-      if(!confirm('「中止・変更」として保存します。\nこの練習の参加回答'+(n?'（'+n+'人）':'')+'をリセットします（代理回答も含む）。\n\nよろしいですか？')){pState.textContent='保存をやめました。';return;}
+      if(!confirm('「'+(noticeKind==='cancel'?'中止':'変更')+'」として保存します。\nこの練習の参加回答'+(n?'（'+n+'人）':'')+'をリセットします（代理回答も含む）。'+(noticeKind==='cancel'?'\n中止の練習は回答できなくなります。':'')+'\n\nよろしいですか？')){pState.textContent='保存をやめました。';return;}
     }
     if(!gateway?.canWrite('practices')){$('managePracticeState').textContent='Firebaseの接続（本人・スタッフ権限・練習予定の受信）を確認できていないため保存していません。少し待ってから、もう一度押してください。';showActionFeedback('保存できません','Firebaseの接続を確認中です。');return;}
     const enabled=oldKey?schedules[oldKey]?.enabled!==false:(source?source.enabled!==false:true);
     $('managePracticeAdd').disabled=true;pState.textContent='保存中…';
     let savedPracticeKey='';
-    try{savedPracticeKey=await Promise.race([gateway.savePractice({oldKey,date,place,start,end,other,enabled,practiceMode,recordKind,placeKind}),
+    try{savedPracticeKey=await Promise.race([gateway.savePractice({oldKey,date,place,start,end,other,enabled,practiceMode,recordKind,noticeKind,noticeText}),
       new Promise((_,ng)=>setTimeout(()=>ng(Error('Firebaseから20秒応答がありません。通信状態を確認して、もう一度押してください。')),20000))]);}
     catch(error){$('managePracticeState').textContent='保存できませんでした：'+String(error?.message||error).slice(0,130);showActionFeedback('保存できませんでした',String(error?.message||error).slice(0,80));return;}
     finally{$('managePracticeAdd').disabled=false;}
     const retainedPracticeSourceKey=(typeof savedPracticeKey==='string'&&PORTAL_PRACTICE_ID_RE.test(savedPracticeKey))?savedPracticeKey:(oldKey||date);
     let resetNote='';
     if(resetAnswers){try{await gateway.resetPracticeResponses(retainedPracticeSourceKey);resetNote='参加回答をリセットしました。';}catch(error){resetNote='予定は保存しましたが、参加回答をリセットできませんでした（'+String(error?.code||error?.message||error).slice(0,60)+'）。';}}
-    schedules[retainedPracticeSourceKey]={kind:'practice',title:'練習予定',place,placeKind:placeKind||undefined,start,end,other,enabled,practiceMode,recordKind:practiceMode==='record'?recordKind:undefined,scheduledDate:retainedPracticeSourceKey.slice(0,10)!==date?date:undefined,_sourceKey:retainedPracticeSourceKey,copiedFrom:source?copyingPracticeFromKey:''};
+    schedules[retainedPracticeSourceKey]={kind:'practice',title:'練習予定',place,noticeKind:noticeKind&&noticeText?noticeKind:undefined,noticeText:noticeKind&&noticeText?noticeText:undefined,start,end,other,enabled,practiceMode,recordKind:practiceMode==='record'?recordKind:undefined,scheduledDate:retainedPracticeSourceKey.slice(0,10)!==date?date:undefined,_sourceKey:retainedPracticeSourceKey,copiedFrom:source?copyingPracticeFromKey:''};
     $('managePracticeState').textContent=(resetNote?resetNote+' ':'')+(oldKey?'練習予定を修正しました。元の項目を更新しています。':source?'コピーから新しい練習予定を作成しました。コピー元は残っています。':'練習予定を追加しました。');
     editingPracticeKey=practiceMode==='record'?retainedPracticeSourceKey:null;copyingPracticeFromKey=null;$('managePracticeAdd').textContent=practiceMode==='record'?'修正を反映':'追加 / 更新';
     portalPracticeUpdateMode();
     practiceListMonth=date.slice(0,7);$('managePracticeMonth').value=practiceListMonth;
     renderHomeCalendar();renderFullCalendar();renderManagePractices();
     portalPracticeScrollTop();
-    showActionFeedback('保存しました','練習予定を登録しました。');
+    showActionFeedback(resetNote&&/できませんでした/.test(resetNote)?'回答をリセットできませんでした':'保存しました',resetNote||'練習予定を登録しました。'); // v317
   });
   $('bulkPracticeAdd').addEventListener('click',async()=>{
     if(!canManage){$('bulkPracticeState').textContent='管理者として確認できていません。PORTALを開き直してから、もう一度押してください。';showActionFeedback('登録できません','管理者の確認ができていません。');return;}
@@ -15175,6 +15207,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
       const clearing=reply.classList.contains('chosen');
       const answer=clearing?'maybe':reply.dataset.practiceResponse;
       if(!schedules[pid]||schedules[pid].enabled===false){showActionFeedback('回答できません','この練習予定を確認できません。画面を開き直してください。');return;}
+      if(schedules[pid].noticeKind==='cancel'){showActionFeedback('回答できません','この練習は中止になりました。');return;} // v318
       if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||date<todayDateKey()){
         showActionFeedback('回答を変更できません','開催済みの練習です。');return;
       }
@@ -17357,6 +17390,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       if(!String(gate.displayName||'').trim())throw Error('保護者の登録名を確認できません');
       const childPid=gate.familyChildren[childUid].profileId,childName=await proxyChildDisplayName(childUid);
       if(!childName)throw Error('お子さんの登録名を確認できません');
+      if(gate.practices?.[sourceKey]?.noticeKind==='cancel')throw Error('この練習は中止になりました。回答できません'); // v318
       const result=await run('practiceResponses/'+sourceKey+'/'+childUid,current=>{
         if(current?.profileId&&current.profileId!==childPid)return;
         return proxyNext(current,answer,childPid,childName);
@@ -18012,7 +18046,8 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       if(v.practiceMode==='record'){row.practiceMode='record';row.recordKind=['TT','selection','trial','other'].includes(v.recordKind)?v.recordKind:'other';}
       else if(v.practiceMode==='normal'||original?.practiceMode){row.practiceMode='normal';}
       if(v.scheduledDate&&/^\d{4}-\d{2}-\d{2}$/.test(v.scheduledDate))row.scheduledDate=v.scheduledDate;
-      if(v.placeKind==='change')row.placeKind='change'; // v315: 中止・変更
+      // v318: 中止・変更（場所とは別の欄）
+      if((v.noticeKind==='cancel'||v.noticeKind==='change')&&String(v.noticeText||'').trim()){row.noticeKind=v.noticeKind;row.noticeText=String(v.noticeText).trim().slice(0,100);}
       return row;
     };
     // v306: 開催日（scheduledDate があればそれ、なければ保存IDの先頭10文字）
@@ -18025,7 +18060,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       return rows.length===1?rows[0][0]:date;
     };
     const ownStamp=(x)=>Number(x?.updatedAt||0);
-    gate.savePractice=async({oldKey,date,place,start,end,other,enabled,practiceMode,recordKind,placeKind})=>{
+    gate.savePractice=async({oldKey,date,place,start,end,other,enabled,practiceMode,recordKind,noticeKind,noticeText})=>{
       ensure('practices');
       if(!/^\d{4}-\d{2}-\d{2}$/.test(date))throw Error('日付形式が不正です');
       // v306: 新規は 日付 → 日付-2 → 日付-3 の空いている保存IDを使う。修正は元の保存IDのまま。
@@ -18040,7 +18075,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       const answer=await run('practices/'+physical,current=>{
         if(current && (!seen||ownStamp(current)!==ownStamp(seen))){rejected=true;return;}
         if(!current&&seen){rejected=true;return;}
-        return makePractice({place,start,end,other,enabled,practiceMode,recordKind,placeKind,
+        return makePractice({place,start,end,other,enabled,practiceMode,recordKind,noticeKind,noticeText,
           scheduledDate:date!==physical.slice(0,10)||current?.scheduledDate?date:undefined},gate.uid,current);
       });
       if(!answer.committed)throw Error(rejected?'別端末で更新されたため、画面を更新してから再操作してください':'練習予定の書き込みを受理できませんでした');
@@ -18080,7 +18115,9 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       if(!/^\d{4}-\d{2}-\d{2}(?:-[23])?$/.test(String(key||'')))throw Error('練習の指定が不正です');
       if(!(gate.roleVerified===true&&['developer','admin'].includes(gate.role)))throw Error('開発者・管理者だけが実行できます');
       await dbMod.remove(ref('practiceResponses/'+key));
-      if(gate.practiceResponses&&gate.practiceResponses[key])gate.practiceResponses[key]={};
+      const left=(await dbMod.get(ref('practiceResponses/'+key))).val(); // v317: 本当に消えたか読み直す
+      if(left&&Object.keys(left).length)throw Error('Firebaseに回答が'+Object.keys(left).length+'件残っています');
+      try{gate.rawPracticeResponses()[key]={};}catch(_){}
       ui?.applyPracticeResponses(gate.practiceResponses);
     };
     // Practice participation is independent of the practice schedule document.
@@ -18094,6 +18131,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       const sourceKey=gate.practices?.[date]?date:gate.practiceStorageKey(date),practice=gate.practices?.[sourceKey];
       if(practice?.kind!=='practice'||practice.enabled===false)throw Error('有効な練習予定がありません');
       if(gate.practiceDayOf(sourceKey,practice)<new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Tokyo'}))throw Error('開催済みの練習には参加回答を変更できません');
+      if(gate.practices?.[sourceKey]?.noticeKind==='cancel')throw Error('この練習は中止になりました。回答できません'); // v318
       const result=await run('practiceResponses/'+sourceKey+'/'+gate.uid,current=>{
         if(current?.profileId && current.profileId!==gate.profileId)return;
         if(current?.answer===answer&&!current?.proxyByUid&&!gate.isStalePracticeResponse(sourceKey,current))return;
@@ -26381,5 +26419,10 @@ body.portalChatIsolated > #trWhoModal,html body > #trWhoModal{visibility:visible
 })();
 </script>
 <style id="v316-settings-order">#screen-notification-settings .trSettingsMy{margin:14px 0}</style>
+<style id="v318-practice-notice">
+.portalScheduleEntryRow.trPracticeNotice b{font-weight:900}
+.portalScheduleEntryRow.trPracticeNotice.cancel b{color:#c8102e}
+.portalScheduleEntryRow.trPracticeNotice.change b{color:#b86a00}
+</style>
 </body>
 </html>
