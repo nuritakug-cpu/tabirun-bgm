@@ -1,3 +1,5 @@
+<!-- TOP RUN PORTAL v312 | 2026-11-04 | Parent v310. Rules v311 のまま。不具合修正：「はい、あります」→名前入力→「前の登録とつなぐ申請をする」が押しても反応しなかった。本人情報が未確認の間の送信止め（閲覧のみの状態）が、新規登録と番号入力のフォームだけを通し、前の登録とつなぐ申請のフォームを止めていたため。本人確認画面の中のフォームはすべて送信できるようにした（画面の外の操作は今までどおり止める）。 -->
+<!-- TOP RUN PORTAL v310 | 2026-11-04 | Parent v309（ChatGPT作成のv306〜v309を含む）。REQUIRES Rules v310（Claude作成のRules v305に、v306の練習の保存場所 日付-2・日付-3 と、v308の保護者による出欠の代理回答 practiceResponses・eventResponses の許可を足したもの。代理回答の保存に必要な proxyByUid・proxyByName も許可）。HTMLの動きは v309 と同じ。代理回答の Permission denied は、公開中のRulesに代理回答の許可がなかったため。 -->
 <!-- TOP RUN PORTAL v309 | 2026-11-04 | Parent v308. Rules v308 のまま。表示だけの変更。出欠席一覧の名前を、回答したときの名前ではなく、今のプロフィールの表示名（nameBook/<uid>/displayName）で出す。プロフィールの名前を変えると、過去の回答の一覧も新しい名前になる。代理の「代理：保護者の名前」も保護者の今の表示名で出す。名前帳が読めないときだけ、回答したときの名前を出す。 -->
 <!-- TOP RUN PORTAL v308 | 2026-11-04 | Parent v307. REQUIRES Rules v308（v306＋practiceResponses/<練習>/<子>・eventResponses/<イベント>/<子> を、familyOf/<保護者>/<子> でつながった保護者が書ける。書いた保護者は proxyByUid・proxyByName に残る）。保護者による出欠の代理回答：(1) 予定の詳細と「出欠回答」の一覧の上に「代理で回答」のスイッチ。オフのときは今までどおり自分の回答。オンにするとお子さんを選び、ボタンはお子さんの回答になる（誤タップ防止）。(2) お子さん本人がすでに回答しているときは、同じ回答を押すと「すでに〇〇です」と知らせて保存しない。違う回答に変えるときは「本人が〇〇と回答しています。代理で変えますか？本人の希望と違う回答になります」と確認してから保存。(3) 出欠席一覧では、代理で回答した人の名前の下に「代理：保護者の名前」と表示。(4) お子さんが大会に出走登録済みのときは、代理でも当日の予定を変えられない（本人と同じ決まり）。保護者自身の回答とお子さんの回答は別なので、保護者も参加なら2人として数える。(5) お子さん本人の画面には「〇〇さんが代理で回答」と出る。本人が同じ回答を押し直すと、本人の回答に戻る。 -->
 <!-- TOP RUN PORTAL v307 | 2026-11-04 | Parent v306. Rules v306 のまま（代理出走のRulesは駅伝BASEの大会もすでに対象）。保護者の代理出走登録を駅伝（駅伝BASEの大会）にも広げた。v305では駅伝だけ対象外になっていたため、端末のないお子さんが駅伝に登録できなかった。保存先・形式・取消の条件は本人登録・他の大会の代理登録と同じ（events/<大会>/players、本人はお子さんのUID、代理した保護者は proxyByUid）。 -->
@@ -6500,7 +6502,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v309</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v312</b></div>
   </div>
 </div>
 
@@ -6691,7 +6693,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v309</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v312</b></div>
   </div>
 </div>
 
@@ -16259,7 +16261,7 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
         }
       },true);
       document.addEventListener('submit',event=>{
-        if(window.__TR_PORTAL_VIEW_ONLY__&& !(!panel.hidden && (event.target===codeForm||event.target===newForm))){event.preventDefault();event.stopImmediatePropagation();}
+        if(window.__TR_PORTAL_VIEW_ONLY__&& !(!panel.hidden && panel.contains(event.target))){event.preventDefault();event.stopImmediatePropagation();} // v312: 本人確認画面の中のフォーム（前の登録とつなぐ申請を含む）は送信できる
       },true);
     }
     // Never open another locally-cached person's private screen while identity is unknown.
@@ -17322,7 +17324,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         if(current?.profileId&&current.profileId!==childPid)return;
         return proxyNext(current,answer,childPid,childName);
       });
-      if(!result.committed)throw Error('代理の回答を保存できませんでした（Rules v308 が未適用か、通信が競合しました）');
+      if(!result.committed)throw Error('代理の回答を保存できませんでした（Rules v310 が未適用か、通信が競合しました）');
       {const raw=gate.rawPracticeResponses();if(!raw[sourceKey])raw[sourceKey]={};raw[sourceKey][childUid]=result.snapshot.val();}
       ui?.applyPracticeResponses(gate.practiceResponses);
     };
@@ -17349,7 +17351,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         if(current?.profileId&&current.profileId!==childPid)return;
         return proxyNext(current,answer,childPid,childName);
       });
-      if(!result.committed)throw Error('代理の回答を保存できませんでした（Rules v308 が未適用か、通信が競合しました）');
+      if(!result.committed)throw Error('代理の回答を保存できませんでした（Rules v310 が未適用か、通信が競合しました）');
       if(!gate.eventResponses[eventId])gate.eventResponses[eventId]={};
       gate.eventResponses[eventId][childUid]=result.snapshot.val();
       ui?.applyEventResponses(gate.eventResponses);
