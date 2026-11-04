@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v324 | 2026-11-05 | Parent v323. Rules v318 のまま。(1) プロフィール・チャットのコメント：小さな入力欄をやめ、登録した内容の表示＋「登録済」＋「編集する」に。押すと画面いっぱいの入力画面が開き、保存すると閉じて「登録済」になる。(2) コメントが消える不具合を修正：画面を開いてから2分間、1秒ごとに入力欄を保存済みの内容で上書きしていたため、キーボードを閉じたあと保存を押すと、書いた内容が消えて古い内容（空）が保存されていた。入力は別画面で行い、上書きされないようにした。(3) イベント：EVENT BASEにつながっていない大会・イベントは、カードの上の部分を押すと、カレンダーのその日の参加画面を開く。 -->
 <!-- TOP RUN PORTAL v323 | 2026-11-05 | Parent v322. Rules v318 のまま。v322で入口の「はい、あります」をなくし、つなぐ申請は上がってこなくなったため、管理画面の「前の登録とつなぐ申請」の欄を外す（残っていた申請は削除済み）。ホームの未処理表示は参加承認の申請だけを数える。 -->
 <!-- TOP RUN PORTAL v322 | 2026-11-05 | Parent v321. Rules v318 のまま。初めての端末で出していた「前の大会で、登録したことがありますか？」（はい／いいえ）をやめ、全員「登録をはじめる」から新規登録にする。「はい、あります」（前の登録とつなぐ申請）は出さないので、つなぐ申請はもう上がってこない。前に参加した人の記録は、承認後に開発者が「記録の付け替え」でつなぐ（10/28の方針）。 -->
 <!-- TOP RUN PORTAL v321 | 2026-11-05 | Parent v320. Rules v318 のまま。v320で管理画面から隠した「前の登録とつなぐ申請」を元に戻す（参加者の画面の「はい、あります」から今も申請が来るため、隠すと届いた申請に気づけない）。並びは参加承認の申請が上、つなぐ申請が下。ホームの未処理表示は、参加承認の申請と、承認待ち（pending）のつなぐ申請の両方を数える。 -->
@@ -6518,7 +6519,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v323</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v324</b></div>
   </div>
 </div>
 
@@ -6708,7 +6709,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v323</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v324</b></div>
   </div>
 </div>
 
@@ -9078,7 +9079,8 @@ if(prefix==='home'){
     const action=portalHref ? `<button class="openBtn" type="button" data-event-open-portal="${esc(item.id)}"><span>リンク先を開く</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : portalEventDisplayCategory(item)==='event' ? `<button class="openBtn" type="button" data-event-rsvp-date="${esc(portalEventDates(item).find(d=>d>=todayDateKey())||portalEventFirstDate(item))}"><span>参加予定・詳細を確認</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : portalConnectedBase(item) ? `<button type="button" class="openBtn" data-event-open-base="${esc(item.id)}"><span>${item.type==='RELAY EVENT BASE'?'駅伝BASEを開く':'EVENT BASEを開く'}</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : item.previewOnly ? `<button class="openBtn" type="button" ${item.raceEntryEnabled===false?'data-event-rsvp-date="'+esc(portalEventDates(item).find(d=>d>=todayDateKey())||portalEventFirstDate(item))+'"':'data-flow-event="'+esc(item.id)+'"'}><span>${item.raceEntryEnabled===false||isEntryClosed?'詳細を見る':'詳細・出走登録'}</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : item.type==='OTHER' ? `<button type="button" class="openBtn" data-event-rsvp-date="${esc(portalEventDates(item).find(d=>d>=todayDateKey())||portalEventFirstDate(item))}"><span>イベントの詳細を見る</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : item.url
       ? protectedEventHref?`<a class="openBtn" href="${esc(protectedEventHref)}"><span>${item.relay?'駅伝EVENT BASEを開く':'EVENT BASEを開く'}</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></a>`:`<button type="button" class="openBtn" disabled title="開発者本人の接続を確認してください">大会への接続を保護中</button>`
       : `<button class="openBtn" type="button" data-ui-event-coming="${esc(item.id)}"><span>${esc(noLinkLabel)}</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>`;
-    return `<article class="event${relayClass}${isPastEvent(item)?' portalPastEvent':''}"><div class="eventTop"><div class="eventDate"><strong>${esc(day)}</strong><span>${esc(mon)}</span></div><div class="eventBody"><div class="eventState"><i></i>${esc(state)}</div><h3>${esc(portalEventName(item.title))}</h3><div class="eventType">${esc(portalEventDisplayCategory(item)==='event'?'通常イベント':item.type==='RELAY EVENT BASE'?'大会 ／ 駅伝 EVENT BASE':item.type==='OTHER'?'大会': '大会 ／ '+item.type)}</div><span class="portalEventCardMetrics">${esc(portalEventDateLabel(item))}${portalEventDisplayCategory(item)==='event'?' ／ 参加予定の確認':item.raceEntryEnabled===false?' ／ 開催種目：'+esc(eventRaceMetricNames(item).join(' ／ ')||'未定'):' ／ '+esc(eventRaceMetricsText(item))}</span><span class="portalEventParticipation ${responseClass}"><span class="portalAttendancePiece">${esc(v199Label)}：<b>${esc(v199Value)}</b></span>${item.previewOnly?`<span class="portalAttendancePiece">出走：<b>${esc(raceStatus)}</b></span>`:''}</span></div></div>${rsvpOpen}${v199EntryBtn}${missingConnection}${action}</article>`;
+    const topDate=(!portalConnectedBase(item)&&!item.relay&&item.type!=='EVENT BASE'&&item.type!=='RELAY EVENT BASE')?v199Date:''; // v324
+    return `<article class="event${relayClass}${isPastEvent(item)?' portalPastEvent':''}"${topDate?` data-event-top-date="${topDate}"`:''}><div class="eventTop"><div class="eventDate"><strong>${esc(day)}</strong><span>${esc(mon)}</span></div><div class="eventBody"><div class="eventState"><i></i>${esc(state)}</div><h3>${esc(portalEventName(item.title))}</h3><div class="eventType">${esc(portalEventDisplayCategory(item)==='event'?'通常イベント':item.type==='RELAY EVENT BASE'?'大会 ／ 駅伝 EVENT BASE':item.type==='OTHER'?'大会': '大会 ／ '+item.type)}</div><span class="portalEventCardMetrics">${esc(portalEventDateLabel(item))}${portalEventDisplayCategory(item)==='event'?' ／ 参加予定の確認':item.raceEntryEnabled===false?' ／ 開催種目：'+esc(eventRaceMetricNames(item).join(' ／ ')||'未定'):' ／ '+esc(eventRaceMetricsText(item))}</span><span class="portalEventParticipation ${responseClass}"><span class="portalAttendancePiece">${esc(v199Label)}：<b>${esc(v199Value)}</b></span>${item.previewOnly?`<span class="portalAttendancePiece">出走：<b>${esc(raceStatus)}</b></span>`:''}</span></div></div>${rsvpOpen}${v199EntryBtn}${missingConnection}${action}</article>`;
   }
   function bindEventCardActions(box){
     box.querySelectorAll('[data-event-connect-from-list]').forEach(b=>b.addEventListener('click',()=>portalStartEventConnectionFromList(b.dataset.eventConnectFromList)));
@@ -9086,6 +9088,8 @@ if(prefix==='home'){
     box.querySelectorAll('[data-event-open-portal]').forEach(b=>b.addEventListener('click',()=>portalOpenGeneralEvent(flowEvent(b.dataset.eventOpenPortal))));
     box.querySelectorAll('[data-ui-event-coming]').forEach(b=>b.addEventListener('click',()=>{const event=eventItems.find(x=>x.id===b.dataset.uiEventComing);openModal(event?.relay?'RELAY EVENT BASE':'EVENT BASE',event?.relay?'駅伝EVENT BASE':'準備中');}));
     box.querySelectorAll('[data-event-rsvp-date]').forEach(b=>b.addEventListener('click',()=>openScheduleDetail(b.dataset.eventRsvpDate)));
+    // v324: EVENT BASEにつながっていない大会・イベントは、上の部分を押すとカレンダーのその日の参加画面へ
+    box.querySelectorAll('[data-event-top-date] .eventTop').forEach(top=>{top.classList.add('trEventTopTap');top.setAttribute('role','button');top.addEventListener('click',e=>{if(e.target.closest('button,a'))return;openScheduleDetail(top.closest('[data-event-top-date]').dataset.eventTopDate);});});
   }
   function renderEventTab(){
     const {upcoming:allUpcoming,past:allPast}=splitEventItems();
@@ -25233,16 +25237,41 @@ window.__trFilePickStart=function(input){
     if(bigP&&bigP.dataset.key!==pkey){bigP.dataset.key=pkey;const pat=Number(verP[gate.uid])||0;if(pat)paintProf(bigP,gate.uid,name);else{bigP.style.background='#b9bdc2';bigP.innerHTML=SIL;}}
     p.querySelector('[data-a="delprof"]').hidden=!verP[gate.uid];
     big.dataset.uid=gate.uid;big.dataset.name=name;bigP.dataset.uid=gate.uid;bigP.dataset.name=name;
-    const field=p.querySelector('#trAvCommentInput');
-    if(field&&document.activeElement!==field)field.value=comments[gate.uid]||'';
-    const cfield=p.querySelector('#trAvChatCommentInput');
-    if(cfield&&document.activeElement!==cfield)cfield.value=chatComments[gate.uid]||'';
+    // v324: 入力欄はなく、保存済みの内容を表示するだけ（入力は別画面。ここで書きかけが消されることはない）
+    for(const ed of p.querySelectorAll('.trAvCommentEditor[data-ckind]')){
+      const v=String((ed.dataset.ckind==='chat'?chatComments:comments)[gate.uid]||'');
+      const view=ed.querySelector('.trAvCommentView');if(view){view.textContent=v||'まだ登録していません';view.classList.toggle('empty',!v);}
+      const st=ed.querySelector('.trAvCommentState');if(st)st.textContent=v?'登録済':'未登録';
+      const b=ed.querySelector('button[data-a="edit-comment"]');if(b)b.textContent=v?'編集する':'入力する';
+    }
+  }
+  // v324: コメントの入力画面（画面いっぱい）
+  function openCommentEditor(kind){
+    const gate=g();if(!gate?.uid)return;
+    if(document.getElementById('trCommentEditor'))return;
+    const chat=kind==='chat',start=String((chat?chatComments:comments)[gate.uid]||'');
+    const ov=document.createElement('div');ov.id='trCommentEditor';ov.setAttribute('role','dialog');ov.setAttribute('aria-modal','true');
+    ov.innerHTML='<div class="trCEHead"><b>'+(chat?'チャットのコメント':'プロフィールのコメント')+'</b><button type="button" data-x="close">閉じる</button></div><small class="trCENote">'+(chat?'チャット画像を押したときに表示されます':'プロフィール画像を押したときに表示されます')+'（120文字まで）</small><textarea maxlength="120" placeholder="'+(chat?'チャットでのひとこと':'自己紹介やひとこと')+'"></textarea><div class="trCEFoot"><small class="trCECount"></small><button type="button" data-x="save" class="trOk">保存</button></div><p class="trCEState" role="status"></p>';
+    document.body.appendChild(ov);
+    const ta=ov.querySelector('textarea'),cnt=ov.querySelector('.trCECount'),st=ov.querySelector('.trCEState'),save=ov.querySelector('[data-x="save"]');
+    ta.value=start;const upd=()=>{cnt.textContent=ta.value.length+' / 120';};upd();ta.addEventListener('input',upd);
+    setTimeout(()=>{try{ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);}catch(_){}},60);
+    const close=()=>{ov.remove();paintMine();};
+    ov.addEventListener('click',async e=>{
+      const x=e.target.closest('[data-x]')?.dataset.x;if(!x)return;
+      if(x==='close'){if(ta.value.trim()!==start.trim()&&!confirm('保存せずに閉じますか？'))return;close();return;}
+      if(x==='save'){
+        const v=ta.value.trim();save.disabled=true;st.textContent='保存しています…';
+        try{await g().avatarCommentPut(v,chat?'chat':'prof');(chat?chatComments:comments)[gate.uid]=v;close();}
+        catch(err){st.textContent='保存できませんでした：'+String(err?.code||err?.message||err).slice(0,95);save.disabled=false;}
+      }
+    });
   }
   function addPanel(){
     if(document.getElementById('trAvatarPanel'))return;
     const box=document.getElementById('trImageProfileMount');if(!box)return; // v303: 画像・プロフィール画面
     const sec=document.createElement('div');sec.id='trAvatarPanel';
-    sec.innerHTML='<div class="portalPanelHead"><small>IMAGE</small><b>画像</b></div><div class="trAvPair"><div class="trAvCol"><span class="trAvBig trAvBigP" data-kind="prof" role="button" aria-label="プロフィール画像の全体を見る"></span><b>プロフィール画像</b><small>出欠席の一覧などに表示</small><button type="button" data-a="setprof">設定する</button><button type="button" data-a="delprof" hidden>消す</button></div><div class="trAvCol"><span class="trAvBig trAvBigC" data-kind="chat" role="button" aria-label="チャット画像の全体を見る"></span><b>チャット画像</b><small>チャットに表示</small><button type="button" data-a="set">設定する</button><button type="button" data-a="del" hidden>消す</button></div></div><p>どちらも丸く切り抜いて表示し、押すと切り抜く前の全体が表示されます。変更はそれぞれ10分に1回までです。</p><div class="trAvCommentEditor"><label for="trAvCommentInput">プロフィールのコメント</label><small class="trAvCommentNote">プロフィール画像を押したときに表示</small><textarea id="trAvCommentInput" maxlength="120" placeholder="自己紹介やひとこと（120文字まで）"></textarea><button type="button" data-a="save-comment">保存</button><small class="trAvCommentState" role="status"></small></div><div class="trAvCommentEditor"><label for="trAvChatCommentInput">チャットのコメント</label><small class="trAvCommentNote">チャット画像を押したときに表示</small><textarea id="trAvChatCommentInput" maxlength="120" placeholder="チャットでのひとこと（120文字まで）"></textarea><button type="button" data-a="save-chat-comment">保存</button><small class="trAvCommentState" role="status"></small></div>';
+    sec.innerHTML='<div class="portalPanelHead"><small>IMAGE</small><b>画像</b></div><div class="trAvPair"><div class="trAvCol"><span class="trAvBig trAvBigP" data-kind="prof" role="button" aria-label="プロフィール画像の全体を見る"></span><b>プロフィール画像</b><small>出欠席の一覧などに表示</small><button type="button" data-a="setprof">設定する</button><button type="button" data-a="delprof" hidden>消す</button></div><div class="trAvCol"><span class="trAvBig trAvBigC" data-kind="chat" role="button" aria-label="チャット画像の全体を見る"></span><b>チャット画像</b><small>チャットに表示</small><button type="button" data-a="set">設定する</button><button type="button" data-a="del" hidden>消す</button></div></div><p>どちらも丸く切り抜いて表示し、押すと切り抜く前の全体が表示されます。変更はそれぞれ10分に1回までです。</p><div class="trAvCommentEditor" data-ckind="prof"><b class="trAvCommentTitle">プロフィールのコメント</b><small class="trAvCommentNote">プロフィール画像を押したときに表示</small><div class="trAvCommentView" data-a="edit-comment" role="button" tabindex="0"></div><div class="trAvCommentFoot"><small class="trAvCommentState" role="status"></small><button type="button" data-a="edit-comment">編集する</button></div></div><div class="trAvCommentEditor" data-ckind="chat"><b class="trAvCommentTitle">チャットのコメント</b><small class="trAvCommentNote">チャット画像を押したときに表示</small><div class="trAvCommentView" data-a="edit-comment" role="button" tabindex="0"></div><div class="trAvCommentFoot"><small class="trAvCommentState" role="status"></small><button type="button" data-a="edit-comment">編集する</button></div></div>';
     box.appendChild(sec);
     const scr=document.getElementById('screen-personal-image');
     if(scr)new MutationObserver(()=>{if(!scr.classList.contains('hidden'))paintMine();}).observe(scr,{attributes:true,attributeFilter:['class']});
@@ -25254,17 +25283,7 @@ window.__trFilePickStart=function(input){
       if(!gate?.canSendChat?.()){say('設定できません','本人接続と参加の承認が必要です。');return;}
       if(a==='set')openSet('chat');if(a==='del')removeMine();
       if(a==='setprof')openSet('prof');if(a==='delprof')removeMineProf();
-      if(a==='save-comment'||a==='save-chat-comment'){
-        const chat=a==='save-chat-comment',ed=btn.closest('.trAvCommentEditor');
-        const field=ed.querySelector('textarea'),status=ed.querySelector('.trAvCommentState');
-        const comment=String(field.value||'').trim();
-        btn.disabled=true;status.textContent='保存しています…';
-        try{
-          await gate.avatarCommentPut(comment,chat?'chat':'prof');
-          (chat?chatComments:comments)[gate.uid]=comment;status.textContent='保存しました。';
-        }catch(err){status.textContent='保存できませんでした：'+String(err?.code||err?.message||err).slice(0,95);}
-        finally{btn.disabled=false;}
-      }
+      if(a==='edit-comment'){openCommentEditor(btn.closest('.trAvCommentEditor')?.dataset.ckind==='chat'?'chat':'prof');}
     });
     paintMine();
   }
@@ -26429,6 +26448,23 @@ body.portalChatIsolated > #trWhoModal,html body > #trWhoModal{visibility:visible
 .portalScheduleEntryRow.trPracticeNotice b{font-weight:900}
 .portalScheduleEntryRow.trPracticeNotice.cancel b{color:#c8102e}
 .portalScheduleEntryRow.trPracticeNotice.change b{color:#b86a00}
+</style>
+<style id="v324-comment-editor">
+#trAvatarPanel .trAvCommentEditor{display:grid;gap:6px}
+#trAvatarPanel .trAvCommentTitle{font-size:15px}
+#trAvatarPanel .trAvCommentView{white-space:pre-wrap;word-break:break-word;line-height:1.65;font-size:15px;padding:12px 14px;border:1px solid rgba(128,128,128,.4);border-radius:12px;min-height:48px;cursor:pointer}
+#trAvatarPanel .trAvCommentView.empty{opacity:.6}
+#trAvatarPanel .trAvCommentFoot{display:flex;align-items:center;justify-content:space-between;gap:10px}
+#trAvatarPanel .trAvCommentState{font-size:13px;font-weight:700;opacity:.8}
+#trCommentEditor{position:fixed;inset:0;z-index:100000;background:var(--paper,#f7f5f0);color:var(--ink,#1d2321);display:flex;flex-direction:column;gap:8px;padding:calc(env(safe-area-inset-top,0px) + 14px) 16px calc(env(safe-area-inset-bottom,0px) + 14px)}
+#trCommentEditor .trCEHead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+#trCommentEditor .trCEHead b{font-size:17px}
+#trCommentEditor .trCENote{font-size:12px;opacity:.75}
+#trCommentEditor textarea{flex:1;min-height:180px;width:100%;box-sizing:border-box;font-size:17px;line-height:1.7;padding:14px;border-radius:12px;border:1px solid rgba(128,128,128,.5);resize:none;background:#fff;color:#1d2321}
+#trCommentEditor .trCEFoot{display:flex;align-items:center;justify-content:space-between;gap:10px}
+#trCommentEditor button{min-height:46px;padding:0 18px;border-radius:12px;font-weight:800}
+#trCommentEditor .trCEState{min-height:1em;font-size:13px;margin:0}
+.trEventTopTap{cursor:pointer}
 </style>
 </body>
 </html>
