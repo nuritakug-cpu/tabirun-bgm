@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v309 | 2026-11-04 | Parent v308. Rules v308 のまま。表示だけの変更。出欠席一覧の名前を、回答したときの名前ではなく、今のプロフィールの表示名（nameBook/<uid>/displayName）で出す。プロフィールの名前を変えると、過去の回答の一覧も新しい名前になる。代理の「代理：保護者の名前」も保護者の今の表示名で出す。名前帳が読めないときだけ、回答したときの名前を出す。 -->
 <!-- TOP RUN PORTAL v308 | 2026-11-04 | Parent v307. REQUIRES Rules v308（v306＋practiceResponses/<練習>/<子>・eventResponses/<イベント>/<子> を、familyOf/<保護者>/<子> でつながった保護者が書ける。書いた保護者は proxyByUid・proxyByName に残る）。保護者による出欠の代理回答：(1) 予定の詳細と「出欠回答」の一覧の上に「代理で回答」のスイッチ。オフのときは今までどおり自分の回答。オンにするとお子さんを選び、ボタンはお子さんの回答になる（誤タップ防止）。(2) お子さん本人がすでに回答しているときは、同じ回答を押すと「すでに〇〇です」と知らせて保存しない。違う回答に変えるときは「本人が〇〇と回答しています。代理で変えますか？本人の希望と違う回答になります」と確認してから保存。(3) 出欠席一覧では、代理で回答した人の名前の下に「代理：保護者の名前」と表示。(4) お子さんが大会に出走登録済みのときは、代理でも当日の予定を変えられない（本人と同じ決まり）。保護者自身の回答とお子さんの回答は別なので、保護者も参加なら2人として数える。(5) お子さん本人の画面には「〇〇さんが代理で回答」と出る。本人が同じ回答を押し直すと、本人の回答に戻る。 -->
 <!-- TOP RUN PORTAL v307 | 2026-11-04 | Parent v306. Rules v306 のまま（代理出走のRulesは駅伝BASEの大会もすでに対象）。保護者の代理出走登録を駅伝（駅伝BASEの大会）にも広げた。v305では駅伝だけ対象外になっていたため、端末のないお子さんが駅伝に登録できなかった。保存先・形式・取消の条件は本人登録・他の大会の代理登録と同じ（events/<大会>/players、本人はお子さんのUID、代理した保護者は proxyByUid）。 -->
 <!-- TOP RUN PORTAL v306 | 2026-11-04 | Parent v305. REQUIRES Rules v306（v305＋練習予定の保存場所を 日付・日付-2・日付-3 の3つまで許可。記録練習の記録 pastRecords の practiceDate も同じ形を許可）。練習を1日3件まで登録できるようにした（構想時からの決め事。合宿は1日最大3回）。(1) 1件目は今までどおり practices/日付 に保存し、2件目・3件目は practices/日付-2・日付-3 に保存。今ある予定と出欠の回答はそのまま使える。(2) 出欠は練習ごとに分けて保存（practiceResponses/日付-2 など）。朝は参加・午後は不参加ができる。(3) カレンダー・予定の詳細・一覧（出欠回答）・管理画面は、同じ日の練習を開始時刻の順に並べ、2件以上の日は「1回目」「2回目」と表示。(4) 練習予定の登録・一括登録は、同じ日に3件まで。同じ日・同じ開始時刻の練習は重複として登録しない。(5) 記録練習の記録は、その回の練習に付く。イベントは以前から同じ日に複数登録できる（変更なし）。 -->
@@ -6499,7 +6500,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v308</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v309</b></div>
   </div>
 </div>
 
@@ -6690,7 +6691,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v308</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v309</b></div>
   </div>
 </div>
 
@@ -8450,8 +8451,8 @@ if(prefix==='home'){
         (['developer','admin'].includes(gateway.role)||gateway.sharedResponseReady?.[selectedKey]?.[key]===true);
       if(!ready)return {ready:false,error:!!gateway.errors?.[dataKind],rows:[]};
       return {ready:true,error:false,rows:Object.entries(gateway[dataKind]?.[key]||{}).map(([uid,row])=>({
-        uid,name:String(row?.name||'').trim().slice(0,24),answer:row?.answer,
-        createdAt:Number(row?.createdAt||0),updatedAt:Number(row?.updatedAt||0),note:'',proxyByName:String(row?.proxyByName||'').slice(0,24)
+        uid,name:String(gateway.nameBookRaw?.[uid]?.displayName||row?.name||'').trim().slice(0,24),answer:row?.answer,
+        createdAt:Number(row?.createdAt||0),updatedAt:Number(row?.updatedAt||0),note:'',proxyByName:String((row?.proxyByUid&&gateway.nameBookRaw?.[row.proxyByUid]?.displayName)||row?.proxyByName||'').slice(0,24)
       })).filter(row=>/^[A-Za-z0-9_-]{6,128}$/.test(row.uid)&&!!row.name)};
     }
     // Offline preview is not a published roster and never confers Firebase approval.
