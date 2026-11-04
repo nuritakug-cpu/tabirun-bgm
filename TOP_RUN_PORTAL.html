@@ -1,3 +1,8 @@
+<!-- TOP RUN PORTAL v304 | 2026-11-04 | Parent v303. REQUIRES Rules v304（v302＋profileIcons/<uid>・profileFull/<uid>・nameBook/<uid>/profileAt。v303のfullAtは使わない）。画像を2種類に分けた：チャット画像＝丸 avatars＋全体 avatarFull（版 avatarAt、チャットで表示）。プロフィール画像＝丸 profileIcons＋全体 profileFull（版 profileAt、出欠席一覧・マイページ上部・今後の大会の出走予定に表示）。どちらも設定時に丸く切り抜き、切り抜き前の全体も保存。アイコンを押すと、その画像の全体とコメントを表示。プロフィール画像が未設定の人は、出欠席などでチャット画像を代わりに表示。通信量：丸は1人1回だけ読み端末に保存、全体は押したときだけ読む。常時監視の追加なし。 -->
+<!-- TOP RUN PORTAL v303 | 2026-11-04 | Parent v302. REQUIRES Rules v303（v302＋nameBook/<uid>/fullAt）。マイページの「画像・マイページ」のCOMING SOONを解除し、新しい画面「画像・プロフィール」を開く。チャット画像（丸・avatars）とプロフィール画像（切り抜きなし・avatarFull）を並べて、別々に設定・削除できる。プロフィール画像の版は nameBook/<uid>/fullAt。コメントもこの画面へ移動（プロフィール編集の中からは外す）。アイコンを押すとプロフィール画像（未設定ならチャット画像）とコメントを表示。通信量：プロフィール画像はタップ時だけ読み、端末に保存。常時監視の追加なし。 -->
+<!-- TOP RUN PORTAL v302 | 2026-11-04 | 統合版。ChatGPT作成 v301（v300 出欠席一覧のアイコン、v301 全体写真 avatarFull・プロフィールコメント）に、Claude作成 v300 の通信量メーター表示修正（全行表示・名前の省略をやめる・記録を数え直す）を合わせた。REQUIRES Rules v302（v299＋avatarFull/<uid>＋nameBookのprofileComment・commentAt）。Rules v299のままでは画像の設定・コメント保存・開発者のアイコン削除が失敗する。 -->
+<!-- TOP RUN PORTAL v301 | 2026-11-04 | Parent v300 physical HTML. アイコンタップ時は切抜き前の写真全体を別の軽量画像として表示。MY PAGEコメントをnameBook共有情報から表示・編集。既存 avatars/<uid> は小さな丸アイコンのまま維持し、別の avatarFull/<uid> はタップ時のみ取得。nameBook/<uid> にコメント。実Rules未取得のためFirebase保存・別端末は未検証のCANDIDATE。本番未適用。 -->
+<!-- TOP RUN PORTAL v300 | 2026-11-04 | Parent v299 physical HTML. 出欠席一覧（練習・大会）に既存のチャット/MY PAGEアイコンを表示。展開中の一覧だけアイコンを読み込み、既存 avatars/<uid> / nameBook avatarAt / IndexedDB キャッシュと拡大モーダルを共用。新規Firebase READ/WRITE経路・onValue・Auth/UID/profileId/Rulesは追加しない。チャットのアイコン拡大表示を見やすく調整。-->
 <!-- TOP RUN PORTAL v299 | 2026-11-04 | Parent v298. 使うRules：TOPRUNRULESv299.json（v266＋ekidenLegResults＋チャット・ルームの本人による修正・削除）。通信量メーター：読めなかった場所と理由（PERMISSION_DENIEDなど）を赤字で表示。場所名が「＊」だけになる行は元の名前の一部を表示。読み書きの場所・Auth・UIDは変更なし。 -->
 <!-- TOP RUN PORTAL v298 | 2026-11-04 | Parent v297. Rules v285 のまま（変更なし）。通信量対策：(1) 大会記録の出走者データ（events/<大会>/players、最大8大会）を常時監視（onValue）から「1回だけ読む（get）」に変更。LIVE中の更新が全員に流れ続けるのを止める。10分以上たってPORTALに戻ったときだけ読み直す。(2) 開発者設定に「通信量メーター（この端末）」：場所ごとの読み込み回数と量（目安）を今日の分だけ表示。読み書きの場所・Auth・UID・Rulesは変更なし。 -->
 <!-- TOP RUN PORTAL v297 | 2026-11-04 | Parent v296. Rules v285 のまま。表示だけ：リアクションを全体的に小さく。大きく見えた絵文字・1文字を小さくして2文字に合わせる（2文字は大きくしない）。メッセージ下26px→22px、長押しの枠の中36px→30px。枠の大きさはv296のまま。 -->
@@ -6206,10 +6211,9 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </button>
 
 
-      <button class="portalPanel portalPanelButton" type="button" data-coming="画像・マイページカスタマイズ">
-        <div class="portalPanelHead"><small>CUSTOMIZE</small><b>画像・マイページ</b></div>
-        
-        <span class="portalComing">COMING SOON</span>
+      <button class="portalPanel portalPanelButton" type="button" data-screen="personal-image" id="trImageProfileEntry">
+        <div class="portalPanelHead"><small>PROFILE</small><b>画像・プロフィール</b></div>
+        <span class="portalPanelAction">チャット画像・プロフィール画像・コメント ›</span>
       </button>
     </section>
   </div>
@@ -6237,6 +6241,15 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       <div id="portalColorState" role="status" aria-live="polite"></div>
     </section>
   </div>
+</div>
+
+<div class="portalScreen hidden" id="screen-personal-image" aria-hidden="true">
+  <header class="portalScreenHead">
+    <button class="portalBack" type="button" data-back>← MY PAGE</button>
+    <div><small>PROFILE</small><b>画像・プロフィール</b></div>
+    <div class="portalHeadSpacer"></div>
+  </header>
+  <div class="portalScreenBody"><section class="portalPanel" id="trImageProfileMount"></section></div>
 </div>
 
 <div class="portalScreen hidden" id="screen-goal-tools" aria-hidden="true">
@@ -6482,7 +6495,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v299</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v304</b></div>
   </div>
 </div>
 
@@ -6673,7 +6686,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v299</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v304</b></div>
   </div>
 </div>
 
@@ -8424,7 +8437,7 @@ if(prefix==='home'){
     return limitedNote+`<div class="portalParticipationGroups" aria-label="共有出欠・回答日時">${options.map(([answer,label])=>{
       const rows=snapshot.groups[answer]||[];
       const identifier=kind+':'+key+':'+answer;
-      return `<details class="portalRsvpRoster" data-roster-key="${esc(identifier)}"><summary><strong class="portalRsvpGroupLabel">${label}</strong><span class="portalRsvpGroupCount">${rows.length}人</span></summary>${rows.length?`<div class="portalRsvpPeople">${rows.map((row,i)=>`<div class="portalRsvpPerson"><span>${i+1}</span><div class="portalRsvpPersonMain"><b>${esc(row.name)}</b>${row.note?`<small>${esc(row.note)}</small>`:''}<small class="portalRsvpTime">${esc(portalAttendanceTimeText(row))}</small></div></div>`).join('')}</div>`:'<p class="portalRsvpEmpty">この回答の人はいません。</p>'}</details>`;
+      return `<details class="portalRsvpRoster" data-roster-key="${esc(identifier)}"><summary><strong class="portalRsvpGroupLabel">${label}</strong><span class="portalRsvpGroupCount">${rows.length}人</span></summary>${rows.length?`<div class="portalRsvpPeople">${rows.map((row,i)=>`<div class="portalRsvpPerson"><span>${i+1}</span><button type="button" class="trAv trAvRoster" data-kind="prof" data-uid="${esc(row.uid)}" data-name="${esc(row.name)}" aria-label="${esc(row.name)}さんのプロフィール画像を大きく表示" title="プロフィール画像を見る"><span aria-hidden="true">&#128100;</span></button><div class="portalRsvpPersonMain"><b>${esc(row.name)}</b>${row.note?`<small>${esc(row.note)}</small>`:''}<small class="portalRsvpTime">${esc(portalAttendanceTimeText(row))}</small></div></div>`).join('')}</div>`:'<p class="portalRsvpEmpty">この回答の人はいません。</p>'}</details>`;
     }).join('')}</div>`;
   }
   function scheduleEventAnswer(eventId,actorId){
@@ -17840,30 +17853,102 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       void window.__TR_STAGE3_NOTIFY__?.('chat',id);
     };
     // v235: アイコン。avatars/<uid> に本体（128px・20KB以下）、変更日時を nameBook/<uid>/avatarAt に入れる。
-    gate.avatarPut=async(data)=>{
+    gate.avatarPut=async(data,full)=>{ // v304: チャット画像。丸（avatars）と切り抜き前の全体（avatarFull）
       if(!gate.canSendChat()||auth.currentUser?.uid!==gate.uid)throw Error('本人認証・利用承認が必要です');
       if(typeof data!=='string'||!data.startsWith('data:image/jpeg;base64,')||data.length>27000)throw Error('アイコンが大きすぎます');
+      if(typeof full!=='string'||!full.startsWith('data:image/jpeg;base64,')||full.length>120000)throw Error('全体の画像が大きすぎます');
       const prev=Number(gate.nameBookRaw?.[gate.uid]?.avatarAt)||0;
       if(prev&&Date.now()-prev<600000&&gate.role!=='developer')throw Error('アイコンの変更は10分に1回までです。少し待ってからお試しください。'); // v238: 開発者は制限なし
       const at=Date.now();
-      await dbMod.set(ref('avatars/'+gate.uid),{at,data});
-      await dbMod.update(ref('nameBook/'+gate.uid),{displayName:gate.displayName,chatName:(gate.chatName||gate.displayName),updatedAt:Date.now(),avatarAt:at});
+      // 小アイコンと全体写真は別ノード。旧PORTALが小アイコン取得時に重い写真まで読まない。
+      // 同じ既存Firebase gatewayによる一括更新。Rules未適用なら全体が拒否され、既存データは変えない。
+      const u={};
+      u['avatars/'+gate.uid]={at,data};
+      u['avatarFull/'+gate.uid]={at,data:full};
+      u['nameBook/'+gate.uid+'/displayName']=gate.displayName;
+      u['nameBook/'+gate.uid+'/chatName']=gate.chatName||gate.displayName;
+      u['nameBook/'+gate.uid+'/updatedAt']=at;
+      u['nameBook/'+gate.uid+'/avatarAt']=at;
+      await dbMod.update(ref(''),u);
       return at;
     };
     gate.avatarRemove=async()=>{
       if(!gate.canSendChat()||auth.currentUser?.uid!==gate.uid)throw Error('本人認証・利用承認が必要です');
-      await dbMod.remove(ref('avatars/'+gate.uid));
-      await dbMod.update(ref('nameBook/'+gate.uid),{displayName:gate.displayName,chatName:(gate.chatName||gate.displayName),updatedAt:Date.now(),avatarAt:0});
+      const u={};
+      u['avatars/'+gate.uid]=null;
+      u['avatarFull/'+gate.uid]=null;
+      u['nameBook/'+gate.uid+'/displayName']=gate.displayName;
+      u['nameBook/'+gate.uid+'/chatName']=gate.chatName||gate.displayName;
+      u['nameBook/'+gate.uid+'/updatedAt']=Date.now();
+      u['nameBook/'+gate.uid+'/avatarAt']=0;
+      await dbMod.update(ref(''),u);
+    };
+    // v304: プロフィール画像。丸（profileIcons）と切り抜き前の全体（profileFull）。版は nameBook/<uid>/profileAt。チャット画像とは別に10分に1回まで。
+    gate.profilePut=async(data,full)=>{
+      if(!gate.canSendChat()||auth.currentUser?.uid!==gate.uid)throw Error('本人認証・利用承認が必要です');
+      if(typeof data!=='string'||!data.startsWith('data:image/jpeg;base64,')||data.length>27000)throw Error('アイコンが大きすぎます');
+      if(typeof full!=='string'||!full.startsWith('data:image/jpeg;base64,')||full.length>120000)throw Error('全体の画像が大きすぎます');
+      const prev=Number(gate.nameBookRaw?.[gate.uid]?.profileAt)||0;
+      if(prev&&Date.now()-prev<600000&&gate.role!=='developer')throw Error('プロフィール画像の変更は10分に1回までです。少し待ってからお試しください。');
+      const at=Date.now(),u={};
+      u['profileIcons/'+gate.uid]={at,data};
+      u['profileFull/'+gate.uid]={at,data:full};
+      u['nameBook/'+gate.uid+'/displayName']=gate.displayName;
+      u['nameBook/'+gate.uid+'/chatName']=gate.chatName||gate.displayName;
+      u['nameBook/'+gate.uid+'/updatedAt']=at;
+      u['nameBook/'+gate.uid+'/profileAt']=at;
+      await dbMod.update(ref(''),u);
+      return at;
+    };
+    gate.profileRemove=async()=>{
+      if(!gate.canSendChat()||auth.currentUser?.uid!==gate.uid)throw Error('本人認証・利用承認が必要です');
+      const u={};
+      u['profileIcons/'+gate.uid]=null;
+      u['profileFull/'+gate.uid]=null;
+      u['nameBook/'+gate.uid+'/displayName']=gate.displayName;
+      u['nameBook/'+gate.uid+'/chatName']=gate.chatName||gate.displayName;
+      u['nameBook/'+gate.uid+'/updatedAt']=Date.now();
+      u['nameBook/'+gate.uid+'/profileAt']=0;
+      await dbMod.update(ref(''),u);
+    };
+    gate.profileGet=async(uid)=>{
+      if(!/^[A-Za-z0-9_-]{6,128}$/.test(String(uid||'')))return '';
+      const v=(await dbMod.get(ref('profileIcons/'+uid+'/data'))).val();
+      return typeof v==='string'?v:'';
+    };
+    gate.profileFullGet=async(uid)=>{
+      if(!/^[A-Za-z0-9_-]{6,128}$/.test(String(uid||'')))return '';
+      const v=(await dbMod.get(ref('profileFull/'+uid))).val();
+      const current=Number(gate.nameBookRaw?.[uid]?.profileAt)||0;
+      if(!v||!current||Number(v.at)!==current||typeof v.data!=='string')return '';
+      return v.data;
     };
     gate.avatarGet=async(uid)=>{
       if(!/^[A-Za-z0-9_-]{6,128}$/.test(String(uid||'')))return '';
-      const v=(await dbMod.get(ref('avatars/'+uid))).val();
-      return v&&typeof v.data==='string'?v.data:'';
+      const v=(await dbMod.get(ref('avatars/'+uid+'/data'))).val();
+      return typeof v==='string'?v:'';
+    };
+    // v301: 全体写真は画像を開くときだけ READ（一覧では読まない）。
+    gate.avatarFullGet=async(uid)=>{
+      if(!/^[A-Za-z0-9_-]{6,128}$/.test(String(uid||'')))return '';
+      const v=(await dbMod.get(ref('avatarFull/'+uid))).val();
+      // v304: チャット画像の版（avatarAt）と一致するものだけ表示。
+      const current=Number(gate.nameBookRaw?.[uid]?.avatarAt)||0;
+      if(!v||!current||Number(v.at)!==current||typeof v.data!=='string')return '';
+      return v.data;
+    };
+    // v301: 既存 nameBook の本人レコードに短文だけを追加。独立購読や別人物DBは作らない。
+    gate.avatarCommentPut=async(comment)=>{
+      if(!gate.canSendChat()||auth.currentUser?.uid!==gate.uid)throw Error('本人認証・利用承認が必要です');
+      const v=String(comment||'').trim();if(v.length>120||/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(v))throw Error('120文字以内で入力してください');
+      await dbMod.update(ref('nameBook/'+gate.uid),{profileComment:v,commentAt:Date.now()});
     };
     gate.avatarRemoveOther=async(uid)=>{
       if(gate.role!=='developer'||!gate.roleVerified||auth.currentUser?.uid!==gate.uid)throw Error('開発者の権限が必要です');
       if(!/^[A-Za-z0-9_-]{6,128}$/.test(String(uid||'')))throw Error('対象を確認できません');
-      await dbMod.remove(ref('avatars/'+uid));
+      // 全体写真と丸いアイコンを同時に削除。Rulesには開発者の削除権限が必要。
+      const u={};u['avatarFull/'+uid]=null;u['avatars/'+uid]=null;u['profileIcons/'+uid]=null;u['profileFull/'+uid]=null; // v304: 4つとも
+      await dbMod.update(ref(''),u);
     };
     // v233: チャットの写真。本体（chatImages）・見本（chatImageThumbs）・一覧（chatImageIndex：日時だけ）を別々に保存。
     gate.chatImagePut=async(id,full,thumb)=>{
@@ -24285,7 +24370,17 @@ window.__trFilePickStart=function(input){
 #screen-chat :is(#portalChatThread,#trRoomThread) .msg .msgHead span:first-child i.trAv{position:static!important;font-style:normal;display:inline-flex!important;vertical-align:middle;width:22px;height:22px;margin-right:6px;border-radius:50%;overflow:hidden;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;cursor:pointer;box-sizing:border-box;border:1px solid rgba(128,128,128,.3);pointer-events:auto}
 .trAv img{width:100%;height:100%;object-fit:cover;display:block}
 .trAv img,.trAvBig img{width:100%;height:100%;object-fit:cover;display:block}
-#trAvatarPanel{margin:16px 0 0;padding:14px 0 0!important;border-top:1px solid rgba(128,128,128,.3)!important;border:0!important;box-shadow:none!important;background:transparent!important}
+#trAvatarPanel{margin:0;padding:0!important;border:0!important;box-shadow:none!important;background:transparent!important}
+#trAvatarPanel .trAvPair{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
+#trAvatarPanel .trAvCol{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;padding:12px 8px;border:1px solid rgba(128,128,128,.28);border-radius:14px}
+#trAvatarPanel .trAvCol>b{font-size:14px}
+#trAvatarPanel .trAvCol>small{font-size:11px;opacity:.75;line-height:1.4}
+#trAvatarPanel .trAvCol button{width:100%}
+#trAvatarPanel .trAvCol .trAvBig{width:72px;height:72px;cursor:pointer}
+#trAvatarPanel .trAvFullBox{width:96px;height:72px;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:rgba(128,128,128,.18);font-size:11px;opacity:.9}
+#trAvatarPanel .trAvFullBox img{width:100%;height:100%;object-fit:contain;display:block;background:#111b18}
+#trAvSheet .trAvFullPrev{width:100%;height:200px;border-radius:12px;overflow:hidden;background:#111b18;margin:0 auto 10px}
+#trAvSheet .trAvFullPrev img{width:100%;height:100%;object-fit:contain}
 #trAvatarPanel .trAvRow{display:flex;gap:10px;align-items:center;flex-wrap:nowrap}
 #trAvatarPanel .trAvBig{width:56px;height:56px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:#fff;flex:none;border:1px solid rgba(128,128,128,.35)}
 #trAvatarPanel button{min-height:40px;padding:0 12px;border-radius:11px;font-weight:800;font-size:14px;white-space:nowrap}
@@ -24304,6 +24399,46 @@ window.__trFilePickStart=function(input){
 #trAvView b{color:#fff;font-size:16px}
 #trAvView button{min-height:44px;padding:0 16px;border-radius:12px;border:0;font-weight:800}
 </style>
+<style id="v300-attendance-avatar-style">
+/* v300: 共有出欠一覧のみに適用。プロフィール画像は既存アイコンのキャッシュを再利用。 */
+#screen-schedule-detail .portalParticipationGroups .portalRsvpPerson .trAvRoster{
+  appearance:none!important;-webkit-appearance:none!important;
+  flex:0 0 34px!important;width:34px!important;height:34px!important;
+  min-width:34px!important;min-height:34px!important;max-width:34px!important;
+  padding:0!important;margin:0!important;
+  box-sizing:border-box!important;border-radius:50%!important;
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  overflow:hidden!important;background:#b9bdc2!important;
+  border:1px solid rgba(110,120,122,.42)!important;box-shadow:none!important;
+  line-height:1!important;cursor:pointer!important;color:#f4f5f6!important;
+  -webkit-tap-highlight-color:transparent;
+}
+#screen-schedule-detail .portalParticipationGroups .portalRsvpPerson .trAvRoster img{
+  display:block;width:100%;height:100%;object-fit:cover;
+}
+#screen-schedule-detail .portalParticipationGroups .portalRsvpPerson .trAvRoster:focus-visible{
+  outline:2px solid #d8b52a!important;outline-offset:3px!important;
+}
+#screen-schedule-detail .portalParticipationGroups .portalRsvpPerson .trAvRoster span{font-size:19px!important;line-height:1!important;color:#f4f5f6!important}
+/* 拡大表示のみ：写真サイズを少し広げる。チャットのテキスト・吹き出し等は変更しない。 */
+#trAvView .trAvViewImg{width:min(84vw,360px,48dvh)!important;height:min(84vw,360px,48dvh)!important;flex:0 0 auto}
+</style>
+<style id="v301-profile-preview-style">
+/* v301: 拡大画像は丸いアイコンの拡大ではなく、トリミング前の全体が収まる長方形。 */
+#trAvView{box-sizing:border-box;padding:calc(22px + env(safe-area-inset-top,0px)) 16px calc(24px + env(safe-area-inset-bottom,0px));gap:12px!important;overflow-y:auto}
+#trAvView .trAvViewImg{width:min(92vw,480px)!important;max-width:100%!important;height:auto!important;min-height:140px;max-height:58dvh!important;aspect-ratio:4/3;flex:0 1 auto!important;background:#111b18!important;border-radius:13px!important;overflow:hidden;position:relative}
+#trAvView .trAvViewImg img{width:100%!important;height:100%!important;object-fit:contain!important;border-radius:0!important}
+#trAvView .trAvViewImg.trAvLegacy{width:min(70vw,290px)!important;aspect-ratio:1!important;border-radius:50%!important}
+#trAvView .trAvComment{color:#f8f6ef;font-size:14px;line-height:1.6;max-width:440px;width:90vw;text-align:center;overflow-wrap:anywhere;white-space:pre-wrap;margin:0;}
+#trAvView .trAvStatus{color:#e2ddce;font-size:12px;text-align:center;max-width:430px;line-height:1.6;white-space:pre-wrap}
+#trAvView b{max-width:90vw;overflow-wrap:anywhere}
+#trAvView button[data-a="close"]{background:#d8b52a;color:#202620;padding:0 30px}
+#trAvatarPanel .trAvCommentEditor{display:flex;flex-direction:column;gap:9px;margin-top:15px;padding-top:12px;border-top:1px solid rgba(128,128,128,.28)}
+#trAvatarPanel .trAvCommentEditor label{font-weight:800;font-size:14px}
+#trAvatarPanel .trAvCommentEditor textarea{box-sizing:border-box;width:100%;font:inherit;font-size:15px;line-height:1.6;min-height:76px;resize:vertical;color:#232e2e;background:#faf9f5;border:1px solid #aab1ad;border-radius:10px;padding:9px 11px}
+#trAvatarPanel .trAvCommentEditor button{align-self:flex-start;background:#d8b52a;color:#202620;border-color:#c3a31f}
+#trAvatarPanel .trAvCommentState{font-size:12px;line-height:1.5;min-height:1em;white-space:pre-wrap}
+</style>
 <script id="v235-avatar">
 /* v235: アイコン。本体は avatars/<uid>（128px・20KB以下）。変更日時は名前の一覧 nameBook/<uid>/avatarAt（すでに読み込んでいる一覧に1項目足すだけ）。
    1人につき1回だけ読み、この端末に保存。変わった人の分だけ読み直す。読めないときは頭文字の丸、読み直しは1回まで。変更は10分に1回まで（ルールでも制限）。 */
@@ -24314,15 +24449,16 @@ window.__trFilePickStart=function(input){
   const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const UID_RE=/^[A-Za-z0-9_-]{6,128}$/;
   // ---- 変更日時（nameBook）を受け取る
-  let ver={};
+  let ver={}, comments={}, verP={};
   function hookNames(){
     const N=window.__TR_NAMES__;if(!N||N.__v235)return !!N;
     const o=N.apply.bind(N);
     N.apply=function(val,err){
       try{
         if(!err&&val&&typeof val==='object'){
-          const next={};for(const [u,r] of Object.entries(val)){if(UID_RE.test(u)&&r&&typeof r==='object')next[u]=Number(r.avatarAt)||0;}
-          const changed=JSON.stringify(next)!==JSON.stringify(ver);ver=next;if(changed)setTimeout(refreshAll,0);
+          const next={},nextComments={},nextFull={};for(const [u,r] of Object.entries(val)){if(UID_RE.test(u)&&r&&typeof r==='object'){next[u]=Number(r.avatarAt)||0;nextFull[u]=Number(r.profileAt)||0;nextComments[u]=String(r.profileComment||'').slice(0,120);}}
+          const changed=JSON.stringify(next)!==JSON.stringify(ver)||JSON.stringify(nextComments)!==JSON.stringify(comments)||JSON.stringify(nextFull)!==JSON.stringify(verP);
+          ver=next;comments=nextComments;verP=nextFull;if(changed)setTimeout(refreshAll,0);
         }
       }catch(_){}
       return o(val,err);
@@ -24356,6 +24492,45 @@ window.__trFilePickStart=function(input){
     })();
     inflight.set(k,p);return p;
   }
+  // v304: プロフィール画像（丸）。チャット画像と同じ仕組みで、1人1回だけ読み端末に保存。
+  function profOf(uid){
+    const at=Number(verP[uid])||0;if(!at)return Promise.resolve('');
+    const k='p:'+uid+':'+at;
+    if(mem.has(k))return Promise.resolve(mem.get(k));
+    if((failed.get(k)||0)>=2)return Promise.resolve('');
+    if(inflight.has(k))return inflight.get(k);
+    const p=(async()=>{
+      let v=await cget(k);
+      if(v===null){
+        try{v=await g()?.profileGet?.(uid);if(typeof v!=='string')v=null;}catch(e){v=null;}
+        if(v!==null)cput(k,v);
+      }
+      inflight.delete(k);
+      if(v===null){failed.set(k,(failed.get(k)||0)+1);return '';}
+      mem.set(k,v);return v;
+    })();
+    inflight.set(k,p);return p;
+  }
+  // 全体画像はアイコンや出欠席一覧の表示では取得しない。押した時だけ読む。kind：chat／prof
+  const fullMem=new Map(),fullInflight=new Map();
+  function fullOf(uid,kind){
+    const prof=kind==='prof';
+    const at=Number((prof?verP:ver)[uid])||0;if(!at)return Promise.resolve('');
+    const k=(prof?'pfull:':'full:')+uid+':'+at;
+    if(fullMem.has(k))return Promise.resolve(fullMem.get(k));
+    if(fullInflight.has(k))return fullInflight.get(k);
+    const req=(async()=>{
+      let v=await cget(k);
+      if(v===null){
+        try{v=await (prof?g()?.profileFullGet?.(uid):g()?.avatarFullGet?.(uid));if(typeof v!=='string')v='';}catch(e){throw e;}
+        cput(k,v);
+      }
+      fullMem.set(k,v);return v;
+    })();
+    fullInflight.set(k,req);
+    req.finally(()=>fullInflight.delete(k)).catch(()=>{});
+    return req;
+  }
   const COLORS=['#c0573a','#2f7f6f','#5a54b0','#a3456b','#3d6fa5','#7a6a1f','#5f7f2a','#8a4f9c'];
   function colorOf(uid){let h=0;for(const c of String(uid))h=(h*31+c.charCodeAt(0))>>>0;return COLORS[h%COLORS.length];}
   function initial(name){const s=String(name||'').replace(/[\s\u3000（(].*$/,'').trim()||String(name||'').trim();return s?Array.from(s)[0]:'？';}
@@ -24375,6 +24550,15 @@ window.__trFilePickStart=function(input){
     if(v){setImg(el,k,v);return;}
     el.style.background='#b9bdc2';el.innerHTML=SIL;
     avatarOf(uid).then(v=>{if(v&&el.isConnected)setImg(el,uid+':'+(Number(ver[uid])||0),v);});
+  }
+  // v304: プロフィール画像の丸。未設定ならチャット画像を代わりに表示。
+  function paintProf(el,uid,name){
+    const at=Number(verP[uid])||0;
+    if(!at){paint(el,uid,name);return;}
+    const k='p:'+uid+':'+at,v=mem.get(k);
+    if(v){setImg(el,k,v);return;}
+    el.style.background='#b9bdc2';el.innerHTML=SIL;
+    profOf(uid).then(v=>{if(!el.isConnected)return;if(v)setImg(el,'p:'+uid+':'+(Number(verP[uid])||0),v);else paint(el,uid,name);});
   }
   // ---- チャット：送った人のアイコンを吹き出しの左に
   const midUid=new Map();
@@ -24397,26 +24581,65 @@ window.__trFilePickStart=function(input){
     av.dataset.key=key;av.dataset.uid=uid;av.dataset.name=name;
     paint(av,uid,name);
   }
-  function refreshAll(){document.querySelectorAll('#portalChatThread .msg[data-mid],#trRoomThread .msg[data-mid]').forEach(decorate);paintMine();}
+  function refreshRoster(root){
+    const base=root||document;
+    // 終了・未展開のリストでは画像を読み込まない（一覧を開いたときだけ既存avatarOfを呼ぶ）。
+    const items=base.matches?.('#screen-schedule-detail details.portalRsvpRoster[open]')
+      ?base.querySelectorAll('.trAvRoster[data-uid]')
+      :base.querySelectorAll('#screen-schedule-detail details.portalRsvpRoster[open] .trAvRoster[data-uid]');
+    items.forEach(el=>{
+      const uid=el.dataset.uid||'',name=el.dataset.name||'';
+      if(!UID_RE.test(uid))return;
+      const key=uid+':'+(Number(ver[uid])||0)+':'+(Number(verP[uid])||0);
+      if(el.dataset.key===key)return;
+      el.dataset.key=key;
+      paintProf(el,uid,name);
+    });
+  }
+  // details の開閉だけで読込を開始。Firebase の新しい購読は作らない。
+  document.addEventListener('toggle',e=>{
+    const el=e.target;
+    if(el?.matches?.('#screen-schedule-detail details.portalRsvpRoster')&&el.open)refreshRoster(el);
+  },true);
+  function refreshAll(){document.querySelectorAll('#portalChatThread .msg[data-mid],#trRoomThread .msg[data-mid]').forEach(decorate);refreshRoster();paintMine();}
   new MutationObserver(ms=>{let hit=false;for(const m of ms){for(const n of m.addedNodes){if(n.nodeType===1&&(n.matches?.('.msg[data-mid]')||n.querySelector?.('.msg[data-mid]'))){hit=true;break;}}if(hit)break;}if(hit)refreshAll();}).observe(document.documentElement,{childList:true,subtree:true});
   // ---- 大きく見る（開発者はほかの人のアイコンを消せる）
-  function view(uid,name){
+  function view(uid,name,kind){
     let v=document.getElementById('trAvView');if(v)v.remove();
-    const gate=g();const dev=gate?.role==='developer'&&gate.roleVerified&&uid!==gate.uid&&!!ver[uid];
-    v=document.createElement('div');v.id='trAvView';
-    v.innerHTML='<div class="trAvViewImg"></div><b>'+esc(name)+'</b>'+(dev?'<button type="button" data-a="del">このアイコンを消す（開発者）</button>':'')+'<button type="button" data-a="close">閉じる</button>';
-    document.body.appendChild(v);paint(v.querySelector('.trAvViewImg'),uid,name);
+    const gate=g();const dev=gate?.role==='developer'&&gate.roleVerified&&uid!==gate.uid&&(!!ver[uid]||!!verP[uid]);
+    v=document.createElement('div');v.id='trAvView';v.setAttribute('role','dialog');v.setAttribute('aria-modal','true');v.setAttribute('aria-label','プロフィール画像とコメント');
+    v.innerHTML='<div class="trAvViewImg"></div><b>'+esc(name)+'</b><p class="trAvComment"></p><small class="trAvStatus" role="status"></small>'+(dev?'<button type="button" data-a="del">この人の画像を消す（開発者）</button>':'')+'<button type="button" data-a="close">閉じる</button>';
+    document.body.appendChild(v);
+    const img=v.querySelector('.trAvViewImg'),st=v.querySelector('.trAvStatus');
+    const c=v.querySelector('.trAvComment');c.textContent=comments[uid]||'';c.hidden=!c.textContent;
+    // v304: 押したアイコンの種類（チャット画像／プロフィール画像）の全体を表示。プロフィール画像が未設定ならチャット画像。
+    if(kind==='prof'&&!(Number(verP[uid])||0))kind='chat';
+    const prof=kind==='prof',at=Number((prof?verP:ver)[uid])||0;
+    const round=()=>{img.classList.add('trAvLegacy');if(prof)paintProf(img,uid,name);else paint(img,uid,name);};
+    if(!at){round();}
+    else{
+      st.textContent='画像を読み込んでいます…';
+      fullOf(uid,kind).then(d=>{
+        if(!v.isConnected)return;
+        if(d){setImg(img,(prof?'pfull:':'full:')+uid+':'+at,d);st.textContent='';}
+        else{round();st.textContent='';}
+      }).catch(e=>{
+        if(!v.isConnected)return;
+        round();
+        st.textContent='画像を読み込めませんでした。通信状態を確認してください。';
+      });
+    }
     v.addEventListener('click',async e=>{
       const a=e.target.closest('[data-a]')?.dataset.a;
       if(e.target===v||a==='close'){v.remove();return;}
       if(a==='del'){
         if(!confirm(name+' さんのアイコンを消しますか？'))return;
-        try{await gate.avatarRemoveOther(uid);mem.clear();v.remove();refreshAll();say('アイコンを消しました','本人の画面では、次にアイコンを設定し直すまで頭文字の丸になります。');}
+        try{await gate.avatarRemoveOther(uid);mem.clear();fullMem.clear();v.remove();refreshAll();say('画像を消しました','本人が設定し直すまで、標準の人物アイコンになります。');}
         catch(_){say('消せませんでした','通信状態を確認してください。');}
       }
     });
   }
-  document.addEventListener('click',e=>{const av=e.target.closest&&e.target.closest('.trAv[data-uid]');if(!av)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();view(av.dataset.uid,av.dataset.name||'');},true);
+  document.addEventListener('click',e=>{const av=e.target.closest&&e.target.closest('.trAv[data-uid]');if(!av)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();view(av.dataset.uid,av.dataset.name||'',av.dataset.kind||'chat');},true);
   // ---- マイページ：アイコンの設定
   // v249: 大きな写真を丸ごと展開しない（iPhoneのメモリ不足で読み込み直されるのを防ぐ）。<img>で読み、必要な大きさだけ描く。
   async function decode(file){
@@ -24450,6 +24673,19 @@ window.__trFilePickStart=function(input){
       for(const q of [0.9,0.84,0.78,0.72]){const d=c.toDataURL('image/jpeg',q);if(d.length<=26000&&d.indexOf('data:image/jpeg;base64,')===0)return d;}
     }
     throw Error('アイコンを小さくできませんでした');
+  }
+  // 保存するのはトリミング前の構図を保つ軽量プレビュー（元の高解像度ファイルをそのまま同期しない）。
+  function encodeFull(src){
+    for(const w of [960,800,640,512]){
+      const scale=Math.min(1,w/Math.max(src.width,src.height));
+      const c=document.createElement('canvas');c.width=Math.max(1,Math.round(src.width*scale));c.height=Math.max(1,Math.round(src.height*scale));
+      const x=hq(c.getContext('2d'));x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(src,0,0,c.width,c.height);
+      for(const q of [.82,.74,.64,.55]){
+        const d=c.toDataURL('image/jpeg',q);
+        if(d.startsWith('data:image/jpeg;base64,')&&d.length<=120000)return d;
+      }
+    }
+    throw Error('全体画像を小さくできませんでした');
   }
   function cropIcon(file){
     return new Promise(async res=>{
@@ -24489,63 +24725,100 @@ window.__trFilePickStart=function(input){
         const a=e.target.closest('[data-a]')?.dataset.a;if(!a)return;
         if(a==='no'){finish('');return;}
         const side=F/(base*z);
-        try{finish(encodeIcon(pc,cx-side/2,cy-side/2,side));}catch(err){say('アイコンにできませんでした','別の写真でお試しください。');finish('');}
+        try{const icon=encodeIcon(pc,cx-side/2,cy-side/2,side);const full=encodeFull(pc);finish({icon,full});}catch(err){say('画像を保存用に変換できませんでした','別の写真でお試しください。');finish('');}
       });
     });
   }
   function sheet(html){let s=document.getElementById('trAvSheet');if(s)s.remove();s=document.createElement('div');s.id='trAvSheet';s.innerHTML='<div class="trAvCard">'+html+'</div>';document.body.appendChild(s);return s;}
-  function pick(capture){
+  function pick(capture,kind){
     const f=document.createElement('input');f.type='file';f.accept='image/*';if(capture)f.setAttribute('capture','user');
     f.style.display='none';document.body.appendChild(f);
     f.addEventListener('change',async()=>{
       const file=f.files&&f.files[0];f.remove();if(!file)return;
-      const d=await cropIcon(file); // v248: 切り取り画面で「このアイコンにする」を押すとそのまま保存
-      if(!d)return;
-      try{const at=await g().avatarPut(d);ver[g().uid]=at;mem.set(g().uid+':'+at,d);cput(g().uid+':'+at,d);refreshAll();say('アイコンを設定しました','マイページとチャットに表示されます。');}
+      const pair=await cropIcon(file); // v304: 丸と切り抜き前の全体を同時に保存
+      if(!pair)return;
+      const uid=g().uid;
+      if(kind==='prof'){
+        try{const at=await g().profilePut(pair.icon,pair.full);verP[uid]=at;mem.set('p:'+uid+':'+at,pair.icon);cput('p:'+uid+':'+at,pair.icon);fullMem.set('pfull:'+uid+':'+at,pair.full);cput('pfull:'+uid+':'+at,pair.full);refreshAll();say('プロフィール画像を設定しました','出欠席の一覧などに表示されます。押すと全体が表示されます。');}
+        catch(err){const m=String(err?.message||'');const code=String(err?.code||m||'').slice(0,40);say('設定できませんでした',/10分/.test(m)?m:'通信状態を確認して、もう一度お試しください。（変更は10分に1回までです）'+(code?'\n原因：'+code:''));}
+        return;
+      }
+      try{const at=await g().avatarPut(pair.icon,pair.full);ver[uid]=at;mem.set(uid+':'+at,pair.icon);cput(uid+':'+at,pair.icon);fullMem.set('full:'+uid+':'+at,pair.full);cput('full:'+uid+':'+at,pair.full);refreshAll();say('チャット画像を設定しました','チャットに表示されます。押すと全体が表示されます。');}
       catch(err){const m=String(err?.message||'');const code=String(err?.code||m||'').slice(0,40);say('設定できませんでした',/10分/.test(m)?m:'通信状態を確認して、もう一度お試しください。（変更は10分に1回までです）'+(code?'\n原因：'+code:''));}
     });
     window.__trFilePickStart?.(f);try{window.__trPickSet(JSON.stringify({ctx:'avatar',at:Date.now()}));}catch(_){}
     f.addEventListener('change',()=>{try{const r=JSON.parse(window.__trPickGet()||'null');if(r){r.stage='work';r.at=Date.now();window.__trPickSet(JSON.stringify(r));}}catch(_){}},{once:true});f.click(); // v249: 戻り先は切り取り画面が出るまで残す
   }
-  function openSet(){
-    const s=sheet('<b>アイコンを設定</b><div class="trAvBtns"><button type="button" data-a="cam">カメラで撮る</button><button type="button" data-a="pic">写真を選ぶ</button><button type="button" data-a="no">やめる</button></div>');
-    s.addEventListener('click',e=>{const a=e.target.closest('[data-a]')?.dataset.a;if(!a)return;s.remove();if(a==='cam')pick(true);if(a==='pic')pick(false);});
+  function openSet(kind){
+    const s=sheet('<b>'+(kind==='prof'?'プロフィール画像':'チャット画像')+'を設定</b><div class="trAvBtns"><button type="button" data-a="cam">カメラで撮る</button><button type="button" data-a="pic">写真を選ぶ</button><button type="button" data-a="no">やめる</button></div>');
+    s.addEventListener('click',e=>{const a=e.target.closest('[data-a]')?.dataset.a;if(!a)return;s.remove();if(a==='cam')pick(true,kind);if(a==='pic')pick(false,kind);});
   }
   async function removeMine(){
-    if(!confirm('アイコンを消しますか？'))return;
+    if(!confirm('チャット画像を消しますか？'))return;
     try{await g().avatarRemove();ver[g().uid]=0;refreshAll();}catch(_){say('消せませんでした','通信状態を確認してください。');}
+  }
+  async function removeMineProf(){
+    if(!confirm('プロフィール画像を消しますか？'))return;
+    try{await g().profileRemove();verP[g().uid]=0;refreshAll();}catch(_){say('消せませんでした','通信状態を確認してください。');}
   }
   // v259: マイページ上部の枠にも自分のアイコン（チャットと同じ画像）。枠を押すとアイコンの設定。
   function paintHero(){
     const slot=document.querySelector('#screen-mypage .portalProfileImageReserve');if(!slot)return;
     const gate=g();if(!gate?.uid)return;
     if(!slot.dataset.trAvHook){
-      slot.dataset.trAvHook='1';slot.removeAttribute('aria-hidden');slot.setAttribute('role','button');slot.setAttribute('tabindex','0');slot.setAttribute('aria-label','プロフィール画像（アイコン）を設定');
-      const go=()=>{const x=g();if(!x?.canSendChat?.()){say('設定できません','本人接続と参加の承認が必要です。');return;}openSet();};
+      slot.dataset.trAvHook='1';slot.removeAttribute('aria-hidden');slot.setAttribute('role','button');slot.setAttribute('tabindex','0');slot.setAttribute('aria-label','画像・プロフィールを設定');
+      const go=()=>{const x=g();if(!x?.canSendChat?.()){say('設定できません','本人接続と参加の承認が必要です。');return;}document.getElementById('trImageProfileEntry')?.click();}; // v303: 画像・プロフィール画面へ
       slot.addEventListener('click',go);slot.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}});
     }
-    const at=Number(ver[gate.uid])||0,key=gate.uid+':'+at;
+    // v304: マイページ上部はプロフィール画像（未設定ならチャット画像）
+    const pat=Number(verP[gate.uid])||0,at=pat||Number(ver[gate.uid])||0,key=(pat?'p:':'')+gate.uid+':'+at;
     if(slot.dataset.key===key)return;slot.dataset.key=key;
     const im=slot.querySelector('img');if(!im)return;
     if(!at){slot.classList.remove('trHasMyAv');if(window.__TR_LOGO_SRC__)im.src=window.__TR_LOGO_SRC__;return;}
-    avatarOf(gate.uid).then(v=>{if(!v||slot.dataset.key!==key)return;im.src=avUrl(key,v);slot.classList.add('trHasMyAv');});
+    (pat?profOf(gate.uid):avatarOf(gate.uid)).then(v=>{if(!v||slot.dataset.key!==key)return;im.src=avUrl(key,v);slot.classList.add('trHasMyAv');});
   }
   function paintMine(){
     paintHero();
     const p=document.getElementById('trAvatarPanel');if(!p)return;const gate=g();if(!gate?.uid)return;
-    const big=p.querySelector('.trAvBig');const name=gate.chatName||gate.displayName||'';
+    const big=p.querySelector('.trAvBigC');const name=gate.chatName||gate.displayName||'';
     const key=gate.uid+':'+(Number(ver[gate.uid])||0)+':'+name;
     if(big.dataset.key!==key){big.dataset.key=key;paint(big,gate.uid,name);}
     p.querySelector('[data-a="del"]').hidden=!ver[gate.uid];
+    // v304: プロフィール画像の丸
+    const bigP=p.querySelector('.trAvBigP'),pkey=gate.uid+':'+(Number(verP[gate.uid])||0)+':'+name;
+    if(bigP&&bigP.dataset.key!==pkey){bigP.dataset.key=pkey;const pat=Number(verP[gate.uid])||0;if(pat)paintProf(bigP,gate.uid,name);else{bigP.style.background='#b9bdc2';bigP.innerHTML=SIL;}}
+    p.querySelector('[data-a="delprof"]').hidden=!verP[gate.uid];
+    big.dataset.uid=gate.uid;big.dataset.name=name;bigP.dataset.uid=gate.uid;bigP.dataset.name=name;
+    const field=p.querySelector('#trAvCommentInput');
+    if(field&&document.activeElement!==field)field.value=comments[gate.uid]||'';
   }
   function addPanel(){
     if(document.getElementById('trAvatarPanel'))return;
-    const box=document.querySelector('#portalProfileEditorDisclosure .portalProfileEditorContent');if(!box)return;
-    const after=document.getElementById('trChatNameBox');
-    const sec=document.createElement('section');sec.className='portalPanel';sec.id='trAvatarPanel';
-    sec.innerHTML='<div class="portalPanelHead"><small>ICON</small><b>アイコン</b></div><div class="trAvRow"><span class="trAvBig"></span><button type="button" data-a="set">アイコンを設定</button><button type="button" data-a="del" hidden>消す</button></div><p>マイページの上とチャットの名前の横に表示されます。顔写真でなくても大丈夫です。変更は10分に1回までです。</p>';
-    if(after&&box.contains(after))after.insertAdjacentElement('afterend',sec);else box.appendChild(sec); // v240: チャットでの表示名の下
-    sec.addEventListener('click',e=>{const a=e.target.closest('[data-a]')?.dataset.a;if(!a)return;const gate=g();if(!gate?.canSendChat?.()){say('設定できません','本人接続と参加の承認が必要です。');return;}if(a==='set')openSet();if(a==='del')removeMine();});
+    const box=document.getElementById('trImageProfileMount');if(!box)return; // v303: 画像・プロフィール画面
+    const sec=document.createElement('div');sec.id='trAvatarPanel';
+    sec.innerHTML='<div class="portalPanelHead"><small>IMAGE</small><b>画像</b></div><div class="trAvPair"><div class="trAvCol"><span class="trAvBig trAvBigP" data-kind="prof" role="button" aria-label="プロフィール画像の全体を見る"></span><b>プロフィール画像</b><small>出欠席の一覧などに表示</small><button type="button" data-a="setprof">設定する</button><button type="button" data-a="delprof" hidden>消す</button></div><div class="trAvCol"><span class="trAvBig trAvBigC" data-kind="chat" role="button" aria-label="チャット画像の全体を見る"></span><b>チャット画像</b><small>チャットに表示</small><button type="button" data-a="set">設定する</button><button type="button" data-a="del" hidden>消す</button></div></div><p>どちらも丸く切り抜いて表示し、押すと切り抜く前の全体が表示されます。プロフィール画像が未設定のときは、チャット画像を代わりに表示します。変更はそれぞれ10分に1回までです。</p><div class="trAvCommentEditor"><label for="trAvCommentInput">プロフィールのコメント</label><textarea id="trAvCommentInput" maxlength="120" placeholder="自己紹介やひとこと（120文字まで）"></textarea><button type="button" data-a="save-comment">コメントを保存</button><small class="trAvCommentState" role="status"></small></div>';
+    box.appendChild(sec);
+    const scr=document.getElementById('screen-personal-image');
+    if(scr)new MutationObserver(()=>{if(!scr.classList.contains('hidden'))paintMine();}).observe(scr,{attributes:true,attributeFilter:['class']});
+    sec.addEventListener('click',async e=>{
+      const pv=e.target.closest('.trAvBig[data-kind]');
+      if(pv){const x=g();if(x?.uid&&((pv.dataset.kind==='prof'?verP:ver)[x.uid]))view(x.uid,x.chatName||x.displayName||'',pv.dataset.kind);return;}
+      const btn=e.target.closest('[data-a]');if(!btn)return;
+      const a=btn.dataset.a,gate=g();
+      if(!gate?.canSendChat?.()){say('設定できません','本人接続と参加の承認が必要です。');return;}
+      if(a==='set')openSet('chat');if(a==='del')removeMine();
+      if(a==='setprof')openSet('prof');if(a==='delprof')removeMineProf();
+      if(a==='save-comment'){
+        const field=sec.querySelector('#trAvCommentInput'),status=sec.querySelector('.trAvCommentState');
+        const comment=String(field.value||'').trim();
+        btn.disabled=true;status.textContent='保存しています…';
+        try{
+          await gate.avatarCommentPut(comment);
+          comments[gate.uid]=comment;status.textContent='保存しました。アイコンを押したときに表示されます。';
+        }catch(err){status.textContent='保存できませんでした：'+String(err?.code||err?.message||err).slice(0,95);}
+        finally{btn.disabled=false;}
+      }
+    });
     paintMine();
   }
   function tick(){hookNames();hookDecor();addPanel();paintMine();}
@@ -25561,7 +25834,7 @@ body.portalChatIsolated > #trWhoModal,html body > #trWhoModal{visibility:visible
 (function(){
   'use strict';
   const day=()=>new Date(Date.now()+9*3600e3).toISOString().slice(0,10);
-  const KEY='trTrafficMeter_v298';
+  const KEY='trTrafficMeter_v302';
   let st=null,timer=null;
   const fresh=()=>({day:day(),since:Date.now(),rows:{}});
   function load(){if(st&&st.day===day())return st;try{const v=JSON.parse(localStorage.getItem(KEY)||'null');st=v&&v.day===day()&&v.rows?v:fresh();}catch(_){st=fresh();}return st;}
@@ -25570,9 +25843,8 @@ body.portalChatIsolated > #trWhoModal,html body > #trWhoModal{visibility:visible
     let s='';try{s=String(q&&q.ref?q.ref:q);}catch(_){}
     try{s=decodeURIComponent(s.replace(/^https?:\/\/[^/]+\/?/,''));}catch(_){}
     s=s.replace(/^portalCommon\/topRun\//,'');
-    const parts=s.split('/');
-    if(parts.length===1)return parts[0]?(parts[0].length>14?parts[0].slice(0,8)+'…'+parts[0].slice(-4):parts[0]):'（ルート）';
-    return parts.map(x=>/^[A-Za-z0-9_-]{16,}$/.test(x)?'＊':x).join('/');
+    if(!s)return '（ルート）';
+    return s.split('/').map(x=>/^[A-Za-z0-9_-]{16,}$/.test(x)&&/\d/.test(x)?'＊':x).join('/');
   }
   function size(snap){try{const v=snap&&snap.val?snap.val():null;if(v==null)return 0;const j=JSON.stringify(v);return j?j.length:0;}catch(_){return 0;}}
   window.__TR_TRAFFIC_METER__={
@@ -25597,7 +25869,7 @@ body.portalChatIsolated > #trWhoModal,html body > #trWhoModal{visibility:visible
     const sum=rows.reduce((a,r)=>a+r.total,0);
     let h='<p style="font-size:12px;line-height:1.6">'+esc(s.day)+'　'+new Date(s.since).toTimeString().slice(0,5)+'から　合計 <b>'+kb(sum)+'</b>（目安）</p>';
     h+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11.5px"><thead><tr><th style="text-align:left">場所</th><th>全体読込</th><th>更新</th><th>1回読み</th></tr></thead><tbody>';
-    for(const r of rows.slice(0,30)){
+    for(const r of rows){
       const c=(n,b)=>'<td style="text-align:right;white-space:nowrap;padding:3px 4px">'+(n?n+'回<br>'+kb(b):'—')+'</td>';
       h+='<tr style="border-top:1px solid rgba(127,127,127,.25)"><td style="word-break:break-all;padding:3px 4px">'+esc(r.k)+(r.err?'<br><span style="color:#d33;font-weight:700">読めない '+r.err+'回：'+esc(r.errCode)+'</span>':'')+'</td>'+c(r.first,r.firstB)+c(r.update,r.updateB)+c(r.get,r.getB)+'</tr>';
     }
