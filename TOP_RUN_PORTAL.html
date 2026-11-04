@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v316 | 2026-11-04 | Parent v315. REQUIRES Rules v316（v315＋開発者が「前の登録とつなぐ申請」を消せる）。(1) iPhone・iPadのブラウザ（Safari、BAND・LINEの中など）と、AndroidのBAND・LINEの中では、新規登録・つなぐ申請・参加承認の申請を止める（アイコンとデータが別になり二重登録になるため）。AndroidのChromeはアイコンと同じデータなので止めない。例外が必要なときは運営がURLの末尾に ?browserok=1 を付けて案内。(2) 開発者がホームを開くと、未処理の参加申請・つなぐ申請の件数を一番上に表示（押すと管理画面の申請一覧を開く）。(3) つなぐ申請の一覧に「この申請を消す」。(4) 設定の並び：通知設定を一番上に。 -->
 <!-- TOP RUN PORTAL v315 | 2026-11-04 | Parent v314. REQUIRES Rules v315（v313＋練習・イベントの参加回答を開発者・管理者が丸ごと消せる、練習の placeKind）。(1) 練習の登録（1件ずつ）の練習場所に「中止・変更」を追加。内容（例：雨のため中止となりました）を入れると、今までどおり場所の代わりに表示される。保存すると、その練習の参加回答（代理回答も含む）をリセットする（保存前に確認）。「その他」は本来の役割（一覧にない場所の名前を入れる）のまま。(2) 練習・イベントを削除したとき、参加回答も一緒に消す（同じ日にあとで登録した練習へ古い回答が出るのを防ぐ）。 -->
 <!-- TOP RUN PORTAL v314 | 2026-11-04 | Parent v313. Rules v313 のまま。iPhoneでスクロールすると下のメニュー（お知らせ・イベント・チャット）が下に潜る・浮く不具合を修正：v219の位置合わせが画面の高さの計算値を使っていたため、アイコンから開いたiPhoneで上部の時計の帯（約20px）分ずれていた。下のメニューの実際の位置を測って、見えている画面の下端との差だけを直す方式に変更（上下どちらにも直す）。表示中は1.5秒ごとに位置を確かめる。画面のスクロールの仕組み（overflow・高さ指定）は変えていないので、Androidのスクロールには影響しない。 -->
 <!-- TOP RUN PORTAL v313 | 2026-11-04 | Parent v312. REQUIRES Rules v313（v311＋nameBook/<uid>/chatComment・chatCommentAt）。(1) チャットのリアクション：文字のリアクションを大きく・太く（同じ色で輪郭を足す）、絵文字は控えめに、数字は小さく細く・薄くして、文字と数字の釣り合いを取る。メッセージの下の表示だけ（長押しの選択画面は変えない）。(2) マイページ：「ポータルのカラーを選ぶ」と「画像・プロフィール」を右上の歯車（設定）の中へ移動。(3) コメントを2つに：プロフィールのコメント（プロフィール画像を押したとき）とチャットのコメント（チャット画像を押したとき）。 -->
@@ -5973,6 +5974,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
 
 <div class="shell">
 <main>
+  <button type="button" id="trPendingBanner" hidden style="display:block;width:100%;margin:12px 0 0;padding:12px 14px;border-radius:14px;border:2px solid #c8102e;background:#fff5f5;color:#8a0a1f;font-weight:800;font-size:15px;text-align:left;min-height:48px"></button>
   <section class="hero">
     <!-- HOME BACKDROP SLOT: approved runner artwork can be embedded later without changing HOME layout. -->
     <div class="homeHeroBackdrop" id="homeHeroBackdrop" aria-hidden="true"></div>
@@ -6509,7 +6511,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v315</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v316</b></div>
   </div>
 </div>
 
@@ -6700,7 +6702,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v315</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v316</b></div>
   </div>
 </div>
 
@@ -16888,6 +16890,14 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
          actual?.profileId!==candidate.profileId)throw Error('本人承認のFirebase保存ACKが成立しません');
       return actual;
     };
+    // v316: 不要になった「前の登録とつなぐ申請」を消す（開発者のみ。本人の登録・記録には触れない）
+    gate.removeIdentityLink=async(targetUid)=>{
+      if(!isDeveloper())throw Error('開発者の権限が必要です');
+      if(!/^[A-Za-z0-9_-]{6,128}$/.test(String(targetUid||''))||targetUid===gate.uid)throw Error('申請を確認できません');
+      await dbMod.remove(ref('identityLinks/'+targetUid));
+      if((await dbMod.get(ref('identityLinks/'+targetUid))).exists())throw Error('消したことをFirebaseで確認できませんでした');
+      return true;
+    };
     gate.finalizeIdentityLink=async(targetUid)=>{
       if(!isDeveloper())throw Error('開発者の権限が必要です');
       const review=await gate.getIdentityLinkReview();
@@ -20768,6 +20778,16 @@ setInterval(display,1000);
     if(manager)manager.hidden=!(g?.role==='developer'&&g.roleVerified===true&&g.uid);
   };
   window.addEventListener('tr-portal-authorized',checkStaff);
+  // v316: 不要な申請を一覧から消すボタン
+  const delBtn=person=>{
+    const b=document.createElement('button');b.type='button';b.style.cssText='min-height:40px;background:transparent;color:inherit;border:1px solid #8a8f88';
+    b.textContent='この申請を消す（不要な場合）';
+    b.onclick=()=>{
+      if(!confirm('「'+(person.requestedName||'')+'」さんの、前の登録とつなぐ申請を消します。\n本人の登録・参加承認・記録は消えません。\nこの人が今もつなぐ申請の承認を待っている場合は、もう一度申請してもらう必要があります。\n\n消しますか？'))return;
+      void run(async()=>{await gate().removeIdentityLink(person.uid);setTimeout(refresh,0);return '申請を消しました';},log);
+    };
+    return b;
+  };
   const refresh=()=>run(async()=>{
     const g=gate();if(!g?.getIdentityLinkReview)throw Error('共通本人モジュールが準備できていません');
     cache=await g.getIdentityLinkReview();
@@ -20796,12 +20816,12 @@ setInterval(display,1000);
       }else if(activeOther){
         const note=document.createElement('small');
         note.textContent='この人は別の参加承認ですでにPORTALを利用中です。この申請は確定できません（前の記録とはつながっていません）。';
-        box.append(note);list.append(box);continue;
+        box.append(note);box.append(delBtn(person));list.append(box);continue;
       }else{
         button.textContent='本人の受取確認後：PORTAL利用資格を確定';
         button.onclick=()=>void run(async()=>{await gate().finalizeIdentityLink(person.uid);setTimeout(refresh,0);return '参加承認を確定しました';},log);
       }
-      box.append(button);list.append(box);
+      box.append(button);box.append(delBtn(person));list.append(box);
     }
     const scope=cache.eventOwnerCanReviewBindings?'既存参加者・大会管理者の候補を確認':'大会の管理者bindingは閲覧権限外です（参加承認済み候補のみ確認）';
     const shown=cache.requests.length-doneCount;
@@ -21199,19 +21219,29 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
   }
   if(!isPhone||fromIcon())return;
   const $=id=>document.getElementById(id);
-  const TEXT='<b>できればホーム画面のアイコンから開いてください</b><br>ここ（Safari・Chrome・BAND・LINEの中）で登録・申請すると、あとでアイコンから入れなくなることがあります。<br>アイコンから開いてもこの表示が出る場合は、このまま進んでください。';
-  const put=(id,anchor,where)=>{if($(id)||!anchor)return;const n=document.createElement('div');n.id=id;n.className='portalRegistrationRoleMessage';n.setAttribute('role','status');n.style.cssText='margin:12px 0;line-height:1.75;font-size:14px';n.innerHTML=TEXT;anchor.insertAdjacentElement(where,n);};
+  // v316: iPhone・iPad（Safari・BAND・LINEなど）と、AndroidのBAND・LINEの中は、アイコンとデータが別になるため止める。
+  //   AndroidのChromeはアイコンと同じデータを使うので止めない。例外は運営が ?browserok=1 を付けたURLで案内。
+  const isIOS=/iPhone|iPad|iPod/i.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  const inApp=/Line\/|NAVER|BAND\/|FBAN|FBAV|Instagram|; wv\)/i.test(ua);
+  let override=false;try{override=new URLSearchParams(location.search).get('browserok')==='1';}catch(_){}
+  const block=(isIOS||inApp)&&!override;
+  const TEXT=block
+    ?(isIOS
+      ?'<b>ここでは登録・申請できません</b><br>ここ（Safari・BAND・LINEの中）で登録すると、ホーム画面のアイコンとは別の登録になり、二重登録になります。<br>① 共有ボタン →「ホーム画面に追加」<br>② ホーム画面のTOP RUNアイコンから開いて、登録・申請してください。<br>アイコンから開いてもこの表示が出る場合は、アイコンを消して、追加するときに「Webアプリとして開く」をオンにして追加し直してください。'
+      :'<b>ここでは登録・申請できません</b><br>BAND・LINEの中で開いています。右上のメニューから「ブラウザで開く」（Chrome）を選ぶか、ホーム画面のアイコンから開いて、登録・申請してください。')
+    :'<b>できればホーム画面のアイコンから開いてください</b><br>アイコンから開いてもこの表示が出る場合は、このまま進んでください。';
+  const put=(id,anchor,where)=>{if($(id)||!anchor)return;const n=document.createElement('div');n.id=id;n.className='portalRegistrationRoleMessage';n.setAttribute('role','status');n.style.cssText='margin:12px 0;line-height:1.75;font-size:14px'+(block?';border:2px solid #c8102e;border-radius:12px;padding:10px 12px':'');n.innerHTML=TEXT;anchor.insertAdjacentElement(where,n);};
   const show=()=>{
     const gate=$('portalParticipantIdentityGate');
     if(gate&&!gate.hidden){const msg=$('portalParticipantLoginMessage');put('portalIconOnlyNotice',msg||gate.querySelector('.portalParticipantGateCard'),msg?'afterend':'afterbegin');}
     const b=$('portalMemberApprovalRequest');if(b&&!b.hidden)put('portalIconOnlyApprovalNotice',b,'beforebegin');
   };
-  let ok=false;
-  const ask=()=>ok||(ok=window.confirm('ブラウザで開いています。\nアイコンから開いてもこの画面になる場合は「OK」で進んでください。\nアイコンがまだない方は「キャンセル」を押して、先にアイコンを作ってください。'));
   document.addEventListener('click',ev=>{
     const b=ev.target?.closest?.('#portalNewParticipantStart,#portalLinkYes,#portalIdentityLinkOpen,#portalMemberApprovalRequest');
     if(!b)return;show();
-    if(!ask()){ev.preventDefault();ev.stopImmediatePropagation();}
+    if(block){ev.preventDefault();ev.stopImmediatePropagation();
+      try{(document.getElementById('portalIconOnlyNotice')||document.getElementById('portalIconOnlyApprovalNotice'))?.scrollIntoView({block:'center',behavior:'smooth'});}catch(_){}
+      window.alert(isIOS?'ここ（ブラウザ）では登録・申請できません。\nホーム画面のTOP RUNアイコンから開いてください。':'BAND・LINEの中では登録・申請できません。\nChromeかホーム画面のアイコンから開いてください。');}
   },true);
   let queued=false;
   const schedule=()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;show();});};
@@ -26309,5 +26339,47 @@ body.portalChatIsolated > #trWhoModal,html body > #trWhoModal{visibility:visible
 .trSettingsMy{display:grid;gap:10px;margin:0 0 14px}
 #trAvatarPanel .trAvCommentNote{font-size:11px;opacity:.7;margin-top:-6px}
 </style>
+<script id="v316-pending-and-settings">
+/* v316: (2) 開発者に未処理の申請件数を知らせる（ホームを開いたとき・10分以上たって戻ったとき。読むのは申請一覧だけ）
+         (4) 設定の並び：通知設定を一番上に */
+(function(){'use strict';
+  const $=id=>document.getElementById(id);
+  const g=()=>window.__TR_PORTAL_SYNC__;
+  let lastAt=0,busy=false;
+  async function check(force){
+    const x=g(),b=$('trPendingBanner');if(!b)return;
+    if(!(x?.role==='developer'&&x.roleVerified===true)){b.hidden=true;return;}
+    if(busy||(!force&&Date.now()-lastAt<600000))return;
+    busy=true;lastAt=Date.now();
+    try{
+      let members=0,links=0;
+      try{members=(await x.listMemberApprovalRequests()).filter(r=>!r.blocked).length;}catch(_){}
+      try{const rv=await x.getIdentityLinkReview();links=rv.requests.filter(p=>{const m=rv.memberAccess?.[p.uid];return !(p.status==='approved'&&m?.active===true);}).length;}catch(_){}
+      const parts=[];if(members)parts.push('参加承認の申請 '+members+'件');if(links)parts.push('つなぐ申請 '+links+'件');
+      b.hidden=!parts.length;b.textContent=parts.length?'未処理：'+parts.join('・')+'　›':'';
+    }finally{busy=false;}
+  }
+  window.__TR_PENDING_CHECK__=()=>check(true);
+  window.addEventListener('tr-portal-authorized',()=>setTimeout(()=>check(true),1500));
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)check(false);});
+  document.addEventListener('click',ev=>{
+    if(!ev.target.closest?.('#trPendingBanner'))return;
+    $('headerManagementBtn')?.click();
+    setTimeout(()=>{
+      document.querySelector('[data-screen="management-settings"]')?.click();
+      setTimeout(()=>{
+        const a=$('portalMemberApprovalRefresh'),c=$('portalIdentityLinkRefresh');
+        for(const el of [a,c]){const d=el?.closest('details');if(d)d.open=true;}
+        a?.click();c?.click();
+        try{(a||c)?.scrollIntoView({block:'start',behavior:'smooth'});}catch(_){}
+        setTimeout(()=>check(true),4000);
+      },300);
+    },200);
+  });
+  const order=()=>{const s=document.querySelector('#screen-notification-settings .trSettingsMy'),p=$('trPushSettings');if(s&&p&&p.nextElementSibling!==s)p.after(s);};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',order);else order();
+})();
+</script>
+<style id="v316-settings-order">#screen-notification-settings .trSettingsMy{margin:14px 0}</style>
 </body>
 </html>
