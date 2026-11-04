@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v299 | 2026-11-04 | Parent v298. 使うRules：TOPRUNRULESv299.json（v266＋ekidenLegResults＋チャット・ルームの本人による修正・削除）。通信量メーター：読めなかった場所と理由（PERMISSION_DENIEDなど）を赤字で表示。場所名が「＊」だけになる行は元の名前の一部を表示。読み書きの場所・Auth・UIDは変更なし。 -->
 <!-- TOP RUN PORTAL v298 | 2026-11-04 | Parent v297. Rules v285 のまま（変更なし）。通信量対策：(1) 大会記録の出走者データ（events/<大会>/players、最大8大会）を常時監視（onValue）から「1回だけ読む（get）」に変更。LIVE中の更新が全員に流れ続けるのを止める。10分以上たってPORTALに戻ったときだけ読み直す。(2) 開発者設定に「通信量メーター（この端末）」：場所ごとの読み込み回数と量（目安）を今日の分だけ表示。読み書きの場所・Auth・UID・Rulesは変更なし。 -->
 <!-- TOP RUN PORTAL v297 | 2026-11-04 | Parent v296. Rules v285 のまま。表示だけ：リアクションを全体的に小さく。大きく見えた絵文字・1文字を小さくして2文字に合わせる（2文字は大きくしない）。メッセージ下26px→22px、長押しの枠の中36px→30px。枠の大きさはv296のまま。 -->
 <!-- TOP RUN PORTAL v296 | 2026-11-04 | Parent v295. Rules v285 のまま。表示だけ：①長押しのリアクション・返信の枠を大きく（幅・ボタン・文字）②メッセージ下のリアクションを小さく（34px→26px）③絵文字を枠の中で小さめ、文字スタンプ1文字は少し小さく・2文字は大きくして、見た目の大きさをそろえた。前の形（o:）・データ・Firebaseは変更なし。 -->
@@ -6481,7 +6482,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v298</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v299</b></div>
   </div>
 </div>
 
@@ -6672,7 +6673,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v298</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v299</b></div>
   </div>
 </div>
 
@@ -16222,7 +16223,7 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
       import('https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js')
     ]);
     // v298: 通信量メーター。get の結果の大きさを数えるだけ（読む場所・回数は変えない）。
-    const dbMod=Object.assign({},dbModRaw,{get:q=>dbModRaw.get(q).then(s=>{try{window.__TR_TRAFFIC_METER__?.add(q,s,'get');}catch(_){}return s;})});
+    const dbMod=Object.assign({},dbModRaw,{get:q=>dbModRaw.get(q).then(s=>{try{window.__TR_TRAFFIC_METER__?.add(q,s,'get');}catch(_){}return s;},e=>{try{window.__TR_TRAFFIC_METER__?.fail(q,e);}catch(_){}throw e;})});
     const appA=appMod.getApps().find(a=>a.name==='eventbase-rebuild')||appMod.initializeApp(firebaseConfig,'eventbase-rebuild');
     const appB=appMod.getApps().find(a=>a.name==='eventbase-rebuild-v22')||appMod.initializeApp(firebaseConfig,'eventbase-rebuild-v22');
     const authA=authMod.getAuth(appA),authB=authMod.getAuth(appB);
@@ -16264,6 +16265,7 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
       const task={args,active:null,stopped:false,fresh:true};
       // v298: 通信量メーター。つなぎ直した直後の1回目＝全体の読み込み、2回目以降＝更新として数える。
       if(typeof args[1]==='function'){const cb=args[1],src=args[0];args[1]=(snap,...rest)=>{try{window.__TR_TRAFFIC_METER__?.add(src,snap,task.fresh?'first':'update');}catch(_){}task.fresh=false;return cb(snap,...rest);};}
+      if(typeof args[2]==='function'){const ecb=args[2],src2=args[0];args[2]=(e,...rest)=>{try{window.__TR_TRAFFIC_METER__?.fail(src2,e);}catch(_){}return ecb(e,...rest);};}
       const attach=()=>{if(task.stopped||task.active||document.hidden||p94Suspended)return;
         task.fresh=true;task.active=dbMod.onValue(...task.args);};
       p94Observed.add(task);attach();
@@ -25568,7 +25570,9 @@ body.portalChatIsolated > #trWhoModal,html body > #trWhoModal{visibility:visible
     let s='';try{s=String(q&&q.ref?q.ref:q);}catch(_){}
     try{s=decodeURIComponent(s.replace(/^https?:\/\/[^/]+\/?/,''));}catch(_){}
     s=s.replace(/^portalCommon\/topRun\//,'');
-    return s.split('/').map(x=>/^[A-Za-z0-9_-]{16,}$/.test(x)?'＊':x).join('/')||'（ルート）';
+    const parts=s.split('/');
+    if(parts.length===1)return parts[0]?(parts[0].length>14?parts[0].slice(0,8)+'…'+parts[0].slice(-4):parts[0]):'（ルート）';
+    return parts.map(x=>/^[A-Za-z0-9_-]{16,}$/.test(x)?'＊':x).join('/');
   }
   function size(snap){try{const v=snap&&snap.val?snap.val():null;if(v==null)return 0;const j=JSON.stringify(v);return j?j.length:0;}catch(_){return 0;}}
   window.__TR_TRAFFIC_METER__={
@@ -25577,6 +25581,11 @@ body.portalChatIsolated > #trWhoModal,html body > #trWhoModal{visibility:visible
       const r=s.rows[k]||(s.rows[k]={first:0,firstB:0,update:0,updateB:0,get:0,getB:0});
       r[kind]+=1;r[kind+'B']+=n;save();
     },
+    fail(q,e){
+      const s=load(),k=label(q);
+      const r=s.rows[k]||(s.rows[k]={first:0,firstB:0,update:0,updateB:0,get:0,getB:0});
+      r.err=(r.err||0)+1;r.errCode=String(e?.code||e?.message||e||'').slice(0,60);save();
+    },
     data(){return load();},
     reset(){st=fresh();try{localStorage.setItem(KEY,JSON.stringify(st));}catch(_){}}
   };
@@ -25584,13 +25593,13 @@ body.portalChatIsolated > #trWhoModal,html body > #trWhoModal{visibility:visible
   const kb=n=>n>=1048576?(n/1048576).toFixed(2)+'MB':(n/1024).toFixed(n<10240?1:0)+'KB';
   const esc=v=>String(v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   function render(){
-    const s=load(),rows=Object.entries(s.rows).map(([k,r])=>({k,...r,total:r.firstB+r.updateB+r.getB})).sort((a,b)=>b.total-a.total);
+    const s=load(),rows=Object.entries(s.rows).map(([k,r])=>({k,...r,total:r.firstB+r.updateB+r.getB})).sort((a,b)=>(b.err?1:0)-(a.err?1:0)||b.total-a.total);
     const sum=rows.reduce((a,r)=>a+r.total,0);
     let h='<p style="font-size:12px;line-height:1.6">'+esc(s.day)+'　'+new Date(s.since).toTimeString().slice(0,5)+'から　合計 <b>'+kb(sum)+'</b>（目安）</p>';
     h+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11.5px"><thead><tr><th style="text-align:left">場所</th><th>全体読込</th><th>更新</th><th>1回読み</th></tr></thead><tbody>';
     for(const r of rows.slice(0,30)){
       const c=(n,b)=>'<td style="text-align:right;white-space:nowrap;padding:3px 4px">'+(n?n+'回<br>'+kb(b):'—')+'</td>';
-      h+='<tr style="border-top:1px solid rgba(127,127,127,.25)"><td style="word-break:break-all;padding:3px 4px">'+esc(r.k)+'</td>'+c(r.first,r.firstB)+c(r.update,r.updateB)+c(r.get,r.getB)+'</tr>';
+      h+='<tr style="border-top:1px solid rgba(127,127,127,.25)"><td style="word-break:break-all;padding:3px 4px">'+esc(r.k)+(r.err?'<br><span style="color:#d33;font-weight:700">読めない '+r.err+'回：'+esc(r.errCode)+'</span>':'')+'</td>'+c(r.first,r.firstB)+c(r.update,r.updateB)+c(r.get,r.getB)+'</tr>';
     }
     h+='</tbody></table></div>';
     $('trTrafficWrap').innerHTML=rows.length?h:'<p style="font-size:13px">まだ記録がありません。</p>';
@@ -25604,7 +25613,7 @@ body.portalChatIsolated > #trWhoModal,html body > #trWhoModal{visibility:visible
         '<div class="portalPanelHead"><small>TRAFFIC</small><b>通信量メーター（開発者）</b></div>'+
         '<details class="portalManageAccessDisclosure"><summary>この端末の今日の読み込み量を見る</summary>'+
           '<div class="portalIdentityLinkBody">'+
-            '<p style="font-size:12px;line-height:1.6">この端末が今日受け取ったデータの量の目安です（日本時間0時に自動でリセット）。「全体読込」の回数が多い場所が通信量の原因です。Firebaseの画面の数字には通信の付帯分も入るため、こちらより大きくなります。</p>'+
+            '<p style="font-size:12px;line-height:1.6">この端末が今日受け取ったデータの量の目安です（日本時間0時に自動でリセット）。「全体読込」の回数が多い場所が通信量の原因です。赤字は読めなかった場所です（上に並びます）。Firebaseの画面の数字には通信の付帯分も入るため、こちらより大きくなります。</p>'+
             '<div style="display:flex;gap:8px;flex-wrap:wrap"><button id="trTrafficShow" type="button" style="min-height:43px">表示を更新</button><button id="trTrafficReset" type="button" style="min-height:43px">ゼロに戻す</button></div>'+
             '<div id="trTrafficWrap"></div>'+
           '</div>'+
