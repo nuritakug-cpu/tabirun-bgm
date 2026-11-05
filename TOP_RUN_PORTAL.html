@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v335 | 2026-11-05 | Physical parent v334. Move name-save button AFTER furigana (surname/given) and save both using existing canonical profile paths; pre-load approved member names and manual club categories on opening practice report BEFORE aggregation, and keep person selection on date/filter changes. Preserve existing Auth, UID/profileId, roles, all Firebase database paths/Rules and race/practice/result writes. -->
 <!-- TOP RUN PORTAL v334 | 2026-11-05 | Physical parent v333. Fix club roster candidate read shape (existing chatPeopleCandidates returns {rows,revision,seenOk}, not raw array); relocate sorting-only kana directly under display name, examples とっぷ/らん, clarify basic-profile save; restore REPORT CENTER header contrast and five-theme palettes. No Auth/UID/profileId/Firebase paths/Rules/official entry/results or storage writes changed. -->
 <!-- TOP RUN PORTAL v333 | 2026-11-05 | Physical parent v332. Add hidden sorting-only family/given kana inputs to existing basicProfile; developer-curated multi-role mapping by canonical UID/profileId (athlete/instructor/coach/representative/vice/officer/parent), stable grade/gender/role precedence + kana sorting and optional within-group manual rank; use existing one-shot staff roster and personal profile paths and shared Firebase gateway. No role-based system permission grant; no changes to existing official entry or results. REQUIRES aligned integrated Rules v333 for clubRoster and staff basicProfile read. -->
 <!-- TOP RUN PORTAL v332 | 2026-11-05 | Physical parent v331. Reporting presentation only: collapse management report center and person list by default; add participant UID-based filter to practice reports; keep report CSV full detail but generate an A4-landscape 9-column PDF/print layout avoiding mid-word wrapping of dates/times. No changes to Firebase/Auth/UID/profileId/Rules/CRUD/official results. -->
@@ -6243,19 +6244,19 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       <div class="portalProfileEditorContent">
       <div class="portalPanelHead"><small>PROFILE</small><b>名前（表示名）</b></div>
       
-      <div class="portalNameRow">
+      <div class="portalNameRow trDisplayNameOnly">
         <input id="portalDisplayName" maxlength="24" autocomplete="name" placeholder="表示名">
-        <button type="button" id="portalSaveName">名前を保存</button>
       </div>
-      <div class="portalInlineState" id="portalNameState"></div>
-      <p class="trNameNote">表示名は<b>出走登録・大会記録</b>に使われる名前です（選手本人の名前）。</p>
       <div class="trKanaAfterDisplay" aria-label="名前一覧の並び順専用のふりがな">
         <div class="trKanaGrid" aria-label="氏名の読み（名前一覧の並び順だけに利用）">
           <label>ふりがな・姓<input id="trKanaFamily" type="text" lang="ja" maxlength="20" inputmode="text" autocomplete="off" autocapitalize="off" placeholder="とっぷ"></label>
           <label>ふりがな・名<input id="trKanaGiven" type="text" lang="ja" maxlength="20" inputmode="text" autocomplete="off" autocapitalize="off" placeholder="らん"></label>
         </div>
-        <p class="portalHelp">名前一覧の五十音順専用。表示名や帳票には表示しません。姓と名をひらがなで入力してください（空白不可）。保存は下の「基本プロフィールを保存」で反映します。</p>
+        <p class="portalHelp">名前一覧の五十音順にのみ使用し、通常のプロフィール・帳票には表示しません。姓と名をひらがなで入力してください（空白不可）。</p>
       </div>
+      <button type="button" id="portalSaveName" class="portalPrimary trUnifiedNameSave">名前を保存</button>
+      <div class="portalInlineState" id="portalNameState" aria-live="polite"></div>
+      <p class="trNameNote">表示名は<b>出走登録・大会記録</b>に使われる名前です（選手本人の名前）。ふりがなもこの「名前を保存」で一緒に保存します。</p>
       <div class="trChatNameBox" id="trChatNameBox">
         <div class="portalPanelHead"><small>CHAT NAME</small><b>チャットでの表示名</b></div>
         <p class="trNameNote">共通チャット・ルームで表示される名前です。未入力のときは表示名を使います。保護者の端末で表示名をお子さんの名前にしている場合は、ここに保護者のお名前（例：○○ 母）を入れてください。</p>
@@ -6604,7 +6605,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v334</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v335</b></div>
   </div>
 </div>
 
@@ -6828,7 +6829,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v334</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v335</b></div>
   </div>
 </div>
 
@@ -7041,7 +7042,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
     <label id="trPrFromWrap" hidden>開始日<input type="date" id="trPrFrom"></label>
     <label id="trPrToWrap" hidden>終了日<input type="date" id="trPrTo"></label>
     <label>対象区分<select id="trPrCategory"><option value="athlete" selected>選手</option><option value="athlete_coach">選手＋コーチ・指導者</option><option value="athlete_staff">選手＋コーチ・指導者＋役員・代表・副代表</option><option value="all">全て（保護者・その他を含む）</option></select></label>
-    <label>対象参加者<select id="trPrPerson"><option value="all">区分内の全員</option></select></label>
+    <label>対象参加者<select id="trPrPerson"><option value="all">区分内の全員</option></select><small class="trPrPersonHint" id="trPrPersonHint" role="status" aria-live="polite">帳票を開くと承認済み名簿と役職を読み込みます。</small></label>
     <label>参加回答<select id="trPrAttendance"><option value="all">全員（未回答含む）</option><option value="join">参加する</option><option value="support">帯同・応援</option><option value="decline">参加しない</option><option value="none">未回答</option></select></label>
     <label>練習記録<select id="trPrRecord"><option value="all">全員（記録あり・なし）</option><option value="has">記録あり</option><option value="none">記録なし</option></select></label>
    </div>
@@ -8110,7 +8111,19 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
     const state=$('portalNameState');
     const button=$('portalSaveName');
     if(!value){state.textContent='表示名を入力してください。';return;}
+    // v335: the surname/given readings are saved by THIS button, not by a button
+    // below chat-name or basic-profile. Use the same existing basicProfile path.
+    const normalizeKana=v=>String(v||'').normalize('NFKC').replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-0x60));
+    const kanaFamily=normalizeKana($('trKanaFamily').value),kanaGiven=normalizeKana($('trKanaGiven').value);
+    if((!!kanaFamily)!==(!!kanaGiven)||(kanaFamily&&!/^[ぁ-ゖー]{1,20}$/.test(kanaFamily))||(kanaGiven&&!/^[ぁ-ゖー]{1,20}$/.test(kanaGiven))){
+      state.textContent='ふりがなは「姓」「名」の両方をひらがなで入力してください（空白不可）。';return;
+    }
+    const oldBasic=flowBasicProfile(),kanaChanged=kanaFamily!==String(oldBasic.kanaFamily||'')||kanaGiven!==String(oldBasic.kanaGiven||'');
+    if(kanaChanged&&(!['male','female'].includes(oldBasic.gender)||!['1','2','3','other'].includes(String(oldBasic.grade||'')))){
+      state.textContent='ふりがなを保存するには、先に性別・学年を「基本プロフィールを保存」で確定してください。表示名もまだ保存していません。';return;
+    }
     if(portalParticipantPreviewMode && isDeveloper){
+      if(kanaChanged){state.textContent='試用画面ではふりがなを保存できません。本人のMY PAGEで設定してください。';return;}
       const actor=portalDevPreviewUsers.find(x=>x.id===portalDevPreviewActiveId);
       if(!actor){state.textContent='確認対象を選択してください。';return;}
       const oldName=actor.name,oldStamp=actor.savedAt;
@@ -8133,18 +8146,28 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         showActionFeedback('未保存','本人プロフィールの受信が必要です。');
         return;
       }button.disabled=true;
-      state.textContent='Firebaseへ保存しています…';
+      state.textContent='表示名・ふりがなをFirebaseへ保存しています…';
+      let nameSaved=false;
       try{
         await gateway.saveOwnDisplayName(value);
-        // Commit UI only after the single canonical profile path acknowledges and re-READs.
+        nameSaved=true;
+        // Name and sorting-only readings have separate pre-existing canonical paths.
+        // Never overwrite a not-yet-confirmed gender/grade or invent a second person ID.
+        if(kanaChanged){
+          const updated={...oldBasic,kanaFamily,kanaGiven,savedAt:Date.now()};
+          await gateway.saveOwnBasicProfile(updated);
+          flowState.basicProfiles[flowBaseSelfId]=updated;
+          flowPersist();
+        }
         $('portalMyPageName').textContent=value;
         const self=flowState.actors.find(x=>x?.id===flowBaseSelfId);
         if(self)self.name=value;
-        state.textContent='表示名をFirebaseに保存し、再読込で確認しました。';
-        showActionFeedback('保存しました','本人プロフィールの表示名をFirebaseに保存しました。');
+        state.textContent=kanaChanged?'表示名・ふりがなをFirebaseへ保存しました。':'表示名をFirebaseに保存し、再読込で確認しました。';
+        showActionFeedback('保存しました',kanaChanged?'表示名とふりがなを保存しました。':'本人プロフィールの表示名をFirebaseに保存しました。');
       }catch(error){
-        state.textContent='未保存：'+String(error?.message||error).slice(0,135);
-        showActionFeedback('未保存','Firebaseへの保存が成立していません。');
+        state.textContent=(nameSaved?'表示名は保存済み、ふりがなは未保存：':'未保存：')+String(error?.message||error).slice(0,135);
+        if(nameSaved){$('portalMyPageName').textContent=value;const self=flowState.actors.find(x=>x?.id===flowBaseSelfId);if(self)self.name=value;}
+        showActionFeedback(nameSaved?'一部だけ保存しました':'未保存',nameSaved?'ふりがなを保存できませんでした。':'Firebaseへの保存が成立していません。');
         return;
       }finally{button.disabled=false;}
     }
@@ -9652,7 +9675,12 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
       if(filter&&filter.value!=='all'){filter.value='all';filter.dispatchEvent(new Event('change',{bubbles:true}));}
       if(kind==='notice')renderManageNotices();if(kind==='practice')renderManagePractices();if(kind==='event')renderManageEvents();
     }
-    if(kind==='practice'&&view==='report'){const list=$('trPrListDisclosure');if(list)list.open=false;}
+    if(kind==='practice'&&view==='report'){
+      const list=$('trPrListDisclosure');if(list)list.open=false;
+      // v335: pre-load the approved-person picker before the report aggregation.
+      // The list was previously populated only from trPrState.raw (null until "集計").
+      void trPrLoadPeople();
+    }
     pane.dataset.mwView=view;
 if(kind==='event'&&view!=='menu'){
       portalSwitchEventWorkspace(view==='list'?'list':view==='participants'?'participants':'new');}
@@ -14200,7 +14228,7 @@ function portalAuditRenderOfficialV222(e){
 
   // v330 practice attendance/record report. Existing memberAccess, practices,
   // practiceResponses and pastRecords are sole sources of truth. No local fallback.
-  const trPrState={raw:null,rows:[],page:0,seq:0,window:''};
+  const trPrState={raw:null,rows:[],page:0,seq:0,window:'',people:null,peopleUid:'',peopleLoading:null,personReadIssue:''};
   const trPrDate=v=>/^\d{4}-\d{2}-\d{2}$/.test(String(v||''));
   const trPrToday=()=>new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Tokyo'});
   const trPrL=v=>String(v??'');
@@ -14217,20 +14245,55 @@ function portalAuditRenderOfficialV222(e){
   }
   function trPrButtons(ok){$('trPrCsv').disabled=!ok;$('trPrPrint').disabled=!ok;}
   function trPrSetPeople(rows){
+    // v335: names belong to the approved UID roster, never to a particular day's
+    // attendance/record rows. The dropdown must work BEFORE a report is generated.
     const field=$('trPrPerson'),previous=field.value;
     const byUid=new Map();
-    for(const row of rows||[]){if(row.uid&&!byUid.has(row.uid))byUid.set(row.uid,String(row.name||'名前未確認'));}
+    for(const row of rows||[])if(row.uid&&!byUid.has(row.uid))byUid.set(row.uid,String(row.name||'名前未確認'));
     const source=[...byUid].map(([uid,name])=>({uid,name}));
-    const sorted=(window.trClubSortV333?window.trClubSortV333(source):source.sort((a,b)=>a.name.localeCompare(b.name,'ja'))).map(x=>[x.uid,x.name]);
-    field.replaceChildren(new Option('全員','all'));
-    for(const [uid,name] of sorted)if(!window.trClubInCategoryV333||window.trClubInCategoryV333(uid,$('trPrCategory').value))field.add(new Option(name+'（'+String(uid).slice(-6)+'）',uid));
+    const sorted=(window.trClubSortV333?window.trClubSortV333(source):source.sort((a,b)=>a.name.localeCompare(b.name,'ja')));
+    field.replaceChildren(new Option('区分内の全員','all'));
+    for(const person of sorted)if(!window.trClubInCategoryV333||window.trClubInCategoryV333(person.uid,$('trPrCategory').value))field.add(new Option(person.name+'（ID末尾'+person.uid.slice(-6)+'）',person.uid));
     field.value=byUid.has(previous)&&[...field.options].some(o=>o.value===previous)?previous:'all';
+    const n=field.options.length-1;
+    const hint=$('trPrPersonHint');
+    if(hint&&Array.isArray(rows))hint.textContent=n?`${n}名から個人を選択できます（UIDで区別）。`:
+      (rows.length?'この区分に役職を設定した登録者はいません。管理画面の「クラブ区分」で手動指定してください。':'承認済みの登録者はまだ取得できていません。');
+  }
+  async function trPrLoadPeople(){
+    const g=window.__TR_PORTAL_SYNC__,hint=$('trPrPersonHint');
+    if(!g?.roleVerified||!['developer','admin'].includes(g.role)||!g.listApprovedMembers){
+      if(hint)hint.textContent='管理者の本人確認が完了すると選択できます。';return;
+    }
+    if(trPrState.peopleUid===g.uid&&Array.isArray(trPrState.people)){
+      trPrSetPeople(trPrState.people);return;
+    }
+    if(trPrState.peopleLoading)return trPrState.peopleLoading;
+    if(hint)hint.textContent='承認済みの名前と役職を読み込み中…';
+    const job=(async()=>{
+      const members=await g.listApprovedMembers();
+      if(!Array.isArray(members))throw Error('承認済み名簿が取得できません');
+      // Existing gateway, one-shot only: do not create a second membership listener.
+      await g.loadClubRoster(true);
+      let sortIssue='';
+      try{await g.loadClubBasicProfiles(members);}catch(e){sortIssue=String(e?.message||e).slice(0,95);}
+      if(g!==window.__TR_PORTAL_SYNC__||!g.roleVerified||!['developer','admin'].includes(g.role))throw Error('途中で管理者の認証が変わりました');
+      trPrState.people=members;trPrState.peopleUid=g.uid;
+      trPrState.personReadIssue=sortIssue;
+      trPrSetPeople(members);
+      if(hint&&sortIssue)hint.textContent+=' ※一部ふりがな等の取得ができません：'+sortIssue;
+    })();
+    trPrState.peopleLoading=job;
+    try{await job;}catch(e){
+      trPrState.people=null;trPrState.peopleUid='';trPrSetPeople([]);
+      if(hint)hint.textContent='名前を読み込めません：'+String(e?.message||e).slice(0,105);
+    }finally{if(trPrState.peopleLoading===job)trPrState.peopleLoading=null;}
   }
   function trPrClearReport(message){
     trPrState.seq++;trPrState.raw=null;trPrState.rows=[];trPrState.page=0;
     $('trPrCounts').innerHTML='';$('trPrList').innerHTML='';$('trPrPaging').hidden=true;
     $('trPrListDisclosure').open=false;$('trPrListDisclosure').hidden=true;
-    trPrSetPeople([]);trPrButtons(false);
+    trPrSetPeople(trPrState.people||[]);trPrButtons(false);
     if(message)$('trPrStatus').textContent=message;
   }
   function trPrUpdateRows(){
@@ -14322,7 +14385,8 @@ function portalAuditRenderOfficialV222(e){
       let previous='',ordinal=0;
       sessions.forEach(p=>{ordinal=p.date===previous?ordinal+1:1;previous=p.date;p.session=sessions.filter(x=>x.date===p.date).length>1?ordinal+'回目':'';});
       trPrState.raw=trPrRows(sessions,members,answers,past);
-      trPrState.window=range.label;trPrSetPeople(trPrState.raw);trPrUpdateRows();
+      trPrState.people=members;trPrState.peopleUid=g.uid;
+      trPrState.window=range.label;trPrSetPeople(members);trPrUpdateRows();
     }catch(error){if(seq===trPrState.seq){trPrClearReport();status.textContent='帳票を作れません：'+String(error?.message||error).slice(0,190)+'。未取得を未回答・記録なしとして扱いません。';}}
     finally{btn.disabled=false;}
   }
@@ -14341,7 +14405,7 @@ function portalAuditRenderOfficialV222(e){
     trPrClearReport('期間を変更しました。「Firebaseから集計する」を押してください。');
   });
   for(const id of ['trPrDay','trPrMonth','trPrFrom','trPrTo'])$(id).addEventListener('change',()=>trPrClearReport('期間を変更しました。「Firebaseから集計する」を押してください。'));
-  $('trPrCategory').addEventListener('change',()=>{trPrSetPeople(trPrState.raw||[]);$('trPrPerson').value='all';$('trPrListDisclosure').open=false;trPrUpdateRows();});
+  $('trPrCategory').addEventListener('change',()=>{trPrSetPeople(trPrState.people||[]);$('trPrPerson').value='all';$('trPrListDisclosure').open=false;trPrUpdateRows();if(!trPrState.people)void trPrLoadPeople();});
   $('trPrPerson').addEventListener('change',()=>{$('trPrListDisclosure').open=false;trPrUpdateRows();});
   $('trPrAttendance').addEventListener('change',trPrUpdateRows);
   $('trPrRecord').addEventListener('change',trPrUpdateRows);
@@ -27662,6 +27726,15 @@ html[data-portal-personal-color="sakura"] #screen-management-settings :is(#porta
 /* Explicit winter/matte accents should not inherit light-theme pale-background assumptions. */
 html[data-portal-personal-color="winter"] #screen-management-settings :is(#portalReportCenter,#trClubEditor){--tr-report-accent:#9ef4e9}
 html[data-portal-personal-color="matte"] #screen-management-settings :is(#portalReportCenter,#trClubEditor){--tr-report-accent:#ffb58a}
+</style>
+<style id="tr-v335-name-order-and-report-picker">
+/* Name, furigana (surname + given), then a single name-save action. */
+#screen-mypage .trDisplayNameOnly{display:block;width:100%}
+#screen-mypage .trDisplayNameOnly #portalDisplayName{width:100%;min-height:50px;font-size:16px}
+#screen-mypage .trKanaAfterDisplay{margin:15px 0 12px}
+#screen-mypage .trUnifiedNameSave{display:block;width:100%;min-height:51px;margin:13px 0 9px;font-size:16px}
+#screen-mypage #portalNameState{line-height:1.65}
+#portalPracticeReportPanel .trPrPersonHint{display:block;font-size:11px;line-height:1.55;opacity:.85;font-weight:650;margin-top:6px;overflow-wrap:anywhere}
 </style>
 <style id="tr-club-v333-css">
 .trKanaGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:13px 0 8px}
