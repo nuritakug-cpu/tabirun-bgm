@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v328 | 2026-11-05 | Parent v327 physical HTML. FIX ONLY: PORTAL内正式出走の帳票CSV/PDF出力を既存nativeRaceStaffのFirebase READと共有し、iPhoneのCSV共有/保存選択、印刷画面からの確実な戻り導線を追加。本人・代理・Auth・Firebase RTDB/Rules/データ保存・通知等の経路を変更しない。 -->
 <!-- TOP RUN PORTAL v327 | 2026-11-05 | Parent user supplied v326. 修正: カレンダーの代理選択から出走登録へお子さんUIDを引継ぎ、本人フォームを隠して誤登録を防止。PORTAL内大会の正式出走登録を既存Firebase共通gatewayへ統合。Rules v327対応が必要。本番Firebase未実測。 -->
 <!-- TOP RUN PORTAL v326 | 2026-11-05 | Parent v325. REQUIRES Rules v319（v318＋保護者がお子さんの出走を取り消せる（本人が自分で登録した分も）、出走の目標タイムを変えられる、お子さんの基本プロフィール・目標タイムを保存・読める）。代理を本人と同じにする：(1) 保護者の出走一覧に、お子さんの出走をすべて出す（本人が登録した分も、保護者が代理で登録した分も）。(2) どちらの出走も、記録が入る前なら保護者が取り消せる。取り消すと、ほかの種目が残っていなければお子さんの当日の予定を「未選択」に戻す（本人の取消と同じ）。(3) 出走の目標タイムを保護者が変更できる（記録が入る前まで）。(4) MY PAGEに「お子さんの基本プロフィール・目標タイム（保護者）」を追加。お子さんの性別・学年・ゼッケンNoと目標タイムを、本人と同じ形で保存できる（出走条件の確認に使われる）。 -->
 <!-- TOP RUN PORTAL v325 | 2026-11-05 | Parent v324. Rules v318 のまま。穴の修正3つ：(1) 保護者の代理の出走登録で、お子さんの「当日の予定」も「参加する」にする（本人登録と同じ）。代理の取消では、お子さんに他の種目が残っていなければ「未選択」に戻す。(2) 代理回答の保存の直前に、お子さん本人の今の回答をFirebaseから読み直す。保護者の端末は開いた日の回答しか読み込んでいないため、「出欠回答」の一覧から別の日を代理で回答すると、本人の回答が見えず確認なしで上書きするおそれがあった。読み直せないときは保存しない。(3) 練習の日付を変えて保存すると、その練習の参加回答（代理回答も含む）をリセットする（保存前に確認）。時間・場所だけの変更ではリセットしない。 -->
@@ -6543,7 +6544,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v327</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v328</b></div>
   </div>
 </div>
 
@@ -6733,7 +6734,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v327</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v328</b></div>
   </div>
 </div>
 
@@ -13857,7 +13858,62 @@ function portalAuditRenderOfficialV222(e){
   list.innerHTML=out.join('');
   return true;
 }
-function portalAuditExportRows(){ const {event:e,people}=portalAuditSnapshot();if(!e)return {e,people,rows:[]};
+  // v328: PORTAL内大会の帳票も管理画面と同じFirebase正式出走READ結果を使う。
+  // Neither local trial entries nor name-only matching are promoted to official rows.
+  function portalAuditNativeRows(e){
+    if(!flowNativeDestination(e))return null;
+    const gate=window.__TR_PORTAL_SYNC__;
+    if(gate?.nativeRaceStaffStatus?.[e.id]!=='ok'){
+      if(!gate?.nativeRaceStaffStatus?.[e.id])void gate?.loadNativeRaceStaff?.(e.id).catch(()=>{});
+      return {e,people:[],rows:[],error:'PORTALの正式出走登録をFirebaseから読み込めていません。管理画面の「正式出走の最新データを読み直す」を押し、登録件数が表示されてから出力してください。'};
+    }
+    // Attendance answers are a separate existing shared subscription, not a new read path.
+    if(gate?.loaded?.eventResponses!==true){
+      return {e,people:[],rows:[],error:'大会当日の参加回答をまだ受信していません。読込完了後にもう一度出力してください。'};
+    }
+    const answers=gate.eventResponses?.[e.id]||{};
+    const columns=['大会名','開催日','開始時刻','会場','氏名','学年','性別','ゼッケン','参加回答','出走種目','種目開催日','申告タイム','目標タイム','結果','確認項目'];
+    const rows=[columns],people=[],seenUid=new Set();
+    const answerName=a=>({join:'参加する',support:'会場へ行く（応援・帯同）',decline:'会場へ行かない',maybe:'未定'})[a]||'未回答';
+    const profileCols=pid=>{
+      const p=pid?flowBasicProfile(pid):{};
+      return [p.grade?(p.grade==='other'?'その他':String(p.grade)+'年'):'',p.gender==='male'?'男子':p.gender==='female'?'女子':'',p.bib||''];
+    };
+    const common=[e.title,portalEventDateLabel(e),e.startTime||'',e.place||''];
+    const registry=gate.nativeRaceStaff?.[e.id]||{};
+    for(const [uid,byMetric] of Object.entries(registry)){
+      if(!byMetric||typeof byMetric!=='object')continue;
+      for(const [metric,r] of Object.entries(byMetric)){
+        if(!r||typeof r!=='object')continue;
+        const subject=String(r.subjectUid||'');
+        const pid=String(r.profileId||'');
+        const a=answers[uid];
+        const response=String(a?.answer||'');
+        const issues=[];
+        if(subject!==uid||String(r.metric||'')!==metric||!pid)issues.push('正式出走の本人ID・種目を要確認');
+        if(e.requiresDeclaredTime===true&&!r.declaredTime)issues.push('申告タイム未入力');
+        if(['decline','support','maybe'].includes(response))issues.push('出走登録と参加回答の不一致');
+        const name=String(r.displayName||a?.name||'本人情報未登録').slice(0,24);
+        seenUid.add(uid);
+        rows.push([...common,name,...profileCols(pid),
+          '出走する（正式登録）',portalMetricNames[metric]||metric,r.dayDate||e.metricDates?.[metric]||e.date||'',
+          r.declaredTime||'',r.targetTime||'',r.result?.time||'',issues.join('／')]);
+        people.push({name,issues});
+      }
+    }
+    // Preserve attendance-only people without misreporting them as registered athletes.
+    for(const [uid,a] of Object.entries(answers)){
+      if(!a||seenUid.has(uid)||!['join','support','decline','maybe'].includes(a.answer))continue;
+      const issues=a.answer==='join'&&e.raceEntryEnabled!==false?['参加回答あり・出走登録なし']:[];
+      const name=String(a.name||'参加者').slice(0,24);
+      rows.push([...common,name,...profileCols(a.profileId),answerName(a.answer),
+        e.raceEntryEnabled===false?'対象外':'未登録','','','','',issues.join('／')]);
+      people.push({name,issues});
+    }
+    return {e,people,rows,source:'nativeRaceEntries'};
+  }
+  function portalAuditExportRows(){ const {event:e,people}=portalAuditSnapshot();if(!e)return {e,people,rows:[]};
+  {const native=portalAuditNativeRows(e);if(native)return native;}
   {const off=portalAuditOfficialRows(e);if(off)return off;}
     const columns=['大会名','開催日','開始時刻','会場','氏名','学年','性別','ゼッケン','参加回答','出走種目','種目開催日','申告タイム','目標タイム','結果','確認項目'];
     const rows=[columns];
@@ -13872,6 +13928,7 @@ function portalAuditExportRows(){ const {event:e,people}=portalAuditSnapshot();i
   }
   function portalAuditExportAllowed(data){
     if(!canManage||portalParticipantPreviewMode||!data.e)return false;
+    if(data.error){$('portalAuditStatus').textContent=data.error;return false;}
     if(!data.people.length){$('portalAuditStatus').textContent='対象選手がいません。';return false;}
     const incomplete=data.people.filter(p=>p.issues.length).length;
     if(incomplete>0&&!window.confirm(`要確認が${incomplete}人残っています。確認用の一覧として出力しますか？`))return false;
@@ -13882,21 +13939,44 @@ function portalAuditExportRows(){ const {event:e,people}=portalAuditSnapshot();i
     if(/^[\s\u0000-\u001f]*[=+\-@]/.test(value))value="'"+value;
     return '"'+value.replace(/"/g,'""')+'"';
   }
-  $('portalAuditCsv').addEventListener('click',()=>{
+  $('portalAuditCsv').addEventListener('click',async()=>{
     const data=portalAuditExportRows();if(!portalAuditExportAllowed(data))return;
     try{
       const csv='\ufeff'+data.rows.map(row=>row.map(portalAuditCsvCell).join(',')).join('\r\n');
-      const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob);
-      const a=document.createElement('a');a.href=url;a.download='出走登録一覧_'+String(data.e.date||'').replace(/[^0-9]/g,'')+'.csv';document.body.appendChild(a);a.click();a.remove();
-      setTimeout(()=>URL.revokeObjectURL(url),1500);
-      $('portalAuditStatus').textContent='出走登録一覧CSVを作成しました。';
-    }catch(_){$('portalAuditStatus').textContent='CSVを作成できませんでした。';}
+      const fileName='出走登録一覧_'+String(data.e.date||'').replace(/[^0-9]/g,'')+'.csv';
+      const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+      // iOS Safari / installed PWA: native share sheet allows explicit 「ファイルに保存」.
+      // Calling a.click() only requests a download; it does NOT confirm disk save.
+      if(typeof File==='function'&&typeof navigator.share==='function'&&typeof navigator.canShare==='function'){
+        try{
+          const file=new File([blob],fileName,{type:'text/csv'});
+          if(navigator.canShare({files:[file]})){
+            try{
+              await navigator.share({files:[file],title:'大会出走登録一覧'});
+              $('portalAuditStatus').textContent='CSVを共有画面に渡しました。保存先は共有先（「ファイルに保存」など）で確認してください。';
+            }catch(error){
+              $('portalAuditStatus').textContent=error?.name==='AbortError'?'共有・保存をキャンセルしました。CSVはまだ保存されていません。':'CSVの共有に失敗しました。もう一度お試しください。';
+            }
+            return;
+          }
+        }catch(_){/* browser without file sharing: use normal download */}
+      }
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');a.href=url;a.download=fileName;document.body.appendChild(a);a.click();a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),60000);
+      $('portalAuditStatus').textContent='CSVのダウンロードを要求しました。保存成功は未確認です。Safariのダウンロード一覧または「ファイル」アプリのダウンロードをご確認ください。';
+    }catch(error){$('portalAuditStatus').textContent='CSVを出力できませんでした：'+String(error?.message||error).slice(0,90);}
   });
   $('portalAuditPrint').addEventListener('click',()=>{
     const data=portalAuditExportRows();if(!portalAuditExportAllowed(data))return;
     const tab=window.open('','_blank');
     if(!tab){$('portalAuditStatus').textContent='印刷画面を開けませんでした。ブラウザのポップアップ許可を確認してください。';return;}
     const safeTitle=esc(data.e.title+' 出走登録一覧');
+    // When a print window opens inside a standalone PWA, Safari's back chrome is hidden.
+    // Supply a same-origin explicit return link; never carry query credentials into a report.
+    const returnUrl=new URL(location.pathname,location.origin).href;
+    const safeReturn=esc(returnUrl);
+
     // The CSV retains all 15 original columns. Paper repeats event metadata only once.
     const printable=data.rows.slice(1).map((r,i)=>[
       String(i+1),r[4], [r[5],r[6],r[7]].filter(Boolean).join(' / ')||'—',r[8],
@@ -13909,14 +13989,14 @@ function portalAuditExportRows(){ const {event:e,people}=portalAuditSnapshot();i
     const td=(text,tag)=>`<${tag}>${esc(String(text??''))}</${tag}>`;
     const sheet=`<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${safeTitle}</title><style>
       *{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;color:#252b2a;margin:20px;background:#fff}
-      .sheet{max-width:1100px;margin:0 auto}.tools{margin:0 0 22px}.tools button{font-size:15px;padding:10px 16px;border:1px solid #a7a39b;border-radius:8px;background:#f6f2e6;color:#222}
+      .sheet{max-width:1100px;margin:0 auto}.tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 22px}.tools button,.tools a{display:inline-block;text-decoration:none;font-size:15px;padding:10px 16px;border:1px solid #a7a39b;border-radius:8px;background:#f6f2e6;color:#222}.tools a{background:#e0eee9;border-color:#779a8c}.mobileHint{font-size:12px;line-height:1.5;color:#555;margin:0 0 15px}
       h1{font-size:19px;line-height:1.3;margin:0 0 9px;overflow-wrap:anywhere}.meta{font-size:11px;line-height:1.5;padding:8px 10px;background:#f1eee5;border-left:4px solid #c9a514;margin:0 0 12px}
       .scroll{overflow-x:auto}table{border-collapse:collapse;table-layout:fixed;width:100%;min-width:800px;font-size:10px;line-height:1.4}
       th,td{border:1px solid #aaaea9;padding:7px 5px;text-align:left;vertical-align:middle;overflow-wrap:break-word;word-break:normal}
       th{background:#eee8d7;color:#242d2c;font-weight:800}tbody tr:nth-child(even){background:#f7f7f5}tbody tr{break-inside:avoid}
       @page{size:A4 landscape;margin:9mm}
-      @media print{body{margin:0}.sheet{max-width:none}.tools{display:none}.scroll{overflow:visible}table{min-width:0;font-size:${sheetPrintSize}}th,td{padding:4px 3px}.meta{padding:5px 8px;margin:0 0 8px;font-size:9px}h1{font-size:15px;margin-bottom:6px}}
-    </style></head><body><div class="sheet"><div class="tools"><button onclick="window.print()">印刷・PDF保存</button></div><h1>${safeTitle}</h1><p class="meta">開催：${esc(portalEventDateLabel(data.e))}　開始：${esc(data.e.startTime||'—')}　会場：${esc(data.e.place||'—')}　／ ${printable.length}件</p><div class="scroll"><table><colgroup>${widths.map(w=>'<col style="width:'+w+'%">').join('')}</colgroup><thead><tr>${head.map(h=>td(h,'th')).join('')}</tr></thead><tbody>${printable.map(r=>'<tr>'+r.map(c=>td(c,'td')).join('')+'</tr>').join('')}</tbody></table></div></div>
+      @media print{body{margin:0}.sheet{max-width:none}.tools,.mobileHint{display:none}.scroll{overflow:visible}table{min-width:0;font-size:${sheetPrintSize}}th,td{padding:4px 3px}.meta{padding:5px 8px;margin:0 0 8px;font-size:9px}h1{font-size:15px;margin-bottom:6px}}
+    </style></head><body><div class="sheet"><div class="tools"><a id="returnPortal" href="${safeReturn}" onclick="try{if(window.opener&&!window.opener.closed){window.opener.focus();window.close();}}catch(_e){}">← PORTALへ戻る</a><button type="button" onclick="window.print()">印刷・PDF保存</button></div><p class="mobileHint">iPhoneでPDF保存：印刷を押し、プレビューを拡大して共有から「ファイルに保存」を選択してください。戻るときは左の「PORTALへ戻る」。</p><h1>${safeTitle}</h1><p class="meta">開催：${esc(portalEventDateLabel(data.e))}　開始：${esc(data.e.startTime||'—')}　会場：${esc(data.e.place||'—')}　／ ${printable.length}件</p><div class="scroll"><table><colgroup>${widths.map(w=>'<col style="width:'+w+'%">').join('')}</colgroup><thead><tr>${head.map(h=>td(h,'th')).join('')}</tr></thead><tbody>${printable.map(r=>'<tr>'+r.map(c=>td(c,'td')).join('')+'</tr>').join('')}</tbody></table></div></div>
 <style id="v193-chat-reaction-and-bubble-tune">
 /* v193: restore 2-character reactions to a readable middle size; keep 1-character reactions as the reference. */
 #screen-chat :is(#portalChatThread,#trRoomThread) button.trReact .trText-short.trText-one{
@@ -18696,6 +18776,12 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
     };
     gate.deleteEvent=async(id)=>{
       ensure('eventItems');const original=gate.eventItems?.[id];if(!original)throw Error('共有イベントが見つかりません');
+      // v327: deleting a PORTAL-native event must not orphan official race registrations.
+      if(original.type==='OTHER'&&original.displayCategory==='competition'){
+        const entries=(await dbMod.get(ref(nativeRoot+id))).val()||{};
+        if(Object.values(entries).some(byMetric=>byMetric&&Object.values(byMetric).some(row=>!!row)))
+          throw Error('正式出走登録が残っています。大会の削除を停止しました。出走記録を保護しています');
+      }
       const answer=await run('eventItems/'+id,current=>current&&ownStamp(current)===ownStamp(original)?null:undefined);
       if(!answer.committed)throw Error('別端末の変更と競合したため削除していません');
       // v315: イベントの参加回答も一緒に消す
