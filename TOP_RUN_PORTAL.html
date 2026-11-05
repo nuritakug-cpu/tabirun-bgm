@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v337 | 2026-11-06 | Physical parent v336. REPORT CENTER: two simple entry points (by activity day vs by person) with one common day/month/range/all period filter. Existing activity schedule list retained; person route creates READ-ONLY chronological practice/event/official-entry/result history using existing unified gateway and UID, supports instructor-only category, month attendance totals, CSV, and landscape print. No RTDB/Auth/Rules/UID/profileId/writer change. -->
 <!-- TOP RUN PORTAL v336 | 2026-11-06 | Physical parent v335. After confirmed direct practice/event RSVP (self or parent proxy), scroll only to the same target person’s NEXT UNANSWERED practice day or event, not next person or merely next available button. Management disclosures use consistent triangular markers. Shared report category + individual UID filters carry through practice and event reports/CSV/print. No RTDB Rules/Auth/UID/profileId/save-route changes. -->
 <!-- TOP RUN PORTAL v335 | 2026-11-05 | Physical parent v334. Move name-save button AFTER furigana (surname/given) and save both using existing canonical profile paths; pre-load approved member names and manual club categories on opening practice report BEFORE aggregation, and keep person selection on date/filter changes. Preserve existing Auth, UID/profileId, roles, all Firebase database paths/Rules and race/practice/result writes. -->
 <!-- TOP RUN PORTAL v334 | 2026-11-05 | Physical parent v333. Fix club roster candidate read shape (existing chatPeopleCandidates returns {rows,revision,seenOk}, not raw array); relocate sorting-only kana directly under display name, examples とっぷ/らん, clarify basic-profile save; restore REPORT CENTER header contrast and five-theme palettes. No Auth/UID/profileId/Firebase paths/Rules/official entry/results or storage writes changed. -->
@@ -4666,6 +4667,36 @@ html[data-portal-personal-color="matte"] #screen-goal-tools{--guide-panel:#28212
 @media(max-width:360px){#portalReportCenter .trHubShortcuts{grid-template-columns:1fr}}
 </style>
 
+
+<style id="tr-v337-report-two-axes">
+#portalReportCenter .trReportAxis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:14px 0 9px}
+#portalReportCenter .trReportAxis button{appearance:none;min-height:62px;border:2px solid var(--pc-panel-soft-border,#68a7a1);border-radius:13px;padding:10px 5px;background:transparent;color:inherit;font-size:15px;font-weight:950;line-height:1.5;white-space:normal}
+#portalReportCenter .trReportAxis button[aria-pressed="true"]{background:var(--tr-report-accent,#168882);color:#fff;border-color:var(--tr-report-accent,#168882);box-shadow:inset 0 -3px 0 #0002}
+#portalReportCenter .trHubAxisHint{font-size:12px;line-height:1.6;margin:0 0 14px;opacity:.95}
+#portalReportCenter .trHubActivityOnly[hidden],#portalReportCenter .trHubPersonOnly[hidden]{display:none!important}
+#portalReportCenter #trHubPersonReport[hidden],#portalReportCenter #trHubActivityResults[hidden]{display:none!important}
+#portalReportCenter .trPersonActivitySummary{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0}
+#portalReportCenter .trPersonActivitySummary b{font-size:12px;padding:8px 10px;border-radius:9px;background:rgba(23,130,128,.15);border:1px solid var(--pc-panel-soft-border,#4d9896);line-height:1.5}
+#portalReportCenter .trPersonHistoryCard{border:1px solid var(--pc-panel-soft-border,#53817d);border-radius:12px;overflow:hidden;margin:10px 0;background:rgba(30,109,107,.06)}
+#portalReportCenter .trPersonHistoryCard>summary{cursor:pointer;padding:13px 12px;list-style:none;font-weight:900;line-height:1.5}
+#portalReportCenter .trPersonHistoryCard>summary::-webkit-details-marker{display:none}
+#portalReportCenter .trPersonHistoryCard>summary::after{content:'▶';float:right;font-size:13px;transition:transform .15s ease}
+#portalReportCenter .trPersonHistoryCard[open]>summary::after{transform:rotate(90deg)}
+#portalReportCenter .trPersonHistoryRow{padding:10px 12px;border-top:1px solid var(--pc-panel-soft-border,#53817d);line-height:1.55;font-size:12px;overflow-wrap:anywhere}
+#portalReportCenter .trPersonHistoryRow b{display:block;font-size:13px}
+#portalReportCenter .trPersonHistoryRow small{display:block;font-size:11px;line-height:1.65;margin-top:4px}
+#portalReportCenter .trPersonReportActions{display:flex;gap:9px;margin-top:16px}
+#portalReportCenter .trPersonReportActions button{flex:1;min-width:0;min-height:49px;border-radius:11px;border:1px solid var(--pc-panel-soft-border,#72b5ae);background:transparent;color:inherit;font-weight:900;font-size:12px}
+#portalReportCenter .trPersonReportActions button:disabled{opacity:.4}
+@media(max-width:370px){#portalReportCenter .trReportAxis button{font-size:13px;min-height:62px}#portalReportCenter .trPersonReportActions{flex-direction:column}}
+/* Five palette overrides keep active tab legible in light and dark management themes. */
+html[data-portal-personal-color="original"] #portalReportCenter{--tr-report-accent:#167d79}
+html[data-portal-personal-color="blue"] #portalReportCenter{--tr-report-accent:#155e97}
+html[data-portal-personal-color="sakura"] #portalReportCenter{--tr-report-accent:#8b4566}
+html[data-portal-personal-color="winter"] #portalReportCenter{--tr-report-accent:#146b73}
+html[data-portal-personal-color="matte"] #portalReportCenter{--tr-report-accent:#7f503b}
+</style>
+
 <style id="tr-v332-report-layout">
 #screen-management-settings #portalReportCenter.portalReportDisclosure{padding:0!important;overflow:hidden}
 #portalReportCenter.portalReportDisclosure > summary{cursor:pointer;min-height:70px;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:17px 16px;color:#f2faf9;font-weight:950}
@@ -6606,7 +6637,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v336</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v337</b></div>
   </div>
 </div>
 
@@ -6739,15 +6770,19 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
     <details class="portalManagementSettingsSection portalReportDisclosure" id="portalReportCenter">
       <summary><span><small>REPORT CENTER</small><b>帳票｜練習・イベント</b></span><span class="trHubChevron" aria-hidden="true">＋</span></summary>
       <div class="trHubContent">
-      <p class="trHubIntro">練習・イベントを日付／月／期間で探し、選手などの対象区分と本人IDで個人を絞り込みます。期間一覧は開催予定の一覧です。選択した対象者は詳細帳票・CSV・印刷にも適用します。保存済みデータは変更しません。</p>
-      <div class="trHubShortcuts" role="group" aria-label="帳票を選択">
+      <div class="trReportAxis" role="group" aria-label="帳票の見方">
+        <button type="button" id="trHubAxisActivity" aria-pressed="true">活動日から見る</button>
+        <button type="button" id="trHubAxisPerson" aria-pressed="false">人から見る</button>
+      </div>
+      <p id="trHubAxisHint" class="trHubAxisHint">練習・イベントを選び、対象期間の開催一覧から各帳票を開きます。</p>
+      <div class="trHubShortcuts trHubActivityOnly" id="trHubActivityShortcuts" role="group" aria-label="帳票を選択">
         <button type="button" id="trHubPractice">練習の参加・記録帳票を開く ›</button>
         <button type="button" id="trHubEvent">イベントの出走・結果帳票を開く ›</button>
       </div>
       <div class="trHubGrid">
-        <label>種類<select id="trHubType"><option value="all">練習＋イベント</option><option value="practice">練習のみ</option><option value="event">イベントのみ</option></select></label>
-        <label>対象区分<select id="trHubCategory"><option value="athlete" selected>選手</option><option value="athlete_coach">選手＋コーチ・指導者</option><option value="athlete_staff">選手＋コーチ・指導者＋役員・代表・副代表</option><option value="all">全て（保護者・その他含む）</option></select></label>
-        <label>対象参加者<select id="trHubPerson"><option value="all">区分内の全員</option></select></label>
+        <label class="trHubActivityOnly">種類<select id="trHubType"><option value="all">練習＋イベント</option><option value="practice">練習のみ</option><option value="event">イベントのみ</option></select></label>
+        <label class="trHubPersonOnly" hidden>対象区分<select id="trHubCategory"><option value="athlete" selected>選手</option><option value="instructors">指導者・コーチのみ</option><option value="athlete_coach">選手＋コーチ・指導者</option><option value="athlete_staff">選手＋コーチ・指導者＋役員・代表・副代表</option><option value="all">全て（保護者・その他含む）</option></select></label>
+        <label class="trHubPersonOnly" hidden>対象者<select id="trHubPerson"><option value="all">区分内の全員</option></select></label>
         <label>期間<select id="trHubMode"><option value="month" selected>月で絞り込む</option><option value="day">日付で絞り込む</option><option value="range">期間を指定</option><option value="all">全期間</option></select></label>
         <label id="trHubMonthWrap">対象月<input id="trHubMonth" type="month"></label>
         <label id="trHubDayWrap" hidden>指定日<input id="trHubDay" type="date"></label>
@@ -6755,11 +6790,17 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <label id="trHubToWrap" hidden>終了日<input id="trHubTo" type="date"></label>
       </div>
       <p id="trHubMemberState" class="trHubStatus" aria-live="polite">承認済みの本人IDを読み込みます。</p>
-      <button type="button" id="trHubRefresh">登録済みの練習・イベントを一覧表示</button>
+      <button type="button" id="trHubRefresh">活動日の一覧を表示</button>
       <p class="trHubStatus" id="trHubStatus" role="status" aria-live="polite">期間を選んで、一覧を表示してください。</p>
-      <div class="trHubList" id="trHubList" aria-live="polite"></div>
+      <div id="trHubActivityResults"><div class="trHubList" id="trHubList" aria-live="polite"></div>
       <div class="trHubPaging" id="trHubPaging" hidden><button id="trHubPrev" type="button">前へ</button><span id="trHubPageText"></span><button id="trHubNext" type="button">次へ</button></div>
-      <p class="trHubIntro">この一覧は練習・大会の開催単位です。各行の「帳票を開く」で、承認済みの全員・回答なし・結果なしを含む個人別の詳細帳票に進みます。未取得のデータを「記録なし」とは扱いません。</p>
+      <p class="trHubIntro">開催日単位の一覧です。各行から全員の参加・出走・記録を確認できます。</p></div>
+      <section id="trHubPersonReport" hidden aria-label="個人の活動履歴">
+        <div id="trHubPersonSummary" class="trPersonActivitySummary" aria-live="polite"></div>
+        <div id="trHubPersonRows" aria-live="polite"></div>
+        <div class="trPersonReportActions"><button type="button" id="trHubPersonCsv" disabled>CSVを保存・共有</button><button type="button" id="trHubPersonPrint" disabled>印刷・PDF保存</button></div>
+        <p class="trHubIntro">指導者の参加日数は実際の参加回答を集計した参考値です。勤務確定・報酬額の計算は行いません。</p>
+      </section>
       </div>
     </details>
     <details class="portalManagementSettingsSection trClubDisclosure" id="trClubEditor" hidden>
@@ -6833,7 +6874,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v336</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v337</b></div>
   </div>
 </div>
 
@@ -14180,13 +14221,20 @@ function portalAuditRenderOfficialV222(e){
     catch(error){trSharedReport.error=String(error?.message||error).slice(0,150);throw error;}
     finally{if(trSharedReport.loading===job)trSharedReport.loading=null;}
   }
+  function trReportCategoryIncludes(uid,category){
+    if(category==='instructors'){
+      const roles=String((window.__TR_PORTAL_SYNC__?.clubRoster||{})[uid]?.roleCodes||'').split(',');
+      return roles.includes('instructor')||roles.includes('coach');
+    }
+    return window.trClubInCategoryV333?.(uid,category)===true;
+  }
   function trReportSetPersonChoices(categoryId,personId){
     const cat=$(categoryId),field=$(personId);if(!cat||!field)return;
     const previous=field.value,people=trSharedReport.people||[];
     const sorted=window.trClubSortV333?window.trClubSortV333(people):people.slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'ja'));
     field.replaceChildren(new Option('区分内の全員','all'));
     for(const p of sorted){
-      if(!p.uid||!(window.trClubInCategoryV333?.(p.uid,cat.value)??cat.value==='all'))continue;
+      if(!p.uid||!(trReportCategoryIncludes(p.uid,cat.value)))continue;
       field.add(new Option(String(p.name||'名前未確認')+'（ID末尾'+p.uid.slice(-6)+'）',p.uid));
     }
     field.value=[...field.options].some(x=>x.value===previous)?previous:'all';
@@ -14199,7 +14247,7 @@ function portalAuditRenderOfficialV222(e){
     return window.trClubInCategoryV333?.(uid,category)===true;
   }
   function trReportApplyFromHub(dest){
-    const cat=$('trHubCategory').value,person=$('trHubPerson').value;
+    const cat=trHubAxis==='activity'?'athlete':$('trHubCategory').value,person=trHubAxis==='activity'?'all':$('trHubPerson').value;
     const id=dest==='practice'?'trPrCategory':'trAuditCategory',picker=dest==='practice'?'trPrPerson':'trAuditPerson';
     $(id).value=cat;
     if(dest==='practice')trPrSetPeople(trPrState.people||trSharedReport.people||[]);
@@ -14273,6 +14321,176 @@ function portalAuditRenderOfficialV222(e){
     trHubState.rows=rows;trHubState.page=0;trHubDraw();
     status.textContent=`${w.label}：練習${rows.filter(x=>x.type==='practice').length}回、イベント${rows.filter(x=>x.type==='event').length}件（開催予定の件数）。指定した対象区分・個人UIDを各詳細帳票の表示・CSV・印刷へ引き継ぎます。`;
   }
+  // v337: two separate report axes with ONE shared date selector and existing
+  // canonical read functions. No new Firebase subscription, Auth, or RTDB writer.
+  let trHubAxis='activity';
+  const trHubPersonState={data:null,seq:0};
+  const trPersonAns=x=>({join:'参加',support:'帯同・応援',decline:'不参加',maybe:'未選択'})[x]||'未回答';
+  const trPersonRecord=v=>v?.status==='time'?(v.time||'記録あり'):v?.status||'記録なし';
+  function trHubChooseAxis(axis){
+    trHubAxis=axis==='person'?'person':'activity';
+    $('trHubAxisActivity').setAttribute('aria-pressed',String(trHubAxis==='activity'));
+    $('trHubAxisPerson').setAttribute('aria-pressed',String(trHubAxis==='person'));
+    document.querySelectorAll('#portalReportCenter .trHubActivityOnly').forEach(n=>n.hidden=trHubAxis!=='activity');
+    document.querySelectorAll('#portalReportCenter .trHubPersonOnly').forEach(n=>n.hidden=trHubAxis!=='person');
+    $('trHubActivityResults').hidden=trHubAxis!=='activity';
+    $('trHubPersonReport').hidden=trHubAxis!=='person';
+    $('trHubAxisHint').textContent=trHubAxis==='person'?
+      'まず対象区分・名前を選び、その人の練習・大会・記録を日付順に確認します。指導者だけの抽出もできます。':
+      '練習・イベントの開催日から、その日の参加・記録・出走帳票を確認します。';
+    $('trHubRefresh').textContent=trHubAxis==='person'?'活動履歴を表示':'活動日の一覧を表示';
+    trHubReset();
+    if(trHubAxis==='person')void trLoadSharedReportPeople().catch(e=>{$('trHubMemberState').textContent='対象者を取得できません：'+String(e?.message||e).slice(0,120);});
+  }
+  $('trHubAxisActivity').addEventListener('click',()=>trHubChooseAxis('activity'));
+  $('trHubAxisPerson').addEventListener('click',()=>trHubChooseAxis('person'));
+  function trHubPersonTotals(rows){
+    const practices=rows.filter(x=>x.kind==='practice'),events=rows.filter(x=>x.kind==='event');
+    const count=a=>practices.filter(x=>x.answer===a).length;
+    const uniqueJoinDates=new Set(practices.filter(x=>x.answer==='join').map(x=>x.date));
+    return {practices:practices.length,events:events.length,join:count('join'),support:count('support'),decline:count('decline'),none:practices.filter(x=>!['join','support','decline'].includes(x.answer)).length,
+      days:uniqueJoinDates.size,results:rows.filter(x=>x.hasRecord).length,entries:events.filter(x=>x.registered===true).length};
+  }
+  function trHubPersonLine(row){
+    return `<div class="trPersonHistoryRow"><b>${esc(row.date)}　${esc(row.title)}</b><small>${esc(row.detail)}</small><small>参加：${esc(trPersonAns(row.answer))}　記録：${esc(row.recordLabel||'記録なし')}${row.warning?'　／ 確認：'+esc(row.warning):''}</small></div>`;
+  }
+  function trHubPersonDraw(){
+    const data=trHubPersonState.data;if(!data)return;
+    const sorted=window.trClubSortV333?window.trClubSortV333(data.people):data.people;
+    const all=data.rows;
+    $('trHubPersonSummary').innerHTML=[['対象',sorted.length+'名'],['練習',new Set(all.filter(r=>r.kind==='practice').map(r=>r.key)).size+'回'],['大会・イベント',new Set(all.filter(r=>r.kind==='event').map(r=>r.key)).size+'件'],['記録あり',all.filter(r=>r.hasRecord).length+'件']]
+      .map(([label,value])=>`<b>${esc(label)} ${esc(value)}</b>`).join('');
+    $('trHubPersonRows').innerHTML=sorted.map(p=>{
+      const rows=all.filter(r=>r.uid===p.uid).sort((a,b)=>a.date.localeCompare(b.date)||a.title.localeCompare(b.title,'ja'));
+      const n=trHubPersonTotals(rows),isCoach=trReportCategoryIncludes(p.uid,'instructors');
+      const heading=`${p.name}｜練習${n.practices}回（参加${n.join}・欠席${n.decline}・未回答${n.none}）／イベント${n.events}件`;
+      const sub=isCoach?`<div class="trPersonHistoryRow"><b>指導者活動の参考</b><small>練習に「参加する」と回答した日：${n.days}日（同日複数回は1日）。勤務・報酬の確定ではありません。</small></div>`:'';
+      return `<details class="trPersonHistoryCard" ${sorted.length===1?'open':''}><summary>${esc(heading)}</summary>${sub}${rows.map(trHubPersonLine).join('')||'<p class="trHubIntro">この期間に活動予定はありません。</p>'}</details>`;
+    }).join('');
+    $('trHubPersonCsv').disabled=!all.length;$('trHubPersonPrint').disabled=!all.length;
+  }
+  async function trHubPersonRender(){
+    const status=$('trHubStatus'),btn=$('trHubRefresh'),g=window.__TR_PORTAL_SYNC__;
+    if(!canManage||portalParticipantPreviewMode||!g?.roleVerified||!['developer','admin'].includes(g.role)){
+      status.textContent='管理権限が必要です。';return;
+    }
+    let span;try{span=trHubWindow();}catch(error){status.textContent=error.message;return;}
+    if(!g.loaded?.practices||!g.loaded?.eventItems||!g.loaded?.eventResponses){status.textContent='練習・イベント・参加回答のFirebase受信が未完了です。未回答として集計しません。';return;}
+    if(btn.disabled)return;
+    btn.disabled=true;const seq=++trHubPersonState.seq;trHubPersonState.data=null;$('trHubPersonSummary').replaceChildren();$('trHubPersonRows').replaceChildren();
+    $('trHubPersonCsv').disabled=true;$('trHubPersonPrint').disabled=true;
+    status.textContent='本人IDを確認し、練習・イベントの参加回答と記録を読み込み中…';
+    const originalGate=g,originalUid=g.uid;
+    try{
+      const members=await trLoadSharedReportPeople();
+      const category=$('trHubCategory').value,chosen=$('trHubPerson').value;
+      const people=members.filter(p=>trReportCategoryIncludes(p.uid,category)&&(chosen==='all'||p.uid===chosen));
+      if(!people.length)throw Error('この区分の登録者がいません。クラブ区分の手動設定をご確認ください');
+      if(people.length>200)throw Error('対象者が200名を超えています。区分か個人で絞り込んでください');
+      const pmap=new Map(people.map(p=>[p.uid,p]));
+      const today=trPrToday();
+      const selected=Object.entries(g.practices||{}).filter(([key,p])=>p?.kind==='practice'&&/^\d{4}-\d{2}-\d{2}(?:-[23])?$/.test(key))
+        .map(([key,p])=>({key,date:g.practiceDayOf?g.practiceDayOf(key,p):String(p.scheduledDate||key.slice(0,10)),place:p.place||'',start:p.start||'',end:p.end||'',practiceMode:p.practiceMode||'normal',noticeKind:p.noticeKind||'',enabled:p.enabled!==false}))
+        .filter(p=>trHubISO(p.date)&&p.date>=span.from&&p.date<=span.to).sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start)||a.key.localeCompare(b.key));
+      const eventList=eventItems.filter(e=>e?.id&&trHubISO(e.date)&&!(portalEventLastDate(e)<span.from||e.date>span.to));
+      if(selected.length>1200||eventList.length>250||people.length*(selected.length+eventList.length)>4000)throw Error('対象期間・人数が広すぎます。月・期間または個人で絞り込んでください');
+      let answers={};
+      const [past]=await Promise.all([g.loadPastEventOverview(),(async()=>{if(selected.length)answers=await g.readPracticeReportAnswers(selected.map(p=>p.key));})()]);
+      // Load native PORTAL formal entry sets through the EXISTING staff gateway only.
+      let nativeReads=0;
+      for(const e of eventList){
+        if(!flowNativeDestination(e)||g.nativeRaceStaffStatus?.[e.id]==='ok')continue;
+        if(nativeReads++>=8)continue; // stay within 8 one-shot RTDB reads per report
+        try{await g.loadNativeRaceStaff?.(e.id);}catch(_){/* mark missing, never conclude no entry */}
+      }
+      if(originalGate!==window.__TR_PORTAL_SYNC__||originalUid!==g.uid||!g.roleVerified)throw Error('読込中に認証が変わりました');
+      const events=eventList;
+      const output=[];
+      const practiceRows=selected.length?trPrRows(selected,people,answers,past).filter(x=>pmap.has(x.uid)):[];
+      for(const r of practiceRows){
+        const texts=r.records.map(v=>[v.recordDistanceMeters?v.recordDistanceMeters+'m':'',trPersonRecord(v)].filter(Boolean).join(' '));
+        output.push({uid:r.uid,date:r.date,key:r.key,kind:'practice',title:(r.practiceMode==='record'?'記録練習':'練習')+(r.key.endsWith('-2')?'②':r.key.endsWith('-3')?'③':''),
+          detail:[r.place,r.start+'〜'+r.end].filter(Boolean).join('／'),answer:r.answer,recordLabel:texts.join('／')||'記録なし',hasRecord:r.records.length>0,warning:r.warning||''});
+      }
+      for(const e of events){
+        const answers=g.eventResponses?.[e.id]||{};const isNative=!!flowNativeDestination(e);const target=window.__TR_COMMON_PILOT_UI__?.officialTargetFor?.(e);
+        const official=target?g.officialParticipantRoster?.[target.id]:null;
+        for(const p of people){
+          const a=answers[p.uid];
+          const mismatch=a?.profileId&&a.profileId!==p.profileId;
+          const answer=mismatch?'':(['join','support','decline'].includes(a?.answer)?a.answer:'');
+          let registered=null,records=[],warning=mismatch?'大会回答と現在のprofileIdが一致しません':'';
+          if(isNative){
+            if(g.nativeRaceStaffStatus?.[e.id]==='ok'){
+              const byMetric=g.nativeRaceStaff?.[e.id]?.[p.uid]||{};
+              records=Object.values(byMetric).filter(v=>v&&v.subjectUid===p.uid&&v.profileId===p.profileId);
+              registered=records.length>0;
+            }else warning=[warning,'正式出走の取得ができません'].filter(Boolean).join('／');
+          }else if(target){
+            if(Array.isArray(official)){
+              records=official.filter(r=>r?.uid===p.uid&&!r.withdrawn&&(!r.profileId||r.profileId===p.profileId));
+              registered=records.length>0;
+            }else warning=[warning,'EVENT BASEの出走データ未取得'].filter(Boolean).join('／');
+          }
+          const goalBits=records.map(r=>{
+            const goal=r.targetTime||r.goal||'';
+            const metric=r.metric||r.metricRaw||'';
+            return [metric?portalMetricNames[metric]||metric:'',goal?'目標'+goal:''].filter(Boolean).join(' ');
+          });
+          const actualResults=records.map(r=>r.result?.time||r.resultTime||'').filter(Boolean);
+          output.push({uid:p.uid,date:e.date,key:e.id,kind:'event',title:e.title||'イベント',detail:[e.place||'',e.startTime||'',registered===true?'出走登録済':registered===false?'出走未登録':'出走情報未確認',...goalBits].filter(Boolean).join('／'),
+            answer,recordLabel:actualResults.length?'結果 '+actualResults.join('／'):(registered===true?'結果待ち':registered===null?'記録未取得':'記録なし'),hasRecord:actualResults.length>0,registered,warning});
+        }
+      }
+      // Staff-managed historic results may be independent from a current event item.
+      for(const p of people)for(const [key,r] of Object.entries(past?.[p.uid]||{})){
+        if(!r||r.practiceDate||!trHubISO(r.date)||r.date<span.from||r.date>span.to||r.subjectUid!==p.uid)continue;
+        if(events.some(e=>e.id===r.eventId))continue; // explicit event association, avoid doubling its row
+        output.push({uid:p.uid,date:r.date,key:'past:'+key,kind:'event',title:r.eventName||r.name||'過去大会の登録記録',detail:'管理登録の大会記録',answer:'',recordLabel:trPersonRecord(r),hasRecord:r.status==='time'&&!!r.time,registered:null,warning:''});
+      }
+      if(seq!==trHubPersonState.seq||trHubAxis!=='person')return;
+      trHubPersonState.data={rows:output,people,range:span};trHubPersonDraw();
+      const coaches=people.filter(p=>trReportCategoryIncludes(p.uid,'instructors')).length;
+      status.textContent=`${span.label}：${people.length}名の活動履歴（練習・イベント・記録）を表示。指導者・コーチ${coaches}名。個人名を押すと詳細が開きます。`;
+    }catch(e){if(seq===trHubPersonState.seq){trHubPersonState.data=null;status.textContent='集計できません：'+String(e?.message||e).slice(0,200)+'。未取得は「記録なし」として扱いません。';}}
+    finally{btn.disabled=false;}
+  }
+  function trHubPersonTable(){
+    const v=trHubPersonState.data,people=window.trClubSortV333?window.trClubSortV333(v.people):v.people;
+    const ordered=people.flatMap(p=>v.rows.filter(r=>r.uid===p.uid).sort((a,b)=>a.date.localeCompare(b.date)||a.title.localeCompare(b.title,'ja')));
+    return [['氏名','日付','区分','活動名','会場・時刻・登録','参加回答','記録','確認'],...ordered.map(r=>[
+      people.find(p=>p.uid===r.uid)?.name||'本人未確認',r.date,r.kind==='practice'?'練習':'イベント',r.title,r.detail,trPersonAns(r.answer),r.recordLabel||'記録なし',r.warning||''
+    ])];
+  }
+  $('trHubPersonCsv').addEventListener('click',async()=>{
+    if(!trHubPersonState.data?.rows.length)return;
+    const name='活動履歴_'+trHubPersonState.data.range.label.replace(/[^\d]/g,'')+'.csv';
+    const csv='\ufeff'+trHubPersonTable().map(row=>row.map(portalAuditCsvCell).join(',')).join('\r\n');
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+    try{
+      if(typeof File==='function'&&navigator.share&&navigator.canShare){
+        const file=new File([blob],name,{type:'text/csv'});
+        if(navigator.canShare({files:[file]})){
+          try{await navigator.share({files:[file],title:'活動履歴'});$('trHubStatus').textContent='CSVを共有画面に渡しました。保存先を確認してください。';}
+          catch(e){$('trHubStatus').textContent=e.name==='AbortError'?'共有をキャンセルしました。':'共有できません：'+e.message;}
+          return;
+        }
+      }
+      const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),60000);
+      $('trHubStatus').textContent='CSVのダウンロードを要求しました。実際の保存はSafariのダウンロードで確認してください。';
+    }catch(e){$('trHubStatus').textContent='CSVを出力できません：'+String(e?.message||e).slice(0,100);}
+  });
+  $('trHubPersonPrint').addEventListener('click',()=>{
+    if(!trHubPersonState.data?.rows.length)return;
+    const w=window.open('','_blank');if(!w){$('trHubStatus').textContent='印刷画面を開けません。ポップアップ許可をご確認ください。';return;}
+    const rows=trHubPersonTable(),td=(x,k)=>'<'+k+'>'+esc(String(x??''))+'</'+k+'>';
+    const u=esc(new URL(location.pathname,location.origin).href);
+    const doc='<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>活動履歴 '+esc(trHubPersonState.data.range.label)+'</title><style>'+
+      'body{font:12px -apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif;color:#222;margin:16px}h1{font-size:18px}table{border-collapse:collapse;width:100%;font-size:10px}td,th{border:1px solid #bbb;padding:7px 5px;vertical-align:top;overflow-wrap:anywhere}th{background:#eee9dc}th:nth-child(2),td:nth-child(2){white-space:nowrap;word-break:keep-all}tr{break-inside:avoid}.tools{margin:0 0 16px;display:flex;gap:12px}.tools a,.tools button{padding:10px;border:1px solid #999;border-radius:7px;background:#fff;color:#222;text-decoration:none}@page{size:A4 landscape;margin:10mm}@media print{.tools{display:none}body{margin:0}table{font-size:8pt}}'+
+      '</style></head><body><div class="tools"><a href="'+u+'">← PORTALへ戻る</a><button onclick="print()">印刷・PDF保存</button></div><h1>活動履歴 '+esc(trHubPersonState.data.range.label)+'</h1><p>対象者：'+trHubPersonState.data.people.length+'名／保存済みの参加回答・大会出走・記録から表示（未回答を含む）</p><table><thead><tr>'+rows[0].map(v=>td(v,'th')).join('')+'</tr></thead><tbody>'+rows.slice(1).map(r=>'<tr>'+r.map(v=>td(v,'td')).join('')+'</tr>').join('')+'</tbody></table></body></html>';
+    w.document.open();w.document.write(doc);w.document.close();$('trHubStatus').textContent='印刷・PDF用の活動履歴を開きました。';
+  });
+
   async function trHubPractice(day){
     if(!canManage||portalParticipantPreviewMode)return;
     showScreen('management');
@@ -14320,11 +14538,16 @@ function portalAuditRenderOfficialV222(e){
     if(row.type==='practice')trHubPractice(row.date);else trHubEvent(row.id);
   });
   function trHubReset(){
+    trHubPersonState.seq++;trHubPersonState.data=null;
+    $('trHubPersonSummary').replaceChildren();$('trHubPersonRows').replaceChildren();
+    $('trHubPersonCsv').disabled=true;$('trHubPersonPrint').disabled=true;
     trHubState.rows=[];trHubState.page=0;
     $('trHubList').innerHTML='';$('trHubPaging').hidden=true;
-    $('trHubStatus').textContent='条件を選び、「登録済みの練習・イベントを一覧表示」を押してください。';
+    $('trHubStatus').textContent=trHubAxis==='person'?'対象者と期間を選び、「活動履歴を表示」を押してください。':'期間を選び、「活動日の一覧を表示」を押してください。';
   }
   $('trHubRefresh').addEventListener('click',async()=>{
+    if(trHubAxis==='person'){await trHubPersonRender();return;}
+
     $('trHubMemberState').textContent='本人ID・役職を確認中…';
     try{await trLoadSharedReportPeople(true);trHubRender();}
     catch(e){trHubReset();$('trHubMemberState').textContent='対象者を確認できません：'+String(e?.message||e).slice(0,120);}
