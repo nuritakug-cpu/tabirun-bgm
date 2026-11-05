@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v333 | 2026-11-05 | Physical parent v332. Add hidden sorting-only family/given kana inputs to existing basicProfile; developer-curated multi-role mapping by canonical UID/profileId (athlete/instructor/coach/representative/vice/officer/parent), stable grade/gender/role precedence + kana sorting and optional within-group manual rank; use existing one-shot staff roster and personal profile paths and shared Firebase gateway. No role-based system permission grant; no changes to existing official entry or results. REQUIRES aligned integrated Rules v333 for clubRoster and staff basicProfile read. -->
 <!-- TOP RUN PORTAL v332 | 2026-11-05 | Physical parent v331. Reporting presentation only: collapse management report center and person list by default; add participant UID-based filter to practice reports; keep report CSV full detail but generate an A4-landscape 9-column PDF/print layout avoiding mid-word wrapping of dates/times. No changes to Firebase/Auth/UID/profileId/Rules/CRUD/official results. -->
 <!-- TOP RUN PORTAL v331 | 2026-11-05 | Physical parent v330. Preserve practice STEP 1 report choice; add an authenticated unified REPORT CENTER in management settings, listing practice sessions and tournament events by day/month/range with direct navigation to the EXISTING formal per-person practice and event reports (incl no responses/records). No new Firebase init, listener, READ root, WRITE, Rules, UID/profileId, or CSV/PDF exporter. -->
 <!-- TOP RUN PORTAL v330 | 2026-11-05 | Parent v329 exact physical HTML. Remove MY PAGE child basic-profile/goal editing UI and its handlers (retain family proxy practice attendance and race registration). Add staff practice attendance/record reports with day/month/range selectors, approved-member roster including no answers/no practice records, one-shot authorized existing RTDB reads, CSV/iPhone share and printable PDF. No changes to Auth, existing gateway initialization, RTDB writes, Rules, notices/chat/race flows. -->
@@ -6263,6 +6264,12 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
           <label>学年<select id="portalProfileGrade"><option value="">選択してください</option><option value="1">中学1年</option><option value="2">中学2年</option><option value="3">中学3年</option><option value="other">その他</option></select></label>
         </div>
         <label class="portalBasicProfileBib">ゼッケンNo<input type="text" id="portalProfileBib" inputmode="numeric" maxlength="16" autocomplete="off" placeholder="ゼッケン番号"></label>
+        <div class="trKanaGrid" aria-label="氏名の読み（名前一覧の並び順だけに利用）">
+          <label>ふりがな・姓<input id="trKanaFamily" type="text" maxlength="20" inputmode="text" autocomplete="off" autocapitalize="off" placeholder="うえぬり"></label>
+          <label>ふりがな・名<input id="trKanaGiven" type="text" maxlength="20" inputmode="text" autocomplete="off" autocapitalize="off" placeholder="たくろう"></label>
+        </div>
+        <p class="portalHelp">ふりがなは名前一覧の五十音順にのみ使います。表示名や帳票には表示しません。姓と名を分けて入力してください（空白不可）。</p>
+        <div class="trClubPublic" id="trClubPublic" hidden aria-live="polite"></div>
         <button type="button" class="portalPrimary" id="portalSaveBasicProfile">基本プロフィールを保存</button>
         <p class="portalInlineState" id="portalBasicProfileState" aria-live="polite"></p>
       </div>
@@ -6593,7 +6600,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v332</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v333</b></div>
   </div>
 </div>
 
@@ -6746,6 +6753,16 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       <p class="trHubIntro">この一覧は練習・大会の開催単位です。各行の「帳票を開く」で、承認済みの全員・回答なし・結果なしを含む個人別の詳細帳票に進みます。未取得のデータを「記録なし」とは扱いません。</p>
       </div>
     </details>
+    <details class="portalManagementSettingsSection trClubDisclosure" id="trClubEditor" hidden>
+      <summary><span><small>CLUB ROSTER</small><b>クラブ区分・並び順（開発者）</b></span><span aria-hidden="true">＋</span></summary>
+      <div class="trClubBody">
+        <p>参加者本人が役職を選ぶことはありません。開発者が既存のUID・profileIdを確認して手動で指定します。兼任は複数チェック。保存すると本人のプロフィールに役職だけ表示されます。</p>
+        <p>一覧の順序：3年男 → 3年女 → 2年男 → 2年女 → 1年男 → 1年女 → 指導者 → コーチ → 代表 → 副代表 → 役員 → 保護者 → その他。同じ区分はふりがなの五十音順です。「優先順（任意）」を指定した人だけその区分内で先に表示されます。</p>
+        <button id="trClubLoad" type="button" class="portalPrimary">登録済みの本人IDを読み込む</button>
+        <div id="trClubStatus" role="status" aria-live="polite">開発者が読み込むまで名前一覧は表示しません。</div>
+        <div id="trClubRows" aria-live="polite"></div>
+      </div>
+    </details>
     <section id="portalEventBaseResultEdit" class="portalManagementSettingsSection" hidden>
       <div class="portalPanelHead"><small>EVENT BASE / RESULTS</small><b>EVENT BASE記録の修正（開発者・管理者）</b></div>
       <details class="portalManageAccessDisclosure"><summary>結果の修正を開く</summary>
@@ -6807,7 +6824,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v332</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v333</b></div>
   </div>
 </div>
 
@@ -7019,7 +7036,8 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
     <label id="trPrMonthWrap">月<input type="month" id="trPrMonth"></label>
     <label id="trPrFromWrap" hidden>開始日<input type="date" id="trPrFrom"></label>
     <label id="trPrToWrap" hidden>終了日<input type="date" id="trPrTo"></label>
-    <label>対象参加者<select id="trPrPerson"><option value="all">全員</option></select></label>
+    <label>対象区分<select id="trPrCategory"><option value="athlete" selected>選手</option><option value="athlete_coach">選手＋コーチ・指導者</option><option value="athlete_staff">選手＋コーチ・指導者＋役員・代表・副代表</option><option value="all">全て（保護者・その他を含む）</option></select></label>
+    <label>対象参加者<select id="trPrPerson"><option value="all">区分内の全員</option></select></label>
     <label>参加回答<select id="trPrAttendance"><option value="all">全員（未回答含む）</option><option value="join">参加する</option><option value="support">帯同・応援</option><option value="decline">参加しない</option><option value="none">未回答</option></select></label>
     <label>練習記録<select id="trPrRecord"><option value="all">全員（記録あり・なし）</option><option value="has">記録あり</option><option value="none">記録なし</option></select></label>
    </div>
@@ -11199,14 +11217,14 @@ const gateway=window.__TR_PORTAL_SYNC__;
       const note='同じ名前の本人ID未確定の登録あり（'+(r.reasons||[]).filter(x=>/^(出走登録|計測参考)：/.test(x)).join(' ／ ')+'）';
       rows.set(owner.key,{...rows.get(owner.key),detail:(rows.get(owner.key).detail||'')+' ／ '+note});
     }
-    return [...rows.values()].sort((a,b)=>a.name.localeCompare(b.name,'ja'));
+    return window.trClubSortV333?window.trClubSortV333([...rows.values()]):[...rows.values()].sort((a,b)=>a.name.localeCompare(b.name,'ja'));
   }
   function portalSharedCandidateRows(){
     const available=portalCompetitionAthletes(),byKey=new Map(available.map(p=>[p.key,p]));
     for(const p of portalPublishedAthletes.items){
       if(!byKey.has(p.key))byKey.set(p.key,{...p,detail:'公開済み参照。大会データの読み取りが未確認です。',unavailable:true});
     }
-    return [...byKey.values()].sort((a,b)=>a.name.localeCompare(b.name,'ja'));
+    return window.trClubSortV333?window.trClubSortV333([...byKey.values()]):[...byKey.values()].sort((a,b)=>a.name.localeCompare(b.name,'ja'));
   }
   function renderPortalAthleteDirectory(){
     if(!canManage||portalParticipantPreviewMode)return;
@@ -11896,6 +11914,8 @@ const chosen=new Set(eventSelectableMetrics(event));
     $('portalProfileGender').value=['male','female'].includes(v.gender)?v.gender:'';
     $('portalProfileGrade').value=['1','2','3','other'].includes(String(v.grade))?String(v.grade):'';
     $('portalProfileBib').value=String(v.bib||'').slice(0,16);
+    $('trKanaFamily').value=String(v.kanaFamily||'').slice(0,20);
+    $('trKanaGiven').value=String(v.kanaGiven||'').slice(0,20);
     $('portalBasicProfileState').textContent='';
     portalRefreshProfileDisclosure();
   }
@@ -11911,7 +11931,12 @@ const chosen=new Set(eventSelectableMetrics(event));
       $('portalBasicProfileState').textContent='本人Firebaseの受信が未成立です。保存していません。';
       showActionFeedback('未保存','本人認証・MY PAGE受信が必要です。');return;
     }
-    const value={gender,grade,bib,savedAt:Date.now()};
+    const normalizeKana=v=>String(v||'').normalize('NFKC').replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-0x60));
+    const kanaFamily=normalizeKana($('trKanaFamily').value),kanaGiven=normalizeKana($('trKanaGiven').value);
+    if((!!kanaFamily)!=(!!kanaGiven) || (kanaFamily&&!/^[ぁ-ゖー]{1,20}$/.test(kanaFamily)) || (kanaGiven&&!/^[ぁ-ゖー]{1,20}$/.test(kanaGiven))){
+      $('portalBasicProfileState').textContent='ふりがなは「姓」「名」の両方をひらがなで入力してください。間に空白は入れないでください。';return;
+    }
+    const value={gender,grade,bib,kanaFamily,kanaGiven,savedAt:Date.now()};
     const button=$('portalSaveBasicProfile');button.disabled=true;
     $('portalBasicProfileState').textContent='Firebaseへ保存しています…';
     try{await gateway.saveOwnBasicProfile(value);}
@@ -14191,10 +14216,11 @@ function portalAuditRenderOfficialV222(e){
     const field=$('trPrPerson'),previous=field.value;
     const byUid=new Map();
     for(const row of rows||[]){if(row.uid&&!byUid.has(row.uid))byUid.set(row.uid,String(row.name||'名前未確認'));}
-    const sorted=[...byUid].sort((a,b)=>window.trNameCmpV218?window.trNameCmpV218(a[1],b[1]):a[1].localeCompare(b[1],'ja'));
+    const source=[...byUid].map(([uid,name])=>({uid,name}));
+    const sorted=(window.trClubSortV333?window.trClubSortV333(source):source.sort((a,b)=>a.name.localeCompare(b.name,'ja'))).map(x=>[x.uid,x.name]);
     field.replaceChildren(new Option('全員','all'));
-    for(const [uid,name] of sorted)field.add(new Option(name+'（'+String(uid).slice(-6)+'）',uid));
-    field.value=byUid.has(previous)?previous:'all';
+    for(const [uid,name] of sorted)if(!window.trClubInCategoryV333||window.trClubInCategoryV333(uid,$('trPrCategory').value))field.add(new Option(name+'（'+String(uid).slice(-6)+'）',uid));
+    field.value=byUid.has(previous)&&[...field.options].some(o=>o.value===previous)?previous:'all';
   }
   function trPrClearReport(message){
     trPrState.seq++;trPrState.raw=null;trPrState.rows=[];trPrState.page=0;
@@ -14205,8 +14231,9 @@ function portalAuditRenderOfficialV222(e){
   }
   function trPrUpdateRows(){
     const raw=trPrState.raw;if(!raw){trPrState.rows=[];trPrButtons(false);return;}
-    const attendance=$('trPrAttendance').value,records=$('trPrRecord').value,person=$('trPrPerson').value;
-    const rows=raw.filter(r=>(person==='all'||r.uid===person)&&(attendance==='all'||(attendance==='none'?!['join','support','decline'].includes(r.answer):r.answer===attendance))&&
+    const attendance=$('trPrAttendance').value,records=$('trPrRecord').value,person=$('trPrPerson').value,category=$('trPrCategory').value;
+    const eligible=r=>window.trClubInCategoryV333?window.trClubInCategoryV333(r.uid,category):category==='all';
+    const rows=raw.filter(r=>eligible(r)&&(person==='all'||r.uid===person)&&(attendance==='all'||(attendance==='none'?!['join','support','decline'].includes(r.answer):r.answer===attendance))&&
       (records==='all'||(records==='has'?r.records.length>0:r.records.length===0)));
     trPrState.rows=rows;trPrState.page=0;trPrDraw();
   }
@@ -14214,7 +14241,8 @@ function portalAuditRenderOfficialV222(e){
     const rows=trPrState.rows,chunk=100,pages=Math.max(1,Math.ceil(rows.length/chunk));
     trPrState.page=Math.max(0,Math.min(trPrState.page,pages-1));
     const start=trPrState.page*chunk,subset=rows.slice(start,start+chunk);
-    const person=$('trPrPerson').value,any=(trPrState.raw||[]).filter(r=>person==='all'||r.uid===person);
+    const person=$('trPrPerson').value,category=$('trPrCategory').value,
+      any=(trPrState.raw||[]).filter(r=>(!window.trClubInCategoryV333||window.trClubInCategoryV333(r.uid,category))&&(person==='all'||r.uid===person));
     const answerCounts={join:0,support:0,decline:0,none:0};let records=0;
     for(const r of any){if(['join','support','decline'].includes(r.answer))answerCounts[r.answer]++;else answerCounts.none++;if(r.records.length)records++;}
     $('trPrCounts').innerHTML=[['練習',new Set(any.map(r=>r.key)).size],['対象の全件',any.length],['参加',answerCounts.join],['帯同・応援',answerCounts.support],['不参加',answerCounts.decline],['未回答',answerCounts.none],['記録あり',records],['記録なし',any.length-records],['表示',rows.length]].map(([name,n])=>`<b>${esc(name)} ${n}</b>`).join('');
@@ -14260,7 +14288,7 @@ function portalAuditRenderOfficialV222(e){
       }
     }
     all.sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start)||a.key.localeCompare(b.key)||
-      (window.trNameCmpV218?window.trNameCmpV218(a.name,b.name):a.name.localeCompare(b.name,'ja')));
+      (window.trClubCompareV333?window.trClubCompareV333(a,b):window.trNameCmpV218?window.trNameCmpV218(a.name,b.name):a.name.localeCompare(b.name,'ja')));
     return all;
   }
   async function trPrRead(){
@@ -14279,6 +14307,10 @@ function portalAuditRenderOfficialV222(e){
       // Two existing authorized READ functions + one explicitly triggered answers read.
       // Never infer a missing answer from failed GET; stop the entire report on error.
       const [members,answers,past]=await Promise.all([g.listApprovedMembers(),g.readPracticeReportAnswers(selected.map(p=>p.key)),g.loadPastEventOverview()]);
+      // A role filter never silently falls back to all members if the curated role map cannot be read.
+      await g.loadClubRoster?.(true);
+      if(!g.clubRoster||typeof g.clubRoster!=='object')throw Error('クラブ役職の一覧を取得できませんでした');
+      await g.loadClubBasicProfiles(members);
       if(seq!==trPrState.seq||g!==window.__TR_PORTAL_SYNC__||!canManage||!['developer','admin'].includes(g.role)||!g.roleVerified)throw Error('取得中に管理権限が変わりました');
       if(!Array.isArray(members))throw Error('承認済み参加者の名簿を取得できませんでした');
       if(!members.length){trPrState.raw=[];trPrState.window=range.label;trPrUpdateRows();status.textContent='承認済み参加者が取得できません。0人の帳票として出力しません。';return;}
@@ -14305,6 +14337,7 @@ function portalAuditRenderOfficialV222(e){
     trPrClearReport('期間を変更しました。「Firebaseから集計する」を押してください。');
   });
   for(const id of ['trPrDay','trPrMonth','trPrFrom','trPrTo'])$(id).addEventListener('change',()=>trPrClearReport('期間を変更しました。「Firebaseから集計する」を押してください。'));
+  $('trPrCategory').addEventListener('change',()=>{trPrSetPeople(trPrState.raw||[]);$('trPrPerson').value='all';$('trPrListDisclosure').open=false;trPrUpdateRows();});
   $('trPrPerson').addEventListener('change',()=>{$('trPrListDisclosure').open=false;trPrUpdateRows();});
   $('trPrAttendance').addEventListener('change',trPrUpdateRows);
   $('trPrRecord').addEventListener('change',trPrUpdateRows);
@@ -15113,6 +15146,18 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
   function portalPastVerifiedChoices(){
     const gate=window.__TR_PORTAL_SYNC__;
     if(!canManage||portalParticipantPreviewMode||!gate?.roleVerified||!['developer','admin'].includes(gate.role))return [];
+    if(gate.loadClubRoster&&!gate.clubSortStarted){
+      gate.clubSortStarted=true;
+      Promise.resolve().then(async()=>{
+        await gate.loadClubRoster(true);
+        const roster=await gate.listApprovedMembers();
+        await gate.loadClubBasicProfiles(roster);
+        if(gate===window.__TR_PORTAL_SYNC__&&gate.roleVerified===true){
+          try{portalPracticeRefreshAthletes();}catch(_){}
+          window.dispatchEvent(new CustomEvent('tr-club-order-ready'));
+        }
+      }).catch(e=>{gate.clubSortError=String(e?.message||e);console.warn('[v333 roster sorting] '+gate.clubSortError);});
+    }
     const selected=portalPublishedAthletesReady?portalPublishedAthletes.items:[];
     const candidates=portalCompetitionAthletes();
     const known=new Map(candidates.filter(p=>p.uid&&p.profileId&&p.identityVerifiedForGrouping).map(p=>[p.key,p]));
@@ -15140,7 +15185,8 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
     if(gate.uid&&gate.profileId&&gate.displayName&&gate.canSavePersonal?.())
       roster.unshift({id:gate.profileId,uid:gate.uid,name:gate.displayName+'（本人）',profileId:gate.profileId});
     const seen=new Map();for(const p of roster){if(!seen.has(p.id))seen.set(p.id,p);else if(seen.get(p.id).uid!==p.uid)seen.delete(p.id);}
-    return [...seen.values()];
+    const choices=[...seen.values()];
+    return window.trClubSortV333?window.trClubSortV333(choices):choices;
   }
   function portalPastChoice(actor){return portalPastVerifiedChoices().find(x=>x.id===actor)||null;}
   // v120: developer attaches past race rows (EVENT BASE / 駅伝) to a verified person. Writes only through
@@ -18718,6 +18764,91 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       return Number(result.snapshot.val())>=version;
     };
     gate.saveOwnBasicProfile=value=>gate.savePersonalField('basicProfile',value);
+    // v333: manual club classification (NOT system access), sorting-only basic-profile reading.
+    // Uses the existing authenticated Firebase app and gateway. No new Auth or subscription.
+    gate.clubRoster=null;
+    gate.clubProfileCache={};
+    gate.clubRosterForSelf={};
+    gate.loadClubRoster=async(full=false)=>{
+      if(!gate.hasOperationalAccess()||auth.currentUser?.uid!==gate.uid)throw Error('本人認証を確認できません');
+      const path=full?'clubRoster':'clubRoster/'+gate.uid;
+      if(full&&!isDeveloper()&&!(gate.role==='admin'&&gate.roleVerified===true))throw Error('開発者・管理者の権限が必要です');
+      const value=(await dbMod.get(ref(path))).val()||{};
+      if(auth.currentUser?.uid!==gate.uid||!gate.roleVerified)throw Error('本人認証が変わりました');
+      if(full)gate.clubRoster=value;
+      else gate.clubRosterForSelf=(value?.profileId===gate.profileId?value:{});
+      window.dispatchEvent(new CustomEvent('tr-club-roster-loaded',{detail:{full}}));
+      return value;
+    };
+    gate.loadClubCandidates=async()=>{
+      if(!isDeveloper())throw Error('クラブ役職の割当は開発者専用です');
+      const rows=await gate.chatPeopleCandidates(); // existing staff/approved membership path
+      if(!Array.isArray(rows))throw Error('承認済みの一覧を取得できません');
+      const unique=new Map();
+      for(const row of rows){
+        const uid=String(row?.uid||'');if(!/^[A-Za-z0-9_-]{6,128}$/.test(uid)||unique.has(uid))continue;
+        unique.set(uid,{uid,name:String(row.name||'').slice(0,24),profileId:String(row.profileId||'')});
+      }
+      // Only on explicit developer request, max 200 persons, bounded to 5 concurrent GETs.
+      const list=[...unique.values()].slice(0,200),generationUid=gate.uid;let idx=0;
+      await Promise.all(Array.from({length:Math.min(5,list.length)},async()=>{
+        while(idx<list.length){
+          const p=list[idx++];
+          try{
+            if(!p.profileId)p.profileId=String((await dbMod.get(dbMod.ref(db,'profiles/'+p.uid+'/profileId'))).val()||'');
+            const v=(await dbMod.get(dbMod.ref(db,'profiles/'+p.uid+'/portalSelf/basicProfile'))).val();
+            gate.clubProfileCache[p.uid]=v&&typeof v==='object'?v:{};
+          }catch(e){gate.clubProfileCache[p.uid]={};p.readError=String(e?.code||e?.message||e).slice(0,75);}
+        }
+      }));
+      if(auth.currentUser?.uid!==generationUid||gate.uid!==generationUid||!isDeveloper())throw Error('処理中に開発者認証が切り替わりました');
+      return list.filter(p=>p.profileId&&p.profileId.length<=120);
+    };
+    gate.loadClubBasicProfiles=async people=>{
+      if(!gate.roleVerified||!['developer','admin'].includes(gate.role)||auth.currentUser?.uid!==gate.uid)throw Error('名簿を読む管理権限がありません');
+      const list=(Array.isArray(people)?people:[]).filter(p=>/^[A-Za-z0-9_-]{6,128}$/.test(String(p?.uid||''))).slice(0,200);
+      let i=0,errors=0;
+      await Promise.all(Array.from({length:Math.min(5,list.length)},async()=>{
+        while(i<list.length){
+          const uid=list[i++].uid;
+          if(Object.prototype.hasOwnProperty.call(gate.clubProfileCache,uid))continue;
+          try{
+            const v=(await dbMod.get(dbMod.ref(db,'profiles/'+uid+'/portalSelf/basicProfile'))).val();
+            gate.clubProfileCache[uid]=v&&typeof v==='object'?v:{};
+          }catch(e){errors++;}
+        }
+      }));
+      if(auth.currentUser?.uid!==gate.uid||!gate.roleVerified)throw Error('名簿取得中に本人が変わりました');
+      if(errors)throw Error('基本プロフィールを'+errors+'人分取得できません。権限を確認してください');
+      return true;
+    };
+    gate.saveClubRole=async({uid,profileId,roleCodes,sortOrder})=>{
+      if(!isDeveloper())throw Error('役職の保存は開発者のみです');
+      uid=String(uid||'');profileId=String(profileId||'');
+      if(!/^[A-Za-z0-9_-]{6,128}$/.test(uid)||!profileId||profileId.length>120)throw Error('本人IDを確認できません');
+      const roles=String(roleCodes||'').split(',').filter(Boolean);
+      const allowed=['athlete','instructor','coach','representative','vice','officer','parent'];
+      if(roles.length>7||roles.some((r,i)=>!allowed.includes(r)||roles.indexOf(r)!==i))throw Error('役職が不正です');
+      const n=Number(sortOrder);
+      if(!Number.isInteger(n)||n<0||n>9999)throw Error('並び順は0〜9999の整数です');
+      const actual=(await dbMod.get(dbMod.ref(db,'profiles/'+uid+'/profileId'))).val();
+      if(actual!==profileId)throw Error('本人profileIdが最新の登録と一致しません。再読込してください');
+      const path=ref('clubRoster/'+uid),before=(await dbMod.get(path)).val();
+      if(before?.profileId&&before.profileId!==profileId)throw Error('古い本人IDの役職設定があります。自動移行せず開発者に確認してください');
+      const proposed={profileId,roleCodes:roles.join(','),sortOrder:n,updatedAt:Date.now(),updatedByUid:gate.uid};
+      const tx=await dbMod.runTransaction(path,current=>{
+        if(!isDeveloper()||auth.currentUser?.uid!==gate.uid)return;
+        if((current?.updatedAt||0)!==(before?.updatedAt||0)||current?.profileId&&current.profileId!==profileId)return;
+        return proposed;
+      },{applyLocally:false});
+      if(!tx.committed)throw Error('他端末の更新と競合しました。再読込してから保存してください');
+      const confirmed=(await dbMod.get(path)).val();
+      if(confirmed?.profileId!==profileId||confirmed?.roleCodes!==proposed.roleCodes||confirmed?.sortOrder!==n||confirmed?.updatedByUid!==gate.uid)throw Error('保存後の読戻しに失敗しました');
+      gate.clubRoster=gate.clubRoster||{};gate.clubRoster[uid]=confirmed;
+      window.dispatchEvent(new CustomEvent('tr-club-roster-loaded',{detail:{full:true}}));
+      return confirmed;
+    };
+
     gate.saveOwnGoals=async value=>{
       const uid=gate.uid,profileId=gate.profileId;
       // UI distance '21097.5' is not a valid Firebase child key. Encode at the existing writer boundary.
@@ -19822,7 +19953,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
           if(!rUid(uid)||seen.has(uid))return;
           const name=nameOf(uid)||(role!=='participant'?'登録名なし（末尾'+uid.slice(-6)+'）':'');
           if(!name||name.length>24)return;
-          seen.add(uid);rows.push({uid,name,at,role,selected:!!chosen[uid],seenAt:Number(seenMap?.[uid]?.at)||0});
+          seen.add(uid);rows.push({uid,name,profileId:uid===gate.uid?gate.profileId:String(acc[uid]?.profileId||''),at,role,selected:!!chosen[uid],seenAt:Number(seenMap?.[uid]?.at)||0});
         };
         // v142: the developer (this device) is listed too, so admins can invite the developer to their rooms.
         if(gate.displayName){bindNames[gate.uid]=gate.displayName;add(gate.uid,'developer',0);}
@@ -27484,5 +27615,138 @@ body.portalChatIsolated > #trWhoModal,html body > #trWhoModal{visibility:visible
 #trCommentEditor .trCEState{min-height:1em;font-size:13px;margin:0}
 .trEventTopTap{cursor:pointer}
 </style>
+<style id="tr-club-v333-css">
+.trKanaGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:13px 0 8px}
+.trKanaGrid label{display:grid;gap:5px;font-size:12px;font-weight:800}
+.trKanaGrid input{width:100%;min-width:0;min-height:46px;box-sizing:border-box;padding:9px 10px;border-radius:9px;background:#fff;color:#202727;border:1px solid #a7b3ac;font-size:17px}
+.trClubPublic{font-size:13px;line-height:1.5;font-weight:800;margin:11px 0;padding:10px;border:1px solid #6aa2a0;border-radius:10px}
+.trClubDisclosure{padding:0!important;overflow:hidden}
+#trClubEditor[hidden]{display:none!important}
+.trClubDisclosure>summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:65px;padding:17px 16px;font-size:15px;font-weight:900}
+.trClubDisclosure>summary small{display:block;font-size:9px;letter-spacing:.12em}
+.trClubDisclosure>summary b{display:block}
+.trClubBody{padding:4px 16px 18px;border-top:1px solid rgba(150,177,168,.3)}
+.trClubBody>p{font-size:12px;line-height:1.65}
+#trClubStatus{padding:10px 4px;font-size:12px;line-height:1.6;white-space:pre-line}
+#trClubRows{display:grid;gap:11px}
+.trClubCard{border:1px solid var(--pc-panel-soft-border,#57918c);border-radius:14px;padding:12px;min-width:0;background:rgba(255,255,255,.055)}
+.trClubCard h4{margin:0 0 4px;font-size:15px;overflow-wrap:anywhere}
+.trClubCard small{font-size:10px;opacity:.75;line-height:1.4}
+.trClubChecks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 8px;margin:11px 0}
+.trClubChecks label{display:flex;gap:6px;align-items:center;font-size:12px;font-weight:800;line-height:1.4}
+.trClubChecks input{width:20px;height:20px;flex:none;accent-color:#55d4c5}
+.trClubRank{display:flex;gap:9px;align-items:center;font-size:12px;font-weight:800;margin:10px 0}
+.trClubRank input{width:91px;min-height:42px;border:1px solid #9ca8a2;border-radius:8px;background:#fff;color:#142b28;padding:8px;font-size:16px}
+.trClubSave{min-height:44px!important;padding:9px 12px!important;font-size:13px!important}
+.trClubCard .trClubSaveState{display:block;font-size:12px;min-height:1em;margin-top:7px;line-height:1.5}
+@media(max-width:355px){.trKanaGrid{grid-template-columns:1fr}.trClubChecks{grid-template-columns:1fr}}
+</style>
+<script id="tr-club-v333-ui">
+(()=>{'use strict';
+  const $=id=>document.getElementById(id);
+  const gate=()=>window.__TR_PORTAL_SYNC__;
+  const roleCodes=['athlete','instructor','coach','representative','vice','officer','parent'];
+  const label={athlete:'選手',instructor:'指導者',coach:'コーチ',representative:'代表',vice:'副代表',officer:'役員',parent:'保護者'};
+  const groups=['3male','3female','2male','2female','1male','1female','instructor','coach','representative','vice','officer','parent','other'];
+  const rolesFor=(uid)=>String((gate()?.clubRoster||{})[uid]?.roleCodes||(uid===gate()?.uid?gate()?.clubRosterForSelf?.roleCodes:'')||'').split(',').filter(Boolean);
+  const groupOf=(r,p)=>{
+    const roles=String(r?.roleCodes||'').split(',');
+    if(roles.includes('athlete')){
+      const grade=String(p?.grade||''),gender=p?.gender;
+      if(['1','2','3'].includes(grade)&&['male','female'].includes(gender))return grade+gender;
+    }
+    for(const key of ['instructor','coach','representative','vice','officer','parent'])if(roles.includes(key))return key;
+    return 'other';
+  };
+  const groupRank=(uid)=>{
+    const g=gate(),item=(g?.clubRoster||{})[uid]||((uid===g?.uid)?g?.clubRosterForSelf:{}),p=(g?.clubProfileCache||{})[uid]||{};
+    return groups.indexOf(groupOf(item,p));
+  };
+  const collator=new Intl.Collator('ja',{numeric:true,sensitivity:'base'});
+  const sortReading=(uid,name)=>{
+    const p=(gate()?.clubProfileCache||{})[uid]||{};
+    const a=String(p.kanaFamily||''),b=String(p.kanaGiven||'');
+    return a&&b?a+b:'\uffff'+String(name||'').normalize('NFKC');
+  };
+  window.trClubCompareV333=(a,b)=>{
+    const r1=groupRank(a.uid),r2=groupRank(b.uid);if(r1!==r2)return r1-r2;
+    const x=(gate()?.clubRoster||{})[a.uid],y=(gate()?.clubRoster||{})[b.uid];
+    const ax=Number(x?.sortOrder||0),by=Number(y?.sortOrder||0);
+    if(ax!==by&&(ax>0||by>0))return ax===0?1:by===0?-1:ax-by;
+    const k=collator.compare(sortReading(a.uid,a.name),sortReading(b.uid,b.name));
+    return k||collator.compare(String(a.name||''),String(b.name||''))||String(a.uid||'').localeCompare(String(b.uid||''));
+  };
+  window.trClubSortV333=(rows)=>Array.isArray(rows)?rows.slice().sort(window.trClubCompareV333):[];
+  window.trClubInCategoryV333=(uid,category)=>{
+    if(category==='all')return true;
+    const roles=rolesFor(uid);
+    if(category==='athlete')return roles.includes('athlete');
+    if(category==='athlete_coach')return roles.some(x=>['athlete','instructor','coach'].includes(x));
+    if(category==='athlete_staff')return roles.some(x=>['athlete','instructor','coach','officer','representative','vice'].includes(x));
+    return false;
+  };
+  function displayMyRoles(){
+    const e=$('trClubPublic');if(!e)return;
+    const g=gate(),r=rolesFor(g?.uid),valid=g?.roleVerified&&r.length;
+    e.hidden=!valid;e.textContent=valid?'クラブ区分：'+r.map(x=>label[x]||x).join('・'):'';
+    // Summary shows roles only, not surname/given readings.
+    const brief=$('portalProfileBrief');
+    if(brief){
+      const existing=String(brief.textContent||'').replace(/\s*・\s*役職\s+.*$/,'').trim();
+      const summary=valid?'役職 '+r.map(x=>label[x]||x).join('・'):'';
+      brief.textContent=existing+(existing&&summary?' ・ ':'')+summary;
+      brief.hidden=!brief.textContent;
+    }
+  }
+  window.addEventListener('tr-club-roster-loaded',displayMyRoles);
+  window.addEventListener('tr-portal-authorized',()=>{
+    displayMyRoles();
+    const g=gate();if(!g?.loadClubRoster)return;
+    // One-shot own role read for visible MY PAGE only. No new subscription.
+    void g.loadClubRoster(false).catch(()=>{});
+    if(g.role==='developer'&&g.roleVerified){const el=$('trClubEditor');if(el)el.hidden=false;}
+  });
+  let members=[];
+  const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function render(){
+    const g=gate(),target=$('trClubRows');if(!g||!target)return;
+    const byUid=new Map(members.map(x=>[x.uid,x]));
+    const sorted=window.trClubSortV333(members);
+    target.innerHTML=sorted.map(p=>{
+      const saved=(g.clubRoster||{})[p.uid]||{},chosen=String(saved.roleCodes||'').split(',');
+      const readable=(g.clubProfileCache||{})[p.uid]||{};
+      const err=p.readError?'<div><small>プロフィールを取得できません：'+esc(p.readError)+'</small></div>':'';
+      return '<div class="trClubCard" data-club-uid="'+esc(p.uid)+'"><h4>'+esc(p.name)+'</h4><small>本人ID：'+esc(p.uid.slice(0,6)+'…'+p.uid.slice(-6))+' / profileId：'+esc(p.profileId.slice(0,6)+'…'+p.profileId.slice(-6))+'</small>'+err+
+        '<div class="trClubChecks">'+roleCodes.map(code=>'<label><input type="checkbox" data-club-role="'+code+'" '+(chosen.includes(code)?'checked':'')+'>'+label[code]+'</label>').join('')+'</div><label class="trClubRank">同じ区分内の優先順（任意）<input type="number" min="0" max="9999" step="1" data-club-order value="'+esc(saved.sortOrder||0)+'"></label><small>0＝ふりがな自動順。数字を指定した人は数字の小さい順を優先。</small><button class="portalPrimary trClubSave" data-club-save type="button">この人の役職・順番を保存</button><span class="trClubSaveState" aria-live="polite"></span></div>';
+    }).join('');
+  }
+  $('trClubLoad')?.addEventListener('click',async()=>{
+    const g=gate(),button=$('trClubLoad'),state=$('trClubStatus');
+    if(g?.role!=='developer'||g.roleVerified!==true||!g.loadClubCandidates){state.textContent='開発者本人で入ってください。';return;}
+    button.disabled=true;state.textContent='本人IDと役職をFirebaseから照合しています…';
+    try{
+      await g.loadClubRoster(true);
+      members=await g.loadClubCandidates();
+      if(g!==gate()||g.role!=='developer'||!g.roleVerified)throw Error('開発者認証が途中で変わりました');
+      render();state.textContent=members.length+'名を読み込みました。対象者の本人IDを確認して手動で指定してください。';
+    }catch(e){members=[];$('trClubRows').replaceChildren();state.textContent='読み込めません：'+String(e?.message||e).slice(0,140);}
+    finally{button.disabled=false;}
+  });
+  $('trClubRows')?.addEventListener('click',async(ev)=>{
+    const btn=ev.target.closest('[data-club-save]');if(!btn)return;
+    const c=btn.closest('[data-club-uid]'),p=members.find(x=>x.uid===c?.dataset.clubUid),g=gate();if(!p||!g)return;
+    const output=c.querySelector('.trClubSaveState');
+    const roleCodes=[...c.querySelectorAll('[data-club-role]:checked')].map(x=>x.dataset.clubRole).join(',');
+    const sortOrder=Number(c.querySelector('[data-club-order]')?.value||0);
+    btn.disabled=true;output.textContent='Firebaseへ保存・読戻し確認中…';
+    try{
+      await g.saveClubRole({uid:p.uid,profileId:p.profileId,roleCodes,sortOrder});
+      output.textContent='役職と順番を保存・読戻し確認しました。';
+      // No rerender immediately: keep the checkbox and feedback visible after save.
+    }catch(e){output.textContent='保存されませんでした：'+String(e?.message||e).slice(0,120);}
+    finally{btn.disabled=false;}
+  });
+})();
+</script>
 </body>
 </html>
