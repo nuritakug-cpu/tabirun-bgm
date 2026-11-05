@@ -1,3 +1,5 @@
+<!-- TOP RUN PORTAL v331 | 2026-11-05 | Physical parent v330. Preserve practice STEP 1 report choice; add an authenticated unified REPORT CENTER in management settings, listing practice sessions and tournament events by day/month/range with direct navigation to the EXISTING formal per-person practice and event reports (incl no responses/records). No new Firebase init, listener, READ root, WRITE, Rules, UID/profileId, or CSV/PDF exporter. -->
+<!-- TOP RUN PORTAL v330 | 2026-11-05 | Parent v329 exact physical HTML. Remove MY PAGE child basic-profile/goal editing UI and its handlers (retain family proxy practice attendance and race registration). Add staff practice attendance/record reports with day/month/range selectors, approved-member roster including no answers/no practice records, one-shot authorized existing RTDB reads, CSV/iPhone share and printable PDF. No changes to Auth, existing gateway initialization, RTDB writes, Rules, notices/chat/race flows. -->
 <!-- TOP RUN PORTAL v329 | 2026-11-05 | Parent v328 physical HTML. FIX ONLY: PORTAL内大会の出走登録確認の4種表示フィルターをFirebase正式出走＋参加回答のUID単位分類に接続。CSV/PDFも表示対象と一致。既存Firebase READ/WRITE・Rules・本人/代理登録と他画面は変更なし。 -->
 <!-- TOP RUN PORTAL v328 | 2026-11-05 | Parent v327 physical HTML. FIX ONLY: PORTAL内正式出走の帳票CSV/PDF出力を既存nativeRaceStaffのFirebase READと共有し、iPhoneのCSV共有/保存選択、印刷画面からの確実な戻り導線を追加。本人・代理・Auth・Firebase RTDB/Rules/データ保存・通知等の経路を変更しない。 -->
 <!-- TOP RUN PORTAL v327 | 2026-11-05 | Parent user supplied v326. 修正: カレンダーの代理選択から出走登録へお子さんUIDを引継ぎ、本人フォームを隠して誤登録を防止。PORTAL内大会の正式出走登録を既存Firebase共通gatewayへ統合。Rules v327対応が必要。本番Firebase未実測。 -->
@@ -4632,6 +4634,53 @@ html[data-portal-personal-color="matte"] #screen-goal-tools{--guide-panel:#28212
 :is(html[data-portal-personal-color="winter"],html[data-portal-personal-color="matte"]) #screen-goal-tools #portalGoalViewGuide .portalGuideExplanation>summary{background:var(--guide-head)!important;border-color:var(--guide-border)!important;color:var(--guide-ink)!important;-webkit-text-fill-color:var(--guide-ink)!important}
 </style>
 
+
+<style id="tr-v331-report-center">
+#portalReportCenter .trHubIntro{font-size:12px;line-height:1.65;opacity:.9;margin:8px 0 13px}
+#portalReportCenter .trHubShortcuts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:12px 0 16px}
+#portalReportCenter .trHubShortcuts button,#portalReportCenter .trHubItem button{border:1px solid var(--pc-panel-soft-border,#5c9792);border-radius:12px;background:#154b50;color:#f1fffd;font-weight:900;min-height:50px;padding:10px 8px;font-size:12px;line-height:1.5}
+#portalReportCenter .trHubShortcuts button:focus-visible,#portalReportCenter .trHubItem button:focus-visible{outline:3px solid #e9c748;outline-offset:2px}
+#portalReportCenter .trHubGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:12px 0}
+#portalReportCenter .trHubGrid label{font-size:11px;font-weight:900;line-height:1.5;min-width:0;display:block}
+#portalReportCenter .trHubGrid label[hidden]{display:none!important}
+#portalReportCenter .trHubGrid :is(select,input){display:block;box-sizing:border-box;margin-top:5px;width:100%;min-width:0;min-height:46px;padding:8px;border-radius:10px;border:1px solid #8bb7af;background:#f8faf8!important;color:#173a3a!important;-webkit-text-fill-color:#173a3a!important;font-size:16px;color-scheme:light}
+#portalReportCenter #trHubRefresh{border-radius:12px;border:1px solid var(--pc-panel-soft-border,#54928d);background:#155055;color:#f1fffd;min-height:47px;width:100%;font-size:13px;font-weight:900}
+#portalReportCenter .trHubStatus{font-size:11px;line-height:1.65;opacity:.9;margin:10px 0;white-space:pre-wrap}
+#portalReportCenter .trHubList{display:grid;gap:9px;margin:12px 0}
+#portalReportCenter .trHubItem{border:1px solid var(--pc-panel-soft-border,#53817d);border-radius:13px;background:rgba(55,123,121,.10);padding:11px;min-width:0}
+#portalReportCenter .trHubItem .trHubType{display:inline-block;padding:3px 8px;background:#d7efeb;color:#164744;border-radius:999px;font-size:10px;font-weight:950;margin-bottom:7px}
+#portalReportCenter .trHubItem .trHubType.isEvent{background:#f4e6ae;color:#503e15}
+#portalReportCenter .trHubItem b{display:block;font-size:14px;line-height:1.5;overflow-wrap:anywhere}
+#portalReportCenter .trHubItem small{display:block;font-size:11px;line-height:1.55;margin:4px 0 10px;opacity:.9;overflow-wrap:anywhere}
+#portalReportCenter .trHubItem button{display:block;width:100%;min-height:45px}
+#portalReportCenter .trHubPaging{display:flex;align-items:center;justify-content:center;gap:9px;margin:12px 0}
+#portalReportCenter .trHubPaging[hidden]{display:none!important}
+#portalReportCenter .trHubPaging button{min-height:41px;border:1px solid #81a7a0;border-radius:9px;padding:8px 13px;color:#fff;background:#164e52}
+#portalReportCenter .trHubPaging button:disabled{opacity:.45}
+#portalReportCenter .trHubPaging span{font-size:11px;white-space:nowrap}
+@media(max-width:360px){#portalReportCenter .trHubShortcuts{grid-template-columns:1fr}}
+</style>
+
+<style id="tr-v330-practice-report">
+#screen-management #manage-pane-practice[data-mw-view="report"] .portalWorkflowArea[data-mw-area="report"]{display:block!important}
+#portalPracticeReportPanel .trPracticeReportFilter{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:14px 0}
+#portalPracticeReportPanel .trPracticeReportFilter label{display:block;min-width:0;font-size:12px;font-weight:900;color:inherit}
+#portalPracticeReportPanel .trPracticeReportFilter label[hidden]{display:none!important}
+#portalPracticeReportPanel :is(select,input[type="date"],input[type="month"]){display:block;box-sizing:border-box;width:100%;min-width:0;min-height:45px;border:1px solid #8baba8;border-radius:10px;margin-top:5px;padding:7px 9px;background:#f8fbf9!important;color:#17383c!important;-webkit-text-fill-color:#17383c!important;font-size:16px;color-scheme:light}
+#portalPracticeReportPanel .trPracticeReportSummary{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}
+#portalPracticeReportPanel .trPracticeReportSummary b{display:inline-block;font-size:13px;padding:7px 9px;border:1px solid var(--pc-panel-soft-border,#539a99);border-radius:9px;background:rgba(69,160,150,.13);color:inherit}
+#portalPracticeReportPanel .trPracticeReportList{display:grid;gap:7px;margin:9px 0}
+#portalPracticeReportPanel .trPracticeReportRow{padding:11px 12px;border:1px solid #4e9898;border-radius:12px;background:rgba(43,102,105,.12);color:inherit}
+#portalPracticeReportPanel .trPracticeReportRow b{display:block;font-size:14px;line-height:1.5;overflow-wrap:anywhere}
+#portalPracticeReportPanel .trPracticeReportRow small{display:block;font-size:11px;line-height:1.65;color:inherit;opacity:.85;overflow-wrap:anywhere}
+#portalPracticeReportPanel .trPracticeReportRow.trPrNeeds{border-color:#b38b42}
+#portalPracticeReportPanel .trPracticeReportPaging{display:flex;align-items:center;gap:12px;justify-content:center;margin:11px 0 15px}
+#portalPracticeReportPanel .trPracticeReportPaging button{min-height:42px;padding:7px 13px;border-radius:9px;border:1px solid #789b99;background:#19494d;color:#fff;font-size:12px;font-weight:900}
+#portalPracticeReportPanel .trPracticeReportPaging button:disabled{opacity:.45}
+#portalPracticeReportPanel .portalAuditActions{margin:16px 0 10px}
+#portalPracticeReportPanel .portalAuditActions button:disabled{opacity:.48;cursor:not-allowed}
+@media(max-width:390px){#portalPracticeReportPanel .trPracticeReportFilter{grid-template-columns:1fr}}
+</style>
 <style id="portal-workflow-20261017">
 /* 2026-10-17 / Management UI flow only; data stores, Auth and save routes unchanged. */
 #screen-management .portalManagePane .portalWorkflowMenu{display:block}
@@ -6200,27 +6249,6 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       <div class="portalDevPreviewSaveState hidden" id="portalDevPreviewSaveState" aria-live="polite"></div>
       </div>
     </details>
-    <details class="portalPanel portalProfileEditorDisclosure" id="trChildInfoPanel" hidden>
-      <summary>お子さんの基本プロフィール・目標タイム（保護者）</summary>
-      <div class="portalProfileEditorContent">
-      <p class="portalHelp">家族（親子）でつながったお子さんの分を、本人と同じように登録・変更できます。性別・学年は大会の出走条件の確認に使われます。</p>
-      <label>お子さん<select id="trChildInfoFor"></select></label>
-      <div class="portalBasicProfile">
-        <div class="portalRuleTitle">基本プロフィール</div>
-        <div class="portalBasicProfileGrid">
-          <label>性別<select id="trChildGender"><option value="">選択してください</option><option value="male">男</option><option value="female">女</option></select></label>
-          <label>学年<select id="trChildGrade"><option value="">選択してください</option><option value="1">中学1年</option><option value="2">中学2年</option><option value="3">中学3年</option><option value="other">その他</option></select></label>
-        </div>
-        <label class="portalBasicProfileBib">ゼッケンNo<input type="text" id="trChildBib" inputmode="numeric" maxlength="16" autocomplete="off" placeholder="ゼッケン番号"></label>
-        <button type="button" class="portalPrimary" id="trChildSaveBasic">お子さんの基本プロフィールを保存</button>
-        <p class="portalInlineState" id="trChildBasicState" aria-live="polite"></p>
-      </div>
-      <div class="portalRuleTitle">目標タイム</div>
-      <div class="trChildGoalGrid" id="trChildGoals"></div>
-      <button type="button" class="portalPrimary" id="trChildSaveGoals">お子さんの目標タイムを保存</button>
-      <p class="portalInlineState" id="trChildGoalState" aria-live="polite"></p>
-      </div>
-    </details>
     <section class="portalMyGrid">
       <button class="portalPanel portalPanelButton" type="button" data-screen="races">
         <div class="portalPanelHead"><small>EVENT</small><b>出走・大会</b></div>
@@ -6545,7 +6573,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v329</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v331</b></div>
   </div>
 </div>
 
@@ -6674,6 +6702,28 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
     </div>
   </details>
     </section>
+
+    <section class="portalManagementSettingsSection" id="portalReportCenter">
+      <div class="portalPanelHead"><small>REPORT CENTER</small><b>帳票｜練習・イベント</b></div>
+      <p class="trHubIntro">すべての練習予定・イベントを日付／月／期間で探せます。個別の帳票には参加回答・未回答・記録あり／なしを表示し、CSV・印刷／PDFへ出力できます。保存済みデータは変更しません。</p>
+      <div class="trHubShortcuts" role="group" aria-label="帳票を選択">
+        <button type="button" id="trHubPractice">練習の参加・記録帳票を開く ›</button>
+        <button type="button" id="trHubEvent">イベントの出走・結果帳票を開く ›</button>
+      </div>
+      <div class="trHubGrid">
+        <label>種類<select id="trHubType"><option value="all">練習＋イベント</option><option value="practice">練習のみ</option><option value="event">イベントのみ</option></select></label>
+        <label>期間<select id="trHubMode"><option value="month" selected>月で絞り込む</option><option value="day">日付で絞り込む</option><option value="range">期間を指定</option><option value="all">全期間</option></select></label>
+        <label id="trHubMonthWrap">対象月<input id="trHubMonth" type="month"></label>
+        <label id="trHubDayWrap" hidden>指定日<input id="trHubDay" type="date"></label>
+        <label id="trHubFromWrap" hidden>開始日<input id="trHubFrom" type="date"></label>
+        <label id="trHubToWrap" hidden>終了日<input id="trHubTo" type="date"></label>
+      </div>
+      <button type="button" id="trHubRefresh">登録済みの練習・イベントを一覧表示</button>
+      <p class="trHubStatus" id="trHubStatus" role="status" aria-live="polite">期間を選んで、一覧を表示してください。</p>
+      <div class="trHubList" id="trHubList" aria-live="polite"></div>
+      <div class="trHubPaging" id="trHubPaging" hidden><button id="trHubPrev" type="button">前へ</button><span id="trHubPageText"></span><button id="trHubNext" type="button">次へ</button></div>
+      <p class="trHubIntro">この一覧は練習・大会の開催単位です。各行の「帳票を開く」で、承認済みの全員・回答なし・結果なしを含む個人別の詳細帳票に進みます。未取得のデータを「記録なし」とは扱いません。</p>
+    </section>
     <section id="portalEventBaseResultEdit" class="portalManagementSettingsSection" hidden>
       <div class="portalPanelHead"><small>EVENT BASE / RESULTS</small><b>EVENT BASE記録の修正（開発者・管理者）</b></div>
       <details class="portalManageAccessDisclosure"><summary>結果の修正を開く</summary>
@@ -6735,7 +6785,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v329</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v331</b></div>
   </div>
 </div>
 
@@ -6848,6 +6898,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
   <button type="button" class="portalWorkflowChoice" data-workflow-open="practice:new"><span><b>＋ 新規作成</b><small>新しい練習予定を登録する</small></span><strong>›</strong></button>
   <button type="button" class="portalWorkflowChoice" data-workflow-open="practice:list"><span><b>✎ 修正・削除</b><small>登録済みの練習予定を一覧から探して選ぶ</small></span><strong>›</strong></button>
   <button type="button" class="portalWorkflowChoice" data-workflow-open="practice:month"><span><b>▤ 今月の練習メニュー</b><small>月別PDFの登録・差し替え・削除</small></span><strong>›</strong></button>
+  <button type="button" class="portalWorkflowChoice" data-workflow-open="practice:report"><span><b>練習参加・記録の確認と帳票</b><small>日付／月／期間で絞り込み、未回答・記録なしも含めてCSV・印刷</small></span><strong>›</strong></button>
   
 </section>
 <div class="portalWorkflowArea" data-mw-area="form">
@@ -6935,6 +6986,29 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
      <p id="monthlyTrainingState" role="status" aria-live="polite"></p>
    </section>
 </div>
+ <div class="portalWorkflowArea" data-mw-area="report" id="portalPracticeReportArea">
+  <div class="portalWorkflowTop"><button type="button" data-workflow-back="practice">← 操作選択へ戻る</button><strong>練習参加・記録の帳票</strong></div>
+  <section class="portalPanel" id="portalPracticeReportPanel">
+   <div class="portalPanelHead"><small>PRACTICE / ATTENDANCE / RECORDS</small><b>練習参加・記録の確認と帳票</b></div>
+   <p class="portalHelp">承認済みの全員を練習1回ごとに表示します。参加回答・代理回答・未回答と、記録練習の計測記録（あり／なし）を照合します。保存済みデータは変更しません。</p>
+   <div class="trPracticeReportFilter">
+    <label>対象期間<select id="trPrMode"><option value="day">日付指定</option><option value="month" selected>月指定</option><option value="range">期間指定</option></select></label>
+    <label id="trPrDayWrap" hidden>日付<input type="date" id="trPrDay"></label>
+    <label id="trPrMonthWrap">月<input type="month" id="trPrMonth"></label>
+    <label id="trPrFromWrap" hidden>開始日<input type="date" id="trPrFrom"></label>
+    <label id="trPrToWrap" hidden>終了日<input type="date" id="trPrTo"></label>
+    <label>参加回答<select id="trPrAttendance"><option value="all">全員（未回答含む）</option><option value="join">参加する</option><option value="support">帯同・応援</option><option value="decline">参加しない</option><option value="none">未回答</option></select></label>
+    <label>練習記録<select id="trPrRecord"><option value="all">全員（記録あり・なし）</option><option value="has">記録あり</option><option value="none">記録なし</option></select></label>
+   </div>
+   <button type="button" class="portalPrimary" id="trPrLoad">Firebaseから集計する</button>
+   <p class="portalFlowStatus" id="trPrStatus" role="status" aria-live="polite">日付・月・期間を選んで「集計する」を押してください。</p>
+   <div class="trPracticeReportSummary" id="trPrCounts" aria-live="polite"></div>
+   <div id="trPrList" class="trPracticeReportList" aria-live="polite"></div>
+   <div class="trPracticeReportPaging" id="trPrPaging" hidden><button type="button" id="trPrPrev">前へ</button><span id="trPrPageStatus"></span><button type="button" id="trPrNext">次へ</button></div>
+   <div class="portalAuditActions"><button type="button" id="trPrCsv" class="portalPrimary" disabled>一覧表をダウンロード（CSV）</button><button type="button" id="trPrPrint" class="portalFlowSecondary" disabled>印刷・PDF保存</button></div>
+   <p class="portalHelp">CSV・PDFは選択した期間と絞り込みの全件を出力します。画面上の一覧は100件ずつ表示します。練習が1日3回の場合はそれぞれ別行です。</p>
+  </section>
+ </div>
     </div>
 
     <div class="portalManagePane" id="manage-pane-event" data-mw-view="menu">
@@ -7914,6 +7988,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
     if(name === 'events-tab') renderEventTab();
     if(name === 'chat'){ enterPortalChat(); }
     if(name === 'management') renderManagement();
+    if(name === 'management-settings') trHubRender();
     if(name === 'races') flowRenderMyRaces();
     if(name === 'flow-external') flowRenderExternal();
     if(name === 'flow-event') flowRenderEvent();
@@ -8495,56 +8570,6 @@ if(prefix==='home'){
     renderPortalAgendaLists();
   });
   window.addEventListener('tr-family-updated',()=>{if(!portalFamilyKids().length)portalProxyOn=false;});
-  // v326: お子さんの基本プロフィール・目標タイム（保護者）
-  const trChildGoalMetrics=()=>{try{return portalGoalMetrics.filter(([m])=>m!=='other');}catch(_){return [];}};
-  let trChildInfoSeq=0;
-  function trChildInfoRender(){
-    const panel=$('trChildInfoPanel');if(!panel)return;
-    const kids=portalFamilyKids();panel.hidden=!kids.length||portalParticipantPreviewMode;if(panel.hidden)return;
-    const sel=$('trChildInfoFor'),cur=sel.value;
-    sel.innerHTML=kids.map(([u,c])=>'<option value="'+esc(u)+'">'+esc(c.name||'お子さん')+'</option>').join('');
-    if(kids.some(([u])=>u===cur))sel.value=cur;
-    if(!$('trChildGoals').children.length)$('trChildGoals').innerHTML=trChildGoalMetrics().map(([m,label])=>'<label>'+esc(label)+'<input type="text" inputmode="decimal" maxlength="12" placeholder="例 5:30" data-child-goal="'+esc(m)+'"></label>').join('');
-    trChildInfoLoad();
-  }
-  async function trChildInfoLoad(){
-    const g=window.__TR_PORTAL_SYNC__,uid=$('trChildInfoFor').value,seq=++trChildInfoSeq;if(!g||!uid)return;
-    $('trChildBasicState').textContent='読み込み中…';$('trChildGoalState').textContent='';
-    try{
-      const [bp,goals]=await Promise.all([g.childBasicProfile?.(uid),g.childGoals?.(uid)]);if(seq!==trChildInfoSeq)return;
-      const v=bp||{};
-      $('trChildGender').value=['male','female'].includes(v.gender)?v.gender:'';
-      $('trChildGrade').value=['1','2','3','other'].includes(String(v.grade))?String(v.grade):'';
-      $('trChildBib').value=String(v.bib||'').slice(0,16);
-      document.querySelectorAll('[data-child-goal]').forEach(i=>{i.value=String((goals||{})[i.dataset.childGoal]||'');});
-      $('trChildBasicState').textContent=bp?'':'まだ登録されていません。';
-    }catch(error){if(seq===trChildInfoSeq)$('trChildBasicState').textContent='読み込めませんでした：'+String(error?.message||error).slice(0,100);}
-  }
-  $('trChildInfoFor').addEventListener('change',trChildInfoLoad);
-  $('trChildSaveBasic').addEventListener('click',async()=>{
-    const g=window.__TR_PORTAL_SYNC__,uid=$('trChildInfoFor').value,st=$('trChildBasicState');
-    const gender=$('trChildGender').value,gs=$('trChildGrade').value,grade=gs==='other'?'other':Number(gs),bib=$('trChildBib').value.trim();
-    if(!uid){st.textContent='お子さんを選んでください。';return;}
-    if(!['male','female'].includes(gender)||!(grade==='other'||[1,2,3].includes(grade))){st.textContent='性別と学年を選択してください。';return;}
-    const b=$('trChildSaveBasic');b.disabled=true;st.textContent='保存しています…';
-    try{await g.saveChildBasicProfile(uid,{gender,grade,bib});st.textContent='保存しました。';showActionFeedback('保存しました','お子さんの基本プロフィール');}
-    catch(error){st.textContent='保存できませんでした：'+String(error?.message||error).slice(0,140);}
-    finally{b.disabled=false;}
-  });
-  $('trChildSaveGoals').addEventListener('click',async()=>{
-    const g=window.__TR_PORTAL_SYNC__,uid=$('trChildInfoFor').value,st=$('trChildGoalState');
-    if(!uid){st.textContent='お子さんを選んでください。';return;}
-    const goals={};let bad='';
-    document.querySelectorAll('[data-child-goal]').forEach(i=>{const v=i.value.trim();if(v&&!flowTimeGood(v))bad=bad||i.parentElement.firstChild.textContent;goals[i.dataset.childGoal]=v;});
-    if(bad){st.textContent=bad+' のタイムを「分:秒」で入力してください（例 5:30）。';return;}
-    const b=$('trChildSaveGoals');b.disabled=true;st.textContent='保存しています…';
-    try{await g.saveChildGoals(uid,goals);st.textContent='保存しました。';showActionFeedback('保存しました','お子さんの目標タイム');}
-    catch(error){st.textContent='保存できませんでした：'+String(error?.message||error).slice(0,140);}
-    finally{b.disabled=false;}
-  });
-  $('trChildInfoPanel').addEventListener('toggle',()=>{if($('trChildInfoPanel').open)trChildInfoRender();});
-  window.addEventListener('tr-family-updated',trChildInfoRender);
-  setTimeout(()=>{try{trChildInfoRender();}catch(_){}},1500);
   function schedulePracticeResponse(date,actorId){
     const gateway=window.__TR_PORTAL_SYNC__;
     if(gateway && gateway.loaded.practiceResponses){
@@ -14000,6 +14025,269 @@ function portalAuditRenderOfficialV222(e){
     if(/^[\s\u0000-\u001f]*[=+\-@]/.test(value))value="'"+value;
     return '"'+value.replace(/"/g,'""')+'"';
   }
+
+  // v331 report center: READ ONLY catalog of the currently loaded canonical
+  // practices/eventItems. Detail/CSV/print navigation reuses the v330 and v329
+  // official report modules; never creates a second subscriber or storage path.
+  const trHubState={rows:[],page:0};
+  const trHubISO=s=>/^\d{4}-\d{2}-\d{2}$/.test(String(s||''));
+  function trHubWindow(){
+    const mode=$('trHubMode').value;
+    if(mode==='all')return {from:'0000-01-01',to:'9999-12-31',label:'全期間'};
+    if(mode==='day'){const d=$('trHubDay').value;if(!trHubISO(d))throw Error('日付を選んでください');return {from:d,to:d,label:d};}
+    if(mode==='month'){
+      const m=$('trHubMonth').value;if(!/^\d{4}-\d{2}$/.test(m))throw Error('月を選んでください');
+      const [y,mo]=m.split('-').map(Number);const last=new Date(Date.UTC(y,mo,0)).toISOString().slice(0,10);
+      return {from:m+'-01',to:last,label:m+'月'};
+    }
+    const from=$('trHubFrom').value,to=$('trHubTo').value;
+    if(!trHubISO(from)||!trHubISO(to)||from>to)throw Error('開始日と終了日を正しく指定してください');
+    return {from,to,label:from+'〜'+to};
+  }
+  function trHubDraw(){
+    const rows=trHubState.rows,chunk=60,pages=Math.max(1,Math.ceil(rows.length/chunk));
+    trHubState.page=Math.min(Math.max(0,trHubState.page),pages-1);
+    const start=trHubState.page*chunk;
+    $('trHubList').innerHTML=rows.slice(start,start+chunk).map(r=>
+      `<article class="trHubItem"><span class="trHubType${r.type==='event'?' isEvent':''}">${r.type==='event'?'イベント':'練習'}</span><b>${esc(r.date)}　${esc(r.title)}</b><small>${esc(r.detail)}</small><button type="button" data-tr-hub-kind="${r.type}" data-tr-hub-id="${esc(r.id)}">${r.type==='event'?'出走・結果':'参加・記録'}の詳細帳票を開く ›</button></article>`
+    ).join('')||'<div class="portalEmpty">この条件に該当する練習・イベントはありません。</div>';
+    $('trHubPaging').hidden=pages<=1;
+    $('trHubPageText').textContent=`${rows.length?start+1:0}〜${Math.min(start+chunk,rows.length)} / ${rows.length}件`;
+    $('trHubPrev').disabled=trHubState.page===0;$('trHubNext').disabled=trHubState.page>=pages-1;
+  }
+  function trHubRender(){
+    const g=window.__TR_PORTAL_SYNC__,type=$('trHubType').value,status=$('trHubStatus');
+    if(!canManage||portalParticipantPreviewMode||!g?.roleVerified||!['developer','admin'].includes(g.role)){
+      trHubState.rows=[];trHubDraw();status.textContent='管理者の本人認証が必要です。';return;
+    }
+    let w;try{w=trHubWindow();}catch(e){trHubState.rows=[];trHubDraw();status.textContent=e.message;return;}
+    if((type!=='event'&&!g.loaded?.practices)||(type!=='practice'&&!g.loaded?.eventItems)){
+      trHubState.rows=[];trHubDraw();status.textContent='練習予定・イベントのFirebase受信が未完了です。未取得を0件と扱いません。通信状態をご確認ください。';return;
+    }
+    const rows=[];
+    if(type!=='event')for(const [key,p] of Object.entries(g.practices||{})){
+      if(!p||p.kind!=='practice'||!/^\d{4}-\d{2}-\d{2}(?:-[23])?$/.test(key))continue;
+      const date=g.practiceDayOf?g.practiceDayOf(key,p):String(p.scheduledDate||key.slice(0,10));
+      if(!trHubISO(date)||date<w.from||date>w.to)continue;
+      const session=key.endsWith('-2')?'（2回目）':key.endsWith('-3')?'（3回目）':'';
+      const title=(p.practiceMode==='record'?'記録練習':'練習予定')+session;
+      const detail=[p.place||'会場未設定',p.start||'',p.end?'終了 '+p.end:'',p.noticeKind==='cancel'?'【中止】':p.noticeKind==='change'?'【変更】':''].filter(Boolean).join(' ／ ');
+      rows.push({type:'practice',id:key,date,title,detail});
+    }
+    if(type!=='practice'){
+      for(const e of eventItems){
+        if(!e||!e.title||!trHubISO(e.date))continue;
+        // A multi-day event is included when any part overlaps the selected period.
+        const final=portalEventLastDate(e)||e.date;
+        if(final<w.from||e.date>w.to)continue;
+        const detail=[e.place||'会場未設定',e.startTime||'',e.displayCategory==='event'?'通常イベント':'大会',e.raceEntryEnabled!==false?'出走登録あり得る':'出走登録対象外'].filter(Boolean).join(' ／ ');
+        rows.push({type:'event',id:e.id,date:e.date,title:portalEventName(e.title),detail});
+      }
+      // Existing EVENT BASE historical targets are already available in the
+      // official read-only audit selector; expose the same two here if missing.
+      const historical=window.__TR_COMMON_PILOT_UI__?.officialTargets?.()||[];
+      for(const t of historical){
+        if(!['eventbase_mu4ujce3_xxx1','eventbase_ekiden_dev_20261006'].includes(t?.id)||!trHubISO(t.date))continue;
+        if(t.date<w.from||t.date>w.to||rows.some(x=>x.type==='event'&&x.id===t.id))continue;
+        rows.push({type:'event',id:'canonical:'+t.id,date:t.date,title:t.title||'EVENT BASE',detail:'過去の正式大会（元大会の結果を参照）'});
+      }
+    }
+    rows.sort((a,b)=>b.date.localeCompare(a.date)||(a.type===b.type?0:a.type==='event'?-1:1)||a.title.localeCompare(b.title,'ja'));
+    trHubState.rows=rows;trHubState.page=0;trHubDraw();
+    status.textContent=`${w.label}：練習${rows.filter(x=>x.type==='practice').length}回、イベント${rows.filter(x=>x.type==='event').length}件。各行から個人別の正式帳票とCSV・PDFを開けます。`;
+  }
+  function trHubPractice(day){
+    if(!canManage||portalParticipantPreviewMode)return;
+    showScreen('management');
+    document.querySelector('#screen-management [data-manage-pane="practice"]')?.click();
+    portalOpenManagementFlow('practice','report');
+    const today=trPrToday(),d=trHubISO(day)?day:today;
+    $('trPrMode').value=day?'day':'month';$('trPrMode').dispatchEvent(new Event('change'));
+    if(day)$('trPrDay').value=d;else $('trPrMonth').value=d.slice(0,7);
+    $('trPrLoad').click();
+  }
+  function trHubEvent(id){
+    if(!canManage||portalParticipantPreviewMode)return;
+    const s=$('screen-flow-manager');
+    showScreen('flow-manager');
+    s.dataset.trOnly='audit';s.dataset.flowActive='audit';
+    flowManagerMode='';flowManagerEventId=String(id||'').startsWith('canonical:')?'':id||'';
+    portalCanonicalAuditEventId=String(id||'').startsWith('canonical:')?id.slice(10):'';
+    $('portalAuditFilter').value='all';flowRenderManagerWorkspace();
+    const head=s.querySelector('.portalScreenHead b');if(head)head.textContent='参加者・出走者';
+    const small=s.querySelector('.portalScreenHead small');if(small)small.textContent='EVENT MANAGEMENT';
+  }
+  $('trHubPractice').addEventListener('click',()=>trHubPractice(''));
+  $('trHubEvent').addEventListener('click',()=>trHubEvent(''));
+  $('trHubList').addEventListener('click',e=>{
+    const b=e.target.closest('[data-tr-hub-kind]');if(!b)return;
+    const row=trHubState.rows.find(r=>r.type===b.dataset.trHubKind&&r.id===b.dataset.trHubId);
+    if(!row)return;
+    if(row.type==='practice')trHubPractice(row.date);else trHubEvent(row.id);
+  });
+  $('trHubRefresh').addEventListener('click',trHubRender);
+  $('trHubPrev').addEventListener('click',()=>{trHubState.page--;trHubDraw()});
+  $('trHubNext').addEventListener('click',()=>{trHubState.page++;trHubDraw()});
+  $('trHubMode').addEventListener('change',()=>{
+    const m=$('trHubMode').value;
+    $('trHubDayWrap').hidden=m!=='day';$('trHubMonthWrap').hidden=m!=='month';
+    $('trHubFromWrap').hidden=m!=='range';$('trHubToWrap').hidden=m!=='range';trHubRender();
+  });
+  for(const id of ['trHubType','trHubDay','trHubMonth','trHubFrom','trHubTo'])$(id).addEventListener('change',trHubRender);
+  const trHubToday=new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Tokyo'});
+  $('trHubDay').value=trHubToday;$('trHubMonth').value=trHubToday.slice(0,7);
+  $('trHubFrom').value=trHubToday.slice(0,7)+'-01';$('trHubTo').value=trHubToday;
+
+  // v330 practice attendance/record report. Existing memberAccess, practices,
+  // practiceResponses and pastRecords are sole sources of truth. No local fallback.
+  const trPrState={raw:null,rows:[],page:0,seq:0,window:''};
+  const trPrDate=v=>/^\d{4}-\d{2}-\d{2}$/.test(String(v||''));
+  const trPrToday=()=>new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Tokyo'});
+  const trPrL=v=>String(v??'');
+  const trPrResponseLabel=a=>({join:'参加する',support:'帯同・応援',decline:'参加しない',maybe:'未選択'})[a]||'未回答';
+  const trPrKindLabel=k=>({TT:'TT',selection:'選考',trial:'試走',other:'その他'})[k]||k||'記録';
+  function trPrRange(){
+    const mode=$('trPrMode').value,day=$('trPrDay').value,month=$('trPrMonth').value;
+    let from='',to='';
+    if(mode==='day'){from=day;to=day;}
+    else if(mode==='month'){if(!/^\d{4}-\d{2}$/.test(month))throw Error('対象月を選んでください');from=month+'-01';const [y,m]=month.split('-').map(Number);to=new Date(Date.UTC(y,m,0)).toISOString().slice(0,10);}
+    else{from=$('trPrFrom').value;to=$('trPrTo').value;}
+    if(!trPrDate(from)||!trPrDate(to)||from>to)throw Error('開始日・終了日を正しく選んでください');
+    return {from,to,label:mode==='day'?from:mode==='month'?month+'月':from+'〜'+to};
+  }
+  function trPrButtons(ok){$('trPrCsv').disabled=!ok;$('trPrPrint').disabled=!ok;}
+  function trPrUpdateRows(){
+    const raw=trPrState.raw;if(!raw){trPrState.rows=[];trPrButtons(false);return;}
+    const attendance=$('trPrAttendance').value,records=$('trPrRecord').value;
+    const rows=raw.filter(r=>(attendance==='all'||(attendance==='none'?!['join','support','decline'].includes(r.answer):r.answer===attendance))&&
+      (records==='all'||(records==='has'?r.records.length>0:r.records.length===0)));
+    trPrState.rows=rows;trPrState.page=0;trPrDraw();
+  }
+  function trPrDraw(){
+    const rows=trPrState.rows,chunk=100,pages=Math.max(1,Math.ceil(rows.length/chunk));
+    trPrState.page=Math.max(0,Math.min(trPrState.page,pages-1));
+    const start=trPrState.page*chunk,subset=rows.slice(start,start+chunk);
+    const any=trPrState.raw||[];
+    const answerCounts={join:0,support:0,decline:0,none:0};let records=0;
+    for(const r of any){if(['join','support','decline'].includes(r.answer))answerCounts[r.answer]++;else answerCounts.none++;if(r.records.length)records++;}
+    $('trPrCounts').innerHTML=[['練習',new Set(any.map(r=>r.key)).size],['対象の全件',any.length],['参加',answerCounts.join],['帯同・応援',answerCounts.support],['不参加',answerCounts.decline],['未回答',answerCounts.none],['記録あり',records],['記録なし',any.length-records],['表示',rows.length]].map(([name,n])=>`<b>${esc(name)} ${n}</b>`).join('');
+    $('trPrList').innerHTML=subset.map(r=>{
+      const recordText=r.records.length?r.records.map(x=>`${x.recordDistanceMeters||''}m ${x.status==='time'?x.time:x.status}（${trPrKindLabel(x.recordKind)}）`).join('／'):'記録なし';
+      return `<div class="trPracticeReportRow${!r.answer||r.warning?' trPrNeeds':''}"><b>${esc(r.date)} ${r.session?esc(r.session):''}｜${esc(r.name)}</b><small>${esc(r.place||'会場未設定')} ${esc(r.start||'')}〜${esc(r.end||'')}／${esc(r.practiceMode==='record'?'記録練習':'通常練習')}${r.noticeKind==='cancel'?'【中止】':''}</small><small>参加：${esc(trPrResponseLabel(r.answer))}${r.proxyByName?' ／ 代理：'+esc(r.proxyByName):''}　計測：${esc(recordText)}</small>${r.warning?`<small>確認：${esc(r.warning)}</small>`:''}</div>`;
+    }).join('')||(trPrState.raw?'<div class="portalEmpty">選択条件に該当する人はいません。絞り込みを変えてください。</div>':'');
+    $('trPrPaging').hidden=pages===1;
+    $('trPrPageStatus').textContent=`${rows.length?start+1:0}〜${Math.min(start+chunk,rows.length)} / ${rows.length}件`;
+    $('trPrPrev').disabled=trPrState.page===0;$('trPrNext').disabled=trPrState.page>=pages-1;
+    trPrButtons(rows.length>0);
+    $('trPrStatus').textContent=`${trPrState.window}：${new Set(any.map(r=>r.key)).size}回の練習／対象${any.length}件。絞り込み後 ${rows.length}件（CSV・PDFもこの条件）。`;
+  }
+  function trPrRows(practices,members,answers,past){
+    const membersByUid=new Map(members.map(m=>[m.uid,m]));
+    const recordsByKey=new Map();
+    for(const [uid,byId] of Object.entries(past||{})){
+      if(!membersByUid.has(uid)||!byId||typeof byId!=='object')continue;
+      for(const v of Object.values(byId)){
+        if(!v||!v.practiceDate||!v.recordKind||v.subjectUid!==uid||!trPrDate(v.date))continue;
+        const k=v.practiceDate+'|'+uid;
+        if(!recordsByKey.has(k))recordsByKey.set(k,[]);
+        recordsByKey.get(k).push(v);
+      }
+    }
+    const all=[];
+    for(const p of practices){
+      const responseByUid=answers[p.key]||{};
+      for(const m of members){
+        const a=responseByUid[m.uid],mismatch=!!a?.profileId&&a.profileId!==m.profileId;
+        const ans=mismatch?'':(['join','support','decline'].includes(a?.answer)?a.answer:'');
+        const records=(recordsByKey.get(p.key+'|'+m.uid)||[]).filter(v=>v.date===p.date);
+        const warning=mismatch?'参加回答の本人IDが現在の承認と一致しません':(!ans&&p.noticeKind!=='cancel'?'参加回答がありません':'');
+        all.push({...p,uid:m.uid,name:m.name,profileId:m.profileId,answer:ans,proxyByName:mismatch?'':String(a?.proxyByName||''),records,warning});
+      }
+      // Keep any response whose UID does not correspond to an active approval visible,
+      // labelled as unverified. Never silently associate by a matching name.
+      for(const [uid,a] of Object.entries(responseByUid)){
+        if(membersByUid.has(uid)||!a||!['join','support','decline'].includes(a.answer))continue;
+        all.push({...p,uid,name:String(a.name||'承認外の回答者').slice(0,24),profileId:String(a.profileId||''),answer:a.answer,proxyByName:String(a.proxyByName||''),records:[],warning:'現在の承認済み一覧にUIDがありません（要確認）'});
+      }
+    }
+    all.sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start)||a.key.localeCompare(b.key)||
+      (window.trNameCmpV218?window.trNameCmpV218(a.name,b.name):a.name.localeCompare(b.name,'ja')));
+    return all;
+  }
+  async function trPrRead(){
+    const btn=$('trPrLoad'),status=$('trPrStatus'),g=window.__TR_PORTAL_SYNC__;
+    if(!canManage||portalParticipantPreviewMode||!g?.roleVerified||!['developer','admin'].includes(g.role)||!g.loaded?.practices){status.textContent='管理者の本人確認と練習予定のFirebase読込が必要です。';return;}
+    let range;try{range=trPrRange();}catch(error){status.textContent=error.message;return;}
+    const selected=Object.entries(g.practices||{}).filter(([key,p])=>p&&p.kind==='practice'&&/^\d{4}-\d{2}-\d{2}(?:-[23])?$/.test(key)&&
+      (g.practiceDayOf?g.practiceDayOf(key,p):String(p.scheduledDate||key.slice(0,10)))>=range.from&&
+      (g.practiceDayOf?g.practiceDayOf(key,p):String(p.scheduledDate||key.slice(0,10)))<=range.to)
+      .map(([key,p])=>({key,date:g.practiceDayOf?g.practiceDayOf(key,p):key.slice(0,10),place:p.place||'',start:p.start||'',end:p.end||'',practiceMode:p.practiceMode||'normal',noticeKind:p.noticeKind||'',recordKind:p.recordKind||'',enabled:p.enabled!==false}));
+    if(!selected.length){trPrState.raw=[];trPrState.window=range.label;trPrUpdateRows();status.textContent=range.label+'：登録済み練習予定はありません。';return;}
+    if(selected.length>1200){status.textContent='選択された練習が1200件を超えます。対象期間を分けてください。';return;}
+    btn.disabled=true;trPrButtons(false);trPrState.raw=null;trPrState.rows=[];$('trPrList').innerHTML='';$('trPrCounts').innerHTML='';
+    const seq=++trPrState.seq;status.textContent=`${range.label}：練習${selected.length}回、参加者と練習記録を読み込み中…`;
+    try{
+      // Two existing authorized READ functions + one explicitly triggered answers read.
+      // Never infer a missing answer from failed GET; stop the entire report on error.
+      const [members,answers,past]=await Promise.all([g.listApprovedMembers(),g.readPracticeReportAnswers(selected.map(p=>p.key)),g.loadPastEventOverview()]);
+      if(seq!==trPrState.seq||g!==window.__TR_PORTAL_SYNC__||!canManage||!['developer','admin'].includes(g.role)||!g.roleVerified)throw Error('取得中に管理権限が変わりました');
+      if(!Array.isArray(members))throw Error('承認済み参加者の名簿を取得できませんでした');
+      if(!members.length){trPrState.raw=[];trPrState.window=range.label;trPrUpdateRows();status.textContent='承認済み参加者が取得できません。0人の帳票として出力しません。';return;}
+      const sessions=selected.sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start)||a.key.localeCompare(b.key));
+      let previous='',ordinal=0;
+      sessions.forEach(p=>{ordinal=p.date===previous?ordinal+1:1;previous=p.date;p.session=sessions.filter(x=>x.date===p.date).length>1?ordinal+'回目':'';});
+      trPrState.raw=trPrRows(sessions,members,answers,past);
+      trPrState.window=range.label;trPrUpdateRows();
+    }catch(error){if(seq===trPrState.seq){trPrState.raw=null;trPrState.rows=[];trPrButtons(false);status.textContent='帳票を作れません：'+String(error?.message||error).slice(0,190)+'。未取得を未回答・記録なしとして扱いません。';}}
+    finally{btn.disabled=false;}
+  }
+  function trPrExportData(){
+    const headers=['練習日','回','開始','終了','会場','練習区分','変更・中止','氏名','参加回答','代理回答者','計測記録の有無','計測距離','タイム／結果','記録種別','確認'];
+    const rows=[headers];for(const r of trPrState.rows){
+      if(r.records.length)for(const x of r.records)rows.push([r.date,r.session||'',r.start,r.end,r.place,r.practiceMode==='record'?'記録練習':'通常練習',r.noticeKind==='cancel'?'中止':r.noticeKind==='change'?'変更':'',r.name,trPrResponseLabel(r.answer),r.proxyByName,'記録あり',x.recordDistanceMeters||'',x.status==='time'?x.time:x.status,trPrKindLabel(x.recordKind),r.warning]);
+      else rows.push([r.date,r.session||'',r.start,r.end,r.place,r.practiceMode==='record'?'記録練習':'通常練習',r.noticeKind==='cancel'?'中止':r.noticeKind==='change'?'変更':'',r.name,trPrResponseLabel(r.answer),r.proxyByName,'記録なし','','','',r.warning]);
+    }
+    return rows;
+  }
+  $('trPrMode').addEventListener('change',()=>{
+    const mode=$('trPrMode').value;
+    $('trPrDayWrap').hidden=mode!=='day';$('trPrMonthWrap').hidden=mode!=='month';
+    $('trPrFromWrap').hidden=mode!=='range';$('trPrToWrap').hidden=mode!=='range';
+    trPrState.raw=null;trPrState.rows=[];trPrButtons(false);$('trPrList').innerHTML='';$('trPrCounts').innerHTML='';$('trPrStatus').textContent='期間を変更しました。「Firebaseから集計する」を押してください。';
+  });
+  for(const id of ['trPrDay','trPrMonth','trPrFrom','trPrTo'])$(id).addEventListener('change',()=>{trPrState.raw=null;trPrButtons(false);$('trPrStatus').textContent='期間を変更しました。「Firebaseから集計する」を押してください。';});
+  $('trPrAttendance').addEventListener('change',trPrUpdateRows);
+  $('trPrRecord').addEventListener('change',trPrUpdateRows);
+  $('trPrPrev').addEventListener('click',()=>{trPrState.page--;trPrDraw();});
+  $('trPrNext').addEventListener('click',()=>{trPrState.page++;trPrDraw();});
+  $('trPrLoad').addEventListener('click',trPrRead);
+  const trPrDefault=trPrToday();$('trPrDay').value=trPrDefault;$('trPrMonth').value=trPrDefault.slice(0,7);
+  $('trPrFrom').value=trPrDefault.slice(0,7)+'-01';$('trPrTo').value=trPrDefault;
+  $('trPrCsv').addEventListener('click',async()=>{
+    if(!trPrState.raw||!trPrState.rows.length)return;
+    try{
+      const csv='\ufeff'+trPrExportData().map(r=>r.map(portalAuditCsvCell).join(',')).join('\r\n');
+      const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),filename='練習参加記録_'+trPrState.window.replace(/[^0-9]/g,'')+'.csv';
+      if(typeof File==='function'&&typeof navigator.share==='function'&&typeof navigator.canShare==='function'){
+        const file=new File([blob],filename,{type:'text/csv'});
+        if(navigator.canShare({files:[file]})){
+          try{await navigator.share({files:[file],title:'練習参加・記録一覧'});$('trPrStatus').textContent='CSVを共有画面に渡しました。「ファイルに保存」など保存先を確認してください。';}
+          catch(e){$('trPrStatus').textContent=e?.name==='AbortError'?'共有・保存をキャンセルしました。':'共有に失敗しました：'+String(e?.message||e).slice(0,90);}
+          return;
+        }
+      }
+      const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
+      $('trPrStatus').textContent='CSVのダウンロードを要求しました。保存されたかはSafariのダウンロード一覧で確認してください。';
+    }catch(e){$('trPrStatus').textContent='CSVを出力できません：'+String(e?.message||e).slice(0,120);}
+  });
+  $('trPrPrint').addEventListener('click',()=>{
+    if(!trPrState.raw||!trPrState.rows.length)return;
+    const tab=window.open('','_blank');if(!tab){$('trPrStatus').textContent='印刷画面を開けませんでした。ポップアップ許可をご確認ください。';return;}
+    const data=trPrExportData(),heading=data[0],body=data.slice(1);
+    const url=esc(new URL(location.pathname,location.origin).href),title=esc('練習参加・記録一覧 '+trPrState.window),td=(v,tag)=>'<'+tag+'>'+esc(trPrL(v))+'</'+tag+'>';
+    const doc='<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+title+'</title><style>*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",sans-serif;color:#222;margin:18px}h1{font-size:19px;margin:10px 0 14px}.tools{display:flex;gap:9px;margin:8px 0 20px}.tools a,.tools button{font:inherit;padding:10px 12px;border:1px solid #888;border-radius:8px;background:#f7f2e5;color:#222}.scroll{overflow-x:auto}table{border-collapse:collapse;min-width:1050px;width:100%;font-size:11px}th,td{border:1px solid #b5b5b5;text-align:left;padding:5px;overflow-wrap:anywhere}th{background:#eee6ce}tr:nth-child(even){background:#f8f8f6}tr{break-inside:avoid}p{font-size:11px;color:#555}@page{size:A4 landscape;margin:8mm}@media print{.tools,.hint{display:none}body{margin:0}table{min-width:0;font-size:8px}th,td{padding:3px}} </style></head><body><div class="tools"><a href="'+url+'" onclick="try{if(window.opener&&!window.opener.closed){window.opener.focus();window.close()}}catch(e){}">← PORTALへ戻る</a><button onclick="window.print()">印刷・PDF保存</button></div><p class="hint">iPhone：印刷プレビューを拡大して共有から「ファイルに保存」。</p><h1>'+title+'</h1><p>'+esc(trPrState.rows.length+'件／練習'+new Set(trPrState.rows.map(r=>r.key)).size+'回／選択中の条件を出力')+'</p><div class="scroll"><table><thead><tr>'+heading.map(x=>td(x,'th')).join('')+'</tr></thead><tbody>'+body.map(r=>'<tr>'+r.map(v=>td(v,'td')).join('')+'</tr>').join('')+'</tbody></table></div></body></html>';
+    tab.document.open();tab.document.write(doc);tab.document.close();$('trPrStatus').textContent='印刷用一覧を開きました。戻るボタンからPORTALへ戻れます。';
+  });
   $('portalAuditCsv').addEventListener('click',async()=>{
     const data=portalAuditExportRows();if(!portalAuditExportAllowed(data))return;
     try{
@@ -18437,6 +18725,35 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         if(before!==[...ids].sort().join('|'))gate.refreshOfficialRaceRead?.();
       }
       return records;
+    };
+    // v330 practice report: use the already-running staff practiceResponses
+    // subscription whenever it is ready. One-shot GET only as a fallback.
+    // No new listener, Firebase app, RTDB write or data store.
+    gate.readPracticeReportAnswers=async(keys)=>{
+      if(gate.roleVerified!==true||!['developer','admin'].includes(gate.role)||auth.currentUser?.uid!==gate.uid||!gate.loaded.practices)
+        throw Error('練習予定と管理権限を確認してください');
+      const currentGeneration=generation,currentUid=gate.uid;
+      const valid=Array.isArray(keys)&&keys.length>0&&keys.length<=1200&&keys.every(k=>/^\d{4}-\d{2}-\d{2}(?:-[23])?$/.test(k));
+      if(!valid)throw Error('対象の練習予定がありません');
+      const out={};
+      if(gate.loaded.practiceResponses===true&&!gate.errors.practiceResponses){
+        const existing=gate.practiceResponses||{}; // P120 filtered current canonical rows
+        keys.forEach(k=>out[k]=existing[k]&&typeof existing[k]==='object'?existing[k]:{});
+      }else{
+        // Explicit staff request; bounded concurrency, only requested practice keys.
+        let cursor=0;
+        await Promise.all(Array.from({length:Math.min(5,keys.length)},async()=>{
+          while(cursor<keys.length){
+            const key=keys[cursor++],rows=(await dbMod.get(ref('practiceResponses/'+key))).val()||{};
+            const current={};
+            for(const [uid,row] of Object.entries(rows))if(row&&!gate.isStalePracticeResponse?.(key,row))current[uid]=row;
+            out[key]=current;
+          }
+        }));
+      }
+      if(currentGeneration!==generation||auth.currentUser?.uid!==currentUid||!['developer','admin'].includes(gate.role)||gate.roleVerified!==true)
+        throw Error('本人権限が切り替わりました。取得した回答は利用できません');
+      return out;
     };
     gate.loadPastEventOverview=async()=>{
       if(!staffPastAllowed())throw Error('大会記録一覧の管理権限を確認できません');
