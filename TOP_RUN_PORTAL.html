@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v334 | 2026-11-05 | Physical parent v333. Fix club roster candidate read shape (existing chatPeopleCandidates returns {rows,revision,seenOk}, not raw array); relocate sorting-only kana directly under display name, examples とっぷ/らん, clarify basic-profile save; restore REPORT CENTER header contrast and five-theme palettes. No Auth/UID/profileId/Firebase paths/Rules/official entry/results or storage writes changed. -->
 <!-- TOP RUN PORTAL v333 | 2026-11-05 | Physical parent v332. Add hidden sorting-only family/given kana inputs to existing basicProfile; developer-curated multi-role mapping by canonical UID/profileId (athlete/instructor/coach/representative/vice/officer/parent), stable grade/gender/role precedence + kana sorting and optional within-group manual rank; use existing one-shot staff roster and personal profile paths and shared Firebase gateway. No role-based system permission grant; no changes to existing official entry or results. REQUIRES aligned integrated Rules v333 for clubRoster and staff basicProfile read. -->
 <!-- TOP RUN PORTAL v332 | 2026-11-05 | Physical parent v331. Reporting presentation only: collapse management report center and person list by default; add participant UID-based filter to practice reports; keep report CSV full detail but generate an A4-landscape 9-column PDF/print layout avoiding mid-word wrapping of dates/times. No changes to Firebase/Auth/UID/profileId/Rules/CRUD/official results. -->
 <!-- TOP RUN PORTAL v331 | 2026-11-05 | Physical parent v330. Preserve practice STEP 1 report choice; add an authenticated unified REPORT CENTER in management settings, listing practice sessions and tournament events by day/month/range with direct navigation to the EXISTING formal per-person practice and event reports (incl no responses/records). No new Firebase init, listener, READ root, WRITE, Rules, UID/profileId, or CSV/PDF exporter. -->
@@ -6248,6 +6249,13 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
       <div class="portalInlineState" id="portalNameState"></div>
       <p class="trNameNote">表示名は<b>出走登録・大会記録</b>に使われる名前です（選手本人の名前）。</p>
+      <div class="trKanaAfterDisplay" aria-label="名前一覧の並び順専用のふりがな">
+        <div class="trKanaGrid" aria-label="氏名の読み（名前一覧の並び順だけに利用）">
+          <label>ふりがな・姓<input id="trKanaFamily" type="text" lang="ja" maxlength="20" inputmode="text" autocomplete="off" autocapitalize="off" placeholder="とっぷ"></label>
+          <label>ふりがな・名<input id="trKanaGiven" type="text" lang="ja" maxlength="20" inputmode="text" autocomplete="off" autocapitalize="off" placeholder="らん"></label>
+        </div>
+        <p class="portalHelp">名前一覧の五十音順専用。表示名や帳票には表示しません。姓と名をひらがなで入力してください（空白不可）。保存は下の「基本プロフィールを保存」で反映します。</p>
+      </div>
       <div class="trChatNameBox" id="trChatNameBox">
         <div class="portalPanelHead"><small>CHAT NAME</small><b>チャットでの表示名</b></div>
         <p class="trNameNote">共通チャット・ルームで表示される名前です。未入力のときは表示名を使います。保護者の端末で表示名をお子さんの名前にしている場合は、ここに保護者のお名前（例：○○ 母）を入れてください。</p>
@@ -6264,11 +6272,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
           <label>学年<select id="portalProfileGrade"><option value="">選択してください</option><option value="1">中学1年</option><option value="2">中学2年</option><option value="3">中学3年</option><option value="other">その他</option></select></label>
         </div>
         <label class="portalBasicProfileBib">ゼッケンNo<input type="text" id="portalProfileBib" inputmode="numeric" maxlength="16" autocomplete="off" placeholder="ゼッケン番号"></label>
-        <div class="trKanaGrid" aria-label="氏名の読み（名前一覧の並び順だけに利用）">
-          <label>ふりがな・姓<input id="trKanaFamily" type="text" maxlength="20" inputmode="text" autocomplete="off" autocapitalize="off" placeholder="うえぬり"></label>
-          <label>ふりがな・名<input id="trKanaGiven" type="text" maxlength="20" inputmode="text" autocomplete="off" autocapitalize="off" placeholder="たくろう"></label>
-        </div>
-        <p class="portalHelp">ふりがなは名前一覧の五十音順にのみ使います。表示名や帳票には表示しません。姓と名を分けて入力してください（空白不可）。</p>
+
         <div class="trClubPublic" id="trClubPublic" hidden aria-live="polite"></div>
         <button type="button" class="portalPrimary" id="portalSaveBasicProfile">基本プロフィールを保存</button>
         <p class="portalInlineState" id="portalBasicProfileState" aria-live="polite"></p>
@@ -6600,7 +6604,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v333</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v334</b></div>
   </div>
 </div>
 
@@ -6824,7 +6828,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v333</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v334</b></div>
   </div>
 </div>
 
@@ -18782,8 +18786,9 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
     };
     gate.loadClubCandidates=async()=>{
       if(!isDeveloper())throw Error('クラブ役職の割当は開発者専用です');
-      const rows=await gate.chatPeopleCandidates(); // existing staff/approved membership path
-      if(!Array.isArray(rows))throw Error('承認済みの一覧を取得できません');
+      const result=await gate.chatPeopleCandidates(); // existing staff/approved membership path returns {rows,revision,seenOk}
+      const rows=result?.rows;
+      if(!Array.isArray(rows))throw Error('承認済みの一覧の形式を確認できません');
       const unique=new Map();
       for(const row of rows){
         const uid=String(row?.uid||'');if(!/^[A-Za-z0-9_-]{6,128}$/.test(uid)||unique.has(uid))continue;
@@ -27614,6 +27619,49 @@ body.portalChatIsolated > #trWhoModal,html body > #trWhoModal{visibility:visible
 #trCommentEditor button{min-height:46px;padding:0 18px;border-radius:12px;font-weight:800}
 #trCommentEditor .trCEState{min-height:1em;font-size:13px;margin:0}
 .trEventTopTap{cursor:pointer}
+</style>
+
+<style id="tr-v334-management-new-sections-color-and-kana">
+/* v334: Kana follows the displayed name; this is a layout-only adjustment. */
+#screen-mypage .trKanaAfterDisplay{margin:12px 0 17px;min-width:0}
+#screen-mypage .trKanaAfterDisplay .trKanaGrid{margin:0 0 6px}
+#screen-mypage .trKanaAfterDisplay .portalHelp{margin:5px 0 0;line-height:1.65}
+/* Existing semantic palette variables cover ORIGINAL, BLUE, SAKURA, WINTER and MATTE.
+   Keep these rules scoped to the new report/roster sections; do not recolor other management tools. */
+#screen-management-settings :is(#portalReportCenter,#trClubEditor){
+  --tr-report-text:var(--pc-panel-soft-text,#25312f);
+  --tr-report-muted:var(--pc-panel-soft-muted,#645f51);
+  --tr-report-accent:var(--pc-directory-accent,#765e17);
+}
+#screen-management-settings #portalReportCenter.portalReportDisclosure > summary,
+#screen-management-settings #portalReportCenter.portalReportDisclosure > summary b,
+#screen-management-settings #trClubEditor.trClubDisclosure > summary,
+#screen-management-settings #trClubEditor.trClubDisclosure > summary b{
+  color:var(--tr-report-text)!important;-webkit-text-fill-color:var(--tr-report-text)!important;
+}
+#screen-management-settings #portalReportCenter.portalReportDisclosure > summary small,
+#screen-management-settings #trClubEditor.trClubDisclosure > summary small{
+  color:var(--tr-report-accent)!important;-webkit-text-fill-color:var(--tr-report-accent)!important;opacity:1!important;
+}
+#screen-management-settings #portalReportCenter.portalReportDisclosure > summary .trHubChevron,
+#screen-management-settings #trClubEditor.trClubDisclosure > summary > span:last-child{
+  color:var(--tr-report-accent)!important;-webkit-text-fill-color:var(--tr-report-accent)!important;
+}
+#screen-management-settings #portalReportCenter :is(.trHubIntro,.trHubStatus,.trHubGrid label,.trHubItem),
+#screen-management-settings #trClubEditor .trClubBody{
+  color:var(--tr-report-text);-webkit-text-fill-color:var(--tr-report-text);
+}
+#screen-management-settings #portalReportCenter :is(.trHubShortcuts button,.trHubItem button,#trHubRefresh,.trHubPaging button){
+  background:var(--pc-action-strong-bg,#314a49)!important;
+  color:var(--pc-action-strong-text,#fff)!important;
+  -webkit-text-fill-color:var(--pc-action-strong-text,#fff)!important;
+  border-color:var(--pc-action-strong-border,#608380)!important;
+}
+/* On light Sakura the original accent is intentionally soft; headings must remain legible. */
+html[data-portal-personal-color="sakura"] #screen-management-settings :is(#portalReportCenter,#trClubEditor){--tr-report-accent:#91435f}
+/* Explicit winter/matte accents should not inherit light-theme pale-background assumptions. */
+html[data-portal-personal-color="winter"] #screen-management-settings :is(#portalReportCenter,#trClubEditor){--tr-report-accent:#9ef4e9}
+html[data-portal-personal-color="matte"] #screen-management-settings :is(#portalReportCenter,#trClubEditor){--tr-report-accent:#ffb58a}
 </style>
 <style id="tr-club-v333-css">
 .trKanaGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:13px 0 8px}
