@@ -1,4 +1,5 @@
-<!-- TOP RUN PORTAL v325 / PORTAL内の大会出走正式登録 統合候補。v324実ファイルを親にし、既存共通Auth/UID/profileId・eventItems・eventResponsesに統合したnativeRaceEntriesのCREATE/READ/CANCELと管理者READを追加。v325 Rulesとセットで検証必須。Firebase本番未適用・実端末/複数端末未検証。EVENT BASE/駅伝の正式players/結果経路は変更しない。 -->
+<!-- TOP RUN PORTAL v326 | 2026-11-05 | Parent v325. REQUIRES Rules v319（v318＋保護者がお子さんの出走を取り消せる（本人が自分で登録した分も）、出走の目標タイムを変えられる、お子さんの基本プロフィール・目標タイムを保存・読める）。代理を本人と同じにする：(1) 保護者の出走一覧に、お子さんの出走をすべて出す（本人が登録した分も、保護者が代理で登録した分も）。(2) どちらの出走も、記録が入る前なら保護者が取り消せる。取り消すと、ほかの種目が残っていなければお子さんの当日の予定を「未選択」に戻す（本人の取消と同じ）。(3) 出走の目標タイムを保護者が変更できる（記録が入る前まで）。(4) MY PAGEに「お子さんの基本プロフィール・目標タイム（保護者）」を追加。お子さんの性別・学年・ゼッケンNoと目標タイムを、本人と同じ形で保存できる（出走条件の確認に使われる）。 -->
+<!-- TOP RUN PORTAL v325 | 2026-11-05 | Parent v324. Rules v318 のまま。穴の修正3つ：(1) 保護者の代理の出走登録で、お子さんの「当日の予定」も「参加する」にする（本人登録と同じ）。代理の取消では、お子さんに他の種目が残っていなければ「未選択」に戻す。(2) 代理回答の保存の直前に、お子さん本人の今の回答をFirebaseから読み直す。保護者の端末は開いた日の回答しか読み込んでいないため、「出欠回答」の一覧から別の日を代理で回答すると、本人の回答が見えず確認なしで上書きするおそれがあった。読み直せないときは保存しない。(3) 練習の日付を変えて保存すると、その練習の参加回答（代理回答も含む）をリセットする（保存前に確認）。時間・場所だけの変更ではリセットしない。 -->
 <!-- TOP RUN PORTAL v324 | 2026-11-05 | Parent v323. Rules v318 のまま。(1) プロフィール・チャットのコメント：小さな入力欄をやめ、登録した内容の表示＋「登録済」＋「編集する」に。押すと画面いっぱいの入力画面が開き、保存すると閉じて「登録済」になる。(2) コメントが消える不具合を修正：画面を開いてから2分間、1秒ごとに入力欄を保存済みの内容で上書きしていたため、キーボードを閉じたあと保存を押すと、書いた内容が消えて古い内容（空）が保存されていた。入力は別画面で行い、上書きされないようにした。(3) イベント：EVENT BASEにつながっていない大会・イベントは、カードの上の部分を押すと、カレンダーのその日の参加画面を開く。 -->
 <!-- TOP RUN PORTAL v323 | 2026-11-05 | Parent v322. Rules v318 のまま。v322で入口の「はい、あります」をなくし、つなぐ申請は上がってこなくなったため、管理画面の「前の登録とつなぐ申請」の欄を外す（残っていた申請は削除済み）。ホームの未処理表示は参加承認の申請だけを数える。 -->
 <!-- TOP RUN PORTAL v322 | 2026-11-05 | Parent v321. Rules v318 のまま。初めての端末で出していた「前の大会で、登録したことがありますか？」（はい／いいえ）をやめ、全員「登録をはじめる」から新規登録にする。「はい、あります」（前の登録とつなぐ申請）は出さないので、つなぐ申請はもう上がってこない。前に参加した人の記録は、承認後に開発者が「記録の付け替え」でつなぐ（10/28の方針）。 -->
@@ -6196,6 +6197,27 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       <div class="portalDevPreviewSaveState hidden" id="portalDevPreviewSaveState" aria-live="polite"></div>
       </div>
     </details>
+    <details class="portalPanel portalProfileEditorDisclosure" id="trChildInfoPanel" hidden>
+      <summary>お子さんの基本プロフィール・目標タイム（保護者）</summary>
+      <div class="portalProfileEditorContent">
+      <p class="portalHelp">家族（親子）でつながったお子さんの分を、本人と同じように登録・変更できます。性別・学年は大会の出走条件の確認に使われます。</p>
+      <label>お子さん<select id="trChildInfoFor"></select></label>
+      <div class="portalBasicProfile">
+        <div class="portalRuleTitle">基本プロフィール</div>
+        <div class="portalBasicProfileGrid">
+          <label>性別<select id="trChildGender"><option value="">選択してください</option><option value="male">男</option><option value="female">女</option></select></label>
+          <label>学年<select id="trChildGrade"><option value="">選択してください</option><option value="1">中学1年</option><option value="2">中学2年</option><option value="3">中学3年</option><option value="other">その他</option></select></label>
+        </div>
+        <label class="portalBasicProfileBib">ゼッケンNo<input type="text" id="trChildBib" inputmode="numeric" maxlength="16" autocomplete="off" placeholder="ゼッケン番号"></label>
+        <button type="button" class="portalPrimary" id="trChildSaveBasic">お子さんの基本プロフィールを保存</button>
+        <p class="portalInlineState" id="trChildBasicState" aria-live="polite"></p>
+      </div>
+      <div class="portalRuleTitle">目標タイム</div>
+      <div class="trChildGoalGrid" id="trChildGoals"></div>
+      <button type="button" class="portalPrimary" id="trChildSaveGoals">お子さんの目標タイムを保存</button>
+      <p class="portalInlineState" id="trChildGoalState" aria-live="polite"></p>
+      </div>
+    </details>
     <section class="portalMyGrid">
       <button class="portalPanel portalPanelButton" type="button" data-screen="races">
         <div class="portalPanelHead"><small>EVENT</small><b>出走・大会</b></div>
@@ -6520,7 +6542,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v325</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v326</b></div>
   </div>
 </div>
 
@@ -6710,7 +6732,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v325</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v326</b></div>
   </div>
 </div>
 
@@ -8191,7 +8213,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       if(!schedules[pid]||schedules[pid].enabled===false){showActionFeedback('回答できません','この練習予定を確認できません。画面を開き直してください。');return;}
       if(schedules[pid].noticeKind==='cancel'){showActionFeedback('回答できません','この練習は中止になりました。');return;} // v318
       if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||date<todayDateKey()){showActionFeedback('回答を変更できません','開催済みの練習です。');return;}
-      {const proxyChild=portalProxyChild();if(proxyChild){card.classList.add('saving');try{await portalProxySave('practice',pid,answer,proxyChild,clearing);}finally{card.classList.remove('saving');}return;}}
+      {const proxyChild=portalProxyChild();if(proxyChild){card.classList.add('saving');try{await portalProxySave('practice',pid,answer,proxyChild,clearing,btn.dataset.bulkAnswer);}finally{card.classList.remove('saving');}return;}}
       if(!gateway?.canRespondPractice?.()||gateway.profileId!==actorId){
         const reason=gateway?.errors?.practiceResponses||gateway?.errors?.practices;
         showActionFeedback('回答を保存できません',reason?'Firebaseの練習参加回答を利用できません：'+String(reason).slice(0,110):'本人承認・練習予定・参加回答のFirebase受信が必要です。');return;
@@ -8202,7 +8224,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       const eventId=card.dataset.bulkEvent,item=flowEvent(eventId);
       if(!item||item.enabled===false){showActionFeedback('回答できません','このイベントを確認できません。画面を開き直してください。');return;}
       if(!portalEventAttendanceOpen(item)){showActionFeedback('現在は受付前です','受付開始後に参加登録できます。現時点では登録していません。');return;}
-      {const proxyChild=portalProxyChild();if(proxyChild){if(flowIsEndedEvent(item)){showActionFeedback('現在は回答を変更できません','開催済みの大会は変更できません。');return;}card.classList.add('saving');try{await portalProxySave('event',eventId,answer,proxyChild,clearing);}finally{card.classList.remove('saving');}return;}}
+      {const proxyChild=portalProxyChild();if(proxyChild){if(flowIsEndedEvent(item)){showActionFeedback('現在は回答を変更できません','開催済みの大会は変更できません。');return;}card.classList.add('saving');try{await portalProxySave('event',eventId,answer,proxyChild,clearing,btn.dataset.bulkAnswer);}finally{card.classList.remove('saving');}return;}}
       if(portalHasOwnRaceEntry(eventId,actorId)){showActionFeedback('出走登録済みのため変更できません',portalRegisteredResponseWarning);return;}
       if(!portalEventCanRespond(item,answer,actorId)){showActionFeedback('現在は回答を変更できません',portalEventLockReason(item));return;}
       if(!gateway){showActionFeedback('回答を保存できません','Firebase接続が開始していません。接続後に再度操作してください。');return;}
@@ -8429,14 +8451,21 @@ if(prefix==='home'){
   }
   function portalOwnProxyName(kind,key){const g=window.__TR_PORTAL_SYNC__;if(!g?.uid)return '';const src=kind==='practice'?g.rawPracticeResponses?.():g.eventResponses;return String(src?.[key]?.[g.uid]?.proxyByName||'');}
   const portalAnswerLabel=a=>({join:'参加する',support:'帯同・応援',decline:'参加しない',maybe:'未選択'}[a]||'未選択');
-  async function portalProxySave(kind,key,answer,child,clearing){
+  async function portalProxySave(kind,key,answer,child,clearing,tapped){
     const gateway=window.__TR_PORTAL_SYNC__;
     if(!gateway?.savePracticeResponseFor||!gateway?.saveEventResponseFor){showActionFeedback('代理で回答できません','PORTALを開き直してください。');return false;}
-    const cur=gateway.proxyChildResponse?.(kind,key,child.uid)||null;
-    const own=cur&&!cur.proxyByUid&&['join','support','decline'].includes(cur.answer);
+    // v325: 画面の表示ではなく、Firebaseのお子さんの今の回答で判定する。読めなければ保存しない
+    let cur=null;
+    try{cur=gateway.readChildResponse?await portalTimeout(gateway.readChildResponse(kind,key,child.uid)):(gateway.proxyChildResponse?.(kind,key,child.uid)||null);}
+    catch(error){showActionFeedback('代理で回答できません',child.name+'さんの今の回答を確認できませんでした。通信を確認して、もう一度押してください。');return false;}
+    const want=tapped||answer;
+    const curAnswer=['join','support','decline'].includes(cur?.answer)?cur.answer:'';
+    const own=!!curAnswer&&!cur.proxyByUid;
+    const rerender=()=>{if(!$('screen-schedule-detail').classList.contains('hidden'))renderScheduleDetailBody(selectedDateKey);if(portalCalendarDisplayMode==='list'||portalAgendaBulk)renderPortalAgendaLists();};
+    if(clearing&&curAnswer!==want){showActionFeedback('回答が変わっています',child.name+'さんの今の回答は「'+portalAnswerLabel(curAnswer||'maybe')+'」です。画面を新しくしました。');rerender();return false;}
     // 本人がすでに回答している同じボタンを押した：保存せず知らせる（代理では本人の回答を消さない）
-    if(cur&&(cur.answer===answer||(clearing&&own))&&(answer!=='maybe'||own)){showActionFeedback('変更はありません',child.name+'さん'+(own?'本人':'')+'はすでに「'+portalAnswerLabel(cur.answer)+'」と回答しています。');return false;}
-    if(own&&cur.answer!==answer){
+    if((!clearing&&curAnswer===want)||(clearing&&own)){showActionFeedback('変更はありません',child.name+'さん'+(own?'本人':'')+'はすでに「'+portalAnswerLabel(curAnswer)+'」と回答しています。');rerender();return false;}
+    if(own&&!clearing&&cur.answer!==answer){
       const ask=(cur.answer==='join'||cur.answer==='support')&&answer==='decline'?'本当に参加をやめますか？':'代理で「'+portalAnswerLabel(answer)+'」に変えますか？';
       if(!window.confirm(child.name+'さん本人が「'+portalAnswerLabel(cur.answer)+'」と回答しています。\n'+ask+'\n本人の希望と違う回答になります。'))return false;
     }
@@ -8463,6 +8492,56 @@ if(prefix==='home'){
     renderPortalAgendaLists();
   });
   window.addEventListener('tr-family-updated',()=>{if(!portalFamilyKids().length)portalProxyOn=false;});
+  // v326: お子さんの基本プロフィール・目標タイム（保護者）
+  const trChildGoalMetrics=()=>{try{return portalGoalMetrics.filter(([m])=>m!=='other');}catch(_){return [];}};
+  let trChildInfoSeq=0;
+  function trChildInfoRender(){
+    const panel=$('trChildInfoPanel');if(!panel)return;
+    const kids=portalFamilyKids();panel.hidden=!kids.length||portalParticipantPreviewMode;if(panel.hidden)return;
+    const sel=$('trChildInfoFor'),cur=sel.value;
+    sel.innerHTML=kids.map(([u,c])=>'<option value="'+esc(u)+'">'+esc(c.name||'お子さん')+'</option>').join('');
+    if(kids.some(([u])=>u===cur))sel.value=cur;
+    if(!$('trChildGoals').children.length)$('trChildGoals').innerHTML=trChildGoalMetrics().map(([m,label])=>'<label>'+esc(label)+'<input type="text" inputmode="decimal" maxlength="12" placeholder="例 5:30" data-child-goal="'+esc(m)+'"></label>').join('');
+    trChildInfoLoad();
+  }
+  async function trChildInfoLoad(){
+    const g=window.__TR_PORTAL_SYNC__,uid=$('trChildInfoFor').value,seq=++trChildInfoSeq;if(!g||!uid)return;
+    $('trChildBasicState').textContent='読み込み中…';$('trChildGoalState').textContent='';
+    try{
+      const [bp,goals]=await Promise.all([g.childBasicProfile?.(uid),g.childGoals?.(uid)]);if(seq!==trChildInfoSeq)return;
+      const v=bp||{};
+      $('trChildGender').value=['male','female'].includes(v.gender)?v.gender:'';
+      $('trChildGrade').value=['1','2','3','other'].includes(String(v.grade))?String(v.grade):'';
+      $('trChildBib').value=String(v.bib||'').slice(0,16);
+      document.querySelectorAll('[data-child-goal]').forEach(i=>{i.value=String((goals||{})[i.dataset.childGoal]||'');});
+      $('trChildBasicState').textContent=bp?'':'まだ登録されていません。';
+    }catch(error){if(seq===trChildInfoSeq)$('trChildBasicState').textContent='読み込めませんでした：'+String(error?.message||error).slice(0,100);}
+  }
+  $('trChildInfoFor').addEventListener('change',trChildInfoLoad);
+  $('trChildSaveBasic').addEventListener('click',async()=>{
+    const g=window.__TR_PORTAL_SYNC__,uid=$('trChildInfoFor').value,st=$('trChildBasicState');
+    const gender=$('trChildGender').value,gs=$('trChildGrade').value,grade=gs==='other'?'other':Number(gs),bib=$('trChildBib').value.trim();
+    if(!uid){st.textContent='お子さんを選んでください。';return;}
+    if(!['male','female'].includes(gender)||!(grade==='other'||[1,2,3].includes(grade))){st.textContent='性別と学年を選択してください。';return;}
+    const b=$('trChildSaveBasic');b.disabled=true;st.textContent='保存しています…';
+    try{await g.saveChildBasicProfile(uid,{gender,grade,bib});st.textContent='保存しました。';showActionFeedback('保存しました','お子さんの基本プロフィール');}
+    catch(error){st.textContent='保存できませんでした：'+String(error?.message||error).slice(0,140);}
+    finally{b.disabled=false;}
+  });
+  $('trChildSaveGoals').addEventListener('click',async()=>{
+    const g=window.__TR_PORTAL_SYNC__,uid=$('trChildInfoFor').value,st=$('trChildGoalState');
+    if(!uid){st.textContent='お子さんを選んでください。';return;}
+    const goals={};let bad='';
+    document.querySelectorAll('[data-child-goal]').forEach(i=>{const v=i.value.trim();if(v&&!flowTimeGood(v))bad=bad||i.parentElement.firstChild.textContent;goals[i.dataset.childGoal]=v;});
+    if(bad){st.textContent=bad+' のタイムを「分:秒」で入力してください（例 5:30）。';return;}
+    const b=$('trChildSaveGoals');b.disabled=true;st.textContent='保存しています…';
+    try{await g.saveChildGoals(uid,goals);st.textContent='保存しました。';showActionFeedback('保存しました','お子さんの目標タイム');}
+    catch(error){st.textContent='保存できませんでした：'+String(error?.message||error).slice(0,140);}
+    finally{b.disabled=false;}
+  });
+  $('trChildInfoPanel').addEventListener('toggle',()=>{if($('trChildInfoPanel').open)trChildInfoRender();});
+  window.addEventListener('tr-family-updated',trChildInfoRender);
+  setTimeout(()=>{try{trChildInfoRender();}catch(_){}},1500);
   function schedulePracticeResponse(date,actorId){
     const gateway=window.__TR_PORTAL_SYNC__;
     if(gateway && gateway.loaded.practiceResponses){
@@ -9077,7 +9156,7 @@ if(prefix==='home'){
     const protectedOfficialTarget=window.__TR_COMMON_PILOT_UI__?.officialTargetFor?.(item);
     const protectedEventHref=protectedOfficialTarget?portalOfficialSafeOpenUrl(protectedOfficialTarget):(item.url||'');
     const missingConnection=portalMissingBaseAccessMarkup(item);
-    const action=portalHref ? `<button class="openBtn" type="button" data-event-open-portal="${esc(item.id)}"><span>リンク先を開く</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : portalEventDisplayCategory(item)==='event' ? `<button class="openBtn" type="button" data-event-rsvp-date="${esc(portalEventDates(item).find(d=>d>=todayDateKey())||portalEventFirstDate(item))}"><span>参加予定・詳細を確認</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : portalConnectedBase(item) ? `<button type="button" class="openBtn" data-event-open-base="${esc(item.id)}"><span>${item.type==='RELAY EVENT BASE'?'駅伝BASEを開く':'EVENT BASEを開く'}</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : item.previewOnly ? `<button class="openBtn" type="button" ${item.raceEntryEnabled===false?'data-event-rsvp-date="'+esc(portalEventDates(item).find(d=>d>=todayDateKey())||portalEventFirstDate(item))+'"':'data-flow-event="'+esc(item.id)+'"'}><span>${item.raceEntryEnabled===false||isEntryClosed?'詳細を見る':'詳細・出走登録'}</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : item.type==='OTHER' ? (portalEventDisplayCategory(item)==='competition'?`<button type="button" class="openBtn" data-flow-event="${esc(item.id)}"><span>${item.raceEntryEnabled===false?'詳細を見る':'詳細・出走登録'}</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>`:`<button type="button" class="openBtn" data-event-rsvp-date="${esc(portalEventDates(item).find(d=>d>=todayDateKey())||portalEventFirstDate(item))}"><span>イベントの詳細を見る</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7"/></svg></button>`) : item.url
+    const action=portalHref ? `<button class="openBtn" type="button" data-event-open-portal="${esc(item.id)}"><span>リンク先を開く</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : portalEventDisplayCategory(item)==='event' ? `<button class="openBtn" type="button" data-event-rsvp-date="${esc(portalEventDates(item).find(d=>d>=todayDateKey())||portalEventFirstDate(item))}"><span>参加予定・詳細を確認</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : portalConnectedBase(item) ? `<button type="button" class="openBtn" data-event-open-base="${esc(item.id)}"><span>${item.type==='RELAY EVENT BASE'?'駅伝BASEを開く':'EVENT BASEを開く'}</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : item.previewOnly ? `<button class="openBtn" type="button" ${item.raceEntryEnabled===false?'data-event-rsvp-date="'+esc(portalEventDates(item).find(d=>d>=todayDateKey())||portalEventFirstDate(item))+'"':'data-flow-event="'+esc(item.id)+'"'}><span>${item.raceEntryEnabled===false||isEntryClosed?'詳細を見る':'詳細・出走登録'}</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : item.type==='OTHER' ? `<button type="button" class="openBtn" data-event-rsvp-date="${esc(portalEventDates(item).find(d=>d>=todayDateKey())||portalEventFirstDate(item))}"><span>イベントの詳細を見る</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : item.url
       ? protectedEventHref?`<a class="openBtn" href="${esc(protectedEventHref)}"><span>${item.relay?'駅伝EVENT BASEを開く':'EVENT BASEを開く'}</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></a>`:`<button type="button" class="openBtn" disabled title="開発者本人の接続を確認してください">大会への接続を保護中</button>`
       : `<button class="openBtn" type="button" data-ui-event-coming="${esc(item.id)}"><span>${esc(noLinkLabel)}</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>`;
     const topDate=(!portalConnectedBase(item)&&!item.relay&&item.type!=='EVENT BASE'&&item.type!=='RELAY EVENT BASE')?v199Date:''; // v324
@@ -10107,10 +10186,14 @@ if(view==='list')portalApplyManageSearch(kind);
     const noticeKind=$('managePracticeNoticeKind').value,noticeText=$('managePracticeNoticeText').value.trim();
     if(noticeKind&&!noticeText){pState.textContent='中止・変更の内容を入力してください。';showActionFeedback('未入力があります','中止・変更の内容');return;}
     const prevItem=oldKey?schedules[oldKey]:null;
-    const resetAnswers=!!oldKey&&!!noticeKind&&(String(prevItem?.noticeKind||'')!==noticeKind||String(prevItem?.noticeText||'')!==noticeText);
+    const noticeReset=!!oldKey&&!!noticeKind&&(String(prevItem?.noticeKind||'')!==noticeKind||String(prevItem?.noticeText||'')!==noticeText);
+    // v325: 日付を変えたときも参加回答をリセット（答え直してもらう）。時間・場所だけの変更ではリセットしない
+    const dateReset=!!oldKey&&!!prevItem&&portalPracticeDay(oldKey,prevItem)!==date;
+    const resetAnswers=noticeReset||dateReset;
     if(resetAnswers){
       const n=Object.keys(gateway?.practiceResponses?.[prevItem?._sourceKey||oldKey]||{}).length;
-      if(!confirm('「'+(noticeKind==='cancel'?'中止':'変更')+'」として保存します。\nこの練習の参加回答'+(n?'（'+n+'人）':'')+'をリセットします（代理回答も含む）。'+(noticeKind==='cancel'?'\n中止の練習は回答できなくなります。':'')+'\n\nよろしいですか？')){pState.textContent='保存をやめました。';return;}
+      const why=noticeReset?'「'+(noticeKind==='cancel'?'中止':'変更')+'」として保存します。':'日付を '+portalPracticeDay(oldKey,prevItem)+' から '+date+' に変えます。';
+      if(!confirm(why+'\nこの練習の参加回答'+(n?'（'+n+'人）':'')+'をリセットします（代理回答も含む）。'+(dateReset&&!noticeReset?'\n新しい日付で答え直してもらいます。':'')+(noticeKind==='cancel'?'\n中止の練習は回答できなくなります。':'')+'\n\nよろしいですか？')){pState.textContent='保存をやめました。';return;}
     }
     if(!gateway?.canWrite('practices')){$('managePracticeState').textContent='Firebaseの接続（本人・スタッフ権限・練習予定の受信）を確認できていないため保存していません。少し待ってから、もう一度押してください。';showActionFeedback('保存できません','Firebaseの接続を確認中です。');return;}
     const enabled=oldKey?schedules[oldKey]?.enabled!==false:(source?source.enabled!==false:true);
@@ -12833,16 +12916,6 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
     if(!e||e.enabled===false||!e.id)return null;
     return window.__TR_COMMON_PILOT_UI__?.officialTargetFor?.(e)||null;
   }
-  // v325: PORTAL内の「大会」は正式なPORTAL自身の出走正本。
-  // Existing EVENT BASE links must NEVER be treated as this destination.
-  function flowNativeDestination(e){
-    return e&&e.enabled!==false&&e.type==='OTHER'&&
-      e.displayCategory==='competition'&&
-      /^event-[A-Za-z0-9_-]{1,80}$/.test(String(e.id||''))
-        ?{id:e.id,catalogId:e.id,nativePortal:true}:null;
-  }
-  function flowEntryTarget(e){return flowOfficialDestination(e)||flowNativeDestination(e);}
-
   // A newly created EVENT BASE/relay event cannot be registered officially
   // until its original EVENT BASE counterpart exists. Do not silently
   // substitute localStorage trials for the user's requested Firebase test.
@@ -13291,27 +13364,7 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
         linkedOfficial.push(item);
       }
     }
-    const nativeRaceRows=[];
-    const nativeGate=window.__TR_PORTAL_SYNC__;
-    // One GET per PORTAL competition on this session; no additional Firebase listener.
-    // Changes are re-read when the race is explicitly opened.
-    if(nativeGate?.hasOperationalAccess?.()&&nativeGate.loaded?.eventItems){
-      for(const candidate of eventItems.filter(e=>flowNativeDestination(e)&&!flowIsEndedEvent(e)).slice(0,8)){
-        if(!nativeGate.nativeRaceStatus?.[candidate.id])
-          void nativeGate.loadNativeRaceSelf?.(candidate.id).catch(()=>{});
-      }
-    }
-    if(nativeGate?.nativeRaceSelf&&flowSelfId()===flowBaseSelfId){
-      for(const [catalogId,entries] of Object.entries(nativeGate.nativeRaceSelf)){
-        const evt=flowEvent(catalogId);if(!evt||!flowNativeDestination(evt))continue;
-        for(const [metric,row] of Object.entries(entries||{})){
-          if(!row||row.profileId!==nativeGate.profileId||row.subjectUid!==nativeGate.uid)continue;
-          if(!portalListAccept('races',row.dayDate||evt.date))continue;
-          nativeRaceRows.push({event:evt,metric,date:row.dayDate||evt.date,goal:row.targetTime||'',declared:row.declaredTime||''});
-        }
-      }
-    }
-    $('portalRacesEmpty').classList.toggle('hidden',rows.length>0||linkedOfficial.length>0||nativeRaceRows.length>0);
+    $('portalRacesEmpty').classList.toggle('hidden',rows.length>0||linkedOfficial.length>0);
     const today=todayDateKey();
     const future=rows.filter(x=>!/^\d{4}-\d{2}-\d{2}$/.test(x.date)||x.date>=today).sort((a,b)=>a.date.localeCompare(b.date));
     const past=rows.filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x.date)&&x.date<today).sort((a,b)=>b.date.localeCompare(a.date));
@@ -13331,18 +13384,11 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
       const origin=item.openUrl?`<button type="button" data-eb-open="${esc(item.openUrl)}">大会を開く ›</button>`:'';
       return `<div class="portalMyRaceCard"><div class="portalMyRaceDate">${date}</div><div class="portalMyRaceBody"><span class="portalMyRaceBadge official">EVENT BASEで登録確認（読取専用）</span><b>${esc(portalEventName(item.title))}</b><small>${esc(portalMetricNames[item.metric]||item.metricName||'種目未設定')} ／ ${esc(item.date||'日付未設定')}${item.targetTime?' ／ 目標 '+esc(item.targetTime):''}</small><small class="portalRaceResultSummary">${result}</small></div>${origin}</div>`;
     });
-    const nativeCards=nativeRaceRows.map(n=>{
-      const d=/^(\d{4})-(\d{2})-(\d{2})$/.exec(n.date||'');
-      const date=d?`<small>${esc(d[1])}年</small><strong>${esc(Number(d[2]))}/${esc(Number(d[3]))}</strong>`:'<strong>未定</strong>';
-      return `<div class="portalMyRaceCard"><div class="portalMyRaceDate">${date}</div><div class="portalMyRaceBody"><span class="portalMyRaceBadge official">PORTAL正式出走登録（Firebase）</span><b>${esc(portalEventName(n.event.title))}</b><small>${esc(portalMetricNames[n.metric]||n.metric)} ／ 目標 ${esc(n.goal)}${n.declared?' ／ 申告 '+esc(n.declared):''}</small></div><button type="button" data-flow-open="${esc(n.event.id)}">出走内容 ›</button></div>`;
-    });
-    const nativeFuture=nativeRaceRows.filter(x=>!/^\d{4}-\d{2}-\d{2}$/.test(x.date)||x.date>=today).map(x=>nativeCards[nativeRaceRows.indexOf(x)]);
-    const nativePast=nativeRaceRows.filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x.date)&&x.date<today).map(x=>nativeCards[nativeRaceRows.indexOf(x)]);
     const officialFuture=linkedOfficial.filter(x=>!/^\d{4}-\d{2}-\d{2}$/.test(x.date)||x.date>=today).map(x=>officialCards[linkedOfficial.indexOf(x)]);
     const officialPast=linkedOfficial.filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x.date)&&x.date<today).map(x=>officialCards[linkedOfficial.indexOf(x)]);
-    $('flowRacesList').innerHTML=(rows.length||linkedOfficial.length||nativeRaceRows.length)?
-      `<div class="portalRacesGroupTitle">今後の出走</div>${future.length||officialFuture.length||nativeFuture.length?future.map(card).join('')+officialFuture.join('')+nativeFuture.join(''):'<div class="portalRacesGroupEmpty">今後の出走はありません。</div>'}`+
-      (past.length||officialPast.length||nativePast.length?`<details class="portalPastRaces" ${filtered?'open':''}><summary>過去の出走（${past.length+officialPast.length+nativePast.length}件）<span>表示する</span></summary><div class="portalPastRacesBody">${past.map(card).join('')+officialPast.join('')+nativePast.join('')}</div></details>`:'')
+    $('flowRacesList').innerHTML=(rows.length||linkedOfficial.length)?
+      `<div class="portalRacesGroupTitle">今後の出走</div>${future.length||officialFuture.length?future.map(card).join('')+officialFuture.join(''):'<div class="portalRacesGroupEmpty">今後の出走はありません。</div>'}`+
+      (past.length||officialPast.length?`<details class="portalPastRaces" ${filtered?'open':''}><summary>過去の出走（${past.length+officialPast.length}件）<span>表示する</span></summary><div class="portalPastRacesBody">${past.map(card).join('')+officialPast.join('')}</div></details>`:'')
       :'';
     $('flowMyStatus').textContent='';
   }
@@ -13381,7 +13427,7 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
     flowRenderEntryResult();
   }
   function flowOfficialLabel(e){return e.official===true?'公認':e.official===false?'非公認':'公認区分未設定';}
-  function flowEventDesc(e){return `${portalEventDateLabel(e)}${e.startTime?' '+e.startTime+'開始':' 開始時間未定'}　${e.place||'会場未定'}　／　${e.type==='OTHER'?(portalEventDisplayCategory(e)==='event'?'通常イベント':'PORTAL内大会'):e.type==='RELAY EVENT BASE'?'駅伝 EVENT BASE使用':'EVENT BASE使用'} ／ ${flowOfficialLabel(e)}${e.eligibility?.enabled?' ／ 出走条件あり':''}`;}
+  function flowEventDesc(e){return `${portalEventDateLabel(e)}${e.startTime?' '+e.startTime+'開始':' 開始時間未定'}　${e.place||'会場未定'}　／　${e.type==='OTHER'?'通常イベント':e.type==='RELAY EVENT BASE'?'駅伝 EVENT BASE使用':'EVENT BASE使用'} ／ ${flowOfficialLabel(e)}${e.eligibility?.enabled?' ／ 出走条件あり':''}`;}
   function flowManagerActiveEvent(){return flowEvent(flowManagerEventId);}
   function flowRenderManagerPicker(){
     const id=flowManagerEventId;
@@ -13600,23 +13646,6 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
     const {event:e,people}=portalAuditSnapshot();
     $('portalAuditMeta').textContent=e?'出走登録期日：'+(e.raceEntryEnabled===false?'設定なし':flowRegistrationCutoff(e)||'未設定')+' ／ '+(e.place||'会場未設定'):'';
     if(!e){summary.innerHTML='';list.innerHTML='<div class="portalEmpty">最初に対象の大会を選択してください。</div>';portalRenderCanonicalAudit(null);return;}
-    if(flowNativeDestination(e)){
-      const gateway=window.__TR_PORTAL_SYNC__,status=gateway?.nativeRaceStaffStatus?.[e.id];
-      if(!status)void gateway?.loadNativeRaceStaff?.(e.id).catch(()=>{});
-      portalRenderCanonicalAudit(null);
-      if(status!=='ok'){
-        summary.innerHTML='';list.innerHTML='<div class="portalEmpty">'+esc(status==='error'?'PORTALの正式出走登録のFirebase READに失敗しました（0件とは判断しません）。':'PORTALの正式出走登録をFirebaseから読込中…')+'</div>';
-        return;
-      }
-      const registry=gateway.nativeRaceStaff?.[e.id]||{},people=Object.entries(registry).flatMap(([uid,entries])=>Object.entries(entries||{}).filter(([,r])=>!!r).map(([metric,r])=>({uid,metric,...r})));
-      const distinct=new Set(people.map(p=>p.subjectUid));
-      const ownersByPid=new Map();for(const p of people){if(!p.profileId)continue;const set=ownersByPid.get(p.profileId)||new Set();set.add(p.subjectUid);ownersByPid.set(p.profileId,set);}
-      const repeated=[...ownersByPid.values()].filter(v=>v.size>1).length;
-      summary.innerHTML=[[distinct.size,'正式出走者'],[people.length,'正式出走件数']].map(([n,label])=>`<div class="portalAuditCount"><b>${n}</b><small>${label}</small></div>`).join('');
-      list.innerHTML=people.length?people.map(p=>`<article class="portalAuditCard"><div class="portalAuditCardHead"><b>${esc(p.displayName||'参加者')}</b><span class="portalAuditFlag">Firebase登録済</span></div><small>${esc(portalMetricNames[p.metric]||p.metric)} ／ ${esc(p.dayDate||e.date)} ／ 目標 ${esc(p.targetTime||'—')}${p.declaredTime?' ／ 申告 '+esc(p.declaredTime):''}${p.proxyByUid?' ／ 保護者代理':''}</small></article>`).join(''):'<div class="portalEmpty">この大会の正式な出走登録は0件です（Firebase READ成功）。</div>';
-      list.insertAdjacentHTML('afterbegin',`${repeated?`<p class="portalHelp">同じprofileIdの複数UID登録が${repeated}件あります。氏名で自動統合しません。</p>`:''}<button type="button" class="portalFlowSecondary" data-native-audit-refresh="${esc(e.id)}">正式出走の最新データを読み直す</button>`);
-      return;
-    }
     if(portalAuditRenderOfficialV222(e))return; // v222: 正式データで表示
     const needs=people.filter(p=>p.issues.length),registered=people.filter(p=>p.entries.length);
     const joined=people.filter(p=>p.joined);
@@ -13636,14 +13665,6 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
     }).join(''):'<div class="portalEmpty">該当する試作選手はいません。</div>';
     portalRenderCanonicalAudit(e);
   }
-  // Refresh via the same shared gateway; never create an extra Firebase subscription.
-  $('portalAuditRows').addEventListener('click',event=>{
-    const b=event.target.closest('[data-native-audit-refresh]');if(!b)return;
-    const id=b.dataset.nativeAuditRefresh,g=window.__TR_PORTAL_SYNC__;
-    if(!canManage||portalParticipantPreviewMode||!flowNativeDestination(flowEvent(id)))return;
-    delete g.nativeRaceStaffStatus[id];
-    flowRenderAudit();
-  });
   function portalAuditEdit(actorId,mode,metric){
     if(!canManage||portalParticipantPreviewMode)return;
     flowManagerMode=mode;
@@ -13955,25 +13976,19 @@ html[data-portal-personal-color="matte"] #screen-chat :is(#portalChatThread,#trR
   }
   let portalOfficialRaceSaving=false;
   function flowOfficialSelfEntries(e){
-    const target=flowEntryTarget(e),gate=window.__TR_PORTAL_SYNC__;
+    const target=flowOfficialDestination(e),gate=window.__TR_PORTAL_SYNC__;
     if(!target||!gate||!gate.profileId||portalParticipantPreviewMode)return [];
-    if(target.nativePortal){
-      if(gate.nativeRaceStatus?.[e.id]!=='ok')return [];
-      return Object.entries(gate.nativeRaceSelf?.[e.id]||{}).filter(([m,r])=>r&&r.profileId===gate.profileId&&r.subjectUid===gate.uid)
-        .map(([m,r])=>({catalogId:e.id,profileId:r.profileId,metric:m,metricName:portalMetricNames[m]||(m==='relay'?'駅伝':m+'m'),
-          date:r.dayDate,targetTime:r.targetTime,declaredTime:r.declaredTime||'',playerId:'ntr_'+m,nativePortal:true}));
-    }
     return (gate.officialEntries?.[target.id]||[]).filter(r=>r.catalogId===e.id&&r.profileId===gate.profileId);
   }
   function flowOfficialRegisteredCards(e,closed){
     const panel=$('portalOfficialSelfList'),rows=flowOfficialSelfEntries(e);
-    panel.hidden=!flowEntryTarget(e);
+    panel.hidden=!flowOfficialDestination(e);
     if(panel.hidden){panel.innerHTML='';return;}
     panel.hidden=!rows.length;
     panel.innerHTML=
       (rows.length?rows.map(r=>`<div class="portalMultiEntryCard"><b>${esc(r.metricName||r.metric)} ／ 登録済み</b><small>${esc(r.date||'開催日未定')} ／ 目標：${esc(r.targetTime||'未設定')}</small>`+
        (r.result?`<small>${r.official?'正式結果':'結果（正式区分未確認）'}：${esc(r.result)}</small>`:'')+
-       `<button type="button" data-official-race-cancel="${esc(r.playerId||'')}" ${closed||r.hasSavedResult||!(r.nativePortal?/^ntr_[A-Za-z0-9_-]{1,32}$/.test(r.playerId||''):/^trp_[a-f0-9]{32}$/.test(r.playerId||''))?'disabled':''}>出走登録を取り消す</button></div>`).join(''):
+       `<button type="button" data-official-race-cancel="${esc(r.playerId||'')}" ${closed||r.hasSavedResult||!/^trp_[a-f0-9]{32}$/.test(r.playerId||'')?'disabled':''}>出走登録を取り消す</button></div>`).join(''):
        '');
   }
   function flowRenderEvent(){
@@ -13985,18 +14000,15 @@ html[data-portal-personal-color="matte"] #screen-chat :is(#portalChatThread,#trR
     $('flowEntryDeadlineNotice').innerHTML='<strong>'+(cutoff?'出走登録期日：'+esc(cutoff):'出走登録期日：未設定')+(e.raceEntryEnabled===false?'（受付前）':closed?'（受付終了）':'（受付中）')+'</strong>'+(closed&&e.raceEntryEnabled!==false?'期日をすぎた場合は個別に連絡してください。':'');
     $('flowEventRaceMetrics').textContent=eventRaceMetricsText(e);
     $('flowEventRaceMetrics').dataset.empty=String(eventSelectableMetrics(e).length===0);
-    const canonicalEntryTarget=flowEntryTarget(e);
+    const canonicalEntryTarget=flowOfficialDestination(e);
     const officialPending=portalOfficialPreparationRequired(e);
     const trialOnly=!canonicalEntryTarget && !officialPending && e.raceEntryEnabled!==false;
-    const nativeStatus=canonicalEntryTarget?.nativePortal?window.__TR_PORTAL_SYNC__?.nativeRaceStatus?.[e.id]:null;
-    const nativeWaiting=!!canonicalEntryTarget?.nativePortal&&nativeStatus!=='ok';
-    $('flowEventConnection').hidden=!officialPending&&!trialOnly&&!nativeWaiting;
+    $('flowEventConnection').hidden=!officialPending&&!trialOnly;
     $('portalMultiEntryList').hidden=!!canonicalEntryTarget;
     const v197Participant=window.__TR_PORTAL_SYNC__?.role==='participant'||portalParticipantPreviewMode;
     if(officialPending)$('flowEventConnection').textContent=v197Participant?'出走登録の準備中です。準備ができるまでお待ちください。':'出走登録の準備中です。管理画面→選手の出走・過去大会記録で「EVENT BASE正式大会を準備する」を使用してください。';
     else if(trialOnly)$('flowEventConnection').textContent='出走登録の準備中です。準備ができるまでお待ちください。';
-    else if(nativeWaiting)$('flowEventConnection').textContent=nativeStatus==='error'?'Firebaseの正式出走データを取得できません。接続を確認してください。':'Firebaseの正式出走登録を確認中です…';
-    const safeEntry=canonicalEntryTarget&&!canonicalEntryTarget.nativePortal?portalOfficialSafeOpenUrl(canonicalEntryTarget):(!portalOfficialPreparationRequired(e)?String(e.url||''):'');
+    const safeEntry=canonicalEntryTarget?portalOfficialSafeOpenUrl(canonicalEntryTarget):(!portalOfficialPreparationRequired(e)?String(e.url||''):'');
     $('flowEventLink').innerHTML=(safeEntry&&!canonicalEntryTarget)?`<a class="portalFlowInlineButton" href="${esc(safeEntry)}">イベントのページを開く ›</a>`:'';
     $('flowEntryActor').textContent='登録する人：'+flowActorName(actor);
     const available=eventSelectableMetrics(e).filter(m=>(canonicalEntryTarget||!entries.some(r=>r.metric===m))&&!officialEntries.some(r=>r.metric===m));
@@ -14004,13 +14016,13 @@ html[data-portal-personal-color="matte"] #screen-chat :is(#portalChatThread,#trR
     $('portalOfficialRaceAccess').hidden=true; // v197: holds only a hidden field; no visible box
     $('portalOfficialParticipantPin').value='';
     const v198Single=eventSelectableMetrics(e).length===1;
-    $('flowRegistrationState').textContent=canonicalEntryTarget?(nativeWaiting?'Firebase確認中':officialEntries.length?(v198Single?'登録済み':`登録済み（${officialEntries.length}種目）`):'未登録'):'';
+    $('flowRegistrationState').textContent=canonicalEntryTarget?(officialEntries.length?(v198Single?'登録済み':`登録済み（${officialEntries.length}種目）`):'未登録'):'';
     $('flowRegistrationState').hidden=!canonicalEntryTarget;
     const v197Declared=e.requiresDeclaredTime===true;
     if($('flowGoalHeading'))$('flowGoalHeading').textContent=(v198Single?'①':'②')+' 目標タイムを選択';
     if($('flowDeclaredHeading'))$('flowDeclaredHeading').textContent=(v198Single?'②':'③')+' 申告タイムを選択';
     const disclosure=$('flowNewRaceDisclosure');
-    disclosure.hidden=closed||officialPending||nativeWaiting||!available.length;
+    disclosure.hidden=closed||officialPending||!available.length;
     disclosure.open=!(canonicalEntryTarget?officialEntries.length:entries.length);
     $('flowNewRaceSummary').textContent=(entries.length||officialEntries.length)?'別の種目にも出走登録する':'出走する種目と目標タイムを登録する';
     $('portalMultiEntryList').innerHTML=entries.map(r=>{
@@ -14023,7 +14035,7 @@ html[data-portal-personal-color="matte"] #screen-chat :is(#portalChatThread,#trR
     }).join('');
     const selected=flowFillEventMetricOptions($('flowMetric'),e,'');
     // Blank on each opening: the participant chooses the next event discipline explicitly.
-    $('flowMetric').disabled=closed||officialPending||nativeWaiting||!eventSelectableMetrics(e).length;
+    $('flowMetric').disabled=closed||officialPending||!eventSelectableMetrics(e).length;
     flowSetTime('flowGoal','');flowSetTime('flowDeclaredTime','');
     flowRenderNamedGoalPresets(e,selected);
     const declaredWrap=$('flowDeclaredTimeWrap');declaredWrap.hidden=e.requiresDeclaredTime!==true;
@@ -14037,14 +14049,14 @@ html[data-portal-personal-color="matte"] #screen-chat :is(#portalChatThread,#trR
     $('flowSaveGoal').closest('.portalFlowActions').hidden=true;
     $('flowSaveGoal').disabled=true;
     $('flowJoin').disabled=true;
-    $('flowJoin').textContent=nativeWaiting?'Firebase出走登録の確認中':(officialPending||!canonicalEntryTarget)?'出走登録の準備中':flowV198JoinLabel(e);
+    $('flowJoin').textContent=(officialPending||!canonicalEntryTarget)?'出走登録の準備中':flowV198JoinLabel(e);
     $('flowJoin').classList.toggle('portalPastLockedControl',closed);
     $('flowLeave').disabled=true;$('flowLeave').hidden=true;
     $('flowRegistrationState').classList.toggle('portalPastReadOnly',closed);
     $('flowOfficialResult').hidden=true;
     $('flowOfficialResultReadout').textContent=canonicalEntryTarget?'':(entries.length?'登録済み種目の記録は上の一覧で確認できます。':'記録：管理者・開発者の登録待ち');
     $('flowOfficialResultReadout').hidden=!!canonicalEntryTarget;
-    $('flowSelfStatus').textContent=(officialPending||trialOnly||nativeWaiting)?'':e.raceEntryEnabled===false?'出走登録は受付前です。開催種目と条件の確定をお待ちください。':closed?'受付終了：期日をすぎた場合は個別に連絡してください。':(canonicalEntryTarget?officialEntries.length:entries.length)?(available.length?'追加出走する場合は別の種目を選んでください。':''):(v198Single?'目標タイムを選んでください。':'最初に種目を選択してください。');
+    $('flowSelfStatus').textContent=(officialPending||trialOnly)?'':e.raceEntryEnabled===false?'出走登録は受付前です。開催種目と条件の確定をお待ちください。':closed?'受付終了：期日をすぎた場合は個別に連絡してください。':(canonicalEntryTarget?officialEntries.length:entries.length)?(available.length?'追加出走する場合は別の種目を選んでください。':''):(v198Single?'目標タイムを選んでください。':'最初に種目を選択してください。');
     flowRenderEventConditions(e);
     flowUpdateEligibilityStatus(e,'',actor,false);
     // v198: one-discipline events (駅伝など) need no discipline step; select it and hide the selector.
@@ -14059,7 +14071,6 @@ html[data-portal-personal-color="matte"] #screen-chat :is(#portalChatThread,#trR
   function flowOpenEvent(id){
     const e=flowEvent(id);if(!e)return;
     flowSelectedEventId=id;window.__TR_PORTAL_SYNC__?.watchOwnDate?.(e.date);flowRenderEvent();showScreen('flow-event');
-    if(flowNativeDestination(e))void window.__TR_PORTAL_SYNC__?.loadNativeRaceSelf?.(e.id).catch(()=>{});
   }
   function flowRefreshAll(){
     flowUpdateRecords();flowRenderMyRaces();
@@ -14077,15 +14088,15 @@ html[data-portal-personal-color="matte"] #screen-chat :is(#portalChatThread,#trR
   }
   $('flowMetric').addEventListener('change',()=>{
     const e=flowEvent(flowSelectedEventId);if(!e)return;
-    const metric=$('flowMetric').value,r=flowEntryTarget(e)?null:flowEntry(e.id,flowSelfId(),metric),official=flowOfficialSelfEntries(e).some(x=>x.metric===metric),closed=flowIsRegistrationClosed(e);
+    const metric=$('flowMetric').value,r=flowOfficialDestination(e)?null:flowEntry(e.id,flowSelfId(),metric),official=flowOfficialSelfEntries(e).some(x=>x.metric===metric),closed=flowIsRegistrationClosed(e);
     flowSetTime('flowGoal',r?.goal||flowSuggestedGoal(metric,e));
     if(e.requiresDeclaredTime===true)flowSetTime('flowDeclaredTime',r?.declaredTime||flowSuggestedGoal(metric,e));
     flowRenderNamedGoalPresets(e,metric);
     const check=flowUpdateEligibilityStatus(e,metric,flowSelfId(),!!r);
     flowRenderQualification(e,metric,flowSelfId());
-    $('flowJoin').disabled=portalOfficialPreparationRequired(e)||!flowEntryTarget(e)||(flowNativeDestination(e)&&window.__TR_PORTAL_SYNC__?.nativeRaceStatus?.[e.id]!=='ok')||closed||!metric||!!r||official||!check.allowed;
+    $('flowJoin').disabled=portalOfficialPreparationRequired(e)||!flowOfficialDestination(e)||closed||!metric||!!r||official||!check.allowed;
     $('flowLeave').hidden=!r;$('flowLeave').disabled=closed||!r||!!flowResultsForEntry(r).length;
-    $('flowJoin').textContent=(r||official)?'この種目は登録済み':(portalOfficialPreparationRequired(e)||!flowEntryTarget(e))?'出走登録の準備中':flowV198JoinLabel(e);
+    $('flowJoin').textContent=(r||official)?'この種目は登録済み':(portalOfficialPreparationRequired(e)||!flowOfficialDestination(e))?'出走登録の準備中':flowV198JoinLabel(e);
     $('flowSelfStatus').textContent=!metric?'種目を選択してください。':r?'この種目は登録済みです。別の種目を追加できます。':!check.allowed?check.text:(eventSelectableMetrics(e).length===1?'目標タイムを選んでください。':'次に目標タイムを選んでください。');
     for(const id of ['flowGoal','flowDeclaredTime']){
 const field=document.querySelector(`#screen-flow-event [data-flow-time="${id}"]`);
@@ -14135,15 +14146,38 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
     try{
       const rows=await gateway.listProxyEntries(target);if(seq!==proxyListSeq)return;
       box.hidden=!rows.length;
-      box.innerHTML=rows.length?'<p class="portalHelp"><b>代理で登録した出走</b></p>'+rows.map(r=>'<div class="portalFlowStatus" style="display:flex;gap:8px;align-items:center;justify-content:space-between"><span>'+esc(r.name)+'　'+esc(r.event)+'　目標 '+esc(r.targetTime||'なし')+'</span>'+(r.hasResult?'<small>記録あり</small>':'<button type="button" class="portalFlowSecondary" data-proxy-cancel="'+esc(r.id)+'">取り消す</button>')+'</div>').join(''):'';
+      box.innerHTML=rows.length?'<p class="portalHelp"><b>お子さんの出走</b></p>'+rows.map(r=>'<div class="portalFlowStatus trProxyEntryRow"><span class="trProxyEntryText"><b>'+esc(r.name)+'</b>　'+esc(r.event)+'　目標 '+esc(r.targetTime||'なし')+'<small>'+(r.byProxy?(r.byMe?'保護者（自分）が代理で登録':'保護者が代理で登録'):'本人が登録')+'</small></span>'+(r.hasResult?'<small>記録あり</small>':'<span class="trProxyEntryBtns"><button type="button" class="portalFlowSecondary" data-proxy-goal="'+esc(r.id)+'" data-proxy-goal-now="'+esc(r.targetTime||'')+'" data-proxy-child="'+esc(r.childUid)+'">目標を変更</button><button type="button" class="portalFlowSecondary" data-proxy-cancel="'+esc(r.id)+'" data-proxy-by="'+(r.byProxy?'proxy':'self')+'">取り消す</button></span>')+'</div>').join(''):'';
     }catch(_){if(seq===proxyListSeq){box.innerHTML='';box.hidden=true;}}
   }
   $('flowProxyList').addEventListener('click',async ev=>{
+    const gb=ev.target.closest('[data-proxy-goal]');
+    if(gb){
+      const target=proxyTarget(flowEvent(flowSelectedEventId)),gateway=window.__TR_PORTAL_SYNC__;if(!target||!gateway?.updateChildRaceGoal)return;
+      const now=gb.dataset.proxyGoalNow||'';
+      const next=(window.prompt('新しい目標タイムを「分:秒」で入力してください（例 5:30）。\n今の目標：'+(now||'なし'),now)||'').trim();
+      if(!next||next===now)return;
+      if(!flowTimeGood(next)){$('flowProxyStatus').textContent='目標タイムを「分:秒」で入力してください（例 5:30）。';return;}
+      gb.disabled=true;
+      try{await gateway.updateChildRaceGoal(target,gb.dataset.proxyGoal,next);$('flowProxyStatus').textContent='目標タイムを '+next+' に変更しました。';showActionFeedback('目標タイムを変更しました',next);flowRefreshAll();}
+      catch(error){$('flowProxyStatus').textContent='変更できませんでした：'+String(error?.message||error).slice(0,160);}
+      finally{proxyList();}
+      return;
+    }
     const b=ev.target.closest('[data-proxy-cancel]');if(!b)return;
     const target=proxyTarget(flowEvent(flowSelectedEventId)),gateway=window.__TR_PORTAL_SYNC__;if(!target||!gateway?.cancelOfficialRaceFor)return;
-    if(!confirm('この代理登録を取り消しますか？'))return;
+    if(!confirm(b.dataset.proxyBy==='self'?'お子さん本人が登録した出走です。\n代理で取り消しますか？\n本人の希望と違う操作になります。':'この出走登録を取り消しますか？'))return;
     b.disabled=true;
-    try{await gateway.cancelOfficialRaceFor(target,b.dataset.proxyCancel);$('flowProxyStatus').textContent='代理登録を取り消しました。';flowRefreshAll();}
+    try{
+      const childUid=await gateway.cancelOfficialRaceFor(target,b.dataset.proxyCancel);
+      // v325: 本人の取消と同じく、他の種目が残っていなければ当日の予定を「未選択」に戻す
+      let note='';
+      const ev=flowEvent(flowSelectedEventId);
+      if(childUid&&ev&&gateway.saveEventResponseFor&&gateway.canRespondEvent?.()){
+        try{const left=await gateway.childRaceEntryCount(target,childUid);await portalTimeout(gateway.saveEventResponseFor(ev.id,left?'join':'maybe',childUid,{afterRace:true}));note=left?'':' 当日の予定も「未選択」に戻しました。';}
+        catch(error){note=' 当日の予定は更新できませんでした（'+String(error?.message||error).slice(0,60)+'）。';}
+      }
+      $('flowProxyStatus').textContent='代理登録を取り消しました。'+note;flowRefreshAll();
+    }
     catch(error){$('flowProxyStatus').textContent='取り消せませんでした：'+String(error?.message||error).slice(0,160);}
     finally{proxyList();}
   });
@@ -14170,8 +14204,14 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
       st.textContent='登録しています…';
       await gateway.registerOfficialRaceFor(e,target,metric,goal,declared,child);
       $('flowProxyGoal').value='';$('flowProxyDeclared').value='';
-      st.textContent=name+' さんの出走登録が完了しました。記録はお子さんのマイページに付きます。';
-      showActionFeedback('代理の出走登録が完了しました',name+' さんを大会の出走者一覧に登録しました。');
+      // v325: 本人登録と同じく、お子さんの当日の予定も「参加する」にする
+      let part='';
+      if(gateway.saveEventResponseFor&&gateway.canRespondEvent?.()){
+        try{await portalTimeout(gateway.saveEventResponseFor(e.id,'join',child,{afterRace:true}));part='当日の予定も「参加する」にしました。';}
+        catch(error){part='当日の予定の更新だけできませんでした。代理で「参加する」を選んでください。';}
+      }
+      st.textContent=name+' さんの出走登録が完了しました。記録はお子さんのマイページに付きます。'+part;
+      showActionFeedback('代理の出走登録が完了しました',name+' さんを大会の出走者一覧に登録しました。'+part);
       flowRefreshAll();
     }catch(error){st.textContent='登録できませんでした：'+String(error?.message||error).slice(0,190);}
     finally{btn.disabled=false;proxyList();}
@@ -14181,7 +14221,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
   $('flowJoin').addEventListener('click',async()=>{
     const e=flowEvent(flowSelectedEventId);if(!e)return;
     if(!portalEventAttendanceOpen(e)){$('flowSelfStatus').textContent='現在は受付前です。参加・出走登録の開始をお待ちください。';showActionFeedback('現在は受付前です','参加受付開始後に登録できます。');return;}
-    const canonical=flowEntryTarget(e);
+    const canonical=flowOfficialDestination(e);
     if(canonical){
       if(portalParticipantPreviewMode){$('flowSelfStatus').textContent='参加者画面プレビューでは正式登録できません。本人端末で操作してください。';return;}
       const gateway=window.__TR_PORTAL_SYNC__,metric=$('flowMetric').value;
@@ -14193,21 +14233,17 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
       const goal=$('flowGoal').value.trim(),declared=e.requiresDeclaredTime===true?$('flowDeclaredTime').value.trim():'';
       if(!goal||flowTimeIncomplete('flowGoal')||!flowTimeGood(goal)){$('flowSelfStatus').textContent='目標タイムを入力してください。';return;}
       if(e.requiresDeclaredTime===true&&(!declared||flowTimeIncomplete('flowDeclaredTime')||!flowTimeGood(declared))){$('flowSelfStatus').textContent='申告タイムを入力してください。';return;}
-      if(canonical.nativePortal&&gateway?.nativeRaceStatus?.[e.id]!=='ok'){$('flowSelfStatus').textContent='出走データを確認中です。';return;}
       if(!gateway?.registerOfficialRace){$('flowSelfStatus').textContent='現在登録できません。ページを再読み込みしてください。';return;}
       const submit=$('flowJoin');submit.disabled=true;portalOfficialRaceSaving=true;
       $('flowSelfStatus').textContent='登録しています…';
       try{
-        const saved=canonical.nativePortal
-          ?await gateway.registerNativeRace(e.id,metric,goal,declared)
-          :await gateway.registerOfficialRace(e,canonical,metric,goal,declared,$('portalOfficialParticipantPin').value);
+        const saved=await gateway.registerOfficialRace(e,canonical,metric,goal,declared,$('portalOfficialParticipantPin').value);
         $('portalOfficialParticipantPin').value='';
         let participation='';
         if(gateway.canRespondEvent?.()){
           try{await portalTimeout(gateway.saveEventResponse(e.id,'join'));participation='参加予定も「参加」にしました。';}
           catch(error){participation='参加予定の更新だけできませんでした。もう一度、参加予定を選んでください。';}
         }else participation='';
-        if(canonical.nativePortal)await gateway.loadNativeRaceSelf(e.id);
         flowRefreshAll();
         $('flowSelfStatus').textContent='出走登録が完了しました。'+participation;
         showActionFeedback('出走登録が完了しました','大会の出走者一覧に登録されました。'+participation);
@@ -14269,18 +14305,14 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
   });
   $('portalOfficialSelfList').addEventListener('click',async event=>{
     const button=event.target.closest('[data-official-race-cancel]');if(!button||button.disabled||portalOfficialRaceSaving)return;
-    const e=flowEvent(flowSelectedEventId),target=flowEntryTarget(e),gateway=window.__TR_PORTAL_SYNC__;
-    if(!e||!target||!(target.nativePortal?gateway?.cancelNativeRace:gateway?.cancelOfficialRace))return;
+    const e=flowEvent(flowSelectedEventId),target=flowOfficialDestination(e),gateway=window.__TR_PORTAL_SYNC__;
+    if(!e||!target||!gateway?.cancelOfficialRace)return;
     const playerId=button.dataset.officialRaceCancel;
     if(!flowOfficialSelfEntries(e).some(r=>r.playerId===playerId))return;
     if(!window.confirm('この種目の出走登録を取り消しますか？\n大会記録がある場合は取り消せません。'))return;
     portalOfficialRaceSaving=true;button.disabled=true;$('flowSelfStatus').textContent='取り消しています…';
     try{
-      if(target.nativePortal){
-        if(!/^ntr_[A-Za-z0-9_-]{1,32}$/.test(playerId))throw Error('登録された種目を確認できません');
-        await gateway.cancelNativeRace(e.id,playerId.slice(4));
-        await gateway.loadNativeRaceSelf(e.id);
-      }else await gateway.cancelOfficialRace(e,target,playerId);
+      await gateway.cancelOfficialRace(e,target,playerId);
       let attendance='';
       const left=flowOfficialSelfEntries(e).filter(r=>r.playerId!==playerId);
       if(gateway.canRespondEvent?.()){
@@ -15300,7 +15332,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
       if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||date<todayDateKey()){
         showActionFeedback('回答を変更できません','開催済みの練習です。');return;
       }
-      {const proxyChild=portalProxyChild();if(proxyChild){await portalProxySave('practice',pid,answer,proxyChild,clearing);return;}}
+      {const proxyChild=portalProxyChild();if(proxyChild){await portalProxySave('practice',pid,answer,proxyChild,clearing,reply.dataset.practiceResponse);return;}}
       const gateway=window.__TR_PORTAL_SYNC__;
       if(!gateway?.canRespondPractice?.() || gateway.profileId!==actorId){
         const reason=gateway?.errors?.practiceResponses||gateway?.errors?.practices;
@@ -15328,7 +15360,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
       if(clearing)answer='maybe';
       if(!event||event.enabled===false){showActionFeedback('回答できません','このイベントを確認できません。画面を開き直してください。');return;}
       if(!portalEventAttendanceOpen(event)){showActionFeedback('現在は受付前です','受付開始後に参加登録できます。現時点では登録していません。');return;}
-      {const proxyChild=portalProxyChild();if(proxyChild){if(flowIsEndedEvent(event)){showActionFeedback('現在は回答を変更できません','開催済みの大会は変更できません。');return;}await portalProxySave('event',eventId,answer,proxyChild,clearing);return;}}
+      {const proxyChild=portalProxyChild();if(proxyChild){if(flowIsEndedEvent(event)){showActionFeedback('現在は回答を変更できません','開催済みの大会は変更できません。');return;}await portalProxySave('event',eventId,answer,proxyChild,clearing,eventReply.dataset.eventResponse);return;}}
       if(portalHasOwnRaceEntry(eventId,actorId)){
         showActionFeedback('出走登録済みのため変更できません',portalRegisteredResponseWarning);
         return;
@@ -15603,11 +15635,6 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
         renderScheduleDetailBody(selectedDateKey);
       }
     },
-    applyNativeRaceSelf(catalogId){
-      if(flowSelectedEventId===catalogId&&currentScreen()?.id==='screen-flow-event')flowRenderEvent();
-      flowRenderMyRaces();renderEventTab();
-    },
-    applyNativeRaceStaff(catalogId){if(flowManagerEventId===catalogId)flowRenderAudit();},
     applyEventResponses(rows){
       if($('detailScheduleEntries')&&!$('screen-schedule-detail').classList.contains('hidden'))renderScheduleDetailBody(selectedDateKey);
       renderHomeNextEvent();renderEventTab();renderManagedHomeEvents();
@@ -16494,7 +16521,7 @@ const portalOfficialPublicLink=(raw)=>window.__TR_PORTAL_OFFICIAL_PUBLIC_LINK__?
 // No signIn; no new identity/profile database; no writes to events/<eventId> or results.
 if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
   const ui=window.__TR_COMMON_PILOT_UI__;
-  const gate={ready:false,uid:'',profileId:'',role:'unverified',roleVerified:false,memberApproved:false,nativeRaceSelf:{},nativeRaceStatus:{},nativeRaceStaff:{},nativeRaceStaffStatus:{},loaded:{practices:false,practiceResponses:false,eventItems:false,eventResponses:false,notices:false,chat:false,resources:false,resourceFiles:false,homeImage:false,personal:false},practiceResponses:{},eventResponses:{},errors:{},error:'',hasOperationalAccess(){return !!this.uid&&!!this.profileId&&this.roleVerified===true&&(['developer','admin'].includes(this.role)||(this.role==='participant'&&this.memberApproved===true));},canWrite(kind){return this.hasOperationalAccess()&&['developer','admin'].includes(this.role)&&this.loaded[kind]===true;},canSendChat(){return this.hasOperationalAccess()&&this.loaded.chat===true;},canRespondPractice(){return this.hasOperationalAccess()&&this.loaded.practices===true&&this.loaded.practiceResponses===true;},canRespondEvent(){return this.hasOperationalAccess()&&this.loaded.eventItems===true&&this.loaded.eventResponses===true;}};
+  const gate={ready:false,uid:'',profileId:'',role:'unverified',roleVerified:false,memberApproved:false,loaded:{practices:false,practiceResponses:false,eventItems:false,eventResponses:false,notices:false,chat:false,resources:false,resourceFiles:false,homeImage:false,personal:false},practiceResponses:{},eventResponses:{},errors:{},error:'',hasOperationalAccess(){return !!this.uid&&!!this.profileId&&this.roleVerified===true&&(['developer','admin'].includes(this.role)||(this.role==='participant'&&this.memberApproved===true));},canWrite(kind){return this.hasOperationalAccess()&&['developer','admin'].includes(this.role)&&this.loaded[kind]===true;},canSendChat(){return this.hasOperationalAccess()&&this.loaded.chat===true;},canRespondPractice(){return this.hasOperationalAccess()&&this.loaded.practices===true&&this.loaded.practiceResponses===true;},canRespondEvent(){return this.hasOperationalAccess()&&this.loaded.eventItems===true&&this.loaded.eventResponses===true;}};
   // v120: a practice deleted and re-created on the same date reuses practices/<date>.
   // Old answers stay at practiceResponses/<date>/<UID> (no cascade delete, no Rules change),
   // so answers saved before the practice's createdAt are hidden. Nothing is deleted from Firebase.
@@ -17253,7 +17280,7 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
        const b=document.getElementById('portalOwnerBindingRecoveryButton');if(b){b.hidden=true;b.onclick=null;}}
       ui?.applyVerifiedRole('unverified','');ui?.applyVerifiedResponseRoster([]);
       ui?.applySharedPastRecords?.({uid:'',profileId:'',records:{}});
-      gate.practiceResponses={};gate.eventResponses={};gate.nativeRaceSelf={};gate.nativeRaceStatus={};gate.nativeRaceStaff={};gate.nativeRaceStaffStatus={};gate.sharedResponseReady={practice:{},event:{}};gate.resources={};gate.homeImage=null;gate.personal={};gate.officialResults={};gate.officialEntries={};gate.officialAttendance={};gate.officialParticipantRoster={};gate.officialTimingPeople={};gate.officialTimingRecords={};gate.officialPlayerResults={};gate.officialReadStatus={};gate.officialEkidenPeople={};gate.athleteSelections={revision:0,items:[]};gate.errors={};
+      gate.practiceResponses={};gate.eventResponses={};gate.sharedResponseReady={practice:{},event:{}};gate.resources={};gate.homeImage=null;gate.personal={};gate.officialResults={};gate.officialEntries={};gate.officialAttendance={};gate.officialParticipantRoster={};gate.officialTimingPeople={};gate.officialTimingRecords={};gate.officialPlayerResults={};gate.officialReadStatus={};gate.officialEkidenPeople={};gate.athleteSelections={revision:0,items:[]};gate.errors={};
       Object.keys(gate.loaded).forEach(key=>gate.loaded[key]=false);
       ui?.disableChat();ui?.applyEventBaseRecords({});ui?.applyEventBaseEntries({});
       ui?.applyVerifiedEventBaseRoster([],{events:0,received:0,errors:[],details:[]});
@@ -17296,84 +17323,6 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
         if(approved?.active!==true||approved.profileId!==gate.profileId)throw Error('PORTALの本人利用承認を確認できません');
       }
       return {uid,profileId:gate.profileId,name:String(profile.displayName).trim().slice(0,24),live};
-    };
-    // v325: PORTAL内の大会出走の単一Firebase正本。既存の共通Auth/UID/DBを使用。
-    // EVENT BASE/駅伝のcanonical players保存とは別の大会種別であり、同一大会への重複保存はしない。
-    const nativeRoot='nativeRaceEntries/';
-    const nativeEvent=async(catalogId,forWrite=false)=>{
-      if(!/^event-[A-Za-z0-9_-]{1,80}$/.test(String(catalogId||''))||!gate.hasOperationalAccess()||
-         gate.loaded.eventItems!==true||!gate.eventItems?.[catalogId])throw Error('PORTALの大会・本人情報が未確認です');
-      const uid=gate.uid,person=(await dbMod.get(dbMod.ref(db,'profiles/'+uid))).val();
-      if(!uid||auth.currentUser?.uid!==uid||!person||person.profileId!==gate.profileId)
-        throw Error('ログインUIDと共通profileIdが一致しません');
-      const member=(await dbMod.get(ref('memberAccess/'+uid))).val();
-      if(gate.role==='participant'&&(member?.active!==true||member?.profileId!==gate.profileId))
-        throw Error('参加承認を確認できません');
-      const item=(await dbMod.get(ref('eventItems/'+catalogId))).val();
-      if(!item||item.type!=='OTHER'||item.displayCategory!=='competition'||item.enabled!==true)
-        throw Error('PORTAL内の正式な大会ではありません');
-      if(forWrite){
-        if(item.raceEntryEnabled!==true)throw Error('出走登録は受付前です');
-        if(!Number.isFinite(item.raceDeadlineAt)||item.raceDeadlineAt<Date.now())
-          throw Error('大会の正式登録期限が未設定または終了しています。管理者はこの大会を修正画面で再保存してください');
-      }
-      return {uid,profileId:gate.profileId,name:String(person.displayName||'').slice(0,24),item};
-    };
-    gate.loadNativeRaceSelf=async catalogId=>{
-      gate.nativeRaceStatus[catalogId]='loading';
-      try{
-        const person=await nativeEvent(catalogId);
-        const rows=(await dbMod.get(ref(nativeRoot+catalogId+'/'+person.uid))).val()||{};
-        if(auth.currentUser?.uid!==person.uid||gate.profileId!==person.profileId)return;
-        gate.nativeRaceSelf[catalogId]=rows;
-        gate.nativeRaceStatus[catalogId]='ok';
-      }catch(error){gate.nativeRaceStatus[catalogId]='error';gate.errors['nativeRace:'+catalogId]=String(error?.code||error?.message||error).slice(0,110);throw error;}
-      finally{ui?.applyNativeRaceSelf?.(catalogId);}
-      return gate.nativeRaceSelf[catalogId];
-    };
-    gate.registerNativeRace=async(catalogId,metric,goal,declared)=>{
-      if(officialRaceWriteBusy)throw Error('出走登録の保存中です');officialRaceWriteBusy=true;
-      try{
-        const p=await nativeEvent(catalogId,true);
-        if(!/^[A-Za-z0-9_-]{1,32}$/.test(metric)||p.item.raceMetricCodes?.[metric]!==true)
-          throw Error('開催種目が現在のFirebase大会設定にありません');
-        if(!/^\d{1,3}:\d{2}(?::\d{2})?(?:\.\d{1,2})?$/.test(goal)||
-           (p.item.requiresDeclaredTime===true&&!/^\d{1,3}:\d{2}(?::\d{2})?(?:\.\d{1,2})?$/.test(declared)))
-          throw Error('目標・申告タイムを確認してください');
-        const at=ref(nativeRoot+catalogId+'/'+p.uid+'/'+metric);
-        const row={subjectUid:p.uid,profileId:p.profileId,displayName:p.name,metric,
-          targetTime:goal,declaredTime:declared||'',dayDate:String(p.item.metricDates?.[metric]||p.item.date||''),
-          createdAt:Date.now(),createdByUid:p.uid};
-        const result=await dbMod.runTransaction(at,old=>old===null?row:undefined,{applyLocally:false});
-        if(!result.committed)throw Error('この種目はすでに正式登録されています');
-        const saved=(await dbMod.get(at)).val();
-        if(!saved||saved.subjectUid!==p.uid||saved.profileId!==p.profileId||saved.metric!==metric||saved.targetTime!==goal)
-          throw Error('Firebaseの保存照合に失敗しました。管理画面で確認してください');
-        return {catalogId,metric,confirmed:true};
-      }finally{officialRaceWriteBusy=false;}
-    };
-    gate.cancelNativeRace=async(catalogId,metric)=>{
-      if(officialRaceWriteBusy)throw Error('別の保存操作中です');officialRaceWriteBusy=true;
-      try{
-        const p=await nativeEvent(catalogId,true);
-        if(!/^[A-Za-z0-9_-]{1,32}$/.test(metric))throw Error('種目IDが不正です');
-        const at=ref(nativeRoot+catalogId+'/'+p.uid+'/'+metric);
-        const tx=await dbMod.runTransaction(at,old=>old&&old.subjectUid===p.uid&&old.profileId===p.profileId&&!old.result?null:undefined,{applyLocally:false});
-        if(!tx.committed)throw Error('登録者・記録の状態が変わったため取消を停止しました');
-        if((await dbMod.get(at)).exists())throw Error('Firebaseの取消照合ができません');
-        return true;
-      }finally{officialRaceWriteBusy=false;}
-    };
-    gate.loadNativeRaceStaff=async catalogId=>{
-      if(gate.nativeRaceStaffStatus[catalogId]==='loading')return;
-      gate.nativeRaceStaffStatus[catalogId]='loading';
-      try{
-        if(!['developer','admin'].includes(gate.role)||!gate.roleVerified||!gate.eventItems?.[catalogId])throw Error('管理者権限を確認できません');
-        const rows=(await dbMod.get(ref(nativeRoot+catalogId))).val()||{};
-        gate.nativeRaceStaff[catalogId]=rows;gate.nativeRaceStaffStatus[catalogId]='ok';
-      }catch(error){gate.nativeRaceStaffStatus[catalogId]='error';throw error;}
-      finally{ui?.applyNativeRaceStaff?.(catalogId);}
-      return gate.nativeRaceStaff[catalogId];
     };
     // Verified PORTAL enrollment for an EVENT BASE race linked by an approved staff member.
     // The existing identity/Auth and canonical bindings/$eventId/$uid path are reused.
@@ -17573,7 +17522,66 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       {const raw=gate.rawPracticeResponses();if(!raw[sourceKey])raw[sourceKey]={};raw[sourceKey][childUid]=result.snapshot.val();}
       ui?.applyPracticeResponses(gate.practiceResponses);
     };
-    gate.saveEventResponseFor=async(eventId,answer,childUid)=>{
+    // v325: お子さんの今の回答をFirebaseから読み直す（保護者の端末は開いた日の分しか読み込んでいないため）
+    gate.readChildResponse=async(kind,key,childUid)=>{
+      if(!proxyChildOk(childUid))throw Error('家族（親子）でつながったお子さんではありません');
+      const okKey=kind==='practice'?/^\d{4}-\d{2}-\d{2}(?:-[23])?$/.test(String(key||'')):/^(event-current|event-relay|event-[A-Za-z0-9_-]{1,80})$/.test(String(key||''));
+      if(!okKey)throw Error('予定の指定が不正です');
+      const v=(await dbMod.get(ref((kind==='practice'?'practiceResponses/':'eventResponses/')+key+'/'+childUid))).val();
+      const row=v&&typeof v==='object'?v:null;
+      try{const src=kind==='practice'?gate.rawPracticeResponses():gate.eventResponses;if(src){if(!src[key])src[key]={};if(row)src[key][childUid]=row;else delete src[key][childUid];}}catch(_){}
+      return row;
+    };
+    // v325: お子さんがその大会に残している出走（取消後の当日の予定の判定用）
+    gate.childRaceEntryCount=async(target,childUid)=>{
+      if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!proxyChildOk(childUid))return 0;
+      const all=(await dbMod.get(dbMod.ref(db,'events/'+target.id+'/players'))).val()||{};
+      return Object.values(all).filter(p=>p&&p.subjectUid===childUid&&p.status!=='cancelled').length;
+    };
+    // v326: お子さんの出走の目標タイムを変える（記録が入る前まで）
+    gate.updateChildRaceGoal=async(target,playerId,goal)=>{
+      if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!/^trp_[a-f0-9]{32}$/.test(String(playerId||'')))throw Error('出走を確認できません');
+      const g=String(goal||'').trim();if(!g||g.length>30)throw Error('目標タイムを確認してください');
+      const at=dbMod.ref(db,'events/'+target.id+'/players/'+playerId);
+      const before=(await dbMod.get(at)).val();
+      if(!before||!proxyChildOk(before.subjectUid)||before.profileId!==gate.familyChildren?.[before.subjectUid]?.profileId||officialAnyResult(before))throw Error('お子さんの、記録の入っていない出走だけ変更できます');
+      await dbMod.set(dbMod.ref(db,'events/'+target.id+'/players/'+playerId+'/targetTime'),g);
+      const after=(await dbMod.get(at)).val();
+      if(String(after?.targetTime||'')!==g)throw Error('目標タイムの保存を確認できませんでした');
+      gate.refreshOfficialRaceRead?.();
+      return true;
+    };
+    // v326: お子さんの基本プロフィール・目標タイム（本人と同じ形で保存）
+    gate.childGoals=async(childUid)=>{
+      if(!proxyChildOk(childUid))return null;
+      const v=(await dbMod.get(dbMod.ref(db,'profiles/'+childUid+'/portalSelf/defaultGoals'))).val();
+      const out=v&&typeof v==='object'&&!Array.isArray(v)?{...v}:{};
+      if(out.halfMarathon!==undefined){out['21097.5']=out.halfMarathon;delete out.halfMarathon;}
+      return out;
+    };
+    gate.saveChildBasicProfile=async(childUid,value)=>{
+      if(!proxyChildOk(childUid))throw Error('家族（親子）でつながったお子さんだけ保存できます');
+      if(auth.currentUser?.uid!==gate.uid)throw Error('本人UIDが一致しません');
+      const gender=value?.gender,grade=value?.grade,bib=String(value?.bib||'').trim();
+      if(!['male','female'].includes(gender)||!(grade==='other'||[1,2,3].includes(grade))||bib.length>16)throw Error('性別・学年・ゼッケンNoを確認してください');
+      const v={gender,grade,bib,savedAt:Date.now(),proxyByUid:gate.uid};
+      await dbMod.set(dbMod.ref(db,'profiles/'+childUid+'/portalSelf/basicProfile'),v);
+      const back=await gate.childBasicProfile(childUid);
+      if(!back||back.gender!==gender||String(back.grade)!==String(grade))throw Error('保存を確認できませんでした（Rules v319 が未適用の可能性があります）');
+      return true;
+    };
+    gate.saveChildGoals=async(childUid,goals)=>{
+      if(!proxyChildOk(childUid))throw Error('家族（親子）でつながったお子さんだけ保存できます');
+      if(auth.currentUser?.uid!==gate.uid)throw Error('本人UIDが一致しません');
+      const prev=(await gate.childGoals(childUid))||{};
+      const merged={...prev,...goals};
+      const stored={...merged,halfMarathon:merged['21097.5']||''};delete stored['21097.5'];
+      await dbMod.set(dbMod.ref(db,'profiles/'+childUid+'/portalSelf/defaultGoals'),stored);
+      const back=await gate.childGoals(childUid);
+      if(!back||Object.entries(goals).some(([k,v])=>String(back[k]||'')!==String(v||'')))throw Error('保存を確認できませんでした（Rules v319 が未適用の可能性があります）');
+      return true;
+    };
+    gate.saveEventResponseFor=async(eventId,answer,childUid,opts)=>{
       if(!gate.canRespondEvent())throw Error('イベントまたは参加回答の受信が未成立です');
       if(auth.currentUser?.uid!==gate.uid)throw Error('本人UIDが一致しません');
       if(!proxyChildOk(childUid))throw Error('家族（親子）でつながったお子さんだけ代理で回答できます');
@@ -17588,7 +17596,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       if(valid(last)&&last<proxyTodayJst())throw Error('開催済みの大会は参加回答を変更できません');
       const childPid=gate.familyChildren[childUid].profileId;
       const locked=(gate.officialAttendance?.[eventId]||[]).some(p=>p?.uid===childUid)||Object.values(gate.officialEntries||{}).some(rows=>Array.isArray(rows)&&rows.some(r=>r?.catalogId===eventId&&r?.profileId===childPid));
-      if(locked)throw Error('お子さんは正式出走登録済みです。出走取消後に回答を変更してください');
+      if(locked&&!opts?.afterRace)throw Error('お子さんは正式出走登録済みです。出走取消後に回答を変更してください');
       if(!String(gate.displayName||'').trim())throw Error('保護者の登録名を確認できません');
       const childName=await proxyChildDisplayName(childUid);
       if(!childName)throw Error('お子さんの登録名を確認できません');
@@ -17675,8 +17683,9 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
     gate.listProxyEntries=async(target)=>{
       if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||''))return [];
       const all=(await dbMod.get(dbMod.ref(db,'events/'+target.id+'/players'))).val()||{};
-      return Object.entries(all).filter(([id,p])=>p&&p.proxyByUid===gate.uid&&proxyChildOk(p.subjectUid)&&p.status!=='cancelled')
-        .map(([id,p])=>({id,name:String(p.name||''),event:String(p.event||''),targetTime:String(p.targetTime||''),hasResult:officialAnyResult(p)}));
+      // v326: お子さんの出走をすべて（本人が登録した分も、保護者が代理で登録した分も）
+      return Object.entries(all).filter(([id,p])=>p&&proxyChildOk(p.subjectUid)&&p.profileId===gate.familyChildren?.[p.subjectUid]?.profileId&&p.status!=='cancelled')
+        .map(([id,p])=>({id,childUid:String(p.subjectUid||''),name:String(p.name||''),event:String(p.event||''),targetTime:String(p.targetTime||''),hasResult:officialAnyResult(p),byProxy:!!p.proxyByUid,byMe:p.proxyByUid===gate.uid}));
     };
     gate.cancelOfficialRaceFor=async(target,playerId)=>{
       if(officialRaceWriteBusy)throw Error('別の登録操作が実行中です');
@@ -17685,13 +17694,14 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!/^trp_[a-f0-9]{32}$/.test(String(playerId||'')))throw Error('取消する出走を確認できません');
         const at=dbMod.ref(db,'events/'+target.id+'/players/'+playerId);
         const before=(await dbMod.get(at)).val();
-        if(!before||before.proxyByUid!==gate.uid||!proxyChildOk(before.subjectUid)||officialAnyResult(before))
-          throw Error('自分が代理で登録した、記録の入っていない出走だけ取り消せます');
-        const result=await dbMod.runTransaction(at,cur=>cur&&cur.proxyByUid===gate.uid&&cur.subjectUid===before.subjectUid&&!officialAnyResult(cur)?null:undefined,{applyLocally:false});
+        // v326: 本人が登録した分も、代理で登録した分も、お子さんの出走なら取り消せる（記録が入る前まで）
+        if(!before||!proxyChildOk(before.subjectUid)||before.profileId!==gate.familyChildren?.[before.subjectUid]?.profileId||officialAnyResult(before))
+          throw Error('お子さんの、記録の入っていない出走だけ取り消せます');
+        const result=await dbMod.runTransaction(at,cur=>cur&&cur.subjectUid===before.subjectUid&&cur.profileId===before.profileId&&!officialAnyResult(cur)?null:undefined,{applyLocally:false});
         if(!result.committed)throw Error('別の変更・記録入力があったため取消を停止しました');
         if((await dbMod.get(at)).exists())throw Error('取消の保存後照合が成立しませんでした');
         gate.refreshOfficialRaceRead?.();
-        return true;
+        return String(before.subjectUid||'');
       }finally{officialRaceWriteBusy=false;}
     };
     gate.canSavePersonal=()=>!!gate.uid&&!!gate.profileId&&gate.loaded.personal===true&&auth.currentUser?.uid===gate.uid;
@@ -18373,23 +18383,11 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       const rules=Array.isArray(eligibility.rules)?eligibility.rules.slice(0,60).map(r=>({metric:String(r.metric||''),genders:Array.isArray(r.genders)?r.genders.slice(0,3):[],grades:Array.isArray(r.grades)?r.grades.slice(0,3):[],hasBenchmark:r.hasBenchmark===true,time:String(r.time||''),otherName:String(r.otherName||'')})):[];
       const dates=Array.isArray(v.dates)?v.dates.slice(0,31).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d)):[];
       const metrics=Array.isArray(v.raceMetrics)?v.raceMetrics.slice(0,30).map(String):[];
-      const raceMetricCodes=Object.fromEntries(metrics.filter(m=>/^[A-Za-z0-9_-]{1,32}$/.test(m)).map(m=>[m,true]));
-      const closeDay=/^\d{4}-\d{2}-\d{2}$/.test(String(v.entryDeadline||''))?v.entryDeadline:v.date;
-      const raceDeadlineAt=/^\d{4}-\d{2}-\d{2}$/.test(String(closeDay||''))?Date.parse(closeDay+'T23:59:59.999+09:00'):0;
       const metricDates=Object.fromEntries(Object.entries(v.metricDates||{}).filter(([k,d])=>/^[A-Za-z0-9._-]+$/.test(k)&&typeof d==='string').slice(0,30).map(([k,v])=>[k.replace(/\./g,'%2E'),v]));
-      return {displayCategory:v.displayCategory==='event'?'event':'competition',date:String(v.date||''),dates,metricDates,startTime:String(v.startTime||''),title:String(v.title||'').slice(0,180),place:String(v.place||'未定').slice(0,160),type:String(v.type||''),url:String(v.url||''),state:String(v.state||''),relay:v.relay===true,registration:String(v.registration||((v.attendanceOpen===false)?'受付前':'受付中')).slice(0,40),enabled:v.enabled!==false,previewOnly:v.previewOnly===true,managedOverride:v.managedOverride===true,pendingId:String(v.pendingId||''),copiedFrom:String(v.copiedFrom||''),official:v.official===true,requiresDeclaredTime:v.requiresDeclaredTime===true,entryDeadline:String(v.entryDeadline||''),goalDefaultFromMyPage:v.goalDefaultFromMyPage===true,hiddenDefault:v.hiddenDefault===true,raceMetrics:metrics,raceMetricCodes,raceDeadlineAt,raceEntryEnabled:v.raceEntryEnabled!==false,eligibility:{enabled:eligibility.enabled===true,note:String(eligibility.note||'').slice(0,1000),rules},createdAt:old?.createdAt||Date.now(),createdByUid:old?.createdByUid||uid,updatedAt:Date.now(),updatedByUid:uid};
+      return {displayCategory:v.displayCategory==='event'?'event':'competition',date:String(v.date||''),dates,metricDates,startTime:String(v.startTime||''),title:String(v.title||'').slice(0,180),place:String(v.place||'未定').slice(0,160),type:String(v.type||''),url:String(v.url||''),state:String(v.state||''),relay:v.relay===true,registration:String(v.registration||((v.attendanceOpen===false)?'受付前':'受付中')).slice(0,40),enabled:v.enabled!==false,previewOnly:v.previewOnly===true,managedOverride:v.managedOverride===true,pendingId:String(v.pendingId||''),copiedFrom:String(v.copiedFrom||''),official:v.official===true,requiresDeclaredTime:v.requiresDeclaredTime===true,entryDeadline:String(v.entryDeadline||''),goalDefaultFromMyPage:v.goalDefaultFromMyPage===true,hiddenDefault:v.hiddenDefault===true,raceMetrics:metrics,raceEntryEnabled:v.raceEntryEnabled!==false,eligibility:{enabled:eligibility.enabled===true,note:String(eligibility.note||'').slice(0,1000),rules},createdAt:old?.createdAt||Date.now(),createdByUid:old?.createdByUid||uid,updatedAt:Date.now(),updatedByUid:uid};
     };
     gate.saveEvent=async(item,previous)=>{
       ensure('eventItems');if(!/^event-[A-Za-z0-9_-]{1,80}$/.test(item.id)&&!['event-current','event-relay'].includes(item.id))throw Error('イベントIDの形式が不正です');
-      if(previous?.type==='OTHER'&&previous.displayCategory==='competition'){
-        const prevCodes=Array.isArray(previous.raceMetrics)?previous.raceMetrics:[];
-        if(item.date!==previous.date||item.type!==previous.type||item.displayCategory!==previous.displayCategory||
-           JSON.stringify(item.raceMetrics||[])!==JSON.stringify(prevCodes)){
-          const rows=(await dbMod.get(ref(nativeRoot+item.id))).val()||{};
-          if(Object.values(rows).some(v=>v&&Object.values(v).some(r=>!!r)))
-            throw Error('正式な出走登録があるため開催日・種目・大会種別は変更できません。既存の出走データを守るため修正を停止しました');
-        }
-      }
       const seen=(gate.eventItems||{})[item.id],old=previous;
       let conflict=false;
       const answer=await run('eventItems/'+item.id,current=>{
@@ -18406,11 +18404,6 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
     };
     gate.deleteEvent=async(id)=>{
       ensure('eventItems');const original=gate.eventItems?.[id];if(!original)throw Error('共有イベントが見つかりません');
-      if(original.type==='OTHER'&&original.displayCategory==='competition'){
-        const existing=(await dbMod.get(ref(nativeRoot+id))).val()||{};
-        if(Object.values(existing).some(entries=>entries&&Object.values(entries).some(Boolean)))
-          throw Error('正式な出走登録がある大会は削除できません。選手情報を保護するため処理を停止しました');
-      }
       const answer=await run('eventItems/'+id,current=>current&&ownStamp(current)===ownStamp(original)?null:undefined);
       if(!answer.committed)throw Error('別端末の変更と競合したため削除していません');
       // v315: イベントの参加回答も一緒に消す
@@ -19309,7 +19302,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       if(signature===ownSignature)return;
       ownSubs.splice(0).forEach(stop=>{try{stop();}catch(_){}});ownSignature=signature;
       gate.sharedResponseReady={practice:{},event:{}};
-      gate.practiceResponses={};gate.eventResponses={};gate.nativeRaceSelf={};gate.nativeRaceStatus={};gate.nativeRaceStaff={};gate.nativeRaceStaffStatus={};
+      gate.practiceResponses={};gate.eventResponses={};
       gate.loaded.practiceResponses=false;gate.loaded.eventResponses=ids.length===0;
       const myUid=gate.uid,seq=generation;
       const sharedBind=(kind,id,path,notify)=>{
@@ -26567,6 +26560,12 @@ body.portalChatIsolated > #trWhoModal,html body > #trWhoModal{visibility:visible
 .trProxyName{font-size:15px;white-space:nowrap}
 .trProxyChild{font:inherit;font-size:15px;font-weight:700;padding:4px 8px;border-radius:8px;border:1px solid var(--op-line,#d9d4c7);background:#fff;max-width:100%}
 .trProxyByNote{display:block;font-size:12px;font-weight:600;opacity:.75;margin-top:2px}
+.trProxyEntryRow{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;justify-content:space-between}
+.trProxyEntryText{flex:1 1 180px;min-width:0;overflow-wrap:anywhere}
+.trProxyEntryText small{display:block;font-size:12px;opacity:.7}
+.trProxyEntryBtns{display:flex;gap:6px;flex-wrap:wrap}
+.trChildGoalGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin:8px 0}
+.trChildGoalGrid label{font-size:13px;display:flex;flex-direction:column;gap:3px}
 .trProxyHint{flex:1 1 100%;font-size:12px;opacity:.75}
 </style>
 <style id="v313-reaction-balance">
