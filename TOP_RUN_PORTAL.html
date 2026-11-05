@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v329 | 2026-11-05 | Parent v328 physical HTML. FIX ONLY: PORTAL内大会の出走登録確認の4種表示フィルターをFirebase正式出走＋参加回答のUID単位分類に接続。CSV/PDFも表示対象と一致。既存Firebase READ/WRITE・Rules・本人/代理登録と他画面は変更なし。 -->
 <!-- TOP RUN PORTAL v328 | 2026-11-05 | Parent v327 physical HTML. FIX ONLY: PORTAL内正式出走の帳票CSV/PDF出力を既存nativeRaceStaffのFirebase READと共有し、iPhoneのCSV共有/保存選択、印刷画面からの確実な戻り導線を追加。本人・代理・Auth・Firebase RTDB/Rules/データ保存・通知等の経路を変更しない。 -->
 <!-- TOP RUN PORTAL v327 | 2026-11-05 | Parent user supplied v326. 修正: カレンダーの代理選択から出走登録へお子さんUIDを引継ぎ、本人フォームを隠して誤登録を防止。PORTAL内大会の正式出走登録を既存Firebase共通gatewayへ統合。Rules v327対応が必要。本番Firebase未実測。 -->
 <!-- TOP RUN PORTAL v326 | 2026-11-05 | Parent v325. REQUIRES Rules v319（v318＋保護者がお子さんの出走を取り消せる（本人が自分で登録した分も）、出走の目標タイムを変えられる、お子さんの基本プロフィール・目標タイムを保存・読める）。代理を本人と同じにする：(1) 保護者の出走一覧に、お子さんの出走をすべて出す（本人が登録した分も、保護者が代理で登録した分も）。(2) どちらの出走も、記録が入る前なら保護者が取り消せる。取り消すと、ほかの種目が残っていなければお子さんの当日の予定を「未選択」に戻す（本人の取消と同じ）。(3) 出走の目標タイムを保護者が変更できる（記録が入る前まで）。(4) MY PAGEに「お子さんの基本プロフィール・目標タイム（保護者）」を追加。お子さんの性別・学年・ゼッケンNoと目標タイムを、本人と同じ形で保存できる（出走条件の確認に使われる）。 -->
@@ -6544,7 +6545,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v328</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v329</b></div>
   </div>
 </div>
 
@@ -6734,7 +6735,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v328</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v329</b></div>
   </div>
 </div>
 
@@ -13657,6 +13658,65 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
       (cards||'<div class="portalEmpty">大会の出走データは0件です（players READ成功）。</div>')+
       '<p class="portalAuditCanonicalHelp">'+esc(timingNote)+'</p>'+timingCards+link;
   }
+  // v329: one classification for the native-PORTAL staff list AND exported rows.
+  // Data sources are the existing shared gateway's Firebase READ caches only:
+  // nativeRaceStaff (formal entries) + eventResponses (attendance), keyed by UID.
+  // No new database access, local trial entry, or name-based identity merge.
+  function portalNativeAuditPeople(e, gateway){
+    const registry=gateway?.nativeRaceStaff?.[e.id]||{};
+    const answers=gateway?.eventResponses?.[e.id]||{};
+    const byUid=new Map();
+    const getPerson=uid=>{
+      if(!byUid.has(uid))byUid.set(uid,{uid,name:'',profileId:'',answer:'',entries:[],issues:[]});
+      return byUid.get(uid);
+    };
+    for(const [uid,byMetric] of Object.entries(registry)){
+      if(!byMetric||typeof byMetric!=='object'||Array.isArray(byMetric))continue;
+      for(const [metric,entry] of Object.entries(byMetric)){
+        if(!entry||typeof entry!=='object'||Array.isArray(entry))continue;
+        const p=getPerson(uid);
+        p.entries.push({metric,entry});
+        if(!p.profileId&&entry.profileId)p.profileId=String(entry.profileId);
+        if(!p.name&&entry.displayName)p.name=String(entry.displayName).slice(0,24);
+      }
+    }
+    for(const [uid,a] of Object.entries(answers)){
+      if(!a||!['join','support','decline','maybe'].includes(a.answer))continue;
+      const p=getPerson(uid);
+      p.answer=String(a.answer);
+      if(!p.profileId&&a.profileId)p.profileId=String(a.profileId);
+      if(!p.name&&a.name)p.name=String(a.name).slice(0,24);
+    }
+    const profileOwners=new Map();
+    for(const p of byUid.values()){
+      if(!p.entries.length||!p.profileId)continue;
+      const owners=profileOwners.get(p.profileId)||new Set();
+      owners.add(p.uid);profileOwners.set(p.profileId,owners);
+    }
+    for(const p of byUid.values()){
+      p.name=p.name||'本人情報未登録';
+      const issue=p.issues;
+      for(const {metric,entry} of p.entries){
+        if(String(entry.subjectUid||'')!==p.uid||String(entry.metric||'')!==metric||
+          !entry.profileId||!p.profileId||String(entry.profileId)!==p.profileId){
+          if(!issue.includes('本人ID・種目の照合が必要'))issue.push('本人ID・種目の照合が必要');
+        }
+        if(e.requiresDeclaredTime===true&&!entry.declaredTime && !issue.includes('申告タイム未入力'))issue.push('申告タイム未入力');
+      }
+      if(p.entries.length && (profileOwners.get(p.profileId)?.size||0)>1)issue.push('同じprofileIdに別UIDの出走があります');
+      if(p.entries.length && ['decline','support','maybe'].includes(p.answer))issue.push('出走登録と大会当日の参加回答が不一致');
+      if(!p.entries.length && p.answer==='join' && e.raceEntryEnabled!==false)issue.push('参加する回答あり・出走登録なし');
+    }
+    const people=[...byUid.values()];
+    people.sort((a,b)=>window.trNameCmpV218?window.trNameCmpV218(a.name,b.name):a.name.localeCompare(b.name,'ja'));
+    return people;
+  }
+  function portalNativeAuditFiltered(people,filter){
+    if(filter==='registered')return people.filter(p=>p.entries.length>0);
+    if(filter==='join')return people.filter(p=>p.entries.length===0&&['join','support'].includes(p.answer));
+    if(filter==='needs')return people.filter(p=>p.issues.length>0);
+    return people;
+  }
   function flowRenderAudit(){
     const panel=$('portalAuditPanel');if(!panel)return;
     const allowed=canManage&&!portalParticipantPreviewMode;
@@ -13693,13 +13753,30 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
         summary.innerHTML='';list.innerHTML='<div class="portalEmpty">'+esc(status==='error'?'PORTALの正式出走登録のFirebase READに失敗しました（0件とは判断しません）。':'PORTALの正式出走登録をFirebaseから読込中…')+'</div>';
         return;
       }
-      const registry=gateway.nativeRaceStaff?.[e.id]||{},people=Object.entries(registry).flatMap(([uid,entries])=>Object.entries(entries||{}).filter(([,r])=>!!r).map(([metric,r])=>({uid,metric,...r})));
-      const distinct=new Set(people.map(p=>p.subjectUid));
-      const ownersByPid=new Map();for(const p of people){if(!p.profileId)continue;const set=ownersByPid.get(p.profileId)||new Set();set.add(p.subjectUid);ownersByPid.set(p.profileId,set);}
-      const repeated=[...ownersByPid.values()].filter(v=>v.size>1).length;
-      summary.innerHTML=[[distinct.size,'正式出走者'],[people.length,'正式出走件数']].map(([n,label])=>`<div class="portalAuditCount"><b>${n}</b><small>${label}</small></div>`).join('');
-      list.innerHTML=people.length?people.map(p=>`<article class="portalAuditCard"><div class="portalAuditCardHead"><b>${esc(p.displayName||'参加者')}</b><span class="portalAuditFlag">Firebase登録済</span></div><small>${esc(portalMetricNames[p.metric]||p.metric)} ／ ${esc(p.dayDate||e.date)} ／ 目標 ${esc(p.targetTime||'—')}${p.declaredTime?' ／ 申告 '+esc(p.declaredTime):''}${p.proxyByUid?' ／ 保護者代理':''}</small></article>`).join(''):'<div class="portalEmpty">この大会の正式な出走登録は0件です（Firebase READ成功）。</div>';
-      list.insertAdjacentHTML('afterbegin',`${repeated?`<p class="portalHelp">同じprofileIdの複数UID登録が${repeated}件あります。氏名で自動統合しません。</p>`:''}<button type="button" class="portalFlowSecondary" data-native-audit-refresh="${esc(e.id)}">正式出走の最新データを読み直す</button>`);
+      const people=portalNativeAuditPeople(e,gateway);
+      const formal=people.filter(p=>p.entries.length>0);
+      const totalEntries=formal.reduce((n,p)=>n+p.entries.length,0);
+      const repeated=formal.filter(p=>p.issues.includes('同じprofileIdに別UIDの出走があります')).length;
+      summary.innerHTML=[[formal.length,'正式出走者'],[totalEntries,'正式出走件数']].map(([n,label])=>`<div class="portalAuditCount"><b>${n}</b><small>${label}</small></div>`).join('');
+      const filter=$('portalAuditFilter')?.value||'all';
+      const labels={all:'全員',needs:'対応が必要',join:'会場へ行く',registered:'出走登録済み'};
+      const shown=portalNativeAuditFiltered(people,filter);
+      const answersLoaded=gateway?.loaded?.eventResponses===true;
+      const refresh=`<button type="button" class="portalFlowSecondary" data-native-audit-refresh="${esc(e.id)}">正式出走の最新データを読み直す</button>`;
+      const waiting=!answersLoaded&&filter!=='registered'?'<p class="portalHelp">大会当日の参加回答を受信中です。回答者・要確認の判定は読込後に確定します。</p>':'';
+      const replyLabel={join:'参加する',support:'会場へ行く（応援・帯同）',decline:'会場へ行かない',maybe:'未定'};
+      const cards=shown.map(p=>{
+        const rows=p.entries.map(({metric,entry:r})=>`<small style="display:block;margin-top:5px">${esc(portalMetricNames[metric]||metric)} ／ ${esc(r.dayDate||e.date)} ／ 目標 ${esc(r.targetTime||'—')}${r.declaredTime?' ／ 申告 '+esc(r.declaredTime):''}${r.proxyByUid?' ／ 保護者代理':''}</small>`).join('');
+        const status=p.entries.length?'<span class="portalAuditFlag">Firebase登録済</span>':'<span class="portalAuditFlag">出走未登録</span>';
+        const attendance=p.answer?`<small style="display:block;margin-top:5px">大会当日の予定：${esc(replyLabel[p.answer]||p.answer)}</small>`:'';
+        const warning=p.issues.length?`<small class="portalAuditIssue" style="display:block;margin-top:6px">${esc(p.issues.join(' ／ '))}</small>`:'';
+        return `<article class="portalAuditCard"><div class="portalAuditCardHead"><b>${esc(p.name)}</b>${status}</div>${rows||'<small>正式出走登録なし</small>'}${attendance}${warning}</article>`;
+      }).join('');
+      list.innerHTML=refresh+
+        (repeated?`<p class="portalHelp">本人IDが重複している出走${repeated}名は氏名で自動統合しません。</p>`:'')+
+        `<p class="portalHelp" aria-live="polite">${esc(labels[filter]||labels.all)}：${shown.length}名を表示（正式出走：${formal.length}名）。集計欄は絞り込み前の正式出走総数です。</p>`+
+        waiting+
+        (cards||`<div class="portalEmpty">${esc(labels[filter]||labels.all)}に該当する人はいません${answersLoaded?'。':'（参加回答は読込中）。'}</div>`);
       return;
     }
     if(portalAuditRenderOfficialV222(e))return; // v222: 正式データで表示
@@ -13871,44 +13948,28 @@ function portalAuditRenderOfficialV222(e){
     if(gate?.loaded?.eventResponses!==true){
       return {e,people:[],rows:[],error:'大会当日の参加回答をまだ受信していません。読込完了後にもう一度出力してください。'};
     }
-    const answers=gate.eventResponses?.[e.id]||{};
+    const filter=$('portalAuditFilter')?.value||'all';
+    const selected=portalNativeAuditFiltered(portalNativeAuditPeople(e,gate),filter);
     const columns=['大会名','開催日','開始時刻','会場','氏名','学年','性別','ゼッケン','参加回答','出走種目','種目開催日','申告タイム','目標タイム','結果','確認項目'];
-    const rows=[columns],people=[],seenUid=new Set();
+    const rows=[columns],people=[];
     const answerName=a=>({join:'参加する',support:'会場へ行く（応援・帯同）',decline:'会場へ行かない',maybe:'未定'})[a]||'未回答';
     const profileCols=pid=>{
       const p=pid?flowBasicProfile(pid):{};
       return [p.grade?(p.grade==='other'?'その他':String(p.grade)+'年'):'',p.gender==='male'?'男子':p.gender==='female'?'女子':'',p.bib||''];
     };
     const common=[e.title,portalEventDateLabel(e),e.startTime||'',e.place||''];
-    const registry=gate.nativeRaceStaff?.[e.id]||{};
-    for(const [uid,byMetric] of Object.entries(registry)){
-      if(!byMetric||typeof byMetric!=='object')continue;
-      for(const [metric,r] of Object.entries(byMetric)){
-        if(!r||typeof r!=='object')continue;
-        const subject=String(r.subjectUid||'');
-        const pid=String(r.profileId||'');
-        const a=answers[uid];
-        const response=String(a?.answer||'');
-        const issues=[];
-        if(subject!==uid||String(r.metric||'')!==metric||!pid)issues.push('正式出走の本人ID・種目を要確認');
-        if(e.requiresDeclaredTime===true&&!r.declaredTime)issues.push('申告タイム未入力');
-        if(['decline','support','maybe'].includes(response))issues.push('出走登録と参加回答の不一致');
-        const name=String(r.displayName||a?.name||'本人情報未登録').slice(0,24);
-        seenUid.add(uid);
-        rows.push([...common,name,...profileCols(pid),
-          '出走する（正式登録）',portalMetricNames[metric]||metric,r.dayDate||e.metricDates?.[metric]||e.date||'',
-          r.declaredTime||'',r.targetTime||'',r.result?.time||'',issues.join('／')]);
-        people.push({name,issues});
+    for(const p of selected){
+      const answer=p.entries.length?'出走する（正式登録）':answerName(p.answer);
+      const basic=[...common,p.name,...profileCols(p.profileId),answer];
+      if(p.entries.length){
+        for(const {metric,entry:r} of p.entries){
+          rows.push([...basic,portalMetricNames[metric]||metric,r.dayDate||e.metricDates?.[metric]||e.date||'',
+            r.declaredTime||'',r.targetTime||'',r.result?.time||'',p.issues.join('／')]);
+        }
+      }else{
+        rows.push([...basic,e.raceEntryEnabled===false?'対象外':'未登録','','','','',p.issues.join('／')]);
       }
-    }
-    // Preserve attendance-only people without misreporting them as registered athletes.
-    for(const [uid,a] of Object.entries(answers)){
-      if(!a||seenUid.has(uid)||!['join','support','decline','maybe'].includes(a.answer))continue;
-      const issues=a.answer==='join'&&e.raceEntryEnabled!==false?['参加回答あり・出走登録なし']:[];
-      const name=String(a.name||'参加者').slice(0,24);
-      rows.push([...common,name,...profileCols(a.profileId),answerName(a.answer),
-        e.raceEntryEnabled===false?'対象外':'未登録','','','','',issues.join('／')]);
-      people.push({name,issues});
+      people.push({name:p.name,issues:p.issues});
     }
     return {e,people,rows,source:'nativeRaceEntries'};
   }
