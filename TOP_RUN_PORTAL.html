@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v340 | 2026-11-06 | Parent physical v339. FIX native PORTAL child race-goal update premature runTransaction null abort: verified read + limited targetTime-only update + readback. Add large in-page save progress/success/failure notice and button press feedback. Existing Auth/UID/profileId/Rules/save-path/other race data unchanged. -->
 <!-- TOP RUN PORTAL v339 | 2026-11-06 | Parent physical v338. FIX RACE SUBJECT SAFETY: for calendar RSVP proxy OFF show self race entry only; proxy ON show chosen child race entry only. Separate explicit proxy switch on race form, fail closed on unrecognized child, check subject before write. No Firebase Rules/Auth/UID/profileId/save-path changes. -->
 <!-- TOP RUN PORTAL v338 | 2026-11-06 | Parent physical v337. PROFILE EDITING UX ONLY: short user-friendly save messages, guardian-name guide, name -> chat name -> basic profile stepwise scrolling without auto-collapse; saved edits and unset items final yes/no confirmation, no new Firebase/RTDB paths/Rules/auth. -->
 <!-- TOP RUN PORTAL v337 | 2026-11-06 | Physical parent v336. REPORT CENTER: two simple entry points (by activity day vs by person) with one common day/month/range/all period filter. Existing activity schedule list retained; person route creates READ-ONLY chronological practice/event/official-entry/result history using existing unified gateway and UID, supports instructor-only category, month attendance totals, CSV, and landscape print. No RTDB/Auth/Rules/UID/profileId/writer change. -->
@@ -6081,6 +6082,16 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
 #screen-mypage .trProfileConfirmActions #trProfileConfirmNo{background:transparent;color:inherit;border:1px solid currentColor}
 #screen-mypage :is(#trChatNameBox,#portalBasicProfile,#trProfileConfirm){scroll-margin-top:110px}
 </style>
+<style id="tr-v340-proxy-goal-feedback">
+/* Scoped to child race-goal editing; theme-independent contrast, no other pages touched. */
+#flowProxyGoalSaveNotice.trProxyGoalSaveNotice{display:block;margin:16px 0 20px;padding:20px 18px;border-radius:17px;border:3px solid var(--gold,#d7b317);background:#fff8d9;color:#26302e;font-size:18px;line-height:1.55;font-weight:900;white-space:pre-line;box-shadow:0 7px 22px rgba(0,0,0,.14);overflow-wrap:anywhere}
+#flowProxyGoalSaveNotice.trProxyGoalSaveNotice[hidden]{display:none!important}
+#flowProxyGoalSaveNotice.trProxyGoalSaveNotice.is-error{border-color:#c0553b;background:#fff1ec;color:#6a2419}
+#flowProxyGoalSaveNotice.trProxyGoalSaveNotice.is-success{border-color:#159b87;background:#e5fbf3;color:#124c43}
+#flowProxyEditSave{min-height:66px;touch-action:manipulation;transition:transform .12s ease,filter .12s ease,opacity .12s ease}
+#flowProxyEditSave:active{transform:scale(.97);filter:brightness(.91)}
+#flowProxyEditSave.trProxyGoalBusy{opacity:.78;filter:saturate(.75);cursor:progress}
+</style>
 </head>
 <body>
 <div id="portalFirstPaintAuthOverlay" role="status" aria-live="polite" aria-label="TOP RUN PORTAL 認証中">
@@ -6665,7 +6676,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v339</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v340</b></div>
   </div>
 </div>
 
@@ -6902,7 +6913,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v339</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v340</b></div>
   </div>
 </div>
 
@@ -7399,7 +7410,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
    <div id="portalGoalPresetWrap" class="hidden portalFlowFields"><label>MY PAGEの目標から選ぶ <select id="portalGoalPreset"></select></label></div>
    <div id="portalOfficialRaceAccess" class="portalFlowFields" hidden><input id="portalOfficialParticipantPin" type="hidden" value=""></div><div class="portalFlowActions" id="flowJoinActions"><button type="button" id="flowJoin" class="portalPrimary">③ 出走登録する</button><button type="button" id="flowLeave" class="portalFlowSecondary">出走登録を取り消す</button></div>
    <p class="portalHelp" id="flowEntryLockNote">登録後、種目と申告タイムは変更できません。目標タイムは大会ページのマイ出走で変更できます。</p></details>
-</div><section class="portalPanel" id="flowProxyPanel" hidden><div class="portalPanelHead"><small>FAMILY ENTRY</small><b>お子さんの出走登録（保護者）</b></div><p id="flowProxyIdentity" class="portalHelp" role="status"></p><button type="button" id="flowProxySwitchSelf" class="portalFlowSecondary" hidden>自分の出走登録に切り替える</button><p class="portalHelp">家族（親子）でつながったお子さんを、代理で出走登録できます。記録はお子さんのマイページに付きます。</p><div class="portalFlowFields"><label>お子さん <select id="flowProxyFor"></select></label><label>種目 <select id="flowProxyMetric"></select></label><div class="flowTimeField" data-flow-time="flowProxyGoal"><div class="flowTimeHeading"><span>目標タイムを選択</span><button type="button" class="flowTimeClear" data-flow-clear="flowProxyGoal">未設定に戻す</button></div><input type="hidden" id="flowProxyGoal" value=""><div class="flowTimeControls" role="group" aria-label="代理の目標タイムの選択"></div><span class="flowTimeCurrent" aria-live="polite">未設定</span></div><div id="flowProxyDeclaredWrap" hidden><div class="flowTimeField" data-flow-time="flowProxyDeclared"><div class="flowTimeHeading"><span>申告タイムを選択</span><button type="button" class="flowTimeClear" data-flow-clear="flowProxyDeclared">未設定に戻す</button></div><input type="hidden" id="flowProxyDeclared" value=""><div class="flowTimeControls" role="group" aria-label="代理の申告タイムの選択"></div><span class="flowTimeCurrent" aria-live="polite">未設定</span></div></div></div><div class="portalFlowActions"><button type="button" id="flowProxyJoin" class="portalPrimary">お子さんを出走登録する</button></div><p id="flowProxyStatus" class="portalFlowStatus" aria-live="polite"></p><div id="flowProxyGoalEditor" class="portalFlowFields" hidden><p class="portalHelp" id="flowProxyEditName">お子さんの目標タイム変更</p><div class="flowTimeField" data-flow-time="flowProxyEditGoal"><div class="flowTimeHeading"><span>変更後の目標タイムを選択</span><button type="button" class="flowTimeClear" data-flow-clear="flowProxyEditGoal">未設定に戻す</button></div><input type="hidden" id="flowProxyEditGoal" value=""><div class="flowTimeControls" role="group" aria-label="代理の変更後目標タイムの選択"></div><span class="flowTimeCurrent" aria-live="polite">未設定</span></div><div class="portalFlowActions"><button type="button" id="flowProxyEditSave" class="portalPrimary">目標タイムを保存する</button><button type="button" id="flowProxyEditCancel" class="portalFlowSecondary">変更をやめる</button></div></div><div id="flowProxyList" class="portalMultiEntryList"></div></section>
+</div><section class="portalPanel" id="flowProxyPanel" hidden><div class="portalPanelHead"><small>FAMILY ENTRY</small><b>お子さんの出走登録（保護者）</b></div><p id="flowProxyIdentity" class="portalHelp" role="status"></p><button type="button" id="flowProxySwitchSelf" class="portalFlowSecondary" hidden>自分の出走登録に切り替える</button><p class="portalHelp">家族（親子）でつながったお子さんを、代理で出走登録できます。記録はお子さんのマイページに付きます。</p><div class="portalFlowFields"><label>お子さん <select id="flowProxyFor"></select></label><label>種目 <select id="flowProxyMetric"></select></label><div class="flowTimeField" data-flow-time="flowProxyGoal"><div class="flowTimeHeading"><span>目標タイムを選択</span><button type="button" class="flowTimeClear" data-flow-clear="flowProxyGoal">未設定に戻す</button></div><input type="hidden" id="flowProxyGoal" value=""><div class="flowTimeControls" role="group" aria-label="代理の目標タイムの選択"></div><span class="flowTimeCurrent" aria-live="polite">未設定</span></div><div id="flowProxyDeclaredWrap" hidden><div class="flowTimeField" data-flow-time="flowProxyDeclared"><div class="flowTimeHeading"><span>申告タイムを選択</span><button type="button" class="flowTimeClear" data-flow-clear="flowProxyDeclared">未設定に戻す</button></div><input type="hidden" id="flowProxyDeclared" value=""><div class="flowTimeControls" role="group" aria-label="代理の申告タイムの選択"></div><span class="flowTimeCurrent" aria-live="polite">未設定</span></div></div></div><div class="portalFlowActions"><button type="button" id="flowProxyJoin" class="portalPrimary">お子さんを出走登録する</button></div><p id="flowProxyStatus" class="portalFlowStatus" aria-live="polite"></p><div id="flowProxyGoalEditor" class="portalFlowFields" hidden><p class="portalHelp" id="flowProxyEditName">お子さんの目標タイム変更</p><div class="flowTimeField" data-flow-time="flowProxyEditGoal"><div class="flowTimeHeading"><span>変更後の目標タイムを選択</span><button type="button" class="flowTimeClear" data-flow-clear="flowProxyEditGoal">未設定に戻す</button></div><input type="hidden" id="flowProxyEditGoal" value=""><div class="flowTimeControls" role="group" aria-label="代理の変更後目標タイムの選択"></div><span class="flowTimeCurrent" aria-live="polite">未設定</span></div><div class="portalFlowActions"><button type="button" id="flowProxyEditSave" class="portalPrimary">目標タイムを保存する</button><button type="button" id="flowProxyEditCancel" class="portalFlowSecondary">変更をやめる</button></div></div><div id="flowProxyGoalSaveNotice" class="trProxyGoalSaveNotice" role="status" aria-live="assertive" aria-atomic="true" hidden></div><div id="flowProxyList" class="portalMultiEntryList"></div></section>
 <div class="portalFlowActions" id="flowSaveGoalActions" hidden><button type="button" id="flowSaveGoal" class="portalPrimary">目標を保存</button></div><p id="flowSelfStatus" class="portalFlowStatus" aria-live="polite"></p>
    <div id="portalTrialResetCurrentCard" hidden><b>このイベントの試用データをリセット</b><p id="portalTrialResetCurrentInfo">この端末の試用出走・試用記録のみ。EVENT BASEの正式データは削除しません。</p><button type="button" id="portalTrialResetCurrent">このイベントの試用登録・結果をリセット</button><p id="portalTrialResetCurrentStatus" role="status" aria-live="polite"></p></div>
   </section>
@@ -15320,12 +15331,14 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
     if(portalOfficialRaceSaving||flowRaceProxySaving)return; // Subject cannot switch mid-write.
     flowRaceProxyMode=!flowRaceProxyMode;
     flowProxyEntryUid=''; // Never carry a child from an earlier selection silently.
+    proxyGoalNoticeClear();
     flowSetTime('flowProxyGoal','');flowSetTime('flowProxyDeclared','');
     $('flowProxyGoalEditor').hidden=true;$('flowProxyStatus').textContent='';
     proxyRender();
   });
   $('flowProxyFor').addEventListener('change',()=>{
     flowProxyEntryUid=$('flowProxyFor').value;
+    proxyGoalNoticeClear();
     flowSetTime('flowProxyGoal','');flowSetTime('flowProxyDeclared','');
     $('flowProxyGoalEditor').hidden=true;
     proxyRender();
@@ -15343,20 +15356,44 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
       box.innerHTML=rows.length?'<p class="portalHelp"><b>お子さんの出走</b></p>'+rows.map(r=>'<div class="portalFlowStatus trProxyEntryRow"><span class="trProxyEntryText"><b>'+esc(r.name)+'</b>　'+esc(r.event)+'　目標 '+esc(r.targetTime||'なし')+'<small>'+(r.byProxy?(r.byMe?'保護者（自分）が代理で登録':'保護者が代理で登録'):'本人が登録')+'</small></span>'+(r.hasResult?'<small>記録あり</small>':'<span class="trProxyEntryBtns"><button type="button" class="portalFlowSecondary" data-proxy-goal="'+esc(r.id)+'" data-proxy-goal-now="'+esc(r.targetTime||'')+'" data-proxy-child="'+esc(r.childUid)+'">目標を変更</button><button type="button" class="portalFlowSecondary" data-proxy-cancel="'+esc(r.id)+'" data-proxy-child="'+esc(r.childUid)+'" data-proxy-by="'+(r.byProxy?'proxy':'self')+'">取り消す</button></span>')+'</div>').join(''):'';
     }catch(error){if(seq===proxyListSeq){box.hidden=false;box.innerHTML='<p class="portalHelp">お子さんの出走一覧をFirebaseから読めません：'+esc(String(error?.code||error?.message||error).slice(0,120))+'</p>';}}
   }
-  $('flowProxyEditCancel').addEventListener('click',()=>{$('flowProxyGoalEditor').hidden=true;});
+  // v340: Large, persistent on-screen result for this one operation (iPhone home-screen/PWA safe).
+  function proxyGoalNotice(message,kind='progress'){
+    const note=$('flowProxyGoalSaveNotice');if(!note)return;
+    note.hidden=false;note.classList.toggle('is-error',kind==='error');note.classList.toggle('is-success',kind==='success');
+    note.textContent=message;
+    requestAnimationFrame(()=>{if(!note.hidden)note.scrollIntoView({block:'center',behavior:'smooth'});});
+  }
+  function proxyGoalNoticeClear(){const note=$('flowProxyGoalSaveNotice');if(note){note.hidden=true;note.textContent='';}}
+  $('flowProxyEditCancel').addEventListener('click',()=>{$('flowProxyGoalEditor').hidden=true;proxyGoalNoticeClear();});
   $('flowProxyEditSave').addEventListener('click',async()=>{
     const editor=$('flowProxyGoalEditor'),g=window.__TR_PORTAL_SYNC__,target=proxyTarget(flowEvent(flowSelectedEventId));
     const child=editor.dataset.childUid||'',id=editor.dataset.goalId||'',next=$('flowProxyEditGoal').value.trim();
-    if(!flowRaceProxyMode||!target||!g?.familyChildren?.[child]?.profileId||!id)return;
-    if(!next||flowTimeIncomplete('flowProxyEditGoal')||!flowTimeGood(next)){$('flowProxyStatus').textContent='変更後の目標タイムをプルダウンで選択してください。';return;}
-    if(next===editor.dataset.before){editor.hidden=true;return;}
-    const btn=$('flowProxyEditSave');btn.disabled=true;
+    if(!flowRaceProxyMode||!target||!g?.familyChildren?.[child]?.profileId||!id){
+      proxyGoalNotice('保存できません。代理で登録するお子さんを選び直してください。','error');return;
+    }
+    if(!next||flowTimeIncomplete('flowProxyEditGoal')||!flowTimeGood(next)){
+      proxyGoalNotice('未入力があります。変更後の目標タイムをプルダウンで選択してください。','error');return;
+    }
+    if(next===editor.dataset.before){
+      proxyGoalNotice('変更はありません。現在の目標タイムと同じです。');return;
+    }
+    const btn=$('flowProxyEditSave');if(btn.disabled)return;
+    btn.disabled=true;btn.classList.add('trProxyGoalBusy');btn.textContent='保存中…';
+    proxyGoalNotice('保存中です。目標タイムを確認しています…');
     try{
-      if(target.nativePortal){if(!/^ntr_[A-Za-z0-9_-]{1,32}$/.test(id))throw Error('登録種目を確認できません');await g.updateNativeRaceGoalFor(target.id,child,id.slice(4),next);}
-      else await g.updateChildRaceGoal(target,id,next);
-      editor.hidden=true;$('flowProxyStatus').textContent='目標タイムを変更しました。';await proxyList();
-    }catch(error){$('flowProxyStatus').textContent='変更できませんでした：'+String(error?.message||error).slice(0,160);}
-    finally{btn.disabled=false;}
+      if(target.nativePortal){if(!/^ntr_[A-Za-z0-9_-]{1,32}$/.test(id))throw Error('登録種目を確認できません');await portalTimeout(g.updateNativeRaceGoalFor(target.id,child,id.slice(4),next,editor.dataset.before));}
+      else await portalTimeout(g.updateChildRaceGoal(target,id,next));
+      // The gateway returns only after a server acknowledgement and a verified readback.
+      editor.hidden=true;$('flowProxyStatus').textContent='目標タイムを変更しました。';
+      proxyGoalNotice('✓ 目標タイムを変更しました。\n新しい目標：'+next,'success');
+      showActionFeedback('目標タイムを変更しました',next+' に更新しました。',6500);
+      try{await proxyList();}catch(_){/* The verified save is successful even if list refresh fails. */}
+    }catch(error){
+      const message=String(error?.message||error).slice(0,180);
+      $('flowProxyStatus').textContent='変更できませんでした：'+message;
+      proxyGoalNotice('保存できませんでした。\n'+message,'error');
+      showActionFeedback('目標タイムを保存できませんでした',message,7000);
+    }finally{btn.disabled=false;btn.classList.remove('trProxyGoalBusy');btn.textContent='目標タイムを保存する';}
   });
   $('flowProxyList').addEventListener('click',async ev=>{
     if(!flowRaceProxyMode)return;
@@ -15364,6 +15401,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
     if(gb){
       const editor=$('flowProxyGoalEditor'),id=gb.dataset.proxyGoal,child=gb.dataset.proxyChild;
       const target=proxyTarget(flowEvent(flowSelectedEventId));if(!target||!child||!id)return;
+      proxyGoalNoticeClear();
       editor.dataset.goalId=id;editor.dataset.childUid=child;editor.dataset.before=gb.dataset.proxyGoalNow||'';
       $('flowProxyEditName').textContent='目標タイムの変更：'+(window.__TR_PORTAL_SYNC__?.familyChildren?.[child]?.name||'お子さん')+'さん';
       const metric=target.nativePortal?id.replace(/^ntr_/,''):($('flowProxyMetric').value||'3000');
@@ -18710,18 +18748,33 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
         return childUid;
       }finally{officialRaceWriteBusy=false;}
     };
-    gate.updateNativeRaceGoalFor=async(catalogId,childUid,metric,goal)=>{
+    gate.updateNativeRaceGoalFor=async(catalogId,childUid,metric,goal,expectedGoal)=>{
       if(officialRaceWriteBusy)throw Error('別の登録操作中です');officialRaceWriteBusy=true;
       try{
-        await nativeEvent(catalogId);
+        // v340: Read the canonical existing row FIRST. Transactions that return undefined
+        // for an uncached initial null used to abort even when the row exists on server.
+        const actor=await nativeEvent(catalogId);
         if(!gate.familyChildren?.[childUid]?.profileId||
            !/^[A-Za-z0-9_-]{1,32}$/.test(String(metric||''))||
            !/^\d{1,3}:\d{2}(?::\d{2})?(?:\.\d{1,2})?$/.test(goal))throw Error('お子さん・目標タイムを確認できません');
+        if(auth.currentUser?.uid!==actor.uid||gate.uid!==actor.uid)
+          throw Error('保護者本人の認証が変わっています。保存していません');
         const pid=gate.familyChildren[childUid].profileId,at=ref(nativeRoot+catalogId+'/'+childUid+'/'+metric);
-        const tx=await dbMod.runTransaction(at,old=>old&&old.subjectUid===childUid&&old.profileId===pid&&!old.result?
-            {...old,targetTime:goal}:undefined,{applyLocally:false});
-        if(!tx.committed)throw Error('登録が変更されたか記録があるため目標を変更できません');
-        const saved=(await dbMod.get(at)).val();if(saved?.targetTime!==goal||saved.profileId!==pid)throw Error('目標タイムの保存照合ができません');
+        const before=(await dbMod.get(at)).val();
+        if(!before||before.subjectUid!==childUid||before.profileId!==pid||before.metric!==metric)
+          throw Error('お子さんの正式出走登録が見つからないか、本人情報が一致しません');
+        if(officialAnyResult(before))throw Error('大会結果が登録済みのため、目標タイムを変更できません');
+        if(typeof expectedGoal==='string'&&before.targetTime!==expectedGoal)
+          throw Error('別の端末で目標タイムが変更されています。出走一覧を読み直してください');
+        if(before.targetTime===goal)return true;
+        // Existing Rules permit only this field to change and reject updates after results.
+        // Update the one field; never overwrite the player, declared time or any results.
+        await dbMod.update(at,{targetTime:goal});
+        const saved=(await dbMod.get(at)).val();
+        if(!saved||saved.targetTime!==goal||saved.subjectUid!==childUid||saved.profileId!==pid||
+           saved.metric!==metric||saved.declaredTime!==before.declaredTime||
+           saved.createdAt!==before.createdAt||saved.createdByUid!==before.createdByUid||
+           officialAnyResult(saved))throw Error('目標タイムの保存照合ができません。管理者へご連絡ください');
         return true;
       }finally{officialRaceWriteBusy=false;}
     };
