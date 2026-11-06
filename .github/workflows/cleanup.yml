@@ -1,0 +1,44 @@
+name: cleanup-old-eventbase
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'check=確認だけ / delete=削除する'
+        required: true
+        default: 'check'
+        type: choice
+        options: [check, delete]
+permissions:
+  contents: write
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: list or delete
+        env:
+          MODE: ${{ inputs.mode }}
+        run: |
+          printf '%s\n' \
+            "EVENT_BASE_PRODUCTION.html" \
+            "EVENT_BASE_v83_AUTH_SINGLE_RESTORE_20261025_REVIEW.html" \
+            > keep.txt
+          find . -maxdepth 1 -type f -name '*.html' -printf '%f\n' \
+            | grep -iE '^EVENT_?BASE' \
+            | grep -v 'EKIDEN_NEXT' \
+            | grep -vxFf keep.txt \
+            | sort > del.txt || true
+          echo "===== 残す ====="
+          cat keep.txt
+          echo "===== 消す：$(wc -l < del.txt) 件 ====="
+          if [ -s del.txt ]; then tr '\n' '\0' < del.txt | xargs -0 du -ch | tail -1; fi
+          cat del.txt
+          if [ "$MODE" = "delete" ] && [ -s del.txt ]; then
+            tr '\n' '\0' < del.txt | xargs -0 git rm -q --
+            git config user.name github-actions
+            git config user.email github-actions@users.noreply.github.com
+            git commit -m "昔のEVENT BASEをまとめて削除"
+            git push
+          fi
