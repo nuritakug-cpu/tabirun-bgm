@@ -1,0 +1,41 @@
+name: auto-rename-ekiden
+on:
+  push:
+    paths:
+      - 'EVENTBASEEKIDENNEXT*.html'
+  workflow_dispatch:
+permissions:
+  contents: write
+  pages: write
+jobs:
+  rename:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: rename
+        run: |
+          changed=0
+          for f in EVENTBASEEKIDENNEXTP*.html; do
+            [ -e "$f" ] || continue
+            rest="${f%.html}"; rest="${rest#EVENTBASEEKIDENNEXTP}"
+            num=$(echo "$rest" | sed -E 's/^([0-9]+).*/\1/')
+            suf=$(echo "$rest" | sed -E 's/^[0-9]+//' | tr -cd 'A-Za-z0-9')
+            echo "$num" | grep -qE '^[0-9]+$' || continue
+            [ -n "$suf" ] || suf="MAIN"
+            new="EVENT_BASE_EKIDEN_NEXT_P${num}_${suf}.html"
+            git mv -f "$f" "$new"
+            echo "$f -> $new"
+            changed=1
+          done
+          if [ "$changed" = 1 ]; then
+            git config user.name github-actions
+            git config user.email github-actions@users.noreply.github.com
+            git commit -m "駅伝BASEのファイル名を自動で変更"
+            git push
+          fi
+      - name: request pages build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X POST "repos/${{ github.repository }}/pages/builds" || true
