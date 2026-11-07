@@ -211,6 +211,17 @@ jobs:
           }
           // Room-only extension. Existing signed Worker / CHAT / NOTICE / Badge helpers remain untouched.
           const roomHelpers = String.raw`
+          // v171 room preference: null/missing is 'all'; no additional RTDB requests.
+          function roomNotifyAllowed(member,message,uid){
+            if(!member||member.status!=='joined')return false;
+            const mode=member.notify==='off'||member.notify==='mention'?member.notify:'all';
+            if(mode==='off')return false;
+            if(mode==='mention'){
+              const mentions=message?.mentions&&typeof message.mentions==='object'&&!Array.isArray(message.mentions)?message.mentions:{};
+              return Object.prototype.hasOwnProperty.call(mentions,uid);
+            }
+            return true;
+          }
           async function stage3NotifyRoom(data,env,person,auth,c){
             const match=typeof data?.id==='string'&&data.id.length<=130
               ? /^(r[A-Za-z0-9_]{6,60})\/(m[A-Za-z0-9_]+)$/.exec(data.id) : null;
@@ -237,7 +248,7 @@ jobs:
               return json({ok:false,error:'Room message, sender or membership invalid'},403,c);
             }
             const memberUids=Object.entries(members)
-              .filter(([uid,item])=>uid!==auth.uid&&/^[-A-Za-z0-9_]{1,128}$/.test(uid)&&item?.status==='joined')
+              .filter(([uid,item])=>uid!==auth.uid&&/^[-A-Za-z0-9_]{1,128}$/.test(uid)&&roomNotifyAllowed(item,msg,uid))
               .map(([uid])=>uid);
             if(memberUids.length>80)return json({ok:false,error:'Room audience exceeds safe limit'},503,c);
             const recipients=new Set(memberUids);
@@ -259,7 +270,8 @@ jobs:
                 .bind(eventKey,now).run();
               if((mark?.meta?.changes??0)===0)return json({ok:true,alreadyProcessed:true},200,c);
               const mentions=msg.mentions&&typeof msg.mentions==='object'&&!Array.isArray(msg.mentions)?msg.mentions:{};
-              const deliverable=devices.filter(row=>row.mention_only!==1||Object.prototype.hasOwnProperty.call(mentions,row.uid));
+              // v171 room-level preference is authoritative; legacy per-device mention_only must not block 'all'.
+              const deliverable=devices;
               const baseBody=msg.name.trim().slice(0,80)+'：'+Array.from(msg.text).slice(0,40).join('');
               const payloadFor=uid=>({web_push:8030,notification:{
                 title:(mentions[uid]?'📣 あなたへのメンション｜':'')+meta.name.trim().slice(0,100),lang:'ja',dir:'auto',
@@ -437,7 +449,38 @@ jobs:
           moReplace('chat HTTP status',
             "deliveredToDevice:'unverified'},accepted>0||devices.length===0?200:502,c);",
             "deliveredToDevice:'unverified'},accepted>0||eligible.length===0?200:502,c);");
-          for(const marker of ["stage3NotifyRoomInvite(data,env,person,auth,c)","mentionOnly:row?.mention_only===1","ALTER TABLE stage3_devices ADD COLUMN mention_only","const deliverable=devices.filter","const eligible=kind==='chat'?devices.filter"]){
+          // v171: apply per-UID preference after existing legacy mention-only patch.
+          moReplace('v171 common CHAT notification preference',
+            "  const eligible=kind==='chat'?devices.filter(row=>row.mention_only!==1||hasMention(row.uid)):devices;",
+            "  let perUserChatNotify=null;\n"+
+            "  if(kind==='chat'){\n"+
+            "    try{const value=await stage3Read('portalCommon/topRun/chatNotify',auth.token);\n"+
+            "      if(value===null)perUserChatNotify={};\n"+
+            "      else if(value&&typeof value==='object'&&!Array.isArray(value))perUserChatNotify=value;\n"+
+            "    }catch(_){/* Keep existing behavior on read failure. */}\n"+
+            "  }\n"+
+            "  const eligible=kind==='chat'?devices.filter(row=>{\n"+
+            "    if(perUserChatNotify!==null){\n"+
+            "      const mode=perUserChatNotify[row.uid];\n"+
+            "      if(mode==='off')return false;\n"+
+            "      if(mode==='mention')return hasMention(row.uid);\n"+
+            "      return true; // all or unset\n"+
+            "    }\n"+
+            "    return row.mention_only!==1||hasMention(row.uid); // read-denied legacy fallback\n"+
+            "  }):devices;");
+          // v172: diagnostic response for per-person common CHAT settings.
+          // Status is computed from the single chatNotify read already in stage3Notify;
+          // no additional Firebase request or D1 query is introduced.
+          moReplace('v172 common CHAT prefsApplied response',
+            "return json({ok:accepted>0||eligible.length===0,acceptedByPushService:accepted,attemptedDevices:eligible.length,staleRemoved:invalid,",
+            "return json({ok:accepted>0||eligible.length===0,prefsApplied:kind==='chat'?perUserChatNotify!==null:null,acceptedByPushService:accepted,attemptedDevices:eligible.length,staleRemoved:invalid,");
+          if(!patched.includes("prefsApplied:kind==='chat'?perUserChatNotify!==null:null"))
+            throw Error('v172 prefsApplied response patch not applied');
+          if(!patched.includes('roomNotifyAllowed(item,msg,uid)')||
+             !patched.includes('portalCommon/topRun/chatNotify')||
+             !patched.includes("kind==='roomInvite'"))
+            throw Error('v171 notification preference patch incomplete');
+          for(const marker of ["stage3NotifyRoomInvite(data,env,person,auth,c)","mentionOnly:row?.mention_only===1","ALTER TABLE stage3_devices ADD COLUMN mention_only","const deliverable=devices;","const eligible=kind==='chat'?devices.filter"]){
             if(!patched.includes(marker))throw Error('Worker patch missing: '+marker);
           }
           fs.writeFileSync(dir + 'worker.js', patched, 'utf8');
