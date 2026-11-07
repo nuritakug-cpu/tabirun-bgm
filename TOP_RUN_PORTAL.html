@@ -1,3 +1,6 @@
+<!-- TOP RUN PORTAL v347 | 2026-11-07 | Parent physical v346. 歯車の中の版表示をv347に更新（v343〜v346で表示がv342のままだった）。中身はv346と同じ。通信量への影響なし。 -->
+<!-- TOP RUN PORTAL v346 | 2026-11-07 | Parent physical v345. FIX: チャット写真を拡大すると横じまの線で崩れる（iPhoneの描画上限超え）。写真の大きさに合わせて崩れない倍率までに制限。 -->
+<!-- TOP RUN PORTAL v345 | 2026-11-07 | Parent physical v344. 保存ボタンをPORTAL全体で同じ形に統一（小さめ・細身・丸み、色はテーマのまま）。写真の拡大表示の保存ボタンをさらに小さくし、左右の矢印との間を広げた。保存すると画面の上に「✓ 保存しました」を必ず表示（写真の保存も含む）。保存の処理・Firebase・Auth・UID・保存先は変更なし。 -->
 <!-- TOP RUN PORTAL v344 | 2026-11-07 | Parent physical v343. 写真の拡大表示：左右の矢印を写真にかからない下の段へ移し、左右に払っても前後の写真へ。保存ボタンと主ボタン（.portalPrimary/.portalGoalSave）を少し小さく細身のデザインに（色はテーマのまま）。 -->
 <!-- TOP RUN PORTAL v343 | 2026-11-07 | Parent physical v342. FIX: iPhoneでスクロール中に下のメニューが上に引っ張られ下に隙間ができる問題（Safariのバーの出し入れで高さが変わったとき、スクロールが止まってから位置を合わせる）。そのほか変更なし。 -->
 <!-- TOP RUN PORTAL v342 | 2026-11-06 | Parent physical v341. Staff athlete menu includes PORTAL native competitions for entry review, target-time edit and cancellation with existing gateway nativeRaceEntries; no second Firebase app/auth/UID/profileId/path. Staff native writes require aligned integrated Rules (not changed or deployed here), and show permission-denied explicitly. EVENT BASE unchanged. -->
@@ -6680,7 +6683,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v342</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v347</b></div>
   </div>
 </div>
 
@@ -6917,7 +6920,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v342</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v347</b></div>
   </div>
 </div>
 
@@ -26511,7 +26514,10 @@ window.__trFilePickStart=function(input){
     document.body.appendChild(v);
     const img=v.querySelector('img'),note=v.querySelector('.trImgNote');let i=start,full='';
     let sc=1,tx=0,ty=0;
-    const apply=()=>{img.style.transform='translate('+tx+'px,'+ty+'px) scale('+sc+')';};
+    // v346: iPhoneは拡大した写真が端末の描ける大きさ（約4000px）を超えると、横じまの線になって崩れる。
+    //   写真の表示サイズに合わせて、崩れない倍率までしか拡大しないようにする。
+    const maxSc=()=>{const r=img.getBoundingClientRect(),k=sc>0?sc:1,w=r.width/k,h=r.height/k,dpr=Math.min(3,window.devicePixelRatio||2);if(!w||!h)return 5;return Math.max(1,Math.min(5,4000/(w*dpr),4000/(h*dpr)));};
+    const apply=()=>{const m=maxSc();if(sc>m){sc=m;}img.style.transform='translate('+tx+'px,'+ty+'px) scale('+sc+')';};
     const reset=()=>{sc=1;tx=0;ty=0;apply();};
     function show(){
       const id=ids[i];const t=mem.get('thumb:'+id);img.src=t||'';full='';reset();
@@ -26529,7 +26535,7 @@ window.__trFilePickStart=function(input){
           // v248: 共有画面の間にページを離れた扱いになり、切断・再読み込みでホームに戻っていた。写真選択と同じ印を付けて止める。
           window.__trFilePicking=Date.now();
           try{window.__trPickSet(JSON.stringify({ctx:'save',roomId:ctxRoom,at:Date.now()}));}catch(_){}
-          try{await navigator.share({files:[file]});}
+          try{await navigator.share({files:[file]});try{window.__trSavedToast?.('保存しました');}catch(_){}}
           finally{setTimeout(()=>{window.__trFilePicking=0;},1500);try{window.__trPickDel();}catch(_){}}
           return;
         }
@@ -27509,7 +27515,7 @@ body.portalChatIsolated.portalFieldInputActive #screen-chat>main.chatMain{
 /* (2) 写真の拡大表示：黒い背景、写真はボタンにかからない大きさに縮小、ボタンは濃い色、保存は下の中央 */
 #trImgView{background:#0b0d0c!important}
 #trImgView .trImgStage{padding:calc(66px + env(safe-area-inset-top,0px)) 6px calc(86px + env(safe-area-inset-bottom,0px))!important;box-sizing:border-box!important}
-#trImgView .trImgStage img{max-width:100%!important;max-height:100%!important}
+#trImgView .trImgStage img{max-width:100%!important;max-height:100%!important;will-change:transform;backface-visibility:hidden}
 #trImgView button{background:rgba(26,30,28,.94)!important;border:1px solid rgba(255,255,255,.42)!important;color:#fff!important;-webkit-text-fill-color:#fff!important;z-index:2}
 #trImgView .trImgSave{top:auto!important;left:50%!important;transform:translateX(-50%)!important;bottom:calc(18px + env(safe-area-inset-bottom,0px))!important;min-width:160px!important;height:48px!important;background:#d8b52a!important;border-color:#d8b52a!important;color:#1d2421!important;-webkit-text-fill-color:#1d2421!important;font-size:16px!important}
 #trImgView .trImgNote{bottom:auto!important;top:calc(22px + env(safe-area-inset-top,0px))!important;z-index:2;pointer-events:none}
@@ -28592,16 +28598,51 @@ html[data-portal-personal-color="matte"] #screen-management-settings :is(#portal
 })();
 </script>
 
-<style id="v344-save-buttons">
-/* v344: 写真の拡大表示 ― 左右の矢印は写真にかからない下の段へ。保存ボタンは小さく細身に。 */
-#trImgView .trImgSave{min-width:118px!important;height:40px!important;padding:0 22px!important;border-radius:999px!important;font-size:14px!important;font-weight:900!important;letter-spacing:.12em!important;box-shadow:0 6px 18px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.35)!important;bottom:calc(20px + env(safe-area-inset-bottom,0px))!important}
+<style id="v345-save-unified">
+/* v345: 保存ボタンをPORTAL全体で同じ形にそろえる（小さめ・細身・丸み）。色は今のテーマのまま。 */
+#trImgView .trImgSave{min-width:100px!important;height:36px!important;padding:0 20px!important;border-radius:999px!important;font-size:13px!important;font-weight:900!important;letter-spacing:.16em!important;box-shadow:0 6px 16px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.35)!important;bottom:calc(22px + env(safe-area-inset-bottom,0px))!important}
 #trImgView .trImgPrev,#trImgView .trImgNext{top:auto!important;transform:none!important;bottom:calc(20px + env(safe-area-inset-bottom,0px))!important;width:40px!important;height:40px!important;font-size:20px!important;line-height:1!important;background:rgba(255,255,255,.08)!important;border:1px solid rgba(255,255,255,.28)!important}
-#trImgView .trImgPrev{left:calc(50% - 59px - 52px)!important}
-#trImgView .trImgNext{right:calc(50% - 59px - 52px)!important;left:auto!important}
+#trImgView .trImgPrev{left:calc(50% - 50px - 34px - 40px)!important}
+#trImgView .trImgNext{right:calc(50% - 50px - 34px - 40px)!important;left:auto!important}
 #trImgView .trImgStage{padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))!important}
-/* v344: 保存などの主ボタン（プロフィールの保存、目標の保存など）を少し小さく、細身でスタイリッシュに。色は今のテーマのまま。 */
-.portalPrimary,.portalGoalSave,#screen-goal-tools .portalGoalSave{display:block!important;width:min(100%,320px)!important;min-height:44px!important;margin-left:auto!important;margin-right:auto!important;border-radius:999px!important;font-size:14px!important;letter-spacing:.1em!important;box-shadow:0 4px 12px rgba(0,0,0,.12),inset 0 1px 0 rgba(255,255,255,.32)!important}
-#screen-goal-tools .portalGoalSave{min-height:46px!important}
+.trSave{min-height:40px!important;height:auto!important;padding:0 26px!important;border-radius:999px!important;font-size:14px!important;font-weight:900!important;letter-spacing:.14em!important;box-shadow:0 4px 12px rgba(0,0,0,.14),inset 0 1px 0 rgba(255,255,255,.32)!important;transition:transform .08s ease}
+.trSave:active{transform:scale(.97)}
+.trSave.trSaveSolo{display:block!important;width:auto!important;min-width:170px!important;max-width:100%!important;margin-left:auto!important;margin-right:auto!important}
+/* 保存しました（どの保存でも同じ形で上に出る） */
+#trSavedToast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top,0px));transform:translate(-50%,-140%);z-index:2147483600;display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:999px;background:rgba(20,22,21,.94);color:#fff;font-size:14px;font-weight:900;letter-spacing:.08em;box-shadow:0 10px 26px rgba(0,0,0,.28);transition:transform .25s ease,opacity .25s ease;opacity:0;pointer-events:none;white-space:nowrap;max-width:calc(100vw - 32px)}
+#trSavedToast.on{transform:translate(-50%,0);opacity:1}
+#trSavedToast i{display:inline-flex;width:20px;height:20px;border-radius:50%;background:var(--gold,#d8b52a);color:#1d2421;align-items:center;justify-content:center;font-style:normal;font-size:12px}
 </style>
+<script id="v345-save-unified-js">
+/* v345: 保存ボタンに共通の形を付け、「保存しました」を画面の上にはっきり出す（保存の処理そのものは変えない） */
+(function(){
+  const SOLO=['#portalSaveName','#trChatNameSave','#portalSaveCommonGoals','#trEventNoticeSave','#flowProxyEditSave','#flowSaveGoal','#portalClaimSave','#trChatPeopleSave','#trRoomCreatorsSave','#trStage3Register'];
+  const PAIR=['[data-act="save"]','[data-x="save"]'];
+  function mark(root){
+    (root||document).querySelectorAll(SOLO.join(',')).forEach(b=>{b.classList.add('portalPrimary','trSave','trSaveSolo');b.style.removeProperty('width');});
+    (root||document).querySelectorAll(PAIR.join(',')).forEach(b=>b.classList.add('trSave'));
+    (root||document).querySelectorAll('.portalPrimary').forEach(b=>{if(b.closest('#trImgView'))return;b.classList.add('trSave');const p=b.parentElement;const cs=p?getComputedStyle(p):null;if(!cs||(cs.display!=='grid'&&cs.display!=='flex'))b.classList.add('trSaveSolo');});
+  }
+  let el=null,timer=0,last=0;
+  window.__trSavedToast=function(msg){
+    const now=Date.now();if(now-last<1500)return;last=now;
+    if(!el){el=document.createElement('div');el.id='trSavedToast';el.setAttribute('role','status');el.setAttribute('aria-live','polite');document.body.appendChild(el);}
+    el.innerHTML='<i>✓</i><span></span>';el.querySelector('span').textContent=String(msg||'保存しました').slice(0,40);
+    requestAnimationFrame(()=>el.classList.add('on'));clearTimeout(timer);timer=setTimeout(()=>el.classList.remove('on'),1800);
+  };
+  // 画面のどこかに「保存しました」と出たら、上にも同じ形で知らせる
+  const seen=new WeakMap();
+  function check(node){
+    const t=(node.nodeType===3?node.textContent:node.textContent)||'';
+    if(!/保存しました/.test(t)||t.length>160)return;
+    const host=node.nodeType===3?node.parentElement:node;if(!host||host.id==='trSavedToast'||host.closest?.('#trSavedToast'))return;
+    if(host.offsetParent===null&&getComputedStyle(host).position!=='fixed')return;
+    if(seen.get(host)===t)return;seen.set(host,t);
+    const m=t.match(/[^。\n]*保存しました/);window.__trSavedToast(m?m[0].trim().slice(-24):'保存しました');
+  }
+  new MutationObserver(ms=>{for(const m of ms){if(m.type==='characterData')check(m.target);else for(const n of m.addedNodes){if(n.nodeType===1){mark(n);check(n);}else if(n.nodeType===3)check(n);} if(m.type==='childList'&&m.target&&m.target.nodeType===1&&m.addedNodes.length)check(m.target);}}).observe(document.documentElement,{childList:true,subtree:true,characterData:true});
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>mark());else mark();
+})();
+</script>
 </body>
 </html>
