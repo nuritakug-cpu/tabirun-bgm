@@ -1,3 +1,5 @@
+<!-- TOP RUN PORTAL v344 | 2026-11-07 | Parent physical v343. 写真の拡大表示：左右の矢印を写真にかからない下の段へ移し、左右に払っても前後の写真へ。保存ボタンと主ボタン（.portalPrimary/.portalGoalSave）を少し小さく細身のデザインに（色はテーマのまま）。 -->
+<!-- TOP RUN PORTAL v343 | 2026-11-07 | Parent physical v342. FIX: iPhoneでスクロール中に下のメニューが上に引っ張られ下に隙間ができる問題（Safariのバーの出し入れで高さが変わったとき、スクロールが止まってから位置を合わせる）。そのほか変更なし。 -->
 <!-- TOP RUN PORTAL v342 | 2026-11-06 | Parent physical v341. Staff athlete menu includes PORTAL native competitions for entry review, target-time edit and cancellation with existing gateway nativeRaceEntries; no second Firebase app/auth/UID/profileId/path. Staff native writes require aligned integrated Rules (not changed or deployed here), and show permission-denied explicitly. EVENT BASE unchanged. -->
 <!-- TOP RUN PORTAL v341 | 2026-11-06 | Parent physical v340. PROFILE preview display name (not chat alias), fully opaque readable comment overlay, explicit comment save success after existing Firebase update. RACE registration deadline notice shared above self/proxy selector; closed proxy new-entry fields hidden (server-side safeguards unchanged). No Firebase/Auth/UID/profileId/Rules/write-path changes. -->
 <!-- TOP RUN PORTAL v340 | 2026-11-06 | Parent physical v339. FIX native PORTAL child race-goal update premature runTransaction null abort: verified read + limited targetTime-only update + readback. Add large in-page save progress/success/failure notice and button press feedback. Existing Auth/UID/profileId/Rules/save-path/other race data unchanged. -->
@@ -26188,6 +26190,7 @@ body.portalChatIsolated:not(.portalFieldInputActive) #screen-chat>main.chatMain{
   //   今は下のメニューの実際の位置を測り、見えている下端との差だけ直す（上にも下にも直す）。
   //   画面のスクロールの仕組み（overflowなど）は一切変えない（Androidでスクロールできなくなる事故を避ける）。
   let curLift=0;
+  let liftTimer=0,lastMove=0;const liftLater=()=>{lastMove=Date.now();clearTimeout(liftTimer);liftTimer=setTimeout(lift,300);};
   function lift(){
     root.style.setProperty('--trTabsH',(tabs.offsetHeight||72)+'px');
     const vv=window.visualViewport;
@@ -26205,9 +26208,11 @@ body.portalChatIsolated:not(.portalFieldInputActive) #screen-chat>main.chatMain{
   function sync(){body.classList.toggle('portalFieldInputActive',isField(document.activeElement));lift();}
   document.addEventListener('focusin',()=>setTimeout(sync,0));
   document.addEventListener('focusout',()=>setTimeout(sync,120));
-  window.visualViewport?.addEventListener('resize',lift);
+  // v343: スクロール中に画面の高さが変わったとき（Safariの下のバーの出し入れ）は、すぐに動かさず、止まってから合わせる。
+  //   スクロール中にすぐ合わせていたため、下のメニューが上に引っ張られて下に隙間ができていた。文字入力中（キーボード）はすぐ合わせる。
+  window.visualViewport?.addEventListener('resize',()=>{if(!body.classList.contains('portalFieldInputActive')&&Date.now()-lastMove<700)liftLater();else lift();});
+  window.addEventListener('touchmove',()=>{lastMove=Date.now();},{passive:true});
   // v231: スクロール中は下のメニューを動かさない（止まってから位置を合わせ直す）
-  let liftTimer=0,lastMove=0;const liftLater=()=>{lastMove=Date.now();clearTimeout(liftTimer);liftTimer=setTimeout(lift,250);};
   window.visualViewport?.addEventListener('scroll',liftLater);
   window.addEventListener('scroll',liftLater,{passive:true});
   window.addEventListener('orientationchange',()=>setTimeout(sync,300));
@@ -26543,6 +26548,10 @@ window.__trFilePickStart=function(input){
     let p0=0,s0=1,mx=0,my=0,tx0=0,ty0=0,sx=0,sy=0,lastTap=0,moved=false;
     const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
     const stage=v.querySelector('.trImgStage');
+    // v344: 写真が2枚以上のときは、左右に指で払って前後の写真へ（拡大中は移動のまま）
+    let swX=0,swY=0,swOn=false;
+    stage.addEventListener('touchstart',e=>{if(e.touches.length===1){swX=e.touches[0].clientX;swY=e.touches[0].clientY;swOn=true;}else swOn=false;},{passive:true});
+    stage.addEventListener('touchend',e=>{if(!swOn||sc>1||ids.length<2)return;swOn=false;const t=e.changedTouches&&e.changedTouches[0];if(!t)return;const dx=t.clientX-swX,dy=t.clientY-swY;if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.5)go(dx<0?1:-1);},{passive:true});
     stage.addEventListener('touchstart',e=>{
       moved=false;
       if(e.touches.length===2){p0=dist(e.touches);s0=sc;mx=(e.touches[0].clientX+e.touches[1].clientX)/2;my=(e.touches[0].clientY+e.touches[1].clientY)/2;tx0=tx;ty0=ty;}
@@ -28582,5 +28591,17 @@ html[data-portal-personal-color="matte"] #screen-management-settings :is(#portal
   });
 })();
 </script>
+
+<style id="v344-save-buttons">
+/* v344: 写真の拡大表示 ― 左右の矢印は写真にかからない下の段へ。保存ボタンは小さく細身に。 */
+#trImgView .trImgSave{min-width:118px!important;height:40px!important;padding:0 22px!important;border-radius:999px!important;font-size:14px!important;font-weight:900!important;letter-spacing:.12em!important;box-shadow:0 6px 18px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.35)!important;bottom:calc(20px + env(safe-area-inset-bottom,0px))!important}
+#trImgView .trImgPrev,#trImgView .trImgNext{top:auto!important;transform:none!important;bottom:calc(20px + env(safe-area-inset-bottom,0px))!important;width:40px!important;height:40px!important;font-size:20px!important;line-height:1!important;background:rgba(255,255,255,.08)!important;border:1px solid rgba(255,255,255,.28)!important}
+#trImgView .trImgPrev{left:calc(50% - 59px - 52px)!important}
+#trImgView .trImgNext{right:calc(50% - 59px - 52px)!important;left:auto!important}
+#trImgView .trImgStage{padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))!important}
+/* v344: 保存などの主ボタン（プロフィールの保存、目標の保存など）を少し小さく、細身でスタイリッシュに。色は今のテーマのまま。 */
+.portalPrimary,.portalGoalSave,#screen-goal-tools .portalGoalSave{display:block!important;width:min(100%,320px)!important;min-height:44px!important;margin-left:auto!important;margin-right:auto!important;border-radius:999px!important;font-size:14px!important;letter-spacing:.1em!important;box-shadow:0 4px 12px rgba(0,0,0,.12),inset 0 1px 0 rgba(255,255,255,.32)!important}
+#screen-goal-tools .portalGoalSave{min-height:46px!important}
+</style>
 </body>
 </html>
