@@ -1,3 +1,5 @@
+<!-- TOP RUN PORTAL v371 | 2026-11-08 | Parent v370 (Rules v370 のまま). 自己ベストの「公認」の印：種目名の横の大きな札（縦に折り返していた）をやめ、日付の横に小さな金色の文字で控えめに表示。表示だけ。 -->
+<!-- TOP RUN PORTAL v370 | 2026-11-08 | Parent v369. REQUIRES Rules v370 (TOPRUNRULESv370.json)。チャットの写真：1日10枚・1回5枚。1日の枚数を端末ではなくFirebase側（chatImageQuota/<uid>：日付と枚数だけ）で数え、写真の保存と枚数の記録を1回の書き込みにまとめ、Rulesが上限を超える書き込みを拒否する（別端末・データ消去・直接書き込みでも超えられない）。開発者は上限なし。通信量は写真1回につき数十バイト増えるだけ。 -->
 <!-- TOP RUN PORTAL v369 | 2026-11-08 | Parent v368. 個人記録：記録の「管理登録・非公認」「管理登録・公認申告」「EVENT BASE正式結果（読取専用）」などの分かりにくい表示を削除（駅伝の第○区間だけ残す）。公認ベストの下の説明文を削除。公認ベストを装飾（金の枠・★OFFICIAL・日付・大会名）。自己ベストが公認記録なら「公認」の印。表示だけ、通信量の増加なし。 -->
 <!-- TOP RUN PORTAL v368 | 2026-11-08 | Parent v367. (1) 豊川長距離記録会（第1回・EVENT BASE eventbase_mu4ujce3_xxx1）の記録を公認大会として扱う（紐付け記録・EVENT BASE正式結果）。駅伝（第2回）は非公認のまま。(2) イベント管理の一覧・検索に、PORTALのイベントに無いEVENT BASEの過去の大会（豊川・半田）も見るだけの行として表示。読み込み済みの情報だけを使い、通信量の増加なし・Rules変更なし。 -->
 <!-- TOP RUN PORTAL v367 | 2026-11-08 | Parent v366. イベント管理：大会の「公認・非公認」の選択が出走条件の欄の中にあり、出走受付をしない大会（過去大会の一括取り込みなど）では隠れて変更できなかったのを、独立した欄にして大会なら常に選べるようにした（保存・読込の仕組みは既存のまま）。公認にすると、その大会の記録は公認大会表示・公認ベストの対象になる。「まとめて取り込む」ボタンは押せないとき薄く表示。通信量の増加なし・Rules変更なし。 -->
@@ -6709,7 +6711,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v369</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v371</b></div>
   </div>
 </div>
 
@@ -6946,7 +6948,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v369</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v371</b></div>
   </div>
 </div>
 
@@ -11345,7 +11347,7 @@ const gateway=window.__TR_PORTAL_SYNC__;
     const latestPbMetric=trCrHeroV358(isSelf,person); // v358: 名前・学年/ゼッケン・画像・最新のベスト更新
     const personal=portalRecFor();portalUpdateRecordMetricOptions();const raceRows=personal.filter(portalIsRaceRecord);$('crRecordCount').innerHTML=raceRows.length+'<em>件</em>';$('crRelayCount').innerHTML=raceRows.filter(r=>r.metric==='relay').length+'<em>大会</em>';
     // v358: 種目は小さな金のラベル、記録は大きな数字、日付を添える（タップの動きは今までどおり）
-    $('crPbGrid').innerHTML=['800','1500','3000'].map(m=>{const r=portalRecBest(m);return `<button type="button" class="crPbCard trPb${m===latestPbMetric?' trPbLatest':''}${r?'':' trPbNone'}" data-cr-open-metric="${m}"><span class="trPbHead"><small>${portalMetricNames[m]}</small>${r&&portalIsCertifiedRecord(r)?'<em class="trPbCert">公認</em>':''}<i aria-hidden="true"></i></span><b>${esc(r?.time||'—')}</b><em>${r?esc(String(r.date||'').replace(/-/g,'.')):'記録なし'}</em></button>`}).join('');
+    $('crPbGrid').innerHTML=['800','1500','3000'].map(m=>{const r=portalRecBest(m);return `<button type="button" class="crPbCard trPb${m===latestPbMetric?' trPbLatest':''}${r?'':' trPbNone'}" data-cr-open-metric="${m}"><span class="trPbHead"><small>${portalMetricNames[m]}</small><i aria-hidden="true"></i></span><b>${esc(r?.time||'—')}</b><em>${r?esc(String(r.date||'').replace(/-/g,'.')):'記録なし'}${r&&portalIsCertifiedRecord(r)?'<span class="trPbCertTxt">公認</span>':''}</em></button>`}).join('');
     $('crSecondaryPbGrid').innerHTML=['relay','1000'].map(m=>{const r=portalRecBest(m);return `<button type="button" class="crPbCard trPb trPbWide${r?'':' trPbEmpty'}" data-cr-open-metric="${m}"><span class="trPbHead"><small>${portalMetricNames[m]}</small>${m==='relay'?'<em>区間記録</em>':''}</span><b>${r?esc(r.time||'—'):'記録なし'}</b></button>`}).join('');
     const practiceMetrics=[...new Set(personal.filter(portalIsPracticeRecord).map(r=>r.metric))].sort(portalMetricSort);
     $('crOtherGrid').innerHTML=practiceMetrics.map(m=>{const r=portalPracticeBest(m);return `<button type="button" class="crOtherItem" data-cr-practice-metric="${esc(m)}"><small>${esc(portalRecordMetricLabel(m))}</small><b>${esc(r?.time||'—')}</b><em>${esc(r?(r.recordKind==='TT'?'TT':r.recordKind==='selection'?'選考':r.recordKind==='trial'?'試走':'練習計測')+' 参考最速':'記録なし')}</em></button>`}).join('')||'<span class="portalHelp">練習計測記録はありません。</span>';
@@ -20406,16 +20408,29 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       await dbMod.update(ref(''),u);
     };
     // v233: チャットの写真。本体（chatImages）・見本（chatImageThumbs）・一覧（chatImageIndex：日時だけ）を別々に保存。
-    gate.chatImagePut=async(id,full,thumb)=>{
+    gate.chatImagePut=async(id,full,thumb,nth0=0)=>{
       if(!gate.canSendChat()||auth.currentUser?.uid!==gate.uid)throw Error('本人認証・利用承認が必要です');
       if(!/^i[A-Za-z0-9_]{8,60}$/.test(String(id||'')))throw Error('画像IDが不正です');
       const pre='data:image/jpeg;base64,';
       if(typeof full!=='string'||!full.startsWith(pre)||full.length>360000)throw Error('画像が大きすぎます');
       if(typeof thumb!=='string'||!thumb.startsWith(pre)||thumb.length>90000)throw Error('見本の画像が大きすぎます');
       const at=Date.now();
-      await dbMod.set(ref('chatImages/'+id),{uid:gate.uid,at,data:full});
-      await dbMod.set(ref('chatImageThumbs/'+id),{uid:gate.uid,at,data:thumb});
-      await dbMod.set(ref('chatImageIndex/'+id),{uid:gate.uid,at}).catch(e=>console.warn('[TOP RUN v233] index',String(e?.code||e?.message||e).slice(0,60)));
+      // v370: 本体・見本・一覧と、今日の枚数の記録（chatImageQuota/<uid>）を1回の書き込みでまとめて保存する。
+      //   Rules v370 が「今日の枚数が10枚以内で、1枚ずつ増えていること」を確認し、超えたら全部を拒否する。開発者は枚数の記録なし。
+      const u={};
+      u['chatImages/'+id]={uid:gate.uid,at,data:full};
+      u['chatImageThumbs/'+id]={uid:gate.uid,at,data:thumb};
+      u['chatImageIndex/'+id]={uid:gate.uid,at};
+      const nth=Number(nth0)||0;
+      if(nth>0)u['chatImageQuota/'+gate.uid]={day:Math.floor((Date.now()+32400000)/86400000),n:nth,at:{'.sv':'timestamp'}};
+      await dbMod.update(ref(''),u);
+    };
+    // v370: 今日送った写真の枚数（Firebaseの記録）。日付が違えば0。
+    gate.chatImageQuotaGet=async()=>{
+      if(!gate.uid||auth.currentUser?.uid!==gate.uid)return 0;
+      const v=(await dbMod.get(ref('chatImageQuota/'+gate.uid))).val();
+      const day=Math.floor((Date.now()+32400000)/86400000);
+      return v&&Number(v.day)===day?Math.max(0,Number(v.n)||0):0;
     };
     // 画像を1枚読む。ない（削除済み）なら ''。読めない（権限・通信）ときは例外。
     gate.chatImageGet=async(id,kind)=>{
@@ -26652,7 +26667,7 @@ window.__trFilePickStart=function(input){
   'use strict';
   const COMMON_ON=true; // v255: 共通チャットでも写真を送れるようにする（ルームと同じ仕組み・同じ1日の上限）
   const g=()=>window.__TR_PORTAL_SYNC__;
-  const LIMIT=5,PER_MSG=5,FULL_MAX=1600,FULL_BYTES=250*1024,THUMB_MAX=640,KEEP_DAYS=30; // v240: 見本を320→640pxに（くっきり表示）
+  const LIMIT=10,PER_MSG=5,FULL_MAX=1600,FULL_BYTES=250*1024,THUMB_MAX=640,KEEP_DAYS=30; // v240: 見本を320→640pxに（くっきり表示）
   const ID_RE=/^i[A-Za-z0-9_]{8,60}$/;
   const PLACE=/^📷 写真( ?\d+枚)?$/;
   const say=(t,m)=>{try{window.showActionFeedback?window.showActionFeedback(t,m):alert(t+'\n'+m);}catch(_){}};
@@ -26875,6 +26890,8 @@ window.__trFilePickStart=function(input){
     if(ctx!=='room'&&!COMMON_ON)return;
     const gate=g();
     if(!gate?.canSendChat?.()){say('送信できません','本人接続が必要です。');return;}
+    // v370: 1日の枚数はFirebase側の記録（chatImageQuota）で数える。端末の数は表示用の控え。
+    if(!isDev()&&gate.chatImageQuotaGet){try{const n=await gate.chatImageQuotaGet();localStorage.setItem(countKey(),String(n));}catch(_){}}
     const left=Math.min(PER_MSG,LIMIT-used());
     if(left<=0){say('送信できません','写真は1日'+LIMIT+'枚までです。');return;}
     const cut=files.length>left;files=files.slice(0,left);
@@ -26889,7 +26906,7 @@ window.__trFilePickStart=function(input){
       const images=[];
       for(const r of list){
         const id='i'+Date.now()+'_'+Math.random().toString(36).slice(2,12).replace(/[^A-Za-z0-9]/g,'x');
-        await gate.chatImagePut(id,r.full,r.thumb);
+        await gate.chatImagePut(id,r.full,r.thumb,isDev()?0:used()+images.length+1); // v370: 今日の何枚目か（Rulesが上限10枚を確認）
         mem.set('full:'+id,r.full);mem.set('thumb:'+id,r.thumb);cput('full:'+id,r.full);cput('thumb:'+id,r.thumb);
         images.push({id,w:r.w,h:r.h});
       }
@@ -26900,7 +26917,8 @@ window.__trFilePickStart=function(input){
       if(input&&caption){input.value='';input.dispatchEvent(new Event('input',{bubbles:true}));}
     }catch(e){
       pending=null;console.warn('[TOP RUN v237] image send',e);
-      say('写真を送れませんでした','通信状態を確認して、もう一度お試しください。'+(e?.code?'\n原因：'+String(e.code).slice(0,40):''));
+      say('写真を送れませんでした',/PERMISSION|permission/.test(String(e?.code||e?.message||''))?'写真は1日'+LIMIT+'枚までです。日付が変わってから送ってください。':'通信状態を確認して、もう一度お試しください。'+(e?.code?'\n原因：'+String(e.code).slice(0,40):''));
+      if(!isDev()&&gate.chatImageQuotaGet){gate.chatImageQuotaGet().then(n=>{try{localStorage.setItem(countKey(),String(n));}catch(_){}}).catch(()=>{});}
     }finally{busy=false;btn.disabled=false;}
   }
   const ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg>';
@@ -29172,7 +29190,7 @@ html[data-portal-personal-color="winter"] .portalNameRow button.trSave{backgroun
 #crOfficialGrid .trCertNone{border-style:dashed!important;background:transparent!important;box-shadow:none!important}
 #crOfficialGrid .trCertNone .trCertMark{opacity:.35}
 #crOfficialGrid .trCertNone::after{display:none}
-#crPbGrid .trPbCert{font-style:normal;font-size:9px;font-weight:1000;letter-spacing:.08em;padding:2px 6px;border-radius:999px;background:var(--gold,#d4af1e);color:#2a2105;margin-left:6px;line-height:1.3}
+#crPbGrid .trPbCertTxt{display:inline-block;margin-left:6px;font-size:9px;font-weight:900;letter-spacing:.08em;color:var(--gold,#b8930f);white-space:nowrap;vertical-align:1px} /* v371: さりげなく日付の横に小さく */
 </style>
 </body>
 </html>
