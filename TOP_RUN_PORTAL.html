@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v357 | 2026-11-08 | Parent v356. 過去大会記録の一括取り込み：本人の照合先を、承認済み（memberAccess の uid・profileId＝Rulesが照合する正本）に変更（v356はpermission_deniedで全件保存不可）。同じ名前の承認者が複数いる場合は新しく承認された方に付ける。REQUIRES Rules v357（pastRecords の結果区分に DNF を追加）。 -->
 <!-- TOP RUN PORTAL v356 | 2026-11-08 | Parent v355. 開発者設定に「過去大会記録の一括取り込み（開発者）」を追加：2026年度大会記録（14大会・197件、豊川除く）を、PORTALのイベント（開催済み・非公認・出走受付なし）として作成し、記録を非公認で pastRecords に保存（既存の保存経路 saveEvent／saveStaffPastRecord、記録IDは大会IDに結び付く固定ID。既存の大会・記録は上書きせず、未登録選手は登録後の再実行で追加）。結果区分にDNF（途中棄権）を追加。会場プルダウンに瑞穂北陸上競技場を追加。 -->
 <!-- TOP RUN PORTAL v355 | 2026-11-08 | Parent v354. 大会記録の読み取り対象を「第1回・第2回」固定から「EVENT BASEにリンクしている大会すべて」に統一（選手一覧・個人記録の駅伝記録、記録の紐付けの日付、記録確認のプルダウン、期間一覧）。駅伝記録（計測値）を第3回以降も第2回と同じ方法で読む。アンダーバーなしのEVENTBASE…ファイル名もEVENT BASEとして認める。 -->
 <!-- TOP RUN PORTAL v354 | 2026-11-08 | Parent physical v353. 文字スタンプ：2〜3文字が小さすぎたのを修正（「！」「？」・英数字を半分の幅で数え、収まらないときは1割まで詰める）。見た目だけ、通信量の増加なし。 -->
@@ -6692,7 +6693,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v356</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v357</b></div>
   </div>
 </div>
 
@@ -6929,7 +6930,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v356</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v357</b></div>
   </div>
 </div>
 
@@ -27916,7 +27917,7 @@ body.portalChatIsolated > #trQuick{visibility:visible!important;opacity:1!import
   function visible(){if(!mount())return;$('trPastImpSection').hidden=!isDev();}
   async function buildPlan(){
     const g=gate();
-    if(!isDev()||!g?.loadPastEventOverview||!g?.saveStaffPastRecord||!g?.saveEvent)throw Error('開発者の本人認証を確認できません');
+    if(!isDev()||!g?.loadPastEventOverview||!g?.saveStaffPastRecord||!g?.saveEvent||!g?.listApprovedMembers)throw Error('開発者の本人認証を確認できません');
     const items=g.eventItems||{};
     const events=DATA.events.map(e=>{
       let id=items[e.id]?e.id:'';
@@ -27924,16 +27925,18 @@ body.portalChatIsolated > #trQuick{visibility:visible!important;opacity:1!import
       return {...e,useId:id||e.id,exists:!!id};
     });
     const evById=new Map(events.map(e=>[e.id,e]));
-    const choices=(window.__trPastChoices?.()||[]).filter(c=>c&&c.uid&&c.profileId);
+    // v357: 本人は承認済み（memberAccess の uid・profileId）から取る。Rulesが照合する profileId と同じ正本。
+    // 同じ名前の承認者が複数いるときは二重登録とみなし、新しく承認された方に付ける（方針どおり）。
+    const members=(await g.listApprovedMembers()).filter(c=>c&&c.uid&&c.profileId);
     const byName=new Map();
-    for(const c of choices){const k=norm(c.name);if(!byName.has(k))byName.set(k,new Map());byName.get(k).set(c.uid,c);}
+    for(const c of members){for(const nm of new Set([norm(c.name),norm(c.reg)])){if(!nm)continue;if(!byName.has(nm))byName.set(nm,new Map());byName.get(nm).set(c.uid,c);}}
     const overview=await g.loadPastEventOverview();
     const save=[],saved=[],waiting=new Map(),dup=new Map();
     for(const r of DATA.records){
       const ev=evById.get(r.e),people=byName.get(norm(r.n));
       if(!people||!people.size){waiting.set(r.n,(waiting.get(r.n)||0)+1);continue;}
-      if(people.size>1){dup.set(r.n,(dup.get(r.n)||0)+1);continue;}
-      const person=[...people.values()][0];
+      const person=[...people.values()].sort((a,b)=>(Number(b.at)||0)-(Number(a.at)||0))[0];
+      if(people.size>1)dup.set(r.n,(dup.get(r.n)||0)+1);
       const id='local-flow-'+ev.useId+'__'+r.k;
       if(overview?.[person.uid]?.[id]){saved.push(r);continue;}
       save.push({person,value:{id,name:ev.title+(r.r?'（'+r.r+'）':''),date:r.d,metric:r.m,time:r.s==='time'?r.t:'',status:r.s,venue:ev.venue||'',official:false}});
@@ -27949,7 +27952,7 @@ body.portalChatIsolated > #trQuick{visibility:visible!important;opacity:1!import
         '<b>大会</b>：新しく作る '+newEv.length+'件 ／ すでにある '+(plan.events.length-newEv.length)+'件<br>'+
         '<b>記録</b>：保存する '+plan.save.length+'件 ／ 保存済み '+plan.saved.length+'件'+
         (plan.waiting.size?'<br><b>PORTAL未登録のため待ち</b>：'+list(plan.waiting):'')+
-        (plan.dup.size?'<br><b>同じ名前が複数いるため保留</b>：'+list(plan.dup):'');
+        (plan.dup.size?'<br><b>同じ名前の承認者が複数（新しく承認された方に付けます）</b>：'+list(plan.dup):'');
       $('trPastImpRun').hidden=!(newEv.length||plan.save.length);
       say(newEv.length||plan.save.length?'':'取り込む新しい大会・記録はありません。');
     }catch(e){plan=null;say('確認できませんでした：'+String(e?.message||e).slice(0,160));}
