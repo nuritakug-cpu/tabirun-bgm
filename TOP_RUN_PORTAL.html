@@ -1,3 +1,5 @@
+<!-- TOP RUN PORTAL v361 | 2026-11-08 | Parent v360. 個人記録の新デザインを各テーマ（標準・blue・sakura・winter・matte）の配色に合わせた：固定色をやめ、テーマの文字色・カード色・線・アクセント（--op-fg/--op-bg/--op-line/--op-muted/--op-accent/--gold）を使用。濃いテーマでは上部カードもテーマのカード色。濃いテーマで文字が見えなかった見出し・自己ベスト・駅伝・詳細ボタンを修正。 -->
+<!-- TOP RUN PORTAL v360 | 2026-11-08 | Parent v359. 推移グラフ（個人記録・詳細とも）：点を等間隔に戻し、ベストの階段線をやめて各大会を直線でつなぐ。全ての点にタイムを表示（山は上・谷は下、重なれば反対側）。アニメーション：点とタイムが出る→線が斜めに次の点へ伸びる→次の点とタイム…を順に。個人記録を開いたとき・詳細を開いたとき・種目切替時に再生（同じ内容の再描画では再生しない）。目盛りは4本程度に整理。端末内の描画のみで通信なし。 -->
 <!-- TOP RUN PORTAL v359 | 2026-11-08 | Parent v358. 個人記録：上部の濃い帯を上のタブ（ヘッダー）から離し、角丸の独立したカードに。数字を細めの字幅に（最新記録27px・自己ベスト18px・件数17px、字間を詰める）。最新のベスト更新はタップで非表示、「最新のベスト更新を表示」で戻す（この端末だけの表示設定・Firebase保存なし）。 -->
 <!-- TOP RUN PORTAL v358 | 2026-11-08 | Parent v357. 個人記録の最初の画面をイメージ図どおりに刷新（トップページと同じ雰囲気）：上部を濃い帯にまとめ、プロフィール画像（未設定はロゴ）・名前・学年/ゼッケンNo（基本プロフィール）・大会記録件数/駅伝大会数・最新のベスト更新（推移の線つき）を表示。見出しを金の縦線＋英字の形に。自己ベストは種目ラベル・記録・日付、その他の種目（駅伝・1000m）を2枚に。並びを 自己ベスト→推移→出場大会→公認ベスト→その他の記録 に。推移グラフ（概要）は日付の間隔どおり・ベストの推移を金の太線・数字はベスト更新と最新だけで重なり回避、開いたときのアニメーション（端末内の描画のみ・通信なし）。出場大会は「詳細」で全大会を1行ずつ表示。タップの動き・詳細画面（記録一覧・グラフ詳細）は変更なし（グラフ詳細は数字の重なりだけ回避）。Firebaseの読み書きは追加なし（プロフィール画像は既存の端末保存つき読込を利用）。 -->
 <!-- TOP RUN PORTAL v357 | 2026-11-08 | Parent v356. 過去大会記録の一括取り込み：本人の照合先を、承認済み（memberAccess の uid・profileId＝Rulesが照合する正本）に変更（v356はpermission_deniedで全件保存不可）。同じ名前の承認者が複数いる場合は新しく承認された方に付ける。REQUIRES Rules v357（pastRecords の結果区分に DNF を追加）。 -->
@@ -6699,7 +6701,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v359</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v361</b></div>
   </div>
 </div>
 
@@ -6936,7 +6938,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v359</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v361</b></div>
   </div>
 </div>
 
@@ -8150,9 +8152,9 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
     if(name === 'races') flowRenderMyRaces();
     if(name === 'flow-external') flowRenderExternal();
     if(name === 'flow-event') flowRenderEvent();
-    if(name === 'flow-manager'){ flowRenderManagerWorkspace(); window.__rpOpen?.(); }    if(name === 'competition-results') renderPortalPersonalRecord();
+    if(name === 'flow-manager'){ flowRenderManagerWorkspace(); window.__rpOpen?.(); }    if(name === 'competition-results'){ window.__trChartForce=true; renderPortalPersonalRecord(); }
     if(name === 'competition-records') renderPortalPersonalList();
-    if(name === 'competition-graph-detail') renderPortalPersonalGraphDetail();
+    if(name === 'competition-graph-detail'){ window.__trChartForce=true; renderPortalPersonalGraphDetail(); }
     if(name === 'athlete-directory') renderPortalAthleteDirectory();
   }
   function goBack(){
@@ -11241,123 +11243,67 @@ const gateway=window.__TR_PORTAL_SYNC__;
       btn.setAttribute('aria-pressed',String(active));
     });
     document.querySelectorAll('[data-portal-graph-legend]').forEach(node=>{
-      node.innerHTML=node.closest('#screen-competition-results')
-        ?'<span><i class="trLegBest"></i>ベストの推移（上ほど速い）</span><span><i class="trLegRace"></i>各大会</span>'+(portalPersonalGraphMode==='all'?'<span><i class="practice"></i>記録練習（同距離）</span>':'')
-        :'<span><i></i>大会記録</span>'+(portalPersonalGraphMode==='all'?'<span><i class="practice"></i>記録練習（同距離）</span>':'');
+      node.innerHTML='<span><i></i>大会記録</span>'+(portalPersonalGraphMode==='all'?'<span><i class="practice"></i>記録練習（同距離）</span>':'');
     });
   }
-  // v358: 個人記録の推移グラフ（概要）。日付の間隔どおりに点を置き、金色の太線＝ベストの推移（上ほど速い）。
-  // 数字はベスト更新と最新だけ、重なれば下へ。開いたときに線が伸び、点が順に現れる（端末内の描画だけで通信なし）。
-  var trChartSig='';
-  function trOverviewChartV358(metric){
-    const values=portalGraphRecords(metric).map(r=>({r,s:portalRecSeconds(r.time),t:Date.parse(String(r.date||'')+'T00:00:00')})).filter(v=>Number.isFinite(v.t));
-    const W=360,H=204,L=48,R=16,T=26,B=30;
+  // v360: 推移グラフ（個人記録・詳細とも）。点は等間隔。点とタイムが出る→線が斜めに次の点へ伸びる→次の点とタイム…の順に表示。
+  // 角を曲がる線（ベストの階段線）はやめ、各大会を直線でつなぐ。描画は端末内だけで通信なし。
+  var trChartSigO='',trChartSigD='';
+  function portalRecordChart(metric,detail=false){
+    const values=portalGraphRecords(metric).map(r=>({r,s:portalRecSeconds(r.time)}));
+    const W=detail?380:360,H=detail?236:204,L=detail?54:48,R=detail?18:16,T=detail?32:28,B=detail?36:32;
     let svg=`<rect class="crChartSurface" width="${W}" height="${H}" rx="14"/>`;
     if(!values.length)return svg+`<text class="crChartEmptyLabel" x="${W/2}" y="${H/2}" text-anchor="middle" font-size="15" font-weight="850">記録がありません</text>`;
     if(values.length===1){
       const v=values[0];
-      svg+=`<text class="crChartSingleKicker" x="${W/2}" y="50" text-anchor="middle" font-size="14" font-weight="850">記録 1件</text>`;
-      svg+=`<text class="crChartSingleTime" x="${W/2}" y="102" text-anchor="middle" font-size="30" font-weight="900">${esc(v.r.time)}</text>`;
-      svg+=`<text class="crChartSingleDate" x="${W/2}" y="129" text-anchor="middle" font-size="14" font-weight="800">${esc(String(v.r.date||'').replace(/-/g,'/'))}</text>`;
-      svg+=`<text class="crChartSingleHint" x="${W/2}" y="173" text-anchor="middle" font-size="12" font-weight="700">記録が2件以上になると推移を表示します</text>`;
+      svg+=`<text class="crChartSingleKicker" x="${W/2}" y="${detail?61:50}" text-anchor="middle" font-size="14" font-weight="850">記録 1件</text>`;
+      svg+=`<text class="crChartSingleTime" x="${W/2}" y="${detail?112:100}" text-anchor="middle" font-size="${detail?30:28}" font-weight="800">${esc(v.r.time)}</text>`;
+      svg+=`<text class="crChartSingleDate" x="${W/2}" y="${detail?142:127}" text-anchor="middle" font-size="14" font-weight="800">${esc(String(v.r.date||'').replace(/-/g,'/'))}</text>`;
+      svg+=`<text class="crChartSingleHint" x="${W/2}" y="${detail?188:172}" text-anchor="middle" font-size="12" font-weight="700">記録が2件以上になると推移を表示します</text>`;
       return svg;
     }
     const sig=metric+'|'+portalPersonalGraphMode+'|'+portalPersonalTargetId+'|'+values.map(v=>v.r.date+v.r.time).join(',');
-    const anim=sig!==trChartSig;trChartSig=sig;
-    const cls=(c)=>anim?' '+c:'';
-    const t0=Math.min(...values.map(v=>v.t)),t1=Math.max(...values.map(v=>v.t));
-    const span=Math.max(t1-t0,20*86400000),padT=span*0.05;
-    const fx=t=>L+(t-(t0-padT))/(span+2*padT)*(W-L-R);
+    let anim;
+    const force=window.__trChartForce===true;window.__trChartForce=false;
+    if(detail){anim=force||sig!==trChartSigD;trChartSigD=sig;}else{anim=force||sig!==trChartSigO;trChartSigO=sig;}
     const nums=values.map(v=>v.s),lo=Math.min(...nums),hi=Math.max(...nums);
-    const pad=Math.max(1.5,(hi-lo)*0.18),ymin=lo-pad,ymax=hi+pad;
+    const pad=Math.max(1.5,(hi-lo)*0.2),ymin=lo-pad,ymax=hi+pad;
     const step=[1,2,5,10,15,20,30,60,120].find(v=>(ymax-ymin)/v<=4)||300;
     const fy=v=>T+(v-ymin)/(ymax-ymin)*(H-T-B);
     const tick=v=>{const m=Math.floor(v/60),sec=Math.round(v-m*60);return m+':'+String(sec).padStart(2,'0');};
     for(let v=Math.ceil(ymin/step)*step;v<=ymax+1e-6;v+=step){
       const y=fy(v);
       svg+=`<line class="crChartGrid" x1="${L}" y1="${y.toFixed(1)}" x2="${W-R}" y2="${y.toFixed(1)}"/>`;
-      svg+=`<text class="crChartAxis" x="${L-8}" y="${(y+4).toFixed(1)}" text-anchor="end" font-size="11.5" font-weight="850">${tick(v)}</text>`;
+      svg+=`<text class="crChartAxis" x="${L-8}" y="${(y+4).toFixed(1)}" text-anchor="end" font-size="${detail?12:11.5}" font-weight="800">${tick(v)}</text>`;
     }
-    const d0=new Date(t0-padT),months=[];
-    for(let d=new Date(d0.getFullYear(),d0.getMonth()+1,1);d.getTime()<=t1+padT;d=new Date(d.getFullYear(),d.getMonth()+1,1))months.push(d);
-    const every=Math.max(1,Math.ceil(months.length/7));
-    if(months.length>=2)months.forEach((d,i)=>{if(i%every)return;const x=fx(d.getTime());svg+=`<text class="crChartDate" x="${x.toFixed(1)}" y="${H-10}" text-anchor="middle" font-size="10.5" font-weight="850">${d.getMonth()+1}月</text>`;});
-    else [values[0],values[values.length-1]].forEach((v,i)=>{svg+=`<text class="crChartDate" x="${fx(v.t).toFixed(1)}" y="${H-10}" text-anchor="${i?'end':'start'}" font-size="10.5" font-weight="850">${esc(String(v.r.date).slice(5).replace('-','/'))}</text>`;});
-    const P=values.map(v=>({x:fx(v.t),y:fy(v.s),v}));
-    svg+=`<polyline class="crChartLine trRaceLine${cls('trAnimFadeLine')}" points="${P.map(p=>p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ')}" fill="none" stroke-opacity=".3" stroke-width="1.4" stroke-linejoin="round"/>`;
-    const pbIdx=new Set(),bestPts=[];let b=Infinity;
-    P.forEach((p,i)=>{if(portalIsPracticeRecord(p.v.r))return;if(p.v.s<b){if(bestPts.length)bestPts.push([p.x,bestPts[bestPts.length-1][1]]);b=p.v.s;bestPts.push([p.x,p.y]);pbIdx.add(i);}});
-    const lastRace=[...P.keys()].filter(i=>!portalIsPracticeRecord(P[i].v.r)).pop();
-    if(bestPts.length){bestPts.push([P[lastRace??P.length-1].x,bestPts[bestPts.length-1][1]]);
-      svg+=`<polyline class="trBestLine${cls('trAnimDraw')}" pathLength="1" points="${bestPts.map(q=>q[0].toFixed(1)+','+q[1].toFixed(1)).join(' ')}" fill="none" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>`;}
+    const n=values.length,x0=L+16,x1=W-R-16,fx=i=>x0+i*(x1-x0)/(n-1);
+    const P=values.map((v,i)=>({x:fx(i),y:fy(v.s),v}));
+    const every=Math.max(1,Math.ceil(n/6));
+    P.forEach((p,i)=>{if(i%every&&i!==n-1)return;svg+=`<text class="crChartDate" x="${p.x.toFixed(1)}" y="${H-12}" text-anchor="middle" font-size="${detail?12:11}" font-weight="800">${esc(String(p.v.r.date||'').slice(5).replace('-','/'))}</text>`;});
+    const D=detail?0.5:0.45,lead=0.2;
+    if(anim){
+      for(let i=0;i<n-1;i++){const a=P[i],b=P[i+1];
+        svg+=`<line class="crChartLine trSeg" pathLength="1" style="--d:${(i*D+lead).toFixed(2)}s;--dur:${(D-lead).toFixed(2)}s" x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke-width="${detail?3:2.6}" stroke-linecap="round"/>`;}
+    }else svg+=`<polyline class="crChartLine" points="${P.map(p=>p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ')}" fill="none" stroke-width="${detail?3:2.6}" stroke-linejoin="round" stroke-linecap="round"/>`;
     P.forEach((p,i)=>{
-      const pb=pbIdx.has(i),practice=portalIsPracticeRecord(p.v.r);
-      const c=pb?'trPbPoint':practice?'crPracticePoint':'crChartPoint trMinorPoint';
-      svg+=`<circle class="${c}${cls('trAnimPop')}" style="--d:${(0.25+i*0.12).toFixed(2)}s" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${pb?5.5:3.8}" stroke-width="${pb?2:1.6}"/>`;
+      svg+=`<circle class="${portalIsPracticeRecord(p.v.r)?'crPracticePoint':'crChartPoint'}${anim?' trAnimPop':''}" style="--d:${(i*D).toFixed(2)}s" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${detail?5:4.6}" stroke-width="2"/>`;
     });
-    const boxes=[],lastI=P.length-1;
+    const boxes=[],fs=detail?12.5:12;
+    // 線の上に重ならないよう、山の点は上・谷の点は下にタイムを置く。重なれば反対側へ。
     P.forEach((p,i)=>{
-      const pb=pbIdx.has(i),last=i===lastI;if(!pb&&!last)return;
-      const text=String(p.v.r.time),w=text.length*7.2;
-      let anchor='middle',lx=p.x;if(p.x>W-R-w/2-2){anchor='end';lx=p.x+6;}else if(p.x<L+w/2+2){anchor='start';lx=p.x-6;}
-      const x0=anchor==='end'?lx-w:anchor==='start'?lx:lx-w/2;
-      const hit=yy=>boxes.some(o=>x0<o.x1&&x0+w>o.x0&&yy-12<o.y1&&yy+2>o.y0);
-      let below=last&&!pb,ly=below?p.y+19:p.y-11;
-      if(ly<14||hit(ly)){below=!below;ly=below?p.y+19:p.y-11;}
-      if(ly>H-B+8||hit(ly))return;
-      boxes.push({x0,x1:x0+w,y0:ly-12,y1:ly+2});
-      svg+=`<text class="crChartPointLabel${pb?' trPbLabel':''}${cls('trAnimFade')}" style="--d:${(0.5+i*0.12).toFixed(2)}s" x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anchor}" font-size="12" font-weight="800">${esc(text)}</text>`;
+      const text=String(p.v.r.time),w=text.length*fs*0.6;
+      const nb=[P[i-1],P[i+1]].filter(Boolean),avg=nb.reduce((t,q)=>t+q.y,0)/nb.length;
+      let above=p.y<=avg;
+      let anchor='middle',lx=p.x;if(p.x+w/2>W-4){anchor='end';lx=p.x+8;}else if(p.x-w/2<L-6){anchor='start';lx=p.x-8;}
+      const bx=anchor==='end'?lx-w:anchor==='start'?lx:lx-w/2;
+      const yOf=up=>up?p.y-11:p.y+fs+8;
+      const hit=yy=>yy<12||yy>H-B+10||boxes.some(o=>bx<o.x1&&bx+w>o.x0&&yy-fs<o.y1&&yy+2>o.y0);
+      let ly=yOf(above);if(hit(ly)){const alt=yOf(!above);if(!hit(alt))ly=alt;}
+      boxes.push({x0:bx,x1:bx+w,y0:ly-fs,y1:ly+2});
+      svg+=`<text class="crChartPointLabel${anim?' trAnimFade':''}" style="--d:${(i*D+0.06).toFixed(2)}s" x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anchor}" font-size="${fs}" font-weight="800">${esc(text)}</text>`;
     });
     return svg;
   }
-  function portalRecordChart(metric,detail=false){
-    if(!detail)return trOverviewChartV358(metric);
-    // Display-only chart: never mutate record values, dates or persistence.
-    const values=portalGraphRecords(metric).map(r=>({r,s:portalRecSeconds(r.time)}));
-    const W=detail?380:360,H=detail?236:204;
-    const left=detail?82:78,right=14,top=detail?42:38,bottom=detail?49:45;
-    const w=W-left-right,h=H-top-bottom;
-    let svg=`<rect class="crChartSurface" width="${W}" height="${H}" rx="14"/>`;
-    if(!values.length)return svg+`<text class="crChartEmptyLabel" x="${W/2}" y="${H/2}" text-anchor="middle" font-size="15" font-weight="850">記録がありません</text>`;
-    if(values.length===1){
-      const v=values[0],day=String(v.r.date||'').replace(/-/g,'/');
-      svg+=`<text class="crChartSingleKicker" x="${W/2}" y="${detail?61:50}" text-anchor="middle" font-size="${detail?15:14}" font-weight="850">記録 1件</text>`;
-      svg+=`<text class="crChartSingleTime" x="${W/2}" y="${detail?114:102}" text-anchor="middle" font-size="${detail?35:31}" font-weight="1000">${esc(v.r.time)}</text>`;
-      svg+=`<text class="crChartSingleDate" x="${W/2}" y="${detail?146:129}" text-anchor="middle" font-size="${detail?15:14}" font-weight="800">${esc(day)}</text>`;
-      svg+=`<line class="crChartGrid" x1="25" y1="${detail?165:146}" x2="${W-25}" y2="${detail?165:146}"/>`;
-      svg+=`<text class="crChartSingleHint" x="${W/2}" y="${detail?191:173}" text-anchor="middle" font-size="${detail?13:12}" font-weight="700">記録が2件以上になると推移を表示します</text>`;
-      return svg;
-    }
-    const nums=values.map(v=>v.s),range=Math.max(...nums)-Math.min(...nums);
-    const step=range>100?30:range>55?20:range>25?10:range>10?5:1;
-    const lo=Math.floor((Math.min(...nums)-step)/step)*step,hi=Math.ceil((Math.max(...nums)+step)/step)*step;
-    const fy=sec=>top+(sec-lo)/(hi-lo)*h,fx=i=>left+i*w/(values.length-1);
-    for(let sec=lo;sec<=hi+.01;sec+=step){
-      const y=fy(sec);
-      svg+=`<line class="crChartGrid" x1="${left}" y1="${y.toFixed(1)}" x2="${W-right}" y2="${y.toFixed(1)}"/>`;
-      svg+=`<text class="crChartAxis" x="${left-8}" y="${(y+4).toFixed(1)}" text-anchor="end" font-size="${detail?12.5:12}" font-weight="850">${esc(portalRecTime(sec))}</text>`;
-    }
-    const pts=values.map((v,i)=>`${fx(i).toFixed(1)},${fy(v.s).toFixed(1)}`).join(' ');
-    svg+=`<polyline class="crChartLine" points="${pts}" fill="none" stroke-width="${detail?3.5:3}" stroke-linejoin="round" stroke-linecap="round"/>`;
-    const showEvery=Math.ceil(values.length/5),labelBoxes=[];
-    values.forEach((v,i)=>{
-      const x=fx(i),y=fy(v.s),show=i===0||i===values.length-1||i%showEvery===0;
-      svg+=`<circle class="${portalIsPracticeRecord(v.r)?'crPracticePoint':'crChartPoint'}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${detail?5:4.5}" stroke-width="2"/>`;
-      if(show){
-        const first=i===0,last=i===values.length-1;
-        const labelX=first?x+12:last?x-5:x,anchor=first?'start':last?'end':'middle';
-        // v358: 数字どうしが重なるときは点の下へ。下でも重なるときは数字を省略（点のタップ先の一覧で確認できる）
-        const lw=String(v.r.time).length*7.4,x0=anchor==='start'?labelX:anchor==='end'?labelX-lw:labelX-lw/2;
-        const hit=yy=>labelBoxes.some(b=>x0<b.x1&&x0+lw>b.x0&&yy-12<b.y1&&yy+2>b.y0);
-        let ly=Math.max(17,y-12);if(hit(ly))ly=Math.min(H-bottom-3,y+20);
-        if(!hit(ly)){labelBoxes.push({x0,x1:x0+lw,y0:ly-12,y1:ly+2});
-        svg+=`<text class="crChartPointLabel" x="${labelX.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anchor}" font-size="${detail?13:12.5}" font-weight="950">${esc(v.r.time)}</text>`;}
-        const dateX=last?x-1:first?x+1:x;
-        svg+=`<text class="crChartDate" x="${dateX.toFixed(1)}" y="${H-bottom+23}" text-anchor="${anchor}" font-size="${detail?12.5:12}" font-weight="850">${esc(v.r.date.slice(5).replace('-','/'))}</text>`;
-      }
-    });
-    return svg;
-}
   function renderPortalPersonalRecord(){
     // Non-staff never get to select another person's page.
     if((!canManage || portalParticipantPreviewMode)&&!(window.__trFamilyPids?.().has(portalPersonalTargetId)))portalPersonalTargetId=portalSelfProfileId; // v263: 家族の記録
@@ -28971,7 +28917,7 @@ svg.trF.trF-svg text{letter-spacing:0}
 </style>
 <style id="v358-competition-record">
 /* v358: 個人記録の最初の画面（トップページと同じ雰囲気：濃い帯・金の縦線の見出し・極太の数字）。詳細画面は変更しない。 */
-html body #screen-competition-results .crHero.trCrHero{margin:-18px -12px 6px!important;border-radius:0 0 24px 24px!important;background:linear-gradient(135deg,#323938,#2b3130)!important;color:#fff!important;padding:14px 18px 20px!important;box-shadow:none!important;overflow:hidden!important;display:block!important;min-height:0!important}
+html body #screen-competition-results .crHero.trCrHero{margin:-18px -12px 6px!important;border-radius:0 0 24px 24px!important;background:var(--op-fg,#2b3534)!important;color:#fff!important;padding:14px 18px 20px!important;box-shadow:none!important;overflow:hidden!important;display:block!important;min-height:0!important}
 html body #screen-competition-results .crHero.trCrHero::before,html body #screen-competition-results .crHero.trCrHero::after{display:none!important}
 #screen-competition-results .trCrId{display:flex;align-items:center;gap:12px;min-width:0}
 #screen-competition-results .trCrLogo{position:static!important;flex:none;width:46px!important;height:46px!important;border-radius:10px!important;overflow:hidden;background:#252019;border:1px solid rgba(255,255,255,.18);transform:none!important;inset:auto!important;margin:0!important;padding:0!important;box-shadow:none!important}
@@ -28989,47 +28935,47 @@ html body #screen-competition-results .trCrStats em{font-size:9px!important;font
 #screen-competition-results .trCrLatest{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.12)}
 #screen-competition-results .trCrLatest[hidden]{display:none}
 #screen-competition-results .trCrLatestMain{display:flex;flex-direction:column;gap:4px;min-width:0}
-#screen-competition-results .trCrLatestMain small{font-size:9px;font-weight:800;letter-spacing:.26em;color:#D4AF1E}
+#screen-competition-results .trCrLatestMain small{font-size:9px;font-weight:800;letter-spacing:.26em;color:var(--gold,#D4AF1E)}
 #screen-competition-results .trCrLatestTime{display:flex;align-items:baseline;gap:10px}
 #screen-competition-results .trCrLatestTime em{font-style:normal;font-size:14px;font-weight:800;letter-spacing:.06em;opacity:.85}
 #screen-competition-results .trCrLatestTime b{font-size:34px;font-weight:900;line-height:1;letter-spacing:-.01em;font-variant-numeric:tabular-nums;white-space:nowrap}
 #screen-competition-results .trCrLatestMeta{font-size:10px;font-weight:700;letter-spacing:.04em;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #screen-competition-results .trCrLatestSide{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
-#screen-competition-results .trCrLatestSide span{font-size:10px;font-weight:800;letter-spacing:.04em;color:#D4AF1E;white-space:nowrap}
+#screen-competition-results .trCrLatestSide span{font-size:10px;font-weight:800;letter-spacing:.04em;color:var(--gold,#D4AF1E);white-space:nowrap}
 /* 見出し：トップページの「MY PAGE」と同じ形 */
 html body #screen-competition-results .crSectionHead>div:first-child{position:relative!important;padding-left:15px!important}
-html body #screen-competition-results .crSectionHead>div:first-child::before{content:"";position:absolute;left:0;top:2px;bottom:2px;width:5px;border-radius:3px;background:#D4AF1E}
-html body #screen-competition-results .crSectionHead>div:first-child>small{display:block!important;font-size:17px!important;font-weight:900!important;letter-spacing:.01em!important;line-height:1.15!important;color:#2F3536!important;overflow-wrap:anywhere}
-html body #screen-competition-results .crSectionHead>div:first-child>h3{margin:3px 0 0!important;font-size:11px!important;font-weight:900!important;letter-spacing:.14em!important;line-height:1.3!important;color:#9A7F12!important}
+html body #screen-competition-results .crSectionHead>div:first-child::before{content:"";position:absolute;left:0;top:2px;bottom:2px;width:5px;border-radius:3px;background:var(--gold,#D4AF1E)}
+html body #screen-competition-results .crSectionHead>div:first-child>small{display:block!important;font-size:17px!important;font-weight:900!important;letter-spacing:.01em!important;line-height:1.15!important;color:var(--op-fg,#2F3536)!important;overflow-wrap:anywhere}
+html body #screen-competition-results .crSectionHead>div:first-child>h3{margin:3px 0 0!important;font-size:11px!important;font-weight:900!important;letter-spacing:.14em!important;line-height:1.3!important;color:var(--op-accent,#9A7F12)!important}
 html body #screen-competition-results .crSectionHead .crHeadActions>span{display:none!important}
 html body #screen-competition-results .crSectionHead{align-items:center!important}
 /* 自己ベスト */
-html body #screen-competition-results .crPbCard.trPb{display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:7px!important;min-height:88px;padding:12px 10px!important;border:0!important;border-radius:16px!important;background:#FBFAF6!important;box-shadow:0 1px 2px rgba(36,48,49,.05),0 6px 18px rgba(36,48,49,.06)!important;overflow:hidden!important;color:#2F3536!important}
+html body #screen-competition-results .crPbCard.trPb{display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:7px!important;min-height:88px;padding:12px 10px!important;border:0!important;border-radius:16px!important;background:var(--op-bg,#FBFAF6)!important;box-shadow:0 1px 2px rgba(36,48,49,.05),0 6px 18px rgba(36,48,49,.06)!important;overflow:hidden!important;color:var(--op-fg,#2F3536)!important}
 html body #screen-competition-results .crPbCard.trPb::before{display:none!important}
 #screen-competition-results .trPbHead{display:flex;align-items:center;justify-content:space-between;width:100%;gap:6px}
-html body #screen-competition-results .trPb small{font-size:12px!important;font-weight:900!important;letter-spacing:.06em!important;color:#7A6420!important;margin:0!important}
+html body #screen-competition-results .trPb small{font-size:12px!important;font-weight:900!important;letter-spacing:.06em!important;color:var(--op-accent,#7A6420)!important;margin:0!important}
 #screen-competition-results .trPbHead>i{flex:none;width:6px;height:6px;border-radius:50%;background:transparent}
-#screen-competition-results .trPbLatest .trPbHead>i{background:#D4AF1E}
-html body #screen-competition-results .trPb>b{font-size:20px!important;font-weight:900!important;line-height:1!important;letter-spacing:-.01em!important;margin:0!important;white-space:nowrap!important;color:#2F3536!important}
-html body #screen-competition-results .trPb>em{font-size:11px!important;font-weight:800!important;font-style:normal!important;color:#5C6666!important;margin:0!important}
-html body #screen-competition-results .trPbNone>b{color:#B9BDB5!important}
-html body #screen-competition-results .v88SecondaryPb>small{display:block;margin:12px 0 6px;font-size:11px!important;font-weight:900!important;letter-spacing:.08em!important;color:#5C6666!important}
+#screen-competition-results .trPbLatest .trPbHead>i{background:var(--gold,#D4AF1E)}
+html body #screen-competition-results .trPb>b{font-size:20px!important;font-weight:900!important;line-height:1!important;letter-spacing:-.01em!important;margin:0!important;white-space:nowrap!important;color:var(--op-fg,#2F3536)!important}
+html body #screen-competition-results .trPb>em{font-size:11px!important;font-weight:800!important;font-style:normal!important;color:var(--op-muted,#5C6666)!important;margin:0!important}
+html body #screen-competition-results .trPbNone>b{color:var(--op-line,#B9BDB5)!important}
+html body #screen-competition-results .v88SecondaryPb>small{display:block;margin:12px 0 6px;font-size:11px!important;font-weight:900!important;letter-spacing:.08em!important;color:var(--op-muted,#5C6666)!important}
 html body #screen-competition-results #crSecondaryPbGrid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
 html body #screen-competition-results .crPbCard.trPbWide{flex-direction:row!important;align-items:center!important;justify-content:space-between!important;min-height:54px;padding:0 14px!important}
 html body #screen-competition-results .trPbWide .trPbHead{flex-direction:column;align-items:flex-start;gap:1px;width:auto}
-html body #screen-competition-results .trPbWide .trPbHead em{font-size:9px!important;font-weight:700!important;font-style:normal!important;color:#5C6666!important;margin:0!important}
+html body #screen-competition-results .trPbWide .trPbHead em{font-size:9px!important;font-weight:700!important;font-style:normal!important;color:var(--op-muted,#5C6666)!important;margin:0!important}
 html body #screen-competition-results .trPbWide>b{font-size:17px!important}
-html body #screen-competition-results .crPbCard.trPbEmpty{background:transparent!important;box-shadow:none!important;border:1.5px dashed #D6D8D1!important}
-html body #screen-competition-results .trPbEmpty small{color:#5C6666!important}
-html body #screen-competition-results .trPbEmpty>b{font-size:11px!important;font-weight:700!important;color:#5C6666!important}
+html body #screen-competition-results .crPbCard.trPbEmpty{background:transparent!important;box-shadow:none!important;border:1.5px dashed var(--op-line,#D6D8D1)!important}
+html body #screen-competition-results .trPbEmpty small{color:var(--op-muted,#5C6666)!important}
+html body #screen-competition-results .trPbEmpty>b{font-size:11px!important;font-weight:700!important;color:var(--op-muted,#5C6666)!important}
 /* 推移グラフ（概要） */
-#screen-competition-results #crOverviewSvg .trBestLine{stroke:#D4AF1E}
-#screen-competition-results #crOverviewSvg .trRaceLine{stroke:#2F3536}
-#screen-competition-results #crOverviewSvg .trPbPoint{fill:#D4AF1E;stroke:#2F3536}
-#screen-competition-results #crOverviewSvg .trMinorPoint{fill:#FBFAF6;stroke:#5C6666}
-#screen-competition-results #crOverviewSvg .trPbLabel{fill:#2F3536}
-#screen-competition-results .portalGraphLegend .trLegBest{background:#D4AF1E!important;height:3px!important;width:16px!important;border-radius:2px!important}
-#screen-competition-results .portalGraphLegend .trLegRace{background:rgba(47,53,54,.3)!important;height:2px!important;width:16px!important;border-radius:1px!important}
+#screen-competition-results #crOverviewSvg .trBestLine{stroke:var(--gold,#D4AF1E)}
+#screen-competition-results #crOverviewSvg .trRaceLine{stroke:var(--op-fg,#2F3536)}
+#screen-competition-results #crOverviewSvg .trPbPoint{fill:var(--gold,#D4AF1E);stroke:var(--op-fg,#2F3536)}
+#screen-competition-results #crOverviewSvg .trMinorPoint{fill:var(--op-bg,#FBFAF6);stroke:var(--op-muted,#5C6666)}
+#screen-competition-results #crOverviewSvg .trPbLabel{fill:var(--op-fg,#2F3536)}
+#screen-competition-results .portalGraphLegend .trLegBest{background:var(--gold,#D4AF1E)!important;height:3px!important;width:16px!important;border-radius:2px!important}
+#screen-competition-results .portalGraphLegend .trLegRace{background:var(--op-line,rgba(47,53,54,.3))!important;height:2px!important;width:16px!important;border-radius:1px!important}
 @keyframes trCrDraw{to{stroke-dashoffset:0}}
 @keyframes trCrPop{from{opacity:0;transform:scale(.3)}to{opacity:1;transform:none}}
 @keyframes trCrFade{to{opacity:1}}
@@ -29042,28 +28988,28 @@ html body #screen-competition-results .trPbEmpty>b{font-size:11px!important;font
 #screen-competition-results #crRecentList:not(.trOpen)>.trRaceItem:nth-child(n+2){display:none}
 #screen-competition-results #crRecentList>.trRaceItem+.trRaceItem{margin-top:8px}
 #screen-competition-results #crRecentList.trAnim>.trRaceItem:nth-child(n+2){animation:trCrRise .45s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc((var(--i) - 1) * 70ms)}
-#screen-competition-results .trRaceToggle{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:44px;margin-top:10px;border:1px solid #2F3536;border-radius:999px;background:transparent;color:#2F3536;font:inherit;font-size:12px;font-weight:800;letter-spacing:.12em}
+#screen-competition-results .trRaceToggle{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:44px;margin-top:10px;border:1px solid var(--op-fg,#2F3536);border-radius:999px;background:transparent;color:var(--op-fg,#2F3536);font:inherit;font-size:12px;font-weight:800;letter-spacing:.12em}
 #screen-competition-results .trRaceToggle[hidden]{display:none}
-#screen-competition-results .trRaceToggle span{color:#9A7F12}
+#screen-competition-results .trRaceToggle span{color:var(--op-accent,#9A7F12)}
 @media (prefers-reduced-motion: reduce){#screen-competition-results .trAnimDraw,#screen-competition-results .trAnimPop,#screen-competition-results .trAnimFade,#screen-competition-results .trAnimFadeLine,#screen-competition-results #crRecentList.trAnim>.trRaceItem{animation:none!important;opacity:1!important;stroke-dashoffset:0!important;transform:none!important}}
 /* v358: 既存の強い指定より優先させる */
 html body #screen-competition-results .crHero.trCrHero{margin-left:calc(50% - 50vw)!important;margin-right:calc(50% - 50vw)!important;width:auto!important;max-width:none!important;padding-left:max(18px,calc(50vw - 50% + 6px))!important;padding-right:max(18px,calc(50vw - 50% + 6px))!important}
 html body #screen-competition-results #trCrSub{white-space:normal!important;overflow:visible!important;line-height:1.4}
 html body #screen-competition-results #crPbGrid{align-items:start!important}
-html body #screen-competition-results #crPbGrid .crPbCard.trPb,html body #screen-competition-results #crSecondaryPbGrid .crPbCard.trPb{min-height:0!important;height:auto!important;border-left:0!important;border:0!important;box-shadow:0 1px 2px rgba(36,48,49,.05),0 6px 18px rgba(36,48,49,.06)!important;background:#FBFAF6!important;opacity:1!important}
+html body #screen-competition-results #crPbGrid .crPbCard.trPb,html body #screen-competition-results #crSecondaryPbGrid .crPbCard.trPb{min-height:0!important;height:auto!important;border-left:0!important;border:0!important;box-shadow:0 1px 2px rgba(36,48,49,.05),0 6px 18px rgba(36,48,49,.06)!important;background:var(--op-bg,#FBFAF6)!important;opacity:1!important}
 html body #screen-competition-results #crPbGrid .crPbCard.trPb{padding:12px 10px!important}
-html body #screen-competition-results #crPbGrid .crPbCard.trPb small,html body #screen-competition-results #crSecondaryPbGrid .crPbCard.trPb small{font-size:12px!important;font-weight:900!important;line-height:1.2!important;letter-spacing:.06em!important;color:#7A6420!important;margin:0!important}
-html body #screen-competition-results #crPbGrid .crPbCard.trPb>b{font-size:20px!important;font-weight:900!important;line-height:1!important;margin:0!important;color:#2F3536!important}
-html body #screen-competition-results #crPbGrid .crPbCard.trPb>em{font-size:11px!important;font-weight:800!important;line-height:1.2!important;margin:0!important;color:#5C6666!important}
-html body #screen-competition-results #crPbGrid .crPbCard.trPbNone>b{color:#B9BDB5!important}
+html body #screen-competition-results #crPbGrid .crPbCard.trPb small,html body #screen-competition-results #crSecondaryPbGrid .crPbCard.trPb small{font-size:12px!important;font-weight:900!important;line-height:1.2!important;letter-spacing:.06em!important;color:var(--op-accent,#7A6420)!important;margin:0!important}
+html body #screen-competition-results #crPbGrid .crPbCard.trPb>b{font-size:20px!important;font-weight:900!important;line-height:1!important;margin:0!important;color:var(--op-fg,#2F3536)!important}
+html body #screen-competition-results #crPbGrid .crPbCard.trPb>em{font-size:11px!important;font-weight:800!important;line-height:1.2!important;margin:0!important;color:var(--op-muted,#5C6666)!important}
+html body #screen-competition-results #crPbGrid .crPbCard.trPbNone>b{color:var(--op-line,#B9BDB5)!important}
 html body #screen-competition-results #crSecondaryPbGrid .crPbCard.trPbWide{min-height:54px!important;padding:0 14px!important}
-html body #screen-competition-results #crSecondaryPbGrid .crPbCard.trPbWide>b{font-size:17px!important;font-weight:900!important;line-height:1!important;margin:0!important;white-space:nowrap!important;color:#2F3536!important}
-html body #screen-competition-results #crSecondaryPbGrid .crPbCard.trPbWide em{font-size:9px!important;font-weight:700!important;margin:0!important;color:#5C6666!important}
-html body #screen-competition-results #crSecondaryPbGrid .crPbCard.trPbEmpty{background:transparent!important;box-shadow:none!important;border:1.5px dashed #D6D8D1!important}
-html body #screen-competition-results #crSecondaryPbGrid .crPbCard.trPbEmpty small,html body #screen-competition-results #crSecondaryPbGrid .crPbCard.trPbEmpty>b{color:#5C6666!important}
+html body #screen-competition-results #crSecondaryPbGrid .crPbCard.trPbWide>b{font-size:17px!important;font-weight:900!important;line-height:1!important;margin:0!important;white-space:nowrap!important;color:var(--op-fg,#2F3536)!important}
+html body #screen-competition-results #crSecondaryPbGrid .crPbCard.trPbWide em{font-size:9px!important;font-weight:700!important;margin:0!important;color:var(--op-muted,#5C6666)!important}
+html body #screen-competition-results #crSecondaryPbGrid .crPbCard.trPbEmpty{background:transparent!important;box-shadow:none!important;border:1.5px dashed var(--op-line,#D6D8D1)!important}
+html body #screen-competition-results #crSecondaryPbGrid .crPbCard.trPbEmpty small,html body #screen-competition-results #crSecondaryPbGrid .crPbCard.trPbEmpty>b{color:var(--op-muted,#5C6666)!important}
 html body #screen-competition-results #crSecondaryPbGrid .crPbCard.trPbEmpty>b{font-size:11px!important;font-weight:700!important}
 html body #screen-competition-results .v88SecondaryPb{opacity:1!important}
-html body #screen-competition-results .crHero.trCrHero{margin:2px 0 8px!important;width:auto!important;max-width:100%!important;border-radius:22px!important;padding:16px 16px 16px!important;background:linear-gradient(135deg,#2b3534,#252e2d)!important;box-shadow:0 10px 26px rgba(30,38,38,.16)!important}
+html body #screen-competition-results .crHero.trCrHero{margin:2px 0 8px!important;width:auto!important;max-width:100%!important;border-radius:22px!important;padding:16px 16px 16px!important;background:var(--op-fg,#2b3534)!important;box-shadow:0 10px 26px rgba(30,38,38,.16)!important}
 html body #screen-competition-results .trCrIdText h2{font-size:17px!important;font-weight:800!important;letter-spacing:.04em!important}
 html body #screen-competition-results .trCrStats b{font-size:17px!important;font-weight:800!important;letter-spacing:-.02em!important}
 #screen-competition-results .trCrLatest{cursor:pointer;-webkit-tap-highlight-color:transparent;margin-top:14px;padding-top:12px}
@@ -29074,11 +29020,28 @@ html body #screen-competition-results .trCrStats b{font-size:17px!important;font
 #screen-competition-results .trCrHero.trLatestOff .trCrLatest{display:none!important}
 #screen-competition-results .trCrLatestShow{display:flex;align-items:center;gap:6px;margin:12px 0 0;padding:0 12px;min-height:34px;border:1px solid rgba(255,255,255,.22);border-radius:999px;background:transparent;color:#fff;font:inherit;font-size:11px;font-weight:700;letter-spacing:.08em}
 #screen-competition-results .trCrLatestShow[hidden]{display:none!important}
-#screen-competition-results .trCrLatestShow span{color:#D4AF1E}
+#screen-competition-results .trCrLatestShow span{color:var(--gold,#D4AF1E)}
 html body #screen-competition-results #crPbGrid .crPbCard.trPb>b{font-size:18px!important;font-weight:800!important;letter-spacing:-.03em!important}
 html body #screen-competition-results #crSecondaryPbGrid .crPbCard.trPbWide>b{font-size:16px!important;font-weight:800!important;letter-spacing:-.03em!important}
 #screen-competition-results #crOverviewSvg text{letter-spacing:-.02em}
-html body #screen-competition-results #crSecondaryPbGrid .crPbCard.trPbWide.trPbEmpty>b{font-size:11px!important;font-weight:700!important;letter-spacing:0!important;color:#5C6666!important}
+html body #screen-competition-results #crSecondaryPbGrid .crPbCard.trPbWide.trPbEmpty>b{font-size:11px!important;font-weight:700!important;letter-spacing:0!important;color:var(--op-muted,#5C6666)!important}
+/* v360: 推移グラフのアニメーション（個人記録・詳細とも） */
+:is(#screen-competition-results,#screen-competition-graph-detail) .trSeg{stroke-dasharray:1;stroke-dashoffset:1;animation:trCrDraw var(--dur,.3s) linear var(--d,0s) forwards}
+:is(#screen-competition-results,#screen-competition-graph-detail) .trAnimPop{opacity:0;transform-box:fill-box;transform-origin:center;animation:trCrPop .35s cubic-bezier(.2,.8,.2,1) var(--d,0s) forwards}
+:is(#screen-competition-results,#screen-competition-graph-detail) .trAnimFade{opacity:0;animation:trCrFade .3s ease-out var(--d,0s) forwards}
+#screen-competition-graph-detail .crChartPointLabel,#screen-competition-results #crOverviewSvg .crChartPointLabel{letter-spacing:-.02em}
+@media (prefers-reduced-motion: reduce){:is(#screen-competition-results,#screen-competition-graph-detail) :is(.trSeg,.trAnimPop,.trAnimFade){animation:none!important;opacity:1!important;stroke-dashoffset:0!important;transform:none!important}}
+/* v361: テーマごとの配色。濃いテーマ（winter・matte）は上部カードをテーマのカード色に */
+html[data-portal-personal-color="winter"] body #screen-competition-results .crHero.trCrHero,html[data-portal-personal-color="matte"] body #screen-competition-results .crHero.trCrHero{background:var(--op-bg)!important;border:1px solid var(--op-line)!important;box-shadow:none!important}
+html[data-portal-personal-color] body #screen-competition-results .crPbCard.trPb,html[data-portal-personal-color] body #screen-competition-results .crPbCard.trPb *{-webkit-text-fill-color:currentColor!important}
+html body #screen-competition-results .crPbCard.trPb small,html body #screen-competition-results .crPbCard.trPb .trPbHead small{color:var(--op-accent,#7A6420)!important}
+html body #screen-competition-results .crPbCard.trPb>b{color:var(--op-fg,#2F3536)!important}
+html body #screen-competition-results .crPbCard.trPb>em,html body #screen-competition-results .crPbCard.trPb .trPbHead em{color:var(--op-muted,#5C6666)!important}
+html body #screen-competition-results .crSectionHead>div:first-child>small{-webkit-text-fill-color:currentColor!important}
+html body #screen-competition-results .crSectionHead>div:first-child>h3{-webkit-text-fill-color:currentColor!important}
+html body #screen-competition-results .trRaceToggle{border-color:var(--op-fg,#2F3536)!important;color:var(--op-fg,#2F3536)!important;-webkit-text-fill-color:currentColor!important;background:transparent!important}
+html body #screen-competition-results .trRaceToggle span{color:var(--op-accent,#9A7F12)!important}
+html body #screen-competition-results .crHero.trCrHero,html body #screen-competition-results .crHero.trCrHero *{-webkit-text-fill-color:currentColor!important}
 </style>
 </body>
 </html>
