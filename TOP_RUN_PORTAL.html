@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v374 | 2026-11-09 | Parent v373 (Rules v370). 管理者の「選手一覧・個人記録」：承認済みメンバー全員ではなく、役職（clubRoster）で「選手」の人だけを表示。役職が未設定の人は一覧の下に小さくまとめる。役職の一覧は既存の loadClubRoster をこの端末で1回だけ読む（常時監視なし）。Rules変更なし。 -->
 <!-- TOP RUN PORTAL v373 | 2026-11-09 | Parent v372 (Rules v370). 下のメニューの「潜る・浮く（隙間）」の根本対策：見えている画面の下端を測ってJSで位置を動かす仕組み（v219・v314・v343・v348で調整を重ねたもの）を止め、CSSで画面の下端に固定（bottom:0、ホームバーはsafe-areaの余白）。スクロール中・はね返り中にiPhoneが返す一時的な位置で動かしていたことが再発の原因。表示だけ、通信なし。 -->
 <!-- TOP RUN PORTAL v372 | 2026-11-09 | Parent v371 (Rules v370). 記録推移の詳細：グラフ下の説明文を削除し、SB（今年度）・直近・差を小さく1行で表示。下がっているときは控えめ、SB更新・PB更新・大幅更新（800m2秒/1000m3秒/他5秒以上）・10秒以上の5段階。更新時はグラフを描き終えてから点を光らせ札を弾ませる。年度は4/1〜翌3/31、SBは同じ年度、PBは全記録。色はテーマのアクセントのみ。通信なし。 -->
 <!-- TOP RUN PORTAL v371 | 2026-11-08 | Parent v370 (Rules v370 のまま). 自己ベストの「公認」の印：種目名の横の大きな札（縦に折り返していた）をやめ、日付の横に小さな金色の文字で控えめに表示。表示だけ。 -->
@@ -6713,7 +6714,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v373</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v374</b></div>
   </div>
 </div>
 
@@ -6950,7 +6951,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v373</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v374</b></div>
   </div>
 </div>
 
@@ -11624,7 +11625,7 @@ const gateway=window.__TR_PORTAL_SYNC__;
   // v364: 管理者（開発者以外）の「選手一覧・個人記録」は、EVENT BASEの大会データではなく、PORTALの承認済みメンバーから作る。
   //   名前を押すと、その人のPORTAL側の個人記録（pastRecords）を1回読んで表示する（見るだけ）。
   //   承認済み一覧は管理者が読める既存の listApprovedMembers を、この端末で1回だけ読む（常時の監視なし）。
-  let trAdminMembersV364=null,trAdminMembersBusyV364=false,trAdminMembersErrV364='';
+  let trAdminMembersV364=null,trAdminMembersBusyV364=false,trAdminMembersErrV364='',trAdminRosterBusyV374=false,trAdminRosterTriedV374=false;
   function trRenderAdminMemberDirectoryV364(){
     const g=window.__TR_PORTAL_SYNC__;
     if(!trAdminMembersV364&&!trAdminMembersBusyV364&&g?.listApprovedMembers&&g.roleVerified===true){
@@ -11634,11 +11635,22 @@ const gateway=window.__TR_PORTAL_SYNC__;
         .catch(err=>{trAdminMembersErrV364=String(err?.message||err).slice(0,120);})
         .finally(()=>{trAdminMembersBusyV364=false;renderPortalAthleteDirectory();});
     }
+    // v374: 選手だけを出す（「管理画面の設定」の役職で「選手」の人）。役職が未設定の人は下に小さくまとめる。役職の一覧はこの端末で1回だけ読む。
+    if(trAdminMembersV364&&!g?.clubRoster&&!trAdminRosterBusyV374&&!trAdminRosterTriedV374&&g?.loadClubRoster){
+      trAdminRosterBusyV374=true;trAdminRosterTriedV374=true;
+      Promise.resolve(g.loadClubRoster(true)).catch(err=>{trAdminMembersErrV364='役職の一覧を読み込めませんでした：'+String(err?.message||err).slice(0,80);}).finally(()=>{trAdminRosterBusyV374=false;renderPortalAthleteDirectory();});
+    }
     let rows=(trAdminMembersV364||[]).filter(m=>m&&m.uid&&m.profileId);
     rows=window.trClubSortV333?window.trClubSortV333(rows.map(m=>({...m,key:m.profileId}))):rows.sort((a,b)=>String(a.name).localeCompare(String(b.name),'ja'));
-    const status=trAdminMembersErrV364?'承認済みメンバーを読み込めませんでした：'+trAdminMembersErrV364:
-      !trAdminMembersV364?'承認済みメンバーを読み込んでいます…':'PORTALの承認済みメンバー '+rows.length+'人。名前を押すと、その人の個人記録（紐付けた大会記録・登録した記録）を見られます。';
-    const html=rows.map(m=>`<button type="button" class="portalDirectoryRow" data-tr-member-record="${esc(m.uid)}" data-tr-member-pid="${esc(m.profileId)}"><span><b>${esc(m.name)}</b><small>個人記録を見る</small></span><strong>›</strong></button>`).join('');
+    const roster=g?.clubRoster&&typeof g.clubRoster==='object'?g.clubRoster:null;
+    const roleCodes=uid=>String(roster?.[uid]?.roleCodes||'').split(',').map(x=>x.trim()).filter(Boolean);
+    const athletes=roster?rows.filter(m=>roleCodes(m.uid).includes('athlete')):[];
+    const unassigned=roster?rows.filter(m=>!roleCodes(m.uid).length):[];
+    const rowHtml=(m,sub)=>`<button type="button" class="portalDirectoryRow" data-tr-member-record="${esc(m.uid)}" data-tr-member-pid="${esc(m.profileId)}"><span><b>${esc(m.name)}</b><small>${esc(sub)}</small></span><strong>›</strong></button>`;
+    const status=trAdminMembersErrV364?trAdminMembersErrV364:
+      (!trAdminMembersV364||!roster)?'選手の一覧を読み込んでいます…':'選手 '+athletes.length+'人。名前を押すと、その人の個人記録を見られます。';
+    const html=(roster?athletes.map(m=>rowHtml(m,'個人記録を見る')).join(''):'')+
+      (unassigned.length?`<div class="portalDeveloperEmpty" style="margin-top:12px">役職が未設定の人 ${unassigned.length}人（「管理画面の設定」で役職を付けると、選手は上の一覧に入ります）</div>`+unassigned.map(m=>rowHtml(m,'役職未設定・個人記録を見る')).join(''):'');
     for(const id of ['portalAthleteDirectoryList','portalAthleteInlineList']){
       const target=$(id);if(!target)continue;
       target.innerHTML='<div class="portalDeveloperEmpty" role="status">'+esc(status)+'</div>'+(html||'');
