@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v353 | 2026-11-08 | Parent physical v352. (1) ロゴ＋絵文字：ギザギザの縁取りを、絵文字の形に沿ったなめらかな白い縁取りに。(2) 管理画面の設定「役職」：保存済みの人を保存し直すと必ず「他端末の更新と競合」になる不具合を修正（Firebaseの取引処理の1回目が空のときの扱い）。(3) 同画面の優先順の数字とチェックの四角を見えるように。通信量の増加なし（保存時の比べ直し1回分のみ）。Rules・保存先は変更なし。 -->
 <!-- TOP RUN PORTAL v352 | 2026-11-08 | Parent physical v351. ロゴ＋絵文字の絵文字の白い縁取りを1px→2pxに広げる。1文字の文字スタンプを大きく（枠の66%→82%）。見た目だけ、通信量の増加なし。 -->
 <!-- TOP RUN PORTAL v351 | 2026-11-08 | Parent physical v350. ロゴ＋絵文字のリアクション：v349でロゴを薄くしたのを元に戻し、絵文字のまわりだけに白い薄い縁取りを付ける。メッセージの下の文字スタンプ：太い書体に同じ色の太い縁取りが重なってつぶれていたのを、白い細い縁取りに戻す。見た目だけ、通信量の増加なし。 -->
 <!-- TOP RUN PORTAL v350 | 2026-11-08 | Parent physical v349. リアクション：v349で1種類に上書きした書体を元に戻し、太い書体（Dela Gothic One・Reggae One・RocknRoll One）を追加。リアクションを追加（悩む・？・！？・うーん・なるほど・まじ？・えっ！？・どうしよう、⁉️❓❗😅💦🤯）。書体は使う文字だけを切り出して読む。Firebaseの保存先・形は変更なし、通信量の増加なし。 -->
@@ -6688,7 +6689,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v352</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v353</b></div>
   </div>
 </div>
 
@@ -6925,7 +6926,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v352</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v353</b></div>
   </div>
 </div>
 
@@ -19542,6 +19543,10 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       const proposed={profileId,roleCodes:roles.join(','),sortOrder:n,updatedAt:Date.now(),updatedByUid:gate.uid};
       const tx=await dbMod.runTransaction(path,current=>{
         if(!isDeveloper()||auth.currentUser?.uid!==gate.uid)return;
+        // v353: 1回目は端末にデータが無く空（null）で呼ばれることがある。空のときは書き込み案を返し、
+        //   Firebase側の本当の値と違えば、本当の値でもう一度ここが呼ばれる（そこで下の比較をする）。
+        //   以前は空のまま比べて「競合」と判断し、保存済みの人の役職を保存し直せなかった。
+        if(current===null)return proposed;
         if((current?.updatedAt||0)!==(before?.updatedAt||0)||current?.profileId&&current.profileId!==profileId)return;
         return proposed;
       },{applyLocally:false});
@@ -28673,7 +28678,7 @@ html[data-portal-personal-color="matte"] #screen-management-settings :is(#portal
 <style id="v349-reaction-unify">
 /* v349: リアクションの見た目を最後にここでまとめて決める（これまでの設定は消さずに上書き）。 */
 /* v351: ロゴ＋絵文字：ロゴはそのまま。絵文字のまわりだけに白い薄い縁取りとふちのぼかしを付けて浮き出させる（絵文字は大きくしない） */
-:is(.trF-team,.trTeam) i{z-index:1;background:none!important;filter:drop-shadow(2px 0 0 #fff) drop-shadow(-2px 0 0 #fff) drop-shadow(0 2px 0 #fff) drop-shadow(0 -2px 0 #fff) drop-shadow(0 0 2px rgba(0,0,0,.4))!important}
+:is(.trF-team,.trTeam) i{z-index:1;background:none!important;filter:drop-shadow(0 0 1.6px #fff) drop-shadow(0 0 1.6px #fff) drop-shadow(0 0 1.6px #fff) drop-shadow(0 0 1.6px #fff) drop-shadow(0 1px 2px rgba(0,0,0,.35))!important}
 /* 文字スタンプ：どこでも同じ形（正方形の中に収める）。伸ばし・潰しはしない */
 svg.trF.trF-svg{overflow:visible}
 svg.trF.trF-svg text{letter-spacing:0}
@@ -28690,6 +28695,13 @@ svg.trF.trF-svg text{letter-spacing:0}
    縁取りは白い細いものに戻し、文字の形がそのまま見えるようにする。 */
 #screen-chat :is(#portalChatThread,#trRoomThread) .trReacts button.trReact .trF-svg text{stroke:#fff!important;stroke-width:4px!important;paint-order:stroke!important;stroke-linejoin:round!important;font-weight:400!important}
 #screen-chat :is(#portalChatThread,#trRoomThread) .trReacts button.trReact .trF-svg.trF-indigo text{font-weight:800!important}
+</style>
+
+<style id="v353-club-role-visibility">
+/* v353: 管理画面の設定「役職」：優先順の数字が白い欄に白い文字で見えなかった／チェックの四角が暗い背景で見分けにくかった */
+.trClubCard input[type="number"]{color:#17323b!important;-webkit-text-fill-color:#17323b!important;background:#f8f7f3!important;font-weight:800}
+.trClubChecks input[type="checkbox"]{-webkit-appearance:none;appearance:none;width:24px;height:24px;margin:0 8px 0 0;flex:0 0 24px;border:2px solid #9fb3b0;border-radius:6px;background:#fff;vertical-align:middle;cursor:pointer;position:relative}
+.trClubChecks input[type="checkbox"]:checked{background:#2bb5a8 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5' fill='none' stroke='%23fff' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/18px no-repeat;border-color:#2bb5a8}
 </style>
 </body>
 </html>
