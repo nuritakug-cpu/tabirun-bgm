@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v354 | 2026-11-08 | Parent physical v353. 文字スタンプ：2〜3文字が小さすぎたのを修正（「！」「？」・英数字を半分の幅で数え、収まらないときは1割まで詰める）。見た目だけ、通信量の増加なし。 -->
 <!-- TOP RUN PORTAL v353 | 2026-11-08 | Parent physical v352. (1) ロゴ＋絵文字：ギザギザの縁取りを、絵文字の形に沿ったなめらかな白い縁取りに。(2) 管理画面の設定「役職」：保存済みの人を保存し直すと必ず「他端末の更新と競合」になる不具合を修正（Firebaseの取引処理の1回目が空のときの扱い）。(3) 同画面の優先順の数字とチェックの四角を見えるように。通信量の増加なし（保存時の比べ直し1回分のみ）。Rules・保存先は変更なし。 -->
 <!-- TOP RUN PORTAL v352 | 2026-11-08 | Parent physical v351. ロゴ＋絵文字の絵文字の白い縁取りを1px→2pxに広げる。1文字の文字スタンプを大きく（枠の66%→82%）。見た目だけ、通信量の増加なし。 -->
 <!-- TOP RUN PORTAL v351 | 2026-11-08 | Parent physical v350. ロゴ＋絵文字のリアクション：v349でロゴを薄くしたのを元に戻し、絵文字のまわりだけに白い薄い縁取りを付ける。メッセージの下の文字スタンプ：太い書体に同じ色の太い縁取りが重なってつぶれていたのを、白い細い縁取りに戻す。見た目だけ、通信量の増加なし。 -->
@@ -6689,7 +6690,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v353</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v354</b></div>
   </div>
 </div>
 
@@ -6926,7 +6927,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v353</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v354</b></div>
   </div>
 </div>
 
@@ -24902,9 +24903,11 @@ html[data-portal-personal-color="matte"] #screen-chat #trRoomThread .trReadIssue
         else{const a=Math.ceil(n/3);parts=[chars.slice(0,a).join(''),chars.slice(a,a*2).join(''),chars.slice(a*2).join('')];}
         // v349: 文字を無理に横へ伸ばしたり縮めたりしない（潰れて見にくかった）。一番長い行が枠に収まる大きさを全部の行で使い、はみ出すときだけ少しだけ詰める。行の間も詰めて真ん中にまとめる。
         //   上下の位置は、iPhoneで基準がずれる dominant-baseline をやめ、文字の大きさから位置を計算する（ずれて見えた）。
-        const LL=parts.length,maxCnt=Math.max(...parts.map(t=>Array.from(t).length)),fsN=Math.min(LL>1?(100/LL)*0.84:(n===1?82:92),104/Math.max(1,maxCnt)),fs=fsN.toFixed(1),gap=fsN*1.08,top=50-(gap*LL)/2;
-        const tx=parts.map((t,i)=>{const cnt=Array.from(t).length,y=(top+gap*i+gap*0.5+fsN*0.36).toFixed(1);
-          return '<text x="50" y="'+y+'" font-size="'+fs+'" text-anchor="middle"'+(cnt*fsN>96?' textLength="96" lengthAdjust="spacingAndGlyphs"':'')+'>'+esc(t)+'</text>';}).join('');
+        // v354: 「！」「？」や英数字は幅が狭いので半分くらいの幅として数える（2文字が小さくなりすぎていた）。収まらないときは1割ほどまで詰めてよい。
+        const wOf=t=>Array.from(t).reduce((a,ch)=>a+(/[！？!?・ー〜~…、。]/.test(ch)?0.55:/[A-Za-z0-9]/.test(ch)?0.7:1),0);
+        const LL=parts.length,maxW=Math.max(...parts.map(wOf)),fsN=Math.min(LL>1?(100/LL)*0.86:(n===1?82:92),110/Math.max(1,maxW)),fs=fsN.toFixed(1),gap=fsN*1.08,top=50-(gap*LL)/2;
+        const tx=parts.map((t,i)=>{const w=wOf(t),y=(top+gap*i+gap*0.5+fsN*0.36).toFixed(1);
+          return '<text x="50" y="'+y+'" font-size="'+fs+'" text-anchor="middle"'+(w*fsN>97?' textLength="97" lengthAdjust="spacingAndGlyphs"':'')+'>'+esc(t)+'</text>';}).join('');
         return '<svg class="trF trF-svg trF-'+tone+'" viewBox="0 0 100 100" role="img" aria-label="'+esc(base)+'">'+tx+'</svg>';
       }
     }
