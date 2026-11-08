@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v366 | 2026-11-08 | Parent v365. 「出走登録済みの記録をまとめて取り込む」ボタンを、今使われている「記録の紐付け」の1画面（大会を選ぶ欄の下、一覧の上）に表示（v365は使われていない旧タブの画面に置いていたため見えなかった）。中身はv365と同じ。 -->
 <!-- TOP RUN PORTAL v365 | 2026-11-08 | Parent v364. 記録の紐付け（開発者）に「出走登録済みの記録をまとめて取り込む」を追加：PORTALから出走登録して本人とつながっている人のEVENT BASEの記録を、紐付けと同じ保存（saveStaffPastRecord・同じ記録ID）でPORTALの個人記録（pastRecords）へ取り込む。本人・保護者・管理者で同じ記録が見えるようにする（従来は出走カードの記録は本人の端末だけに表示）。取り込み済み・紐付け済みは上書きしない。本人のマイページは同じ記録IDで1つにまとまる。開発者が大会ごとに1回書き込むだけ。Rules変更なし。 -->
 <!-- TOP RUN PORTAL v364 | 2026-11-08 | Parent v363. 管理者（開発者以外）の「選手一覧・個人記録」：EVENT BASEの大会データ（管理者はREADできない）ではなく、PORTALの承認済みメンバーから一覧を作り、名前を押すとその人のPORTAL側の個人記録（pastRecords：紐付けた大会記録・登録記録）を1回読んで表示（見るだけ）。全員に「本人IDと大会READ権限が必要です」と出ていたのを解消。承認済み一覧は既存の listApprovedMembers をこの端末で1回だけ読む。常時監視なし。開発者の画面（公開選択）は変更なし。Rules変更なし。 -->
 <!-- TOP RUN PORTAL v363 | 2026-11-08 | Parent v362. 基本プロフィールの学年に「保護者」を追加（値 parent。中学1〜3年・保護者・その他。出走条件の学年判定では「その他」と同じ扱い、一覧・CSVでは「保護者」）。winterテーマでチャット名の保存ボタンだけ色が違っていたのを他の保存ボタンとそろえた。自己ベストのカードにメリハリ（種目ラベル小・記録を主役・日付を小さく控えめ）、カードを背景よりはっきり明るくし枠と影を強めた。 -->
@@ -6705,7 +6706,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v365</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v366</b></div>
   </div>
 </div>
 
@@ -6942,7 +6943,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v365</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v366</b></div>
   </div>
 </div>
 
@@ -16185,6 +16186,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
       const ev=rpEvent(),roster=rpRoster(ev);
       if(!ev){list.innerHTML='<p class="portalHelp">EVENT BASEの大会がありません。</p>';return;}
       if(roster===null){list.innerHTML='<p class="portalHelp">大会の記録を読み込み中です…</p>';if(rpRetry++<8)setTimeout(rpRender,2000);return;}
+      tools.innerHTML=trLinkedImportButtonV365(); // v366: 今の1画面の紐付けに「まとめて取り込む」を表示（v365は使われていない画面に置いていた）
       const mem=rpMembers().slice().sort((a,b)=>a.name.localeCompare(b.name,'ja'));
       const cnt=new Map();for(const m of mem){const k=rpNorm(m.name);cnt.set(k,(cnt.get(k)||0)+1);}
       const label=m=>m.name+(cnt.get(rpNorm(m.name))>1?'（'+(rpDay(m.at)||'日付不明')+'承認）':'');
@@ -16290,7 +16292,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
   function trLinkedImportButtonV365(){
     const ev=rpEvent();if(!ev?.base)return '';
     const n=trLinkedImportRowsV365().length;
-    return `<button type="button" class="rpBtn portalPrimary" data-rp-act="import-linked" style="width:100%;margin-top:8px" ${n?'':'disabled'}>出走登録済みの記録をまとめて取り込む（${n}件）</button><p class="portalHelp" style="margin:6px 0 0">PORTALから出走登録した人の記録を、本人の個人記録に取り込みます。保護者・管理者からも見えるようになります。</p>`;
+    return `<div style="width:100%;flex:1 1 100%"><button type="button" class="rpBtn portalPrimary" data-rp-act="import-linked" style="width:100%;margin-top:8px" ${n?'':'disabled'}>出走登録済みの記録をまとめて取り込む（${n}件）</button><p class="portalHelp" style="margin:6px 0 0">PORTALから出走登録した人の記録を、本人の個人記録に取り込みます。保護者・管理者からも見えるようになります。</p></div>`;
   }
   async function rpAct(btn){
     if(rpBusy)return;
