@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v365 | 2026-11-08 | Parent v364. 記録の紐付け（開発者）に「出走登録済みの記録をまとめて取り込む」を追加：PORTALから出走登録して本人とつながっている人のEVENT BASEの記録を、紐付けと同じ保存（saveStaffPastRecord・同じ記録ID）でPORTALの個人記録（pastRecords）へ取り込む。本人・保護者・管理者で同じ記録が見えるようにする（従来は出走カードの記録は本人の端末だけに表示）。取り込み済み・紐付け済みは上書きしない。本人のマイページは同じ記録IDで1つにまとまる。開発者が大会ごとに1回書き込むだけ。Rules変更なし。 -->
 <!-- TOP RUN PORTAL v364 | 2026-11-08 | Parent v363. 管理者（開発者以外）の「選手一覧・個人記録」：EVENT BASEの大会データ（管理者はREADできない）ではなく、PORTALの承認済みメンバーから一覧を作り、名前を押すとその人のPORTAL側の個人記録（pastRecords：紐付けた大会記録・登録記録）を1回読んで表示（見るだけ）。全員に「本人IDと大会READ権限が必要です」と出ていたのを解消。承認済み一覧は既存の listApprovedMembers をこの端末で1回だけ読む。常時監視なし。開発者の画面（公開選択）は変更なし。Rules変更なし。 -->
 <!-- TOP RUN PORTAL v363 | 2026-11-08 | Parent v362. 基本プロフィールの学年に「保護者」を追加（値 parent。中学1〜3年・保護者・その他。出走条件の学年判定では「その他」と同じ扱い、一覧・CSVでは「保護者」）。winterテーマでチャット名の保存ボタンだけ色が違っていたのを他の保存ボタンとそろえた。自己ベストのカードにメリハリ（種目ラベル小・記録を主役・日付を小さく控えめ）、カードを背景よりはっきり明るくし枠と影を強めた。 -->
 <!-- TOP RUN PORTAL v362 | 2026-11-08 | Parent v361. 推移グラフ：一本の線を一定の速さで伸ばし、線が届いた瞬間にその点とタイムを出す（点が先に出ない・なめらか）。遅くなった大会は、その時点のベストからの差を45%に縮めて描き、急に下がって見えないように（各点のタイムは実際の値）。縦の目盛りの数字は実際の差と合わなくなるため外し「↑ 速い」を表示。 -->
@@ -6704,7 +6705,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v364</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v365</b></div>
   </div>
 </div>
 
@@ -6941,7 +6942,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v364</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v365</b></div>
   </div>
 </div>
 
@@ -16236,7 +16237,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
         const status=!rows.length?'記録なし':`記録 ${rows.length}件`+(linkedN?`｜紐付け済み ${linkedN}件`:'')+(waitN&&!dup?`｜未紐付け ${waitN}件`:'')+(dup?'｜同じ名前あり・②で選ぶ':'');
         return fold(status,sub+lines);
       }).join('');
-      tools.innerHTML=`<button type="button" class="rpBtn portalPrimary" data-rp-act="bulk" style="width:100%" ${todo?'':'disabled'}>これでよいので紐付ける（${todo}件）</button>`;
+      tools.innerHTML=`<button type="button" class="rpBtn portalPrimary" data-rp-act="bulk" style="width:100%" ${todo?'':'disabled'}>これでよいので紐付ける（${todo}件）</button>`+trLinkedImportButtonV365();
       list.innerHTML=(missingRoster?'<p class="portalHelp">大会の記録を読み込み中です。件数が増えることがあります…</p>':'')+(cards||'<p class="portalHelp">承認済みの参加者はまだいません。</p>');
       if(missingRoster&&rpRetry++<8)setTimeout(rpRender,2000);
       return;
@@ -16279,10 +16280,37 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
     await rpG().saveStaffPastRecord({uid:member.uid,profileId:member.profileId},{id:row.id,name:String(row.eventTitle||'大会').slice(0,120),date,metric:row.metric||'other',time:row.time,status:'time',venue:'',official:!!row.official},null);
     rpClaims.set(row.id,member.uid);
   }
+  // v365: PORTALから出走登録して本人とつながっている人の大会記録（EVENT BASEの出走カードの記録）を、
+  //   紐付けと同じ保存のしかた（同じ記録番号）でPORTALの個人記録へまとめて取り込む。
+  //   これで本人・保護者・管理者が同じ記録を見られる。すでに取り込み・紐付け済みのものは上書きしない。
+  function trLinkedImportRowsV365(){
+    const ev=rpEvent();if(!ev?.base)return [];
+    return (rpRoster(ev)||[]).filter(r=>r&&r.self&&r.time&&r.uid&&!rpClaims.has(r.id)&&rpMemberByUid(r.uid));
+  }
+  function trLinkedImportButtonV365(){
+    const ev=rpEvent();if(!ev?.base)return '';
+    const n=trLinkedImportRowsV365().length;
+    return `<button type="button" class="rpBtn portalPrimary" data-rp-act="import-linked" style="width:100%;margin-top:8px" ${n?'':'disabled'}>出走登録済みの記録をまとめて取り込む（${n}件）</button><p class="portalHelp" style="margin:6px 0 0">PORTALから出走登録した人の記録を、本人の個人記録に取り込みます。保護者・管理者からも見えるようになります。</p>`;
+  }
   async function rpAct(btn){
     if(rpBusy)return;
     const act=btn.dataset.rpAct;
     const run=async fn=>{rpBusy=true;btn.disabled=true;let tm=null;try{await Promise.race([fn(),new Promise((_,rej)=>{tm=setTimeout(()=>rej(Error('通信に時間がかかっています。電波を確認して、もう一度押してください')),20000);})]);}catch(err){rpSay('できませんでした：'+String(err?.message||err).slice(0,140));}finally{clearTimeout(tm);rpBusy=false;rpRender();}};
+    if(act==='import-linked'){ // v365
+      const jobs=trLinkedImportRowsV365().map(r=>({m:rpMemberByUid(r.uid),r})).filter(x=>x.m);
+      if(!jobs.length)return rpSay('取り込む記録はありません。');
+      if(!confirm(`${jobs.length}件の出走登録済みの記録を、本人の個人記録に取り込みます。よろしいですか？`))return;
+      return run(async()=>{
+        await rpLoadClaims();let done=0;const errs=[];
+        for(const {m,r} of jobs){
+          if(rpClaims.has(r.id))continue;
+          rpSay(`取り込み中… ${done+errs.length+1}/${jobs.length}`);
+          try{await rpWrite(m,r);done++;}catch(err){errs.push(m.name+'：'+String(err?.message||err).slice(0,50));}
+        }
+        rpSay(`取り込みました：${done}件。本人・保護者・管理者の個人記録に出ます。`+(errs.length?`／できなかった ${errs.length}件：`+errs.join('；'):''));
+        try{showActionFeedback('取り込みました',`${done}件`+(errs.length?`／未完了 ${errs.length}件`:''));}catch(_){}
+      });
+    }
     if(act==='bulk'){
       const jobs=[];
       for(const {m,dup,old,rows} of rpProposals()){if(dup||old)continue;for(const r of rows)if(!rpClaims.has(r.id)&&!rpOff.has(m.uid+'|'+r.id))jobs.push({m,r});}
