@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v368 | 2026-11-08 | Parent v367. (1) 豊川長距離記録会（第1回・EVENT BASE eventbase_mu4ujce3_xxx1）の記録を公認大会として扱う（紐付け記録・EVENT BASE正式結果）。駅伝（第2回）は非公認のまま。(2) イベント管理の一覧・検索に、PORTALのイベントに無いEVENT BASEの過去の大会（豊川・半田）も見るだけの行として表示。読み込み済みの情報だけを使い、通信量の増加なし・Rules変更なし。 -->
 <!-- TOP RUN PORTAL v367 | 2026-11-08 | Parent v366. イベント管理：大会の「公認・非公認」の選択が出走条件の欄の中にあり、出走受付をしない大会（過去大会の一括取り込みなど）では隠れて変更できなかったのを、独立した欄にして大会なら常に選べるようにした（保存・読込の仕組みは既存のまま）。公認にすると、その大会の記録は公認大会表示・公認ベストの対象になる。「まとめて取り込む」ボタンは押せないとき薄く表示。通信量の増加なし・Rules変更なし。 -->
 <!-- TOP RUN PORTAL v366 | 2026-11-08 | Parent v365. 「出走登録済みの記録をまとめて取り込む」ボタンを、今使われている「記録の紐付け」の1画面（大会を選ぶ欄の下、一覧の上）に表示（v365は使われていない旧タブの画面に置いていたため見えなかった）。中身はv365と同じ。 -->
 <!-- TOP RUN PORTAL v365 | 2026-11-08 | Parent v364. 記録の紐付け（開発者）に「出走登録済みの記録をまとめて取り込む」を追加：PORTALから出走登録して本人とつながっている人のEVENT BASEの記録を、紐付けと同じ保存（saveStaffPastRecord・同じ記録ID）でPORTALの個人記録（pastRecords）へ取り込む。本人・保護者・管理者で同じ記録が見えるようにする（従来は出走カードの記録は本人の端末だけに表示）。取り込み済み・紐付け済みは上書きしない。本人のマイページは同じ記録IDで1つにまとまる。開発者が大会ごとに1回書き込むだけ。Rules変更なし。 -->
@@ -6707,7 +6708,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v367</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v368</b></div>
   </div>
 </div>
 
@@ -6944,7 +6945,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v367</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v368</b></div>
   </div>
 </div>
 
@@ -10399,8 +10400,19 @@ if(view==='list')portalApplyManageSearch(kind);
     let items=eventItems.slice().sort((a,b)=>String(a.date||'9999').localeCompare(String(b.date||'9999')));
     items=items.filter(x=>portalListAccept('event',x.date));
     const box=$('manageEventList');
-    box.innerHTML=items.map(x=>manageRow(x.date||'日付なし',x.title,`${x.startTime?x.startTime+' 開始 / ':'開始時間未定 / '}${x.place?x.place+' / ':'会場未定 / '}${portalEventNoticeStatus(x)} / ${portalEventDisplayCategory(x)==='event'?'通常イベント':'大会'} / ${x.type==='OTHER'?'PORTAL内':x.type}`,x.id,'event',x.enabled!==false)).join('') || '<div class="portalEmpty">この条件のイベントはありません。</div>';
-    $('manageEventCount').textContent=`${portalListFilterLabel('event')} / ${items.length}件`;    wireManageCommon(box);
+    // v368: PORTALのイベントに無い、EVENT BASEで運営した過去の大会（豊川・半田）も一覧と検索に出す（見るだけ）。
+    let ebRows=[];
+    try{
+      const ids=new Set(eventItems.map(e=>e.id)),targets=window.__TR_COMMON_PILOT_UI__?.officialTargets?.()||[];
+      const linked=new Set(eventItems.map(e=>window.__TR_COMMON_PILOT_UI__?.officialTargetFor?.(e)?.id).filter(Boolean));
+      ebRows=targets.filter(t=>t&&!linked.has(t.id)&&!ids.has(t.catalogId)&&portalListAccept('event',String(t.date||'').slice(0,10)))
+        .map(t=>({date:String(t.date||'').slice(0,10),title:window.trEventLabel?window.trEventLabel(t.id,t.canonicalTitle||t.title):String(t.canonicalTitle||t.title||t.id),id:t.id,certified:PORTAL_CERTIFIED_EVENTBASE_V368.includes(t.id)}));
+    }catch(_){ebRows=[];}
+    const rowsHtml=[...items.map(x=>({d:String(x.date||'9999'),h:manageRow(x.date||'日付なし',x.title,`${x.startTime?x.startTime+' 開始 / ':'開始時間未定 / '}${x.place?x.place+' / ':'会場未定 / '}${portalEventNoticeStatus(x)} / ${portalEventDisplayCategory(x)==='event'?'通常イベント':'大会'} / ${x.type==='OTHER'?'PORTAL内':x.type}`,x.id,'event',x.enabled!==false)})),
+      ...ebRows.map(t=>({d:t.date||'9999',h:`<div class="portalManageRow v18"><span><small>${esc(t.date||'日付なし')}</small><b>${esc(t.title)}</b><span>大会 / EVENT BASE（過去の大会・見るだけ）${t.certified?' / 公認':''}</span></span></div>`}))]
+      .sort((a,b)=>a.d.localeCompare(b.d)).map(x=>x.h);
+    box.innerHTML=rowsHtml.join('') || '<div class="portalEmpty">この条件のイベントはありません。</div>';
+    $('manageEventCount').textContent=`${portalListFilterLabel('event')} / ${rowsHtml.length}件`;    wireManageCommon(box);
     box.querySelectorAll('[data-portal-event-connect]').forEach(button=>button.addEventListener('click',()=>{
       const selected=eventItems.find(item=>item.id===button.dataset.portalEventConnect);
       if(!selected)return;
@@ -11191,8 +11203,16 @@ const gateway=window.__TR_PORTAL_SYNC__;
     // Trial previews and unverified self claims must never become real PB.
     return row.source==='PORTAL_STAFF_PAST';
   }
+  // v368: 過去にEVENT BASEで運営した大会のうち、公認の大会（豊川長距離記録会＝第1回）。
+  //   PORTALのイベントが無くても、この大会の記録（紐付け・EVENT BASEの正式結果）は公認大会として扱う。
+  const PORTAL_CERTIFIED_EVENTBASE_V368=['eventbase_mu4ujce3_xxx1'];
+  function portalIsCertifiedEventBaseRowV368(row){
+    const id=String(row?.id||''),cat=String(row?.catalogId||'');
+    return PORTAL_CERTIFIED_EVENTBASE_V368.some(eb=>id.includes(eb))||(cat==='event-current'&&!eventItems.some(e=>e.id==='event-current'));
+  }
   function portalIsCertifiedRecord(row){
     if(!portalIsRaceRecord(row))return false;
+    if(portalIsCertifiedEventBaseRowV368(row))return true; // v368
     const event=portalRecordCatalog(row);
     return !!event&&portalEventDisplayCategory(event)==='competition'&&event.official===true;
   }
