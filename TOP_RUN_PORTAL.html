@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v348 | 2026-11-08 | Parent physical v347. (1) 記録の紐付け：駅伝の計測記録（大会結果一覧）のうち本人とまだつながっていない人の記録も一覧に出す（読み込み済みの計測記録を使う。新しい読み込み・監視なし。本人とつながっている人の記録は入れない）。(2) 下タブ：スクロール直後・はね返り中は位置を測らず、2回測って同じ位置のときだけ動かす（潜る・浮くの対策）。通信量の増加なし。Rules・Firebase・Auth・UID・保存先は変更なし。 -->
 <!-- TOP RUN PORTAL v347 | 2026-11-07 | Parent physical v346. 歯車の中の版表示をv347に更新（v343〜v346で表示がv342のままだった）。中身はv346と同じ。通信量への影響なし。 -->
 <!-- TOP RUN PORTAL v346 | 2026-11-07 | Parent physical v345. FIX: チャット写真を拡大すると横じまの線で崩れる（iPhoneの描画上限超え）。写真の大きさに合わせて崩れない倍率までに制限。 -->
 <!-- TOP RUN PORTAL v345 | 2026-11-07 | Parent physical v344. 保存ボタンをPORTAL全体で同じ形に統一（小さめ・細身・丸み、色はテーマのまま）。写真の拡大表示の保存ボタンをさらに小さくし、左右の矢印との間を広げた。保存すると画面の上に「✓ 保存しました」を必ず表示（写真の保存も含む）。保存の処理・Firebase・Auth・UID・保存先は変更なし。 -->
@@ -6683,7 +6684,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v347</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v348</b></div>
   </div>
 </div>
 
@@ -6920,7 +6921,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v347</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v348</b></div>
   </div>
 </div>
 
@@ -15941,10 +15942,20 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
       return Object.entries(answers).filter(([,a])=>a&&['join','support'].includes(a.answer)).map(([uid,a])=>({id:'',name:String(a.name||'参加者'),uid,self:true,time:''}));
     }
     const rows=g?.officialParticipantRoster?.[ev.id];if(!Array.isArray(rows))return null;
-    return rows.map(r=>({id:g.claimRecordId(ev.id,r.playerId),eventId:ev.id,playerId:String(r.playerId||''),name:String(r.name||''),uid:String(r.uid||''),
+    const base=rows.map(r=>({id:g.claimRecordId(ev.id,r.playerId),eventId:ev.id,playerId:String(r.playerId||''),name:String(r.name||''),uid:String(r.uid||''),
       self:!!(r.uid&&r.profileId),time:r.hasResult&&rpTimeOk(r.resultTime)?String(r.resultTime).trim():'',official:r.resultKind==='official',
-      metric:portalClaimMetric(r.metricRaw),date:String(r.day||ev.date||'').slice(0,10),leg:String(r.leg||''),eventTitle:ev.title}))
-      .sort((a,b)=>a.name.localeCompare(b.name,'ja'));
+      metric:portalClaimMetric(r.metricRaw),date:String(r.day||ev.date||'').slice(0,10),leg:String(r.leg||''),eventTitle:ev.title}));
+    // v348: 駅伝の計測記録（大会結果一覧）のうち、本人とまだつながっていない人の記録も紐付けの一覧に出す。
+    //   すでに読み込んである計測記録を使うだけ（新しい読み込み・常時監視なし）。本人とつながっている人の記録は入れない（二重に付けないため）。
+    const byPid=new Map(base.map(x=>[x.playerId,x]));
+    for(const t of (g?.officialTimingPeople?.[ev.id]||[])){
+      if(!t||!t.pending)continue;const time=rpTimeOk(t.resultTime)?String(t.resultTime).trim():'';if(!time)continue;
+      const pid=String(t.playerId||'');const ex=byPid.get(pid);
+      if(ex){if(!ex.time&&!ex.self){ex.time=time;ex.metric='relay';ex.leg=ex.leg||String(t.leg||'');}continue;}
+      const row={id:g.claimRecordId(ev.id,pid),eventId:ev.id,playerId:pid,name:String(t.name||''),uid:'',self:false,time,official:false,metric:'relay',date:String(t.day||ev.date||'').slice(0,10),leg:String(t.leg||''),eventTitle:ev.title};
+      base.push(row);byPid.set(pid,row);
+    }
+    return base.sort((a,b)=>a.name.localeCompare(b.name,'ja'));
   }
   // every record row (with a time) in every EVENT BASE race
   function rpAllRows(){const out=[];for(const ev of rpEvents().filter(e=>e.base)){const r=rpRoster(ev);if(Array.isArray(r))out.push(...r.filter(x=>x.time));}return out;}
@@ -21211,7 +21222,8 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
                 const pid=String(person.profileId||'').slice(0,120);
                 people.push({eventId:info.id,eventTitle:info.canonicalTitle||'大会正式名称未取得',playerId,
                   profileId:pid,name,source:'timing',hasResult:true,
-                  resultTime:time||(ms/1000).toFixed(2)+'秒（計測値）'});
+                  resultTime:time||(ms/1000).toFixed(2)+'秒（計測値）',
+                  leg:String(person.ekidenLeg||''),day:String(record.dayDate||record.date||'').slice(0,10),pending:!pid}); // v348
                 if(pid && /^(?:\d+:)?\d{1,3}:\d{2}(?:\.\d{1,2})?$/.test(time))
                   timingRows.push({id:'eb-timing-'+info.id+'-'+recordId+'-'+i,playerId,profileId:pid,metric:'relay',date:info.date||'',event:info.title,venue:info.place,
                     label:'EVENT BASE計測結果（読取専用・公認区分未確認）',time,official:false,status:'time',source:'EVENT_BASE'});
@@ -26193,19 +26205,24 @@ body.portalChatIsolated:not(.portalFieldInputActive) #screen-chat>main.chatMain{
   //   今は下のメニューの実際の位置を測り、見えている下端との差だけ直す（上にも下にも直す）。
   //   画面のスクロールの仕組み（overflowなど）は一切変えない（Androidでスクロールできなくなる事故を避ける）。
   let curLift=0;
-  let liftTimer=0,lastMove=0;const liftLater=()=>{lastMove=Date.now();clearTimeout(liftTimer);liftTimer=setTimeout(lift,300);};
+  let liftTimer=0,lastMove=0,liftCand=null,liftCandAt=0;const liftLater=()=>{lastMove=Date.now();clearTimeout(liftTimer);liftTimer=setTimeout(lift,300);};
   function lift(){
     root.style.setProperty('--trTabsH',(tabs.offsetHeight||72)+'px');
     const vv=window.visualViewport;
     if(!vv||body.classList.contains('portalFieldInputActive')||(vv.scale||1)>1.01||tabs.offsetParent===null&&getComputedStyle(tabs).position!=='fixed')return;
+    // v348: スクロールの直後や、ページの端のはね返りの最中は測らない（測ると、はね返りでずれた位置を正しいと思い込み、潜る・浮くになる）
+    if(Date.now()-lastMove<450){liftLater();return;}
+    {const se=document.scrollingElement||root,y=window.scrollY||se.scrollTop||0,max=Math.max(0,se.scrollHeight-window.innerHeight);if(y<-1||y>max+1){liftLater();return;}}
     const visibleBottom=vv.offsetTop+vv.height;
     const r=tabs.getBoundingClientRect();
     if(!r.height)return;
     const diff=Math.round(r.bottom-visibleBottom); // 正：下に潜っている／負：浮いている
-    if(Math.abs(diff)<=1)return;
+    if(Math.abs(diff)<=1){liftCand=null;return;}
     let next=curLift+diff;
     if(next>140)next=140;if(next<-60)next=-60;
-    curLift=next;
+    // v348: 動かすのは、少し時間をおいて2回測って同じ位置になったときだけ（一瞬のずれでは動かさない）
+    if(Math.abs(next-curLift)>3&&(liftCand===null||Math.abs(liftCand-next)>2||Date.now()-liftCandAt>2000)){liftCand=next;liftCandAt=Date.now();clearTimeout(liftTimer);liftTimer=setTimeout(lift,260);return;}
+    liftCand=null;curLift=next;
     root.style.setProperty('--trTabsLift',next+'px');
   }
   function sync(){body.classList.toggle('portalFieldInputActive',isField(document.activeElement));lift();}
@@ -26215,6 +26232,7 @@ body.portalChatIsolated:not(.portalFieldInputActive) #screen-chat>main.chatMain{
   //   スクロール中にすぐ合わせていたため、下のメニューが上に引っ張られて下に隙間ができていた。文字入力中（キーボード）はすぐ合わせる。
   window.visualViewport?.addEventListener('resize',()=>{if(!body.classList.contains('portalFieldInputActive')&&Date.now()-lastMove<700)liftLater();else lift();});
   window.addEventListener('touchmove',()=>{lastMove=Date.now();},{passive:true});
+  window.addEventListener('touchend',()=>{lastMove=Date.now();liftLater();},{passive:true});
   // v231: スクロール中は下のメニューを動かさない（止まってから位置を合わせ直す）
   window.visualViewport?.addEventListener('scroll',liftLater);
   window.addEventListener('scroll',liftLater,{passive:true});
