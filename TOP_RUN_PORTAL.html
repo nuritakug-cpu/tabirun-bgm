@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v364 | 2026-11-08 | Parent v363. 管理者（開発者以外）の「選手一覧・個人記録」：EVENT BASEの大会データ（管理者はREADできない）ではなく、PORTALの承認済みメンバーから一覧を作り、名前を押すとその人のPORTAL側の個人記録（pastRecords：紐付けた大会記録・登録記録）を1回読んで表示（見るだけ）。全員に「本人IDと大会READ権限が必要です」と出ていたのを解消。承認済み一覧は既存の listApprovedMembers をこの端末で1回だけ読む。常時監視なし。開発者の画面（公開選択）は変更なし。Rules変更なし。 -->
 <!-- TOP RUN PORTAL v363 | 2026-11-08 | Parent v362. 基本プロフィールの学年に「保護者」を追加（値 parent。中学1〜3年・保護者・その他。出走条件の学年判定では「その他」と同じ扱い、一覧・CSVでは「保護者」）。winterテーマでチャット名の保存ボタンだけ色が違っていたのを他の保存ボタンとそろえた。自己ベストのカードにメリハリ（種目ラベル小・記録を主役・日付を小さく控えめ）、カードを背景よりはっきり明るくし枠と影を強めた。 -->
 <!-- TOP RUN PORTAL v362 | 2026-11-08 | Parent v361. 推移グラフ：一本の線を一定の速さで伸ばし、線が届いた瞬間にその点とタイムを出す（点が先に出ない・なめらか）。遅くなった大会は、その時点のベストからの差を45%に縮めて描き、急に下がって見えないように（各点のタイムは実際の値）。縦の目盛りの数字は実際の差と合わなくなるため外し「↑ 速い」を表示。 -->
 <!-- TOP RUN PORTAL v361 | 2026-11-08 | Parent v360. 個人記録の新デザインを各テーマ（標準・blue・sakura・winter・matte）の配色に合わせた：固定色をやめ、テーマの文字色・カード色・線・アクセント（--op-fg/--op-bg/--op-line/--op-muted/--op-accent/--gold）を使用。濃いテーマでは上部カードもテーマのカード色。濃いテーマで文字が見えなかった見出し・自己ベスト・駅伝・詳細ボタンを修正。 -->
@@ -6703,7 +6704,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v363</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v364</b></div>
   </div>
 </div>
 
@@ -6940,7 +6941,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v363</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v364</b></div>
   </div>
 </div>
 
@@ -11545,8 +11546,50 @@ const gateway=window.__TR_PORTAL_SYNC__;
     }
     return window.trClubSortV333?window.trClubSortV333([...byKey.values()]):[...byKey.values()].sort((a,b)=>a.name.localeCompare(b.name,'ja'));
   }
+  // v364: 管理者（開発者以外）の「選手一覧・個人記録」は、EVENT BASEの大会データではなく、PORTALの承認済みメンバーから作る。
+  //   名前を押すと、その人のPORTAL側の個人記録（pastRecords）を1回読んで表示する（見るだけ）。
+  //   承認済み一覧は管理者が読める既存の listApprovedMembers を、この端末で1回だけ読む（常時の監視なし）。
+  let trAdminMembersV364=null,trAdminMembersBusyV364=false,trAdminMembersErrV364='';
+  function trRenderAdminMemberDirectoryV364(){
+    const g=window.__TR_PORTAL_SYNC__;
+    if(!trAdminMembersV364&&!trAdminMembersBusyV364&&g?.listApprovedMembers&&g.roleVerified===true){
+      trAdminMembersBusyV364=true;trAdminMembersErrV364='';
+      (Array.isArray(window.__rpAllMembers)?Promise.resolve(window.__rpAllMembers):g.listApprovedMembers())
+        .then(list=>{window.__rpAllMembers=list;trAdminMembersV364=Array.isArray(list)?list:[];})
+        .catch(err=>{trAdminMembersErrV364=String(err?.message||err).slice(0,120);})
+        .finally(()=>{trAdminMembersBusyV364=false;renderPortalAthleteDirectory();});
+    }
+    let rows=(trAdminMembersV364||[]).filter(m=>m&&m.uid&&m.profileId);
+    rows=window.trClubSortV333?window.trClubSortV333(rows.map(m=>({...m,key:m.profileId}))):rows.sort((a,b)=>String(a.name).localeCompare(String(b.name),'ja'));
+    const status=trAdminMembersErrV364?'承認済みメンバーを読み込めませんでした：'+trAdminMembersErrV364:
+      !trAdminMembersV364?'承認済みメンバーを読み込んでいます…':'PORTALの承認済みメンバー '+rows.length+'人。名前を押すと、その人の個人記録（紐付けた大会記録・登録した記録）を見られます。';
+    const html=rows.map(m=>`<button type="button" class="portalDirectoryRow" data-tr-member-record="${esc(m.uid)}" data-tr-member-pid="${esc(m.profileId)}"><span><b>${esc(m.name)}</b><small>個人記録を見る</small></span><strong>›</strong></button>`).join('');
+    for(const id of ['portalAthleteDirectoryList','portalAthleteInlineList']){
+      const target=$(id);if(!target)continue;
+      target.innerHTML='<div class="portalDeveloperEmpty" role="status">'+esc(status)+'</div>'+(html||'');
+    }
+    const pairs=[['portalAthleteDirectoryList','portalAthleteDirectorySearch'],['portalAthleteInlineList','portalAthleteInlineSearch']];
+    for(const [listId,inputId] of pairs){
+      const term=String($(inputId)?.value||'').trim().toLocaleLowerCase('ja');
+      $(listId)?.querySelectorAll('.portalDirectoryRow').forEach(row=>row.hidden=!!term&&!String(row.querySelector('b')?.textContent||'').toLocaleLowerCase('ja').includes(term));
+    }
+  }
+  async function trOpenAdminMemberRecordV364(e){
+    const b=e.target.closest('[data-tr-member-record]');if(!b||isDeveloper||!canManage||portalParticipantPreviewMode)return;
+    const uid=String(b.dataset.trMemberRecord||''),pid=String(b.dataset.trMemberPid||''),name=String(b.querySelector('b')?.textContent||'').trim();
+    if(!uid||!pid)return;
+    (window.__trExtraAthletes=window.__trExtraAthletes||{})[pid]={profileId:pid,uid,name};
+    flowUpdateRecords();
+    portalPersonalTargetId=pid;portalPersonalMetric='3000';showScreen('competition-results');
+    const gate=window.__TR_PORTAL_SYNC__;
+    if(gate?.loadPastRecordsFor&&gate.roleVerified===true){
+      try{await gate.loadPastRecordsFor(uid,pid);}
+      catch(err){showActionFeedback('個人記録を読み込めませんでした',/permission|denied|拒否/i.test(String(err?.message||err))?'Firebaseの決まりで、管理者がこの人の記録を読めませんでした。開発者に連絡してください。':String(err?.message||err).slice(0,160));}
+    }
+  }
   function renderPortalAthleteDirectory(){
     if(!canManage||portalParticipantPreviewMode)return;
+    if(!isDeveloper){trRenderAdminMemberDirectoryV364();return;} // v364
     const available=portalCompetitionAthletes();
     // v274: PORTALの承認済みと同じ名前のEVENT BASE本人情報だけ外す（PORTAL未登録で記録だけある人は残す）
     const apprUids=new Set(portalApprovedMemberRows.map(m=>m.uid)),nk=v=>String(v||'').normalize('NFKC').replace(/[\s\u3000]/g,'');
@@ -11638,6 +11681,8 @@ const gateway=window.__TR_PORTAL_SYNC__;
   }
   $('portalAthleteDirectoryList').addEventListener('click',portalChooseAthleteFromDirectory);
   $('portalAthleteInlineList').addEventListener('click',portalChooseAthleteFromDirectory);
+  $('portalAthleteDirectoryList').addEventListener('click',trOpenAdminMemberRecordV364); // v364
+  $('portalAthleteInlineList').addEventListener('click',trOpenAdminMemberRecordV364);
   $('crOpenAllRecords').addEventListener('click',()=>{portalOfficialListFilter=false;portalPracticeListFilter=false;portalPersonalFilter='all';showScreen('competition-records')});
   $('crGraphOverview').addEventListener('click',()=>showScreen('competition-graph-detail'));
   $('crOpenGoalSettings').addEventListener('click',()=>showScreen('races'));
