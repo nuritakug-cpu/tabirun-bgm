@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v355 | 2026-11-08 | Parent v354. 大会記録の読み取り対象を「第1回・第2回」固定から「EVENT BASEにリンクしている大会すべて」に統一（選手一覧・個人記録の駅伝記録、記録の紐付けの日付、記録確認のプルダウン、期間一覧）。駅伝記録（計測値）を第3回以降も第2回と同じ方法で読む。アンダーバーなしのEVENTBASE…ファイル名もEVENT BASEとして認める。 -->
 <!-- TOP RUN PORTAL v354 | 2026-11-08 | Parent physical v353. 文字スタンプ：2〜3文字が小さすぎたのを修正（「！」「？」・英数字を半分の幅で数え、収まらないときは1割まで詰める）。見た目だけ、通信量の増加なし。 -->
 <!-- TOP RUN PORTAL v353 | 2026-11-08 | Parent physical v352. (1) ロゴ＋絵文字：ギザギザの縁取りを、絵文字の形に沿ったなめらかな白い縁取りに。(2) 管理画面の設定「役職」：保存済みの人を保存し直すと必ず「他端末の更新と競合」になる不具合を修正（Firebaseの取引処理の1回目が空のときの扱い）。(3) 同画面の優先順の数字とチェックの四角を見えるように。通信量の増加なし（保存時の比べ直し1回分のみ）。Rules・保存先は変更なし。 -->
 <!-- TOP RUN PORTAL v352 | 2026-11-08 | Parent physical v351. ロゴ＋絵文字の絵文字の白い縁取りを1px→2pxに広げる。1文字の文字スタンプを大きく（枠の66%→82%）。見た目だけ、通信量の増加なし。 -->
@@ -6690,7 +6691,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v354</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v355</b></div>
   </div>
 </div>
 
@@ -6927,7 +6928,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v354</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v355</b></div>
   </div>
 </div>
 
@@ -11467,7 +11468,7 @@ const gateway=window.__TR_PORTAL_SYNC__;
     const apprNames=new Set(sharedRows.filter(p=>p.uid&&apprUids.has(p.uid)).map(p=>nk(p.name)));
     const visible=isDeveloper?sharedRows.filter(p=>(p.uid&&apprUids.has(p.uid))||!apprNames.has(nk(p.name))):portalPublishedAthletesReady?portalPublishedAthletes.items:[];
     const info=portalRosterSourceState;
-    const perEvent=(info.details||[]).map(r=>String(r.title||r.id)+': 出走 '+(r.playersStatus==='ok'?r.players+'件':r.playersStatus==='error'?'拒否 '+String(r.playerError||''): '読込待ち')+' ／ 結果 '+(r.timingStatus==='ok'?r.timing+'件':r.timingStatus==='error'?'拒否 '+String(r.timingError||''):'読込待ち')+(r.id==='eventbase_ekiden_dev_20261006'?' ／ 駅伝記録 '+(r.ekidenStatus==='ok'?r.ekiden+'人（計測値）':r.ekidenStatus==='error'?'READ拒否':'確認待ち'):'')+' ／ 大会名 '+(r.titleStatus==='ok'?'正本取得':'未確認')).join('\n');
+    const perEvent=(info.details||[]).map(r=>String(r.title||r.id)+': 出走 '+(r.playersStatus==='ok'?r.players+'件':r.playersStatus==='error'?'拒否 '+String(r.playerError||''): '読込待ち')+' ／ 結果 '+(r.timingStatus==='ok'?r.timing+'件':r.timingStatus==='error'?'拒否 '+String(r.timingError||''):'読込待ち')+((r.ekidenStatus||r.id==='eventbase_ekiden_dev_20261006')?' ／ 駅伝記録 '+(r.ekidenStatus==='ok'?r.ekiden+'人（計測値）':r.ekidenStatus==='error'?'READ拒否':'確認待ち'):'')+' ／ 大会名 '+(r.titleStatus==='ok'?'正本取得':'未確認')).join('\n');
     const partial=info.received!==info.events||(info.errors||[]).length>0||(info.details||[]).some(x=>x.timingStatus!=='ok'||x.playersStatus!=='ok');
     const diagnostic=(isDeveloper?'本人確認候補 '+available.length+'人':portalPublishedAthletesReady?'管理者へ公開 '+visible.length+'人':'共有リスト未取得')+
       (partial?'（未取得大会あり。全選手数ではありません）':'（対象大会のデータ取得済み）')+'\n'+
@@ -13252,14 +13253,14 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
   // entry form; the ownerKey below is a NON-SECRET route marker and does not
   // grant owner rights. The separate 32-character code is still required.
   function portalIsEkidenNextPath(path){
-    return /^\/tabirun-bgm\/EVENT_BASE_EKIDEN_NEXT_P[0-9]+_[A-Za-z0-9_]+\.html$/.test(String(path||''));
+    return /^\/tabirun-bgm\/EVENT_?BASE_?EKIDEN_?NEXT_?P[0-9]+_?[A-Za-z0-9_]+\.html$/.test(String(path||''));
   }
   function portalOfficialSafeOpenUrl(target,selectedEvent=null){
     if(!target?.openUrl)return '';
     try{
       const u=new URL(target.openUrl,location.href);
       if(u.protocol!=='https:'||u.hostname!=='nuritakug-cpu.github.io'||
-         !u.pathname.startsWith('/tabirun-bgm/')||!/EVENT_BASE[^/]*\.html$/i.test(u.pathname)||
+         !u.pathname.startsWith('/tabirun-bgm/')||!/EVENT_?BASE[^/]*\.html$/i.test(u.pathname)||
          !/^[A-Za-z0-9_-]{8,80}$/.test(u.searchParams.get('event')||''))return '';
       u.searchParams.delete('ownerKey');
       const gate=window.__TR_PORTAL_SYNC__;
@@ -13357,7 +13358,7 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
       if(target.protocol!=='https:'||!target.hostname||target.username||target.password)return '';
       // Never bypass EVENT BASE/EKIDEN's verified same-UID event entry.
       if(target.hostname==='nuritakug-cpu.github.io'&&
-         /^\/tabirun-bgm\/EVENT_BASE[^/]*\.html$/i.test(target.pathname))return '';
+         /^\/tabirun-bgm\/EVENT_?BASE[^/]*\.html$/i.test(target.pathname))return '';
       return target.href;
     }catch(_){return '';}
   }
@@ -13749,7 +13750,7 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
     try{
       const target=new URL(url);
       if(target.protocol!=='https:'||target.hostname!=='nuritakug-cpu.github.io'||
-         !target.pathname.startsWith('/tabirun-bgm/')||!/EVENT_BASE[^/]*\.html$/i.test(target.pathname)||
+         !target.pathname.startsWith('/tabirun-bgm/')||!/EVENT_?BASE[^/]*\.html$/i.test(target.pathname)||
          !/^[A-Za-z0-9_-]{6,100}$/.test(target.searchParams.get('event')||'')||
          [...target.searchParams.keys()].some(key=>!['event','portal'].includes(key)))throw Error();
       const safe=portalOfficialSafeOpenUrl({openUrl:target.href});
@@ -14047,7 +14048,7 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
     // dropdown, even if the PORTAL event catalogue does not list old races.
     // Canonical selection is READ ONLY; local manager write controls never open.
     const original=window.__TR_COMMON_PILOT_UI__?.officialTargets?.()||[];
-    const historic=original.filter(t=>['eventbase_mu4ujce3_xxx1','eventbase_ekiden_dev_20261006'].includes(t.id));
+    const historic=original.filter(t=>t&&t.id); // v355: EVENT BASEにリンクしている大会すべて（第1回・第2回・第3回以降）
     chooser.innerHTML='<option value="">大会を選択してください</option>'+opts.map(e=>`<option value="${esc(e.id)}">${esc(portalEventDateLabel(e))}　${esc(portalEventName(e.title))}</option>`).join('')+
       (historic.length?'<optgroup label="正式EVENT BASE／過去大会（読取のみ）">'+historic.map(t=>`<option value="canonical:${esc(t.id)}">${esc(t.date||'')} ${esc(t.title||'大会')} ／ 正式データ</option>`).join('')+'</optgroup>':'');
     chooser.value=portalCanonicalAuditEventId?'canonical:'+portalCanonicalAuditEventId:flowManagerEventId;
@@ -14444,8 +14445,8 @@ function portalAuditRenderOfficialV222(e){
       // official read-only audit selector; expose the same two here if missing.
       const historical=window.__TR_COMMON_PILOT_UI__?.officialTargets?.()||[];
       for(const t of historical){
-        if(!['eventbase_mu4ujce3_xxx1','eventbase_ekiden_dev_20261006'].includes(t?.id)||!trHubISO(t.date))continue;
-        if(t.date<w.from||t.date>w.to||rows.some(x=>x.type==='event'&&x.id===t.id))continue;
+        if(!t?.id||!trHubISO(t.date))continue; // v355: 固定の2大会ではなくEVENT BASEにリンクしている大会すべて
+        if(t.date<w.from||t.date>w.to||rows.some(x=>x.type==='event'&&(x.id===t.id||(t.catalogId&&x.id===t.catalogId))))continue;
         rows.push({type:'event',id:'canonical:'+t.id,date:t.date,title:t.title||'EVENT BASE',detail:'過去の正式大会（元大会の結果を参照）'});
       }
     }
@@ -15832,7 +15833,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
     for(const ev of [...new Set([...portalClaimEvents,...Object.keys(gate.officialParticipantRoster||{})])])for(const r of (gate.officialParticipantRoster?.[ev]||[])){
       const time=String(r.resultTime||'').trim();
       if(!r.hasResult||!portalClaimTimeOk(time))continue;
-      rows.push({...r,eventId:ev,time,key:gate.claimRecordId(ev,r.playerId),date:r.day||(ev===portalClaimEvents[0]?'2026-10-04':ev===portalClaimEvents[1]?'2026-10-10':''),metric:portalClaimMetric(r.metricRaw)});
+      rows.push({...r,eventId:ev,time,key:gate.claimRecordId(ev,r.playerId),date:r.day||(ev===portalClaimEvents[0]?'2026-10-04':ev===portalClaimEvents[1]?'2026-10-10':String(gate.officialReadStatus?.[ev]?.canonicalDate||(window.__TR_COMMON_PILOT_UI__?.officialTargets?.()||[]).find(t=>t&&t.id===ev)?.date||'')),metric:portalClaimMetric(r.metricRaw)});
     }
     return rows.filter(r=>/^\d{4}-\d{2}-\d{2}$/.test(String(r.date||''))).sort((a,b)=>a.name.localeCompare(b.name,'ja')||a.date.localeCompare(b.date));
   }
@@ -16339,7 +16340,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
   const portalPastSelectedEvent=()=>portalPastCatalog().find(x=>x.id===$('flowMgrExtEvent').value)||null;
   // Official EVENT BASE registrations/results remain in the event's own canonical DB.
   const portalPastIsCanonicalEvent=event=>!!event&&(event.portalPastCanonical===true||!!flowOfficialDestination(event)||
-    (/\/EVENT_BASE[^/]*\.html/i.test(String(event.url||''))&&/[?&]event=/.test(String(event.url||''))));
+    (/\/EVENT_?BASE[^/]*\.html/i.test(String(event.url||''))&&/[?&]event=/.test(String(event.url||''))));
   const portalPastEventDay=event=>{
     const dates=Array.isArray(event?.dates)?event.dates:[];
     return dates.find(d=>/^\d{4}-\d{2}-\d{2}$/.test(d))||event?.date||'';
@@ -16974,7 +16975,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
         if(!id||!/^[a-zA-Z0-9_-]{6,100}$/.test(id)||dest.protocol!=='https:'||
            dest.hostname!=='nuritakug-cpu.github.io'||
            !dest.pathname.startsWith('/tabirun-bgm/')||
-           !/EVENT_BASE[^/]*\.html$/i.test(dest.pathname))return null;
+           !/EVENT_?BASE[^/]*\.html$/i.test(dest.pathname))return null;
         return {id,catalogId:event.id,
           openUrl:dest.origin+dest.pathname+'?event='+encodeURIComponent(id)+'&portal=1',
           title:event.title||'大会',date:event.date||'',place:event.place||''};
@@ -18629,7 +18630,7 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
       const live=gate.eventItems[e.id];
       const parsed=new URL(live.url||'',location.href);
       if(parsed.hostname!=='nuritakug-cpu.github.io'||!parsed.pathname.startsWith('/tabirun-bgm/')||
-         !/EVENT_BASE[^/]*\.html$/i.test(parsed.pathname)||parsed.searchParams.get('event')!==expectedId)
+         !/EVENT_?BASE[^/]*\.html$/i.test(parsed.pathname)||parsed.searchParams.get('event')!==expectedId)
         throw Error('Firebaseに登録された正式大会IDと画面が一致しません');
       if(forWrite && (live.raceEntryEnabled===false || live.enabled===false || live.registration==='受付前'))throw Error('このイベントは受付前です。出走登録は開始されていません');
       const today=new Date();const day=[today.getFullYear(),String(today.getMonth()+1).padStart(2,'0'),String(today.getDate()).padStart(2,'0')].join('-');
@@ -21253,7 +21254,10 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
           });
         }
 
-        if(staff&&info.id==='eventbase_ekiden_dev_20261006'){
+        // v355: 駅伝記録（計測値）は第2回だけでなく、駅伝の大会すべて（第3回以降も）を同じ方法で読む。
+        const v355Relay=info.id==='eventbase_ekiden_dev_20261006'||info.id==='eventbase_ekiden_next_2026_38fa5537b6'||
+          gate.eventItems?.[info.catalogId]?.relay===true||/駅伝|リレー/.test(String(info.canonicalTitle||info.title||'')+String(gate.eventItems?.[info.catalogId]?.title||''));
+        if(staff&&v355Relay){
           // Existing EVENT BASE ekiden state is a race/leg ledger, not official
           // per-person result approval. Inspect once with existing authenticated DB.
           // v285: 保存済みの区間タイム（数KB）を先に読む。なければ設定データから計算して、開発者なら保存する。
@@ -21265,7 +21269,10 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
           void dbMod.get(ref('ekidenLegResults/'+info.id)).then(s2=>{
             const saved=s2.val();
             const list=saved&&saved.rows?(Array.isArray(saved.rows)?saved.rows:Object.values(saved.rows)):null;
-            if(list&&list.length){if(seq!==generation||auth.currentUser?.uid!==uid)return;applyPeople(list.filter(x=>x&&typeof x==='object'));return 'done';}
+            if(list&&list.length){if(seq!==generation||auth.currentUser?.uid!==uid)return;const v355Rows=list.filter(x=>x&&typeof x==='object');applyPeople(v355Rows);
+              // v355: 第3回以降は、タイム未入力の区間が残っている間だけ開発者が元データを読み直して更新する（揃ったら保存分だけを読む）。
+              if(info.id!=='eventbase_ekiden_dev_20261006'&&gate.role==='developer'&&v355Rows.some(x=>!x.hasResult))return null;
+              return 'done';}
             return null;
           }).catch(()=>null).then(done=>{ if(done==='done')return;
           return dbMod.get(dbMod.ref(db,'eventEkiden/'+info.id+'/state')).then(snap=>{
