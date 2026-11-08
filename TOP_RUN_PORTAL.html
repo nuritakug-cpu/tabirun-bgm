@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v356 | 2026-11-08 | Parent v355. 開発者設定に「過去大会記録の一括取り込み（開発者）」を追加：2026年度大会記録（14大会・197件、豊川除く）を、PORTALのイベント（開催済み・非公認・出走受付なし）として作成し、記録を非公認で pastRecords に保存（既存の保存経路 saveEvent／saveStaffPastRecord、記録IDは大会IDに結び付く固定ID。既存の大会・記録は上書きせず、未登録選手は登録後の再実行で追加）。結果区分にDNF（途中棄権）を追加。会場プルダウンに瑞穂北陸上競技場を追加。 -->
 <!-- TOP RUN PORTAL v355 | 2026-11-08 | Parent v354. 大会記録の読み取り対象を「第1回・第2回」固定から「EVENT BASEにリンクしている大会すべて」に統一（選手一覧・個人記録の駅伝記録、記録の紐付けの日付、記録確認のプルダウン、期間一覧）。駅伝記録（計測値）を第3回以降も第2回と同じ方法で読む。アンダーバーなしのEVENTBASE…ファイル名もEVENT BASEとして認める。 -->
 <!-- TOP RUN PORTAL v354 | 2026-11-08 | Parent physical v353. 文字スタンプ：2〜3文字が小さすぎたのを修正（「！」「？」・英数字を半分の幅で数え、収まらないときは1割まで詰める）。見た目だけ、通信量の増加なし。 -->
 <!-- TOP RUN PORTAL v353 | 2026-11-08 | Parent physical v352. (1) ロゴ＋絵文字：ギザギザの縁取りを、絵文字の形に沿ったなめらかな白い縁取りに。(2) 管理画面の設定「役職」：保存済みの人を保存し直すと必ず「他端末の更新と競合」になる不具合を修正（Firebaseの取引処理の1回目が空のときの扱い）。(3) 同画面の優先順の数字とチェックの四角を見えるように。通信量の増加なし（保存時の比べ直し1回分のみ）。Rules・保存先は変更なし。 -->
@@ -6691,7 +6692,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v355</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v356</b></div>
   </div>
 </div>
 
@@ -6928,7 +6929,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v355</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v356</b></div>
   </div>
 </div>
 
@@ -7546,7 +7547,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
    <p class="portalHelp">STEP 3 / 個別に登録・修正する場合は、下の大会情報と種目・結果を入力します。上の一覧へタイムを入力すれば、複数人の新規記録をまとめて保存できます。</p>
    <div class="portalFlowFields"><label>大会名 <input id="flowMgrExtName" maxlength="70" placeholder="出場した大会名"></label><label>開催日 <input type="date" id="flowMgrExtDate"></label><label>種目 <select id="flowMgrExtMetric"><option value="800">800m</option><option value="1000">1000m</option><option value="1500">1500m</option><option value="3000">3000m</option><option value="relay">駅伝</option><option value="other">その他</option></select></label><div class="flowTimeField" data-flow-time="flowMgrExtTime"><div class="flowTimeHeading"><span>結果タイム</span><button type="button" class="flowTimeClear" data-flow-clear="flowMgrExtTime">未設定に戻す</button></div><input type="hidden" id="flowMgrExtTime" value=""><div class="flowTimeControls" role="group" aria-label="結果タイムの選択"></div><span class="flowTimeCurrent" aria-live="polite">未設定（時間・分・秒・100分の1秒を選択）</span></div><label>会場など <input id="flowMgrExtVenue" maxlength="90" placeholder="任意"></label></div>
    
-   <div class="portalFormRow"><label>結果区分 <select id="flowMgrExtResultStatus"><option value="time">記録タイム</option><option value="DNS">DNS（欠場・記録なし）</option><option value="RESERVE_ACCOMPANY">補欠（帯同）</option></select></label></div>
+   <div class="portalFormRow"><label>結果区分 <select id="flowMgrExtResultStatus"><option value="time">記録タイム</option><option value="DNS">DNS（欠場・記録なし）</option><option value="DNF">DNF（途中棄権）</option><option value="RESERVE_ACCOMPANY">補欠（帯同）</option></select></label></div>
    <div class="portalFlowActions"><button type="button" class="portalPrimary" id="flowMgrExtSave">過去大会記録を登録</button><button type="button" class="portalFlowSecondary hidden" id="flowMgrExtEditCancel">修正をやめる</button></div>
    <p class="portalFlowStatus" id="flowMgrExtStatus" aria-live="polite"></p>
    <div id="portalClaimPanel" class="portalRulePanel" hidden>
@@ -7813,6 +7814,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
     '加木屋緑地公園',
     '阿久比スポーツ村',
     '瑞穂陸上競技場',
+    '瑞穂北陸上競技場',
     '新城総合公園',
     'スポーレ春日井',
     '美浜町運動公園陸上競技場',
@@ -11193,7 +11195,7 @@ const gateway=window.__TR_PORTAL_SYNC__;
     const verifiedTarget=sameSelf?gate?.uid:portalAthletes.find(p=>p.profileId===portalPersonalTargetId)?.uid;
     const all=portalPersonalRecords.filter(r=>r.profileId===portalPersonalTargetId&&
       (!r.subjectUid||(verifiedTarget&&r.subjectUid===verifiedTarget)||(!sameSelf&&window.__trPidUids?.[portalPersonalTargetId]?.has(r.subjectUid)))&&
-      (r.time||r.status==='DNS'||r.status==='RESERVE_ACCOMPANY'||r.status==='ELIMINATED'));
+      (r.time||r.status==='DNS'||r.status==='DNF'||r.status==='RESERVE_ACCOMPANY'||r.status==='ELIMINATED'));
     return (metric ? all.filter(r=>r.metric===metric):all).sort((a,b)=>a.date.localeCompare(b.date));
   }
   function portalRecSeconds(t){if(!t||!String(t).trim())return NaN;const parts=String(t).split(':').map(Number);if(parts.some(x=>!Number.isFinite(x)))return NaN;return parts.reduce((v,n)=>v*60+n,0)}
@@ -11208,7 +11210,7 @@ const gateway=window.__TR_PORTAL_SYNC__;
     const d=r.date.split('-'),practice=portalIsPracticeRecord(r),best=practice?portalPracticeBest(r.metric):portalRecBest(r.metric);
     const tag=(best?.id===r.id)?(practice?'<span class="crTag">練習参考最速</span>':'<span class="crTag gold">PB</span>'):r.metric==='relay'?'<span class="crTag">区間記録</span>':'';
     const certification=!practice&&portalIsCertifiedRecord(r)?'<span class="crTag gold">公認大会</span>':'';
-    const display=`<button type="button" class="crRecordRow" data-pr-record="${esc(r.id)}"><div class="crDate"><small>${esc(d[0])}</small><b>${esc(d[1]+'.'+d[2])}</b></div><div class="crRecordInfo"><b>${esc(portalRecordEventName(r))}</b><span>${esc((r.practiceDate?String(r.recordDistanceMeters)+'m ／ ':'')+(r.venue||''))}</span></div><div class="crRecordTime"><small>${esc(r.label)}</small><b>${esc(r.status==='DNS'?'DNS（欠場）':r.status==='RESERVE_ACCOMPANY'?'補欠（帯同）':r.status==='ELIMINATED'?'予選敗退':r.time)}</b>${tag}${certification}</div></button>`;
+    const display=`<button type="button" class="crRecordRow" data-pr-record="${esc(r.id)}"><div class="crDate"><small>${esc(d[0])}</small><b>${esc(d[1]+'.'+d[2])}</b></div><div class="crRecordInfo"><b>${esc(portalRecordEventName(r))}</b><span>${esc((r.practiceDate?String(r.recordDistanceMeters)+'m ／ ':'')+(r.venue||''))}</span></div><div class="crRecordTime"><small>${esc(r.label)}</small><b>${esc(r.status==='DNF'?'DNF（途中棄権）':r.status==='DNS'?'DNS（欠場）':r.status==='RESERVE_ACCOMPANY'?'補欠（帯同）':r.status==='ELIMINATED'?'予選敗退':r.time)}</b>${tag}${certification}</div></button>`;
     // The participant sees their personal record, never the management action.
     if(r.source!=='PORTAL_STAFF_PAST'||!portalV88DeveloperRecordAdmin()||!r.subjectUid||!r.profileId)return display;
     const canonical=flowState.external.find(x=>x.id===r.id&&x.actorId===portalPersonalTargetId&&x.firebaseSource==='portalStaff'&&x.subjectUid===r.subjectUid&&x.profileId===r.profileId);
@@ -12345,7 +12347,7 @@ function portalGoalSwitchTab(tab,{keepScroll=false}={}){
     if(r.result && !results.some(x=>x.legacy===true))results.unshift({id:'legacy-'+r.eventId+'-'+r.actorId+'-'+r.metric,legacy:true,date:flowEvent(r.eventId)?.date||'',round:'大会結果',status:r.result==='DNS'?'DNS':'time',time:r.result==='DNS'?'':r.result});
     return results;
   }
-  function flowResultLabel(res){return res.status==='DNS'?'DNS（欠場・記録なし）':res.status==='RESERVE_ACCOMPANY'?'補欠（帯同）':res.status==='ELIMINATED'?'予選敗退（記録なし）':res.time||'未入力';}
+  function flowResultLabel(res){return res.status==='DNF'?'DNF（途中棄権）':res.status==='DNS'?'DNS（欠場・記録なし）':res.status==='RESERVE_ACCOMPANY'?'補欠（帯同）':res.status==='ELIMINATED'?'予選敗退（記録なし）':res.time||'未入力';}
 
   // Every time input uses native selection controls. No numerical keyboard or manual time entry.
   const flowTimeFieldIds=new Set(['managePracticeRecordTime','flowGoal','flowDeclaredTime','flowProxyGoal','flowProxyDeclared','flowProxyEditGoal','flowManagerGoal','flowManagerDeclared','flowManagerResult','portalRoundTime','flowMgrExtTime','commonGoal400','commonGoal800','commonGoal1000','commonGoal1500','commonGoal3000','commonGoal5000','commonGoal10000','commonGoal21097.5','commonGoal42195','commonGoalRelay','commonGoalOther']);
@@ -13645,7 +13647,7 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
       }
     }
     for(const r of flowState.external){
-      if(!r||(!r.time&&!['DNS','RESERVE_ACCOMPANY'].includes(r.status))||r.source!=='manager-external')continue;
+      if(!r||(!r.time&&!['DNS','DNF','RESERVE_ACCOMPANY'].includes(r.status))||r.source!=='manager-external')continue;
       const official=r.official===true;
       portalPersonalRecords.push({id:r.id,profileId:r.actorId,metric:r.practiceDate?String(r.recordDistanceMeters):r.metric,date:r.date,event:r.name,venue:r.venue||'',label:r.practiceDate?(('【'+({TT:'TT',selection:'選考',trial:'試走',other:'その他'}[r.recordKind]||'記録練習')+'】 '+String(r.recordDistanceMeters||r.metric)+'m ／ 非公認練習記録')+(r.recordNote?' ／ '+r.recordNote:'')):r.firebaseSource==='portalStaff'?(official?'管理登録・公認申告':'管理登録・非公認'):official?'公認申告・過去大会（本人照合前）':'非公認申告・過去大会（本人照合前）',time:r.status==='time'?r.time:'',status:r.status||'time',subjectUid:r.subjectUid||'',practiceDate:r.practiceDate||'',recordDistanceMeters:r.recordDistanceMeters||0,recordKind:r.recordKind||'',recordNote:r.recordNote||'',catalogId:r.firebaseSource==='portalStaff'?portalStaffCatalogId(r):'',official:false,source:r.firebaseSource==='portalStaff'?'PORTAL_STAFF_PAST':r.firebaseSource==='portalSelf'?'PORTAL_SELF_DECLARED':'PORTAL_LOCAL_PREVIEW'});
     }
@@ -15759,10 +15761,10 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
         ?`<div class="portalFlowRowActions"><button type="button" data-flow-manage-ext="${esc(r.id)}">管理画面で修正・削除</button></div>`:'';
     const metricText=r.practiceDate?(portalRecordMetricLabel(String(r.recordDistanceMeters||r.metric))+'／'+({TT:'TT',selection:'選考',trial:'試走',other:'その他'}[r.recordKind]||'記録練習')):(portalMetricNames[r.metric]||portalRecordMetricLabel(String(r.metric)));
     const ds=String(r.date||'').split('-');const displayDate=ds.length===3?`<small>${esc(ds[0])}年</small><strong>${esc(Number(ds[1]))}/${esc(String(Number(ds[2])).padStart(2,'0'))}</strong>`:esc(r.date||'日付未設定');
-    if(mode==='mgr')return `<div class="portalFlowEntryRow portalHistoryRecordRow"><div class="portalHistoryRecordMain"><time class="portalHistoryRecordDate" datetime="${esc(r.date)}">${displayDate}</time><div class="portalHistoryRecordInfo"><b>${esc(window.trPastTitle?window.trPastTitle(r.id,r.name):r.name)}</b><span>${esc(metricText)} <strong>${esc(r.status==='DNS'?'DNS（欠場・記録なし）':r.status==='RESERVE_ACCOMPANY'?'補欠（帯同）':r.time||'未設定')}</strong></span>${portalIsCertifiedRecord({ ...r,source:'PORTAL_STAFF_PAST',catalogId:portalStaffCatalogId(r) })?'<small class="isOfficial">公認大会</small>':''}</div></div>${actions}</div>`;
+    if(mode==='mgr')return `<div class="portalFlowEntryRow portalHistoryRecordRow"><div class="portalHistoryRecordMain"><time class="portalHistoryRecordDate" datetime="${esc(r.date)}">${displayDate}</time><div class="portalHistoryRecordInfo"><b>${esc(window.trPastTitle?window.trPastTitle(r.id,r.name):r.name)}</b><span>${esc(metricText)} <strong>${esc(r.status==='DNF'?'DNF（途中棄権）':r.status==='DNS'?'DNS（欠場・記録なし）':r.status==='RESERVE_ACCOMPANY'?'補欠（帯同）':r.time||'未設定')}</strong></span>${portalIsCertifiedRecord({ ...r,source:'PORTAL_STAFF_PAST',catalogId:portalStaffCatalogId(r) })?'<small class="isOfficial">公認大会</small>':''}</div></div>${actions}</div>`;
     const projected={...r,source:r.firebaseSource==='portalStaff'?'PORTAL_STAFF_PAST':'PORTAL_LOCAL_PREVIEW',catalogId:portalStaffCatalogId(r)};
     const certified=portalIsCertifiedRecord(projected),pb=r.status==='time'&&r.time&&portalRecBest(r.metric)?.id===r.id;
-    const result=r.status==='DNS'?'DNS（欠場・記録なし）':r.status==='RESERVE_ACCOMPANY'?'補欠（帯同）':r.time||'未設定';
+    const result=r.status==='DNF'?'DNF（途中棄権）':r.status==='DNS'?'DNS（欠場・記録なし）':r.status==='RESERVE_ACCOMPANY'?'補欠（帯同）':r.time||'未設定';
     return `<div class="portalFlowEntryRow portalHistoryRecordRow"><div class="portalHistoryRecordMain"><time class="portalHistoryRecordDate" datetime="${esc(r.date)}">${displayDate}</time><div class="portalHistoryRecordInfo"><b>${esc(window.trPastTitle?window.trPastTitle(r.id,r.name):r.name)}</b><span class="portalHistoryRecordResult">${esc(metricText)} <strong>${esc(result)}</strong></span><div class="portalHistoryRecordTags"><small class="${certified?'isOfficial':'isUnofficial'}">${certified?'公認大会':'非公認・公認未照合'}</small>${pb?'<small class="isPB">PB・自己ベスト</small>':''}</div>${r.venue?`<small>会場：${esc(r.venue)}</small>`:''}</div></div>${actions}</div>`;
   }
   function flowRenderExternal(){
@@ -15817,6 +15819,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
     const choices=[...seen.values()];
     return window.trClubSortV333?window.trClubSortV333(choices):choices;
   }
+  window.__trPastChoices=()=>portalPastVerifiedChoices(); // v356: 一括取り込みで使う（読むだけ）
   function portalPastChoice(actor){return portalPastVerifiedChoices().find(x=>x.id===actor)||null;}
   // v120: developer attaches past race rows (EVENT BASE / 駅伝) to a verified person. Writes only through
   // gate.saveStaffPastRecord (existing staff path); a row already attached to anyone is shown and locked.
@@ -16619,7 +16622,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
     }
     const fields=['flowMgrExtName','flowMgrExtDate','flowMgrExtMetric','flowMgrExtTime','flowMgrExtVenue'];
     [r.name,r.date,r.metric,r.time,r.venue||''].forEach((v,i)=>{if(flowTimeFieldIds.has(fields[i]))flowSetTime(fields[i],v);else $(fields[i]).value=v;});
-    $('flowMgrExtResultStatus').value=['DNS','RESERVE_ACCOMPANY'].includes(r.status)?r.status:'time';document.querySelector('[data-flow-time="flowMgrExtTime"]').hidden=r.status!=='time';
+    $('flowMgrExtResultStatus').value=['DNS','DNF','RESERVE_ACCOMPANY'].includes(r.status)?r.status:'time';document.querySelector('[data-flow-time="flowMgrExtTime"]').hidden=r.status!=='time';
     document.querySelector(`input[name="flowMgrExtOfficial"][value="${r.official===true?'yes':'no'}"]`).checked=true;
     flowMgrExtEditId=r.id;$('flowMgrExtSave').textContent='この大会記録の修正を保存';$('flowMgrExtEditCancel').classList.remove('hidden');$('flowMgrExtName').focus();
 });
@@ -19696,7 +19699,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       const time=String(value?.time||''),venue=String(value?.venue||'');
       const metric=String(value?.metric||'');
       if(!/^local-flow-[A-Za-z0-9_-]{8,100}$/.test(id)||!/^\d{4}-\d{2}-\d{2}$/.test(date)||date>new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Tokyo'})||
-        !name||name.length>120||venue.length>160||!['time','DNS','RESERVE_ACCOMPANY'].includes(status)||
+        !name||name.length>120||venue.length>160||!['time','DNS','DNF','RESERVE_ACCOMPANY'].includes(status)||
         !(['800','1000','1500','3000','relay','other'].includes(metric)||(/^[1-9]\d{1,4}$/.test(metric)&&Number(metric)>=50&&Number(metric)<=10000&&Number(metric)%50===0))||
         (status==='time'&&!/^(?:\d+:)?\d{1,3}:\d{2}(?:\.\d{1,2})?$/.test(time)))throw Error('記録の入力条件を確認してください');
       const isPractice=Boolean(value.practiceDate);
@@ -27869,6 +27872,116 @@ body.portalChatIsolated > #trQuick{visibility:visible!important;opacity:1!import
       busy=false;await load();
     }catch(e){say('付け替えできませんでした（何も変わっていません）：'+String(e?.message||e?.code||e).slice(0,160));}
     finally{busy=false;$('trRecMoveRun').disabled=false;}
+  }
+  window.addEventListener('tr-portal-authorized',visible);
+  const start=()=>{
+    visible();
+    const screen=$('screen-management-settings');
+    if(screen)new MutationObserver(()=>{if(!screen.classList.contains('hidden'))visible();}).observe(screen,{attributes:true,attributeFilter:['class']});
+  };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+})();
+</script>
+<script id="v356-past-import">
+(()=>{
+  const DATA={"events":[{"title":"第1回名古屋地区陸上競技大会","dates":["2026-04-05"],"venue":"瑞穂北陸上競技場","id":"event-past26-01"},{"title":"春季第2回","dates":["2026-04-11"],"venue":"","id":"event-past26-02"},{"title":"春季名古屋地区中学校陸上記録会","dates":["2026-05-02","2026-05-03"],"venue":"スポーレ春日井","id":"event-past26-03"},{"title":"中学通信名古屋地区予選（第1日）","dates":["2026-05-16"],"venue":"","id":"event-past26-04"},{"title":"中学通信名古屋地区予選（第2日）","dates":["2026-06-06"],"venue":"","id":"event-past26-05"},{"title":"夏季名古屋地区陸上競技大会","dates":["2026-06-07"],"venue":"美浜町運動公園陸上競技場","id":"event-past26-06"},{"title":"全日本中学校通信陸上 愛知県大会","dates":["2026-06-20","2026-06-21"],"venue":"瑞穂陸上競技場","id":"event-past26-07"},{"title":"全日本中学校陸上競技選手権","dates":["2026-06-27"],"venue":"","id":"event-past26-08"},{"title":"知多地方中学校陸上競技大会","dates":["2026-07-04"],"venue":"","id":"event-past26-09"},{"title":"日本福祉大学ナイター陸上競技会","dates":["2026-07-11"],"venue":"","id":"event-past26-10"},{"title":"愛知県中学校総合体育大会 陸上競技","dates":["2026-07-25","2026-07-26"],"venue":"瑞穂北陸上競技場","id":"event-past26-11"},{"title":"愛知県ジュニアオリンピック陸上競技大会","dates":["2026-08-30"],"venue":"スポーレ春日井","id":"event-past26-12"},{"title":"名古屋地区中学新人陸上競技選手権大会","dates":["2026-09-12","2026-09-13"],"venue":"","id":"event-past26-13"},{"title":"県新人陸上競技大会","dates":["2026-10-24"],"venue":"","id":"event-past26-14"}],"records":[{"e":"event-past26-01","n":"沼澤 史弥","d":"2026-04-05","m":"1500","r":"","s":"DNF","t":"","k":"b9bd4fb3"},{"e":"event-past26-02","n":"沼澤 史弥","d":"2026-04-11","m":"800","r":"","s":"time","t":"2:18.78","k":"53594d3e"},{"e":"event-past26-05","n":"沼澤 史弥","d":"2026-06-06","m":"1500","r":"","s":"time","t":"4:40.67","k":"16f362dd"},{"e":"event-past26-09","n":"沼澤 史弥","d":"2026-07-04","m":"1500","r":"","s":"time","t":"4:39.00","k":"88c71db6"},{"e":"event-past26-10","n":"沼澤 史弥","d":"2026-07-11","m":"1500","r":"","s":"time","t":"4:36.54","k":"5e3f0777"},{"e":"event-past26-01","n":"松永 ののか","d":"2026-04-05","m":"1500","r":"","s":"time","t":"5:31.16","k":"10dde8c2"},{"e":"event-past26-02","n":"松永 ののか","d":"2026-04-11","m":"800","r":"","s":"time","t":"2:34.72","k":"f2f20e71"},{"e":"event-past26-03","n":"松永 ののか","d":"2026-05-03","m":"800","r":"","s":"time","t":"2:38.67","k":"064ed506"},{"e":"event-past26-04","n":"松永 ののか","d":"2026-05-16","m":"800","r":"","s":"time","t":"2:37.45","k":"3fa33ce3"},{"e":"event-past26-05","n":"松永 ののか","d":"2026-06-06","m":"1500","r":"","s":"time","t":"6:04.84","k":"0ab931cb"},{"e":"event-past26-09","n":"松永 ののか","d":"2026-07-04","m":"800","r":"","s":"time","t":"2:49.08","k":"af541366"},{"e":"event-past26-01","n":"金城 実嘉子","d":"2026-04-05","m":"1500","r":"","s":"time","t":"5:09.79","k":"0994daae"},{"e":"event-past26-02","n":"金城 実嘉子","d":"2026-04-11","m":"800","r":"","s":"time","t":"2:33.08","k":"6dcfd9b5"},{"e":"event-past26-03","n":"金城 実嘉子","d":"2026-05-02","m":"1500","r":"","s":"time","t":"5:09.04","k":"97e77e2e"},{"e":"event-past26-03","n":"金城 実嘉子","d":"2026-05-03","m":"800","r":"","s":"time","t":"2:34.86","k":"4316eb70"},{"e":"event-past26-04","n":"金城 実嘉子","d":"2026-05-16","m":"800","r":"","s":"time","t":"2:34.71","k":"8c1dd15d"},{"e":"event-past26-05","n":"金城 実嘉子","d":"2026-06-06","m":"1500","r":"","s":"time","t":"5:05.67","k":"0dc61b97"},{"e":"event-past26-06","n":"金城 実嘉子","d":"2026-06-07","m":"800","r":"","s":"time","t":"2:29.09","k":"35d90261"},{"e":"event-past26-08","n":"金城 実嘉子","d":"2026-06-27","m":"1000","r":"","s":"time","t":"3:14.79","k":"1ca918a2"},{"e":"event-past26-09","n":"金城 実嘉子","d":"2026-07-04","m":"1500","r":"","s":"time","t":"5:10.26","k":"4deb0398"},{"e":"event-past26-10","n":"金城 実嘉子","d":"2026-07-11","m":"1500","r":"","s":"time","t":"5:07.65","k":"9bdb5a4b"},{"e":"event-past26-13","n":"金城 実嘉子","d":"2026-09-13","m":"3000","r":"","s":"time","t":"11:39.13","k":"2d1a7380"},{"e":"event-past26-01","n":"寺田 幸晟","d":"2026-04-05","m":"1500","r":"","s":"time","t":"4:49.62","k":"846a3aa6"},{"e":"event-past26-02","n":"寺田 幸晟","d":"2026-04-11","m":"800","r":"","s":"time","t":"2:21.89","k":"0acee7a8"},{"e":"event-past26-03","n":"寺田 幸晟","d":"2026-05-02","m":"1500","r":"","s":"time","t":"4:45.11","k":"5a4f649c"},{"e":"event-past26-04","n":"寺田 幸晟","d":"2026-05-16","m":"3000","r":"","s":"time","t":"10:00.05","k":"c859c31a"},{"e":"event-past26-06","n":"寺田 幸晟","d":"2026-06-07","m":"3000","r":"","s":"time","t":"9:54.61","k":"de5e21e5"},{"e":"event-past26-09","n":"寺田 幸晟","d":"2026-07-04","m":"1500","r":"","s":"time","t":"4:42.77","k":"7d268b47"},{"e":"event-past26-10","n":"寺田 幸晟","d":"2026-07-11","m":"1500","r":"","s":"time","t":"4:46.26","k":"efabd493"},{"e":"event-past26-13","n":"寺田 幸晟","d":"2026-09-12","m":"1500","r":"","s":"time","t":"4:36.64","k":"62e161e6"},{"e":"event-past26-14","n":"寺田 幸晟","d":"2026-10-24","m":"1500","r":"","s":"time","t":"4:36.87","k":"18271b2b"},{"e":"event-past26-01","n":"佐野 湊","d":"2026-04-05","m":"1500","r":"","s":"time","t":"4:53.89","k":"a379d13c"},{"e":"event-past26-02","n":"佐野 湊","d":"2026-04-11","m":"800","r":"","s":"time","t":"2:21.58","k":"34a52c22"},{"e":"event-past26-03","n":"佐野 湊","d":"2026-05-02","m":"1500","r":"","s":"time","t":"5:00.44","k":"c7aa1b63"},{"e":"event-past26-04","n":"佐野 湊","d":"2026-05-16","m":"800","r":"","s":"time","t":"2:23.78","k":"a3796613"},{"e":"event-past26-06","n":"佐野 湊","d":"2026-06-07","m":"800","r":"","s":"time","t":"2:17.72","k":"e3bb528a"},{"e":"event-past26-09","n":"佐野 湊","d":"2026-07-04","m":"800","r":"","s":"time","t":"2:19.96","k":"cf9dfafc"},{"e":"event-past26-14","n":"佐野 湊","d":"2026-10-24","m":"800","r":"","s":"time","t":"2:20.06","k":"64bfec2f"},{"e":"event-past26-01","n":"竹村 諒陽","d":"2026-04-05","m":"1500","r":"","s":"time","t":"4:35.29","k":"12984eb7"},{"e":"event-past26-02","n":"竹村 諒陽","d":"2026-04-11","m":"800","r":"","s":"time","t":"2:17.27","k":"ebdf2bab"},{"e":"event-past26-03","n":"竹村 諒陽","d":"2026-05-02","m":"1500","r":"","s":"time","t":"4:39.53","k":"22b486e1"},{"e":"event-past26-04","n":"竹村 諒陽","d":"2026-05-16","m":"3000","r":"","s":"time","t":"9:45.29","k":"5404f782"},{"e":"event-past26-05","n":"竹村 諒陽","d":"2026-06-06","m":"1500","r":"","s":"time","t":"4:27.79","k":"232eda0c"},{"e":"event-past26-06","n":"竹村 諒陽","d":"2026-06-07","m":"3000","r":"","s":"time","t":"9:38.94","k":"bc22ee06"},{"e":"event-past26-07","n":"竹村 諒陽","d":"2026-06-20","m":"3000","r":"","s":"time","t":"9:48.71","k":"33d03c8f"},{"e":"event-past26-08","n":"竹村 諒陽","d":"2026-06-27","m":"1000","r":"","s":"time","t":"2:53.07","k":"dfe0f24e"},{"e":"event-past26-09","n":"竹村 諒陽","d":"2026-07-04","m":"1500","r":"","s":"time","t":"4:37.12","k":"9b5203f1"},{"e":"event-past26-10","n":"竹村 諒陽","d":"2026-07-11","m":"1500","r":"","s":"time","t":"4:33.11","k":"781af22c"},{"e":"event-past26-11","n":"竹村 諒陽","d":"2026-07-25","m":"1500","r":"中2予選","s":"time","t":"4:33.35","k":"a5f4e967"},{"e":"event-past26-11","n":"竹村 諒陽","d":"2026-07-26","m":"1500","r":"中2決勝","s":"time","t":"4:29.72","k":"8ff791aa"},{"e":"event-past26-14","n":"竹村 諒陽","d":"2026-10-24","m":"1500","r":"","s":"time","t":"4:34.52","k":"9fab6211"},{"e":"event-past26-01","n":"黒木 柳斗","d":"2026-04-05","m":"1500","r":"","s":"time","t":"4:38.92","k":"b7980c66"},{"e":"event-past26-02","n":"黒木 柳斗","d":"2026-04-11","m":"800","r":"","s":"time","t":"2:19.40","k":"a0d8cb3e"},{"e":"event-past26-03","n":"黒木 柳斗","d":"2026-05-02","m":"1500","r":"","s":"time","t":"4:44.03","k":"8eade378"},{"e":"event-past26-04","n":"黒木 柳斗","d":"2026-05-16","m":"3000","r":"","s":"time","t":"9:54.22","k":"dcc676e2"},{"e":"event-past26-05","n":"黒木 柳斗","d":"2026-06-06","m":"1500","r":"","s":"time","t":"4:33.63","k":"78d4d192"},{"e":"event-past26-06","n":"黒木 柳斗","d":"2026-06-07","m":"3000","r":"","s":"time","t":"9:52.86","k":"d3558eb2"},{"e":"event-past26-08","n":"黒木 柳斗","d":"2026-06-27","m":"1000","r":"","s":"time","t":"2:52.88","k":"633bdbe4"},{"e":"event-past26-09","n":"黒木 柳斗","d":"2026-07-04","m":"1500","r":"","s":"time","t":"4:33.00","k":"5ab4939b"},{"e":"event-past26-10","n":"黒木 柳斗","d":"2026-07-11","m":"1500","r":"","s":"time","t":"4:31.95","k":"db6b689b"},{"e":"event-past26-11","n":"黒木 柳斗","d":"2026-07-25","m":"1500","r":"中2予選","s":"time","t":"4:39.62","k":"612377a9"},{"e":"event-past26-13","n":"黒木 柳斗","d":"2026-09-13","m":"800","r":"","s":"time","t":"2:14.53","k":"0eaecf6f"},{"e":"event-past26-14","n":"黒木 柳斗","d":"2026-10-24","m":"1500","r":"","s":"time","t":"4:39.01","k":"33f84444"},{"e":"event-past26-01","n":"新美 心陽","d":"2026-04-05","m":"1500","r":"","s":"time","t":"5:12.06","k":"c9fa9b33"},{"e":"event-past26-02","n":"新美 心陽","d":"2026-04-11","m":"800","r":"","s":"time","t":"2:35.12","k":"9565812b"},{"e":"event-past26-03","n":"新美 心陽","d":"2026-05-02","m":"1500","r":"","s":"time","t":"5:17.46","k":"da46b8c1"},{"e":"event-past26-03","n":"新美 心陽","d":"2026-05-03","m":"3000","r":"","s":"time","t":"11:28.99","k":"cf572cc0"},{"e":"event-past26-05","n":"新美 心陽","d":"2026-06-06","m":"1500","r":"","s":"time","t":"5:03.99","k":"2ac0304f"},{"e":"event-past26-06","n":"新美 心陽","d":"2026-06-07","m":"800","r":"","s":"time","t":"2:26.65","k":"37175bb2"},{"e":"event-past26-07","n":"新美 心陽","d":"2026-06-20","m":"800","r":"予選","s":"time","t":"2:25.91","k":"6505b24a"},{"e":"event-past26-08","n":"新美 心陽","d":"2026-06-27","m":"1000","r":"","s":"time","t":"3:14.59","k":"6a285cfe"},{"e":"event-past26-09","n":"新美 心陽","d":"2026-07-04","m":"1500","r":"","s":"time","t":"5:01.15","k":"dca1d1ab"},{"e":"event-past26-10","n":"新美 心陽","d":"2026-07-11","m":"1500","r":"","s":"time","t":"5:07.45","k":"13ff6dc8"},{"e":"event-past26-11","n":"新美 心陽","d":"2026-07-25","m":"1500","r":"予選","s":"time","t":"5:18.55","k":"6bbb52c5"},{"e":"event-past26-12","n":"新美 心陽","d":"2026-08-30","m":"1000","r":"予選","s":"time","t":"3:20.14","k":"d60ed901"},{"e":"event-past26-14","n":"新美 心陽","d":"2026-10-24","m":"1500","r":"","s":"time","t":"5:26.50","k":"d994a506"},{"e":"event-past26-13","n":"金田一 伶奈","d":"2026-09-13","m":"800","r":"","s":"time","t":"2:47.52","k":"ab4758d8"},{"e":"event-past26-01","n":"新海 心菜","d":"2026-04-05","m":"1500","r":"","s":"DNS","t":"","k":"3ea507b0"},{"e":"event-past26-02","n":"新海 心菜","d":"2026-04-11","m":"800","r":"","s":"DNS","t":"","k":"fce26f3f"},{"e":"event-past26-03","n":"新海 心菜","d":"2026-05-03","m":"800","r":"","s":"time","t":"2:27.90","k":"033ee9ee"},{"e":"event-past26-04","n":"新海 心菜","d":"2026-05-16","m":"800","r":"","s":"time","t":"2:26.68","k":"bdaa26d9"},{"e":"event-past26-05","n":"新海 心菜","d":"2026-06-06","m":"1500","r":"","s":"time","t":"4:59.94","k":"6add57ac"},{"e":"event-past26-07","n":"新海 心菜","d":"2026-06-20","m":"800","r":"","s":"time","t":"2:23.99","k":"2a0af2c4"},{"e":"event-past26-07","n":"新海 心菜","d":"2026-06-21","m":"1500","r":"","s":"time","t":"5:03.42","k":"06b55495"},{"e":"event-past26-09","n":"新海 心菜","d":"2026-07-04","m":"800","r":"","s":"time","t":"2:25.52","k":"02a327a0"},{"e":"event-past26-10","n":"新海 心菜","d":"2026-07-11","m":"1500","r":"","s":"time","t":"5:02.32","k":"a5a8ccb8"},{"e":"event-past26-11","n":"新海 心菜","d":"2026-07-25","m":"800","r":"予選","s":"time","t":"2:26.31","k":"13bc4f65"},{"e":"event-past26-12","n":"新海 心菜","d":"2026-08-30","m":"1000","r":"予選","s":"time","t":"3:08.32","k":"c1323326"},{"e":"event-past26-14","n":"新海 心菜","d":"2026-10-24","m":"800","r":"","s":"time","t":"2:28.32","k":"abe294b7"},{"e":"event-past26-01","n":"山盛 由結","d":"2026-04-05","m":"1500","r":"","s":"time","t":"5:55.98","k":"b0212535"},{"e":"event-past26-02","n":"山盛 由結","d":"2026-04-11","m":"800","r":"","s":"time","t":"2:49.44","k":"812f2a71"},{"e":"event-past26-03","n":"山盛 由結","d":"2026-05-02","m":"1500","r":"","s":"time","t":"5:58.31","k":"f6f4f379"},{"e":"event-past26-09","n":"山盛 由結","d":"2026-07-04","m":"800","r":"","s":"time","t":"2:52.28","k":"15c76bf0"},{"e":"event-past26-13","n":"山盛 由結","d":"2026-09-13","m":"800","r":"","s":"time","t":"2:53.63","k":"0746a5c7"},{"e":"event-past26-01","n":"新美 絢咲","d":"2026-04-05","m":"1500","r":"","s":"time","t":"5:39.89","k":"b2965348"},{"e":"event-past26-02","n":"新美 絢咲","d":"2026-04-11","m":"800","r":"","s":"time","t":"2:48.21","k":"6f46cbbc"},{"e":"event-past26-03","n":"新美 絢咲","d":"2026-05-03","m":"800","r":"","s":"time","t":"2:43.43","k":"3ba54096"},{"e":"event-past26-05","n":"新美 絢咲","d":"2026-06-06","m":"1500","r":"","s":"time","t":"5:34.61","k":"91487764"},{"e":"event-past26-09","n":"新美 絢咲","d":"2026-07-04","m":"1500","r":"","s":"time","t":"5:40.92","k":"3ce76657"},{"e":"event-past26-10","n":"新美 絢咲","d":"2026-07-11","m":"1500","r":"","s":"time","t":"5:37.87","k":"ca745132"},{"e":"event-past26-13","n":"新美 絢咲","d":"2026-09-12","m":"1500","r":"","s":"time","t":"5:36.22","k":"aacb05bc"},{"e":"event-past26-01","n":"水野 琉輝","d":"2026-04-05","m":"1500","r":"","s":"time","t":"5:07.24","k":"21ffd56a"},{"e":"event-past26-02","n":"水野 琉輝","d":"2026-04-11","m":"800","r":"","s":"time","t":"2:31.64","k":"b3e4bc02"},{"e":"event-past26-03","n":"水野 琉輝","d":"2026-05-02","m":"1500","r":"","s":"time","t":"4:59.99","k":"579a25a1"},{"e":"event-past26-03","n":"水野 琉輝","d":"2026-05-03","m":"3000","r":"","s":"time","t":"10:45.75","k":"dabd7b2a"},{"e":"event-past26-05","n":"水野 琉輝","d":"2026-06-06","m":"1500","r":"","s":"time","t":"4:53.23","k":"29d7671c"},{"e":"event-past26-06","n":"水野 琉輝","d":"2026-06-07","m":"3000","r":"","s":"time","t":"10:23.93","k":"79d4cb6c"},{"e":"event-past26-07","n":"水野 琉輝","d":"2026-06-21","m":"1500","r":"","s":"time","t":"5:21.60","k":"028d22ec"},{"e":"event-past26-10","n":"水野 琉輝","d":"2026-07-11","m":"1500","r":"","s":"DNS","t":"","k":"c26bb7ae"},{"e":"event-past26-13","n":"水野 琉輝","d":"2026-09-12","m":"1500","r":"","s":"time","t":"4:58.67","k":"1fd303fd"},{"e":"event-past26-01","n":"上温湯 成真","d":"2026-04-05","m":"1500","r":"","s":"time","t":"4:52.93","k":"b2b0fb9d"},{"e":"event-past26-02","n":"上温湯 成真","d":"2026-04-11","m":"800","r":"","s":"time","t":"2:26.27","k":"aed34643"},{"e":"event-past26-03","n":"上温湯 成真","d":"2026-05-03","m":"800","r":"","s":"time","t":"2:27.76","k":"d98d34a6"},{"e":"event-past26-04","n":"上温湯 成真","d":"2026-05-16","m":"800","r":"","s":"time","t":"2:27.37","k":"42947b45"},{"e":"event-past26-07","n":"上温湯 成真","d":"2026-06-21","m":"1500","r":"","s":"time","t":"4:54.13","k":"ed2a94c4"},{"e":"event-past26-09","n":"上温湯 成真","d":"2026-07-04","m":"3000","r":"","s":"time","t":"10:46.47","k":"318168a6"},{"e":"event-past26-10","n":"上温湯 成真","d":"2026-07-11","m":"1500","r":"","s":"time","t":"5:02.20","k":"b38b5c1e"},{"e":"event-past26-13","n":"上温湯 成真","d":"2026-09-12","m":"1500","r":"","s":"time","t":"4:49.98","k":"335adc48"},{"e":"event-past26-01","n":"井元 蒼空","d":"2026-04-05","m":"1500","r":"","s":"time","t":"4:56.16","k":"66f61726"},{"e":"event-past26-02","n":"井元 蒼空","d":"2026-04-11","m":"800","r":"","s":"time","t":"2:20.28","k":"a626cbb7"},{"e":"event-past26-03","n":"井元 蒼空","d":"2026-05-03","m":"800","r":"","s":"time","t":"2:25.68","k":"045ad74e"},{"e":"event-past26-04","n":"井元 蒼空","d":"2026-05-16","m":"800","r":"","s":"time","t":"2:15.23","k":"fd93a7f0"},{"e":"event-past26-06","n":"井元 蒼空","d":"2026-06-07","m":"3000","r":"","s":"time","t":"9:59.55","k":"0a526973"},{"e":"event-past26-07","n":"井元 蒼空","d":"2026-06-21","m":"1500","r":"中1","s":"time","t":"4:48.43","k":"2e9a184a"},{"e":"event-past26-09","n":"井元 蒼空","d":"2026-07-04","m":"1500","r":"","s":"time","t":"4:47.31","k":"479832db"},{"e":"event-past26-10","n":"井元 蒼空","d":"2026-07-11","m":"1500","r":"","s":"time","t":"4:47.82","k":"cc93ac72"},{"e":"event-past26-11","n":"井元 蒼空","d":"2026-07-25","m":"1500","r":"中1予選","s":"time","t":"4:52.29","k":"9195d32a"},{"e":"event-past26-13","n":"井元 蒼空","d":"2026-09-13","m":"800","r":"","s":"time","t":"2:13.91","k":"5b7bc8a1"},{"e":"event-past26-14","n":"井元 蒼空","d":"2026-10-24","m":"800","r":"","s":"time","t":"2:19.98","k":"bfd562b9"},{"e":"event-past26-01","n":"山口 蒼大","d":"2026-04-05","m":"1500","r":"","s":"time","t":"5:00.92","k":"ee0a0f34"},{"e":"event-past26-02","n":"山口 蒼大","d":"2026-04-11","m":"800","r":"","s":"time","t":"2:30.41","k":"2296c432"},{"e":"event-past26-03","n":"山口 蒼大","d":"2026-05-02","m":"1500","r":"","s":"time","t":"4:56.16","k":"dde0c85e"},{"e":"event-past26-04","n":"山口 蒼大","d":"2026-05-16","m":"3000","r":"","s":"time","t":"10:26.24","k":"75c4be03"},{"e":"event-past26-05","n":"山口 蒼大","d":"2026-06-06","m":"1500","r":"","s":"time","t":"4:44.79","k":"7930de08"},{"e":"event-past26-07","n":"山口 蒼大","d":"2026-06-21","m":"1500","r":"","s":"DNS","t":"","k":"8f21adb7"},{"e":"event-past26-09","n":"山口 蒼大","d":"2026-07-04","m":"3000","r":"","s":"time","t":"10:34.07","k":"42e8bfe7"},{"e":"event-past26-10","n":"山口 蒼大","d":"2026-07-11","m":"1500","r":"","s":"DNS","t":"","k":"e1800a12"},{"e":"event-past26-13","n":"山口 蒼大","d":"2026-09-13","m":"800","r":"","s":"time","t":"2:22.66","k":"5fed6b0f"},{"e":"event-past26-14","n":"山口 蒼大","d":"2026-10-24","m":"1500","r":"","s":"time","t":"4:55.26","k":"0eea01a7"},{"e":"event-past26-01","n":"鈴木 駿","d":"2026-04-05","m":"1500","r":"","s":"time","t":"4:52.18","k":"0395f589"},{"e":"event-past26-02","n":"鈴木 駿","d":"2026-04-11","m":"800","r":"","s":"time","t":"2:27.44","k":"b43c964b"},{"e":"event-past26-03","n":"鈴木 駿","d":"2026-05-02","m":"1500","r":"","s":"time","t":"5:19.12","k":"7a3073aa"},{"e":"event-past26-03","n":"鈴木 駿","d":"2026-05-03","m":"3000","r":"","s":"time","t":"10:21.52","k":"a046db4b"},{"e":"event-past26-05","n":"鈴木 駿","d":"2026-06-06","m":"1500","r":"","s":"time","t":"4:47.61","k":"ba3f6308"},{"e":"event-past26-07","n":"鈴木 駿","d":"2026-06-21","m":"1500","r":"","s":"DNS","t":"","k":"5f2fc6c5"},{"e":"event-past26-09","n":"鈴木 駿","d":"2026-07-04","m":"1500","r":"","s":"time","t":"5:03.84","k":"27dd8381"},{"e":"event-past26-10","n":"鈴木 駿","d":"2026-07-11","m":"1500","r":"","s":"time","t":"4:56.74","k":"3e9ef719"},{"e":"event-past26-13","n":"鈴木 駿","d":"2026-09-12","m":"1500","r":"","s":"time","t":"4:47.99","k":"00515473"},{"e":"event-past26-14","n":"鈴木 駿","d":"2026-10-24","m":"3000","r":"","s":"time","t":"10:19.23","k":"5af87661"},{"e":"event-past26-01","n":"渕上 武","d":"2026-04-05","m":"1500","r":"","s":"time","t":"5:26.73","k":"09d79517"},{"e":"event-past26-03","n":"渕上 武","d":"2026-05-03","m":"800","r":"","s":"time","t":"2:43.02","k":"8f848574"},{"e":"event-past26-05","n":"渕上 武","d":"2026-06-06","m":"1500","r":"","s":"time","t":"5:29.76","k":"26cc8cd6"},{"e":"event-past26-09","n":"渕上 武","d":"2026-07-04","m":"800","r":"","s":"time","t":"2:36.56","k":"2e987718"},{"e":"event-past26-10","n":"渕上 武","d":"2026-07-11","m":"1500","r":"","s":"time","t":"5:26.28","k":"930903d2"},{"e":"event-past26-13","n":"渕上 武","d":"2026-09-12","m":"1500","r":"","s":"time","t":"5:21.45","k":"ab2e72c0"},{"e":"event-past26-01","n":"井川 翔太","d":"2026-04-05","m":"1500","r":"","s":"time","t":"4:48.80","k":"ed4278e2"},{"e":"event-past26-02","n":"井川 翔太","d":"2026-04-11","m":"800","r":"","s":"time","t":"2:17.20","k":"54f3c622"},{"e":"event-past26-03","n":"井川 翔太","d":"2026-05-03","m":"800","r":"","s":"time","t":"2:16.16","k":"41eb830b"},{"e":"event-past26-04","n":"井川 翔太","d":"2026-05-16","m":"800","r":"","s":"time","t":"2:12.68","k":"924e130d"},{"e":"event-past26-06","n":"井川 翔太","d":"2026-06-07","m":"3000","r":"","s":"time","t":"9:54.51","k":"c028598b"},{"e":"event-past26-07","n":"井川 翔太","d":"2026-06-21","m":"1500","r":"","s":"time","t":"4:36.31","k":"c81dcac8"},{"e":"event-past26-08","n":"井川 翔太","d":"2026-06-27","m":"1000","r":"","s":"DNS","t":"","k":"a2c821c6"},{"e":"event-past26-10","n":"井川 翔太","d":"2026-07-11","m":"1500","r":"","s":"DNS","t":"","k":"4b086251"},{"e":"event-past26-14","n":"井川 翔太","d":"2026-10-24","m":"800","r":"","s":"time","t":"2:11.35","k":"66a8b5b1"},{"e":"event-past26-01","n":"石橋 陽生","d":"2026-04-05","m":"1500","r":"","s":"time","t":"5:11.77","k":"6d74dcfe"},{"e":"event-past26-02","n":"石橋 陽生","d":"2026-04-11","m":"800","r":"","s":"time","t":"2:34.85","k":"0f23621e"},{"e":"event-past26-03","n":"石橋 陽生","d":"2026-05-03","m":"800","r":"","s":"time","t":"2:30.10","k":"94731a4b"},{"e":"event-past26-05","n":"石橋 陽生","d":"2026-06-06","m":"1500","r":"","s":"time","t":"4:54.30","k":"88a4079d"},{"e":"event-past26-07","n":"石橋 陽生","d":"2026-06-21","m":"1500","r":"中1","s":"time","t":"4:50.64","k":"321947e6"},{"e":"event-past26-09","n":"石橋 陽生","d":"2026-07-04","m":"3000","r":"","s":"time","t":"10:45.01","k":"7cbf89dd"},{"e":"event-past26-10","n":"石橋 陽生","d":"2026-07-11","m":"1500","r":"","s":"time","t":"5:01.64","k":"c181b340"},{"e":"event-past26-13","n":"石橋 陽生","d":"2026-09-12","m":"1500","r":"","s":"time","t":"4:47.62","k":"ac1b437f"},{"e":"event-past26-13","n":"松本 遼","d":"2026-09-12","m":"1500","r":"","s":"time","t":"4:56.65","k":"d4e98d0f"},{"e":"event-past26-01","n":"三枝 愛利","d":"2026-04-05","m":"1500","r":"","s":"time","t":"5:41.91","k":"cf59c65c"},{"e":"event-past26-02","n":"三枝 愛利","d":"2026-04-11","m":"800","r":"","s":"time","t":"2:47.59","k":"de308b35"},{"e":"event-past26-03","n":"三枝 愛利","d":"2026-05-02","m":"1500","r":"","s":"time","t":"5:27.96","k":"32a8b160"},{"e":"event-past26-03","n":"三枝 愛利","d":"2026-05-03","m":"800","r":"","s":"time","t":"2:39.11","k":"60bf1120"},{"e":"event-past26-04","n":"三枝 愛利","d":"2026-05-16","m":"800","r":"","s":"time","t":"2:34.68","k":"9f5753d2"},{"e":"event-past26-05","n":"三枝 愛利","d":"2026-06-06","m":"1500","r":"","s":"time","t":"5:24.19","k":"d0fef799"},{"e":"event-past26-06","n":"三枝 愛利","d":"2026-06-07","m":"800","r":"","s":"time","t":"2:33.42","k":"653ed675"},{"e":"event-past26-07","n":"三枝 愛利","d":"2026-06-20","m":"800","r":"予選","s":"time","t":"2:34.83","k":"e4a9dd5b"},{"e":"event-past26-08","n":"三枝 愛利","d":"2026-06-27","m":"1000","r":"","s":"time","t":"3:22.59","k":"788ff5cc"},{"e":"event-past26-09","n":"三枝 愛利","d":"2026-07-04","m":"800","r":"","s":"time","t":"2:31.47","k":"f8eaf1b8"},{"e":"event-past26-10","n":"三枝 愛利","d":"2026-07-11","m":"800","r":"","s":"time","t":"2:38.35","k":"f27b9d90"},{"e":"event-past26-11","n":"三枝 愛利","d":"2026-07-25","m":"800","r":"中1予選","s":"time","t":"2:33.40","k":"9527b1dd"},{"e":"event-past26-11","n":"三枝 愛利","d":"2026-07-26","m":"800","r":"中1決勝","s":"time","t":"2:33.97","k":"2b5cbd93"},{"e":"event-past26-13","n":"三枝 愛利","d":"2026-09-12","m":"1500","r":"","s":"time","t":"5:16.29","k":"ee60e95d"},{"e":"event-past26-14","n":"三枝 愛利","d":"2026-10-24","m":"800","r":"","s":"time","t":"2:31.69","k":"0c7811b9"},{"e":"event-past26-01","n":"笠島 新菜","d":"2026-04-05","m":"1500","r":"","s":"time","t":"5:48.39","k":"c1becf17"},{"e":"event-past26-02","n":"笠島 新菜","d":"2026-04-11","m":"800","r":"","s":"time","t":"3:01.32","k":"02ec6572"},{"e":"event-past26-03","n":"笠島 新菜","d":"2026-05-02","m":"1500","r":"","s":"time","t":"5:53.53","k":"c9f16d58"},{"e":"event-past26-03","n":"笠島 新菜","d":"2026-05-03","m":"800","r":"","s":"time","t":"2:49.34","k":"c467890c"},{"e":"event-past26-04","n":"笠島 新菜","d":"2026-05-16","m":"800","r":"","s":"time","t":"2:45.29","k":"8a1dbffd"},{"e":"event-past26-06","n":"笠島 新菜","d":"2026-06-07","m":"800","r":"","s":"time","t":"2:49.03","k":"fd966795"},{"e":"event-past26-09","n":"笠島 新菜","d":"2026-07-04","m":"800","r":"","s":"time","t":"2:49.13","k":"1289c8a1"},{"e":"event-past26-10","n":"笠島 新菜","d":"2026-07-11","m":"800","r":"","s":"time","t":"2:53.57","k":"22567d09"},{"e":"event-past26-13","n":"笠島 新菜","d":"2026-09-13","m":"800","r":"","s":"time","t":"2:48.15","k":"ac32434b"}]};
+  const $=id=>document.getElementById(id);
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const gate=()=>window.__TR_PORTAL_SYNC__;
+  const norm=v=>String(v||'').replace(/（本人）$/,'').normalize('NFKC').replace(/[\s\u3000]/g,'');
+  const isDev=()=>{const g=gate();return g?.roleVerified===true&&g?.role==='developer'&&!window.__TR_COMMON_PILOT_UI__?.isParticipantPreview?.();};
+  let plan=null,busy=false;
+  const say=t=>{const el=$('trPastImpState');if(el)el.textContent=t||'';};
+  function mount(){
+    if($('trPastImpSection'))return true;
+    const anchor=$('trRecMoveSection')||$('trFamilySection')||document.querySelector('#screen-management-settings .portalScreenBody > section');
+    if(!anchor)return false;
+    anchor.insertAdjacentHTML('afterend',
+      '<section id="trPastImpSection" class="portalManagementSettingsSection" hidden>'+
+        '<div class="portalPanelHead"><small>PAST RECORDS IMPORT</small><b>過去大会記録の一括取り込み（開発者）</b></div>'+
+        '<details class="portalManageAccessDisclosure" id="trPastImpDetails"><summary>2026年度 大会記録（'+DATA.events.length+'大会・'+DATA.records.length+'件）</summary>'+
+          '<div class="portalIdentityLinkBody">'+
+            '<p style="font-size:12px;line-height:1.6">大会をPORTALのイベント（開催済み）として作り、記録を「非公認」で各選手の個人記録に保存します。取り込んだ大会・記録は、イベント管理と「過去大会記録を登録・修正・削除」で修正・削除できます。すでにある大会・記録は上書きしません。PORTAL未登録の選手の記録は、登録後にもう一度取り込むと追加されます。</p>'+
+            '<button id="trPastImpCheck" type="button" style="min-height:43px">内容を確認する</button>'+
+            '<div id="trPastImpPreview" style="font-size:13px;line-height:1.7;margin:8px 0"></div>'+
+            '<button id="trPastImpRun" type="button" style="min-height:43px" hidden>この内容で取り込む</button>'+
+            '<p id="trPastImpState" role="status" style="white-space:pre-wrap;font-size:12px"></p>'+
+          '</div>'+
+        '</details>'+
+      '</section>');
+    $('trPastImpCheck').addEventListener('click',check);
+    $('trPastImpRun').addEventListener('click',run);
+    return true;
+  }
+  function visible(){if(!mount())return;$('trPastImpSection').hidden=!isDev();}
+  async function buildPlan(){
+    const g=gate();
+    if(!isDev()||!g?.loadPastEventOverview||!g?.saveStaffPastRecord||!g?.saveEvent)throw Error('開発者の本人認証を確認できません');
+    const items=g.eventItems||{};
+    const events=DATA.events.map(e=>{
+      let id=items[e.id]?e.id:'';
+      if(!id){const hit=Object.entries(items).find(([k,v])=>v&&/^event-[A-Za-z0-9_-]{1,80}$/.test(k)&&String(v.title||'').trim()===e.title&&String(v.date||'')===e.dates[0]);if(hit)id=hit[0];}
+      return {...e,useId:id||e.id,exists:!!id};
+    });
+    const evById=new Map(events.map(e=>[e.id,e]));
+    const choices=(window.__trPastChoices?.()||[]).filter(c=>c&&c.uid&&c.profileId);
+    const byName=new Map();
+    for(const c of choices){const k=norm(c.name);if(!byName.has(k))byName.set(k,new Map());byName.get(k).set(c.uid,c);}
+    const overview=await g.loadPastEventOverview();
+    const save=[],saved=[],waiting=new Map(),dup=new Map();
+    for(const r of DATA.records){
+      const ev=evById.get(r.e),people=byName.get(norm(r.n));
+      if(!people||!people.size){waiting.set(r.n,(waiting.get(r.n)||0)+1);continue;}
+      if(people.size>1){dup.set(r.n,(dup.get(r.n)||0)+1);continue;}
+      const person=[...people.values()][0];
+      const id='local-flow-'+ev.useId+'__'+r.k;
+      if(overview?.[person.uid]?.[id]){saved.push(r);continue;}
+      save.push({person,value:{id,name:ev.title+(r.r?'（'+r.r+'）':''),date:r.d,metric:r.m,time:r.s==='time'?r.t:'',status:r.s,venue:ev.venue||'',official:false}});
+    }
+    return {events,save,saved,waiting,dup};
+  }
+  async function check(){
+    if(busy)return;busy=true;$('trPastImpRun').hidden=true;$('trPastImpPreview').innerHTML='';say('確認しています…');
+    try{
+      plan=await buildPlan();
+      const newEv=plan.events.filter(e=>!e.exists),list=m=>[...m.entries()].map(([n,c])=>esc(n)+'（'+c+'件）').join('、');
+      $('trPastImpPreview').innerHTML=
+        '<b>大会</b>：新しく作る '+newEv.length+'件 ／ すでにある '+(plan.events.length-newEv.length)+'件<br>'+
+        '<b>記録</b>：保存する '+plan.save.length+'件 ／ 保存済み '+plan.saved.length+'件'+
+        (plan.waiting.size?'<br><b>PORTAL未登録のため待ち</b>：'+list(plan.waiting):'')+
+        (plan.dup.size?'<br><b>同じ名前が複数いるため保留</b>：'+list(plan.dup):'');
+      $('trPastImpRun').hidden=!(newEv.length||plan.save.length);
+      say(newEv.length||plan.save.length?'':'取り込む新しい大会・記録はありません。');
+    }catch(e){plan=null;say('確認できませんでした：'+String(e?.message||e).slice(0,160));}
+    finally{busy=false;}
+  }
+  async function run(){
+    if(busy||!plan)return;
+    const newEv=plan.events.filter(e=>!e.exists);
+    if(!window.confirm('大会 '+newEv.length+'件を作成し、記録 '+plan.save.length+'件を「非公認」で保存します。よろしいですか？'))return;
+    busy=true;$('trPastImpRun').disabled=true;
+    const g=gate(),errors=[];let evDone=0,recDone=0;
+    try{
+      for(const e of newEv){
+        say('大会を作成しています… '+(evDone+1)+'/'+newEv.length);
+        const item={id:e.id,date:e.dates[0],dates:e.dates,metricDates:{},startTime:'',title:e.title,place:e.venue||'未定',type:'OTHER',url:'',state:'DEVELOPMENT',relay:false,displayCategory:'competition',registration:'受付前',enabled:true,copiedFrom:'',previewOnly:false,pendingId:'',official:false,eligibility:{enabled:false,rules:[],note:''},requiresDeclaredTime:false,raceMetrics:[],raceEntryEnabled:false,entryDeadline:'',attendanceOpen:false,goalDefaultFromMyPage:true};
+        try{await g.saveEvent(item,null);evDone++;}catch(err){errors.push(e.title+'：'+String(err?.message||err).slice(0,60));}
+      }
+      const failedEv=new Set(newEv.filter((e,i)=>errors.some(x=>x.startsWith(e.title+'：'))).map(e=>e.id));
+      const todo=plan.save.filter(x=>![...failedEv].some(id=>x.value.id.startsWith('local-flow-'+id+'__')));
+      let cursor=0;
+      await Promise.all(Array.from({length:Math.min(3,todo.length)},async()=>{
+        while(cursor<todo.length){
+          const x=todo[cursor++];
+          try{await g.saveStaffPastRecord({uid:x.person.uid,profileId:x.person.profileId},x.value,null);recDone++;}
+          catch(err){errors.push(x.person.name+' '+x.value.name+'：'+String(err?.message||err).slice(0,60));}
+          say('記録を保存しています… '+recDone+'/'+todo.length);
+        }
+      }));
+      say('大会 '+evDone+'件・記録 '+recDone+'件を保存しました。'+(errors.length?'\n保存できなかったもの '+errors.length+'件：\n'+errors.slice(0,12).join('\n'):''));
+      try{window.showActionFeedback?.(errors.length?'一部保存できませんでした':'保存しました','大会 '+evDone+'件・記録 '+recDone+'件');}catch(_){}
+      $('trPastImpRun').hidden=true;plan=null;
+    }finally{busy=false;$('trPastImpRun').disabled=false;}
   }
   window.addEventListener('tr-portal-authorized',visible);
   const start=()=>{
