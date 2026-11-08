@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v362 | 2026-11-08 | Parent v361. 推移グラフ：一本の線を一定の速さで伸ばし、線が届いた瞬間にその点とタイムを出す（点が先に出ない・なめらか）。遅くなった大会は、その時点のベストからの差を45%に縮めて描き、急に下がって見えないように（各点のタイムは実際の値）。縦の目盛りの数字は実際の差と合わなくなるため外し「↑ 速い」を表示。 -->
 <!-- TOP RUN PORTAL v361 | 2026-11-08 | Parent v360. 個人記録の新デザインを各テーマ（標準・blue・sakura・winter・matte）の配色に合わせた：固定色をやめ、テーマの文字色・カード色・線・アクセント（--op-fg/--op-bg/--op-line/--op-muted/--op-accent/--gold）を使用。濃いテーマでは上部カードもテーマのカード色。濃いテーマで文字が見えなかった見出し・自己ベスト・駅伝・詳細ボタンを修正。 -->
 <!-- TOP RUN PORTAL v360 | 2026-11-08 | Parent v359. 推移グラフ（個人記録・詳細とも）：点を等間隔に戻し、ベストの階段線をやめて各大会を直線でつなぐ。全ての点にタイムを表示（山は上・谷は下、重なれば反対側）。アニメーション：点とタイムが出る→線が斜めに次の点へ伸びる→次の点とタイム…を順に。個人記録を開いたとき・詳細を開いたとき・種目切替時に再生（同じ内容の再描画では再生しない）。目盛りは4本程度に整理。端末内の描画のみで通信なし。 -->
 <!-- TOP RUN PORTAL v359 | 2026-11-08 | Parent v358. 個人記録：上部の濃い帯を上のタブ（ヘッダー）から離し、角丸の独立したカードに。数字を細めの字幅に（最新記録27px・自己ベスト18px・件数17px、字間を詰める）。最新のベスト更新はタップで非表示、「最新のベスト更新を表示」で戻す（この端末だけの表示設定・Firebase保存なし）。 -->
@@ -6701,7 +6702,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v361</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v362</b></div>
   </div>
 </div>
 
@@ -6938,7 +6939,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v361</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v362</b></div>
   </div>
 </div>
 
@@ -11251,7 +11252,7 @@ const gateway=window.__TR_PORTAL_SYNC__;
   var trChartSigO='',trChartSigD='';
   function portalRecordChart(metric,detail=false){
     const values=portalGraphRecords(metric).map(r=>({r,s:portalRecSeconds(r.time)}));
-    const W=detail?380:360,H=detail?236:204,L=detail?54:48,R=detail?18:16,T=detail?32:28,B=detail?36:32;
+    const W=detail?380:360,H=detail?236:204,L=detail?16:14,R=detail?16:14,T=detail?36:32,B=detail?36:32;
     let svg=`<rect class="crChartSurface" width="${W}" height="${H}" rx="14"/>`;
     if(!values.length)return svg+`<text class="crChartEmptyLabel" x="${W/2}" y="${H/2}" text-anchor="middle" font-size="15" font-weight="850">記録がありません</text>`;
     if(values.length===1){
@@ -11266,41 +11267,38 @@ const gateway=window.__TR_PORTAL_SYNC__;
     let anim;
     const force=window.__trChartForce===true;window.__trChartForce=false;
     if(detail){anim=force||sig!==trChartSigD;trChartSigD=sig;}else{anim=force||sig!==trChartSigO;trChartSigO=sig;}
-    const nums=values.map(v=>v.s),lo=Math.min(...nums),hi=Math.max(...nums);
-    const pad=Math.max(1.5,(hi-lo)*0.2),ymin=lo-pad,ymax=hi+pad;
-    const step=[1,2,5,10,15,20,30,60,120].find(v=>(ymax-ymin)/v<=4)||300;
+    // v362: 遅くなった大会は落差を小さく見せる（その時点のベストからの差を45%に縮めて描く）。タイムは各点に実際の値を表示。
+    let rb=Infinity;const disp=values.map(v=>{if(v.s<rb)rb=v.s;return v.s<=rb?v.s:rb+(v.s-rb)*0.45;});
+    const lo=Math.min(...disp),hi=Math.max(...disp);
+    const pad=Math.max(1.2,(hi-lo)*0.22),ymin=lo-pad,ymax=hi+pad;
     const fy=v=>T+(v-ymin)/(ymax-ymin)*(H-T-B);
-    const tick=v=>{const m=Math.floor(v/60),sec=Math.round(v-m*60);return m+':'+String(sec).padStart(2,'0');};
-    for(let v=Math.ceil(ymin/step)*step;v<=ymax+1e-6;v+=step){
-      const y=fy(v);
-      svg+=`<line class="crChartGrid" x1="${L}" y1="${y.toFixed(1)}" x2="${W-R}" y2="${y.toFixed(1)}"/>`;
-      svg+=`<text class="crChartAxis" x="${L-8}" y="${(y+4).toFixed(1)}" text-anchor="end" font-size="${detail?12:11.5}" font-weight="800">${tick(v)}</text>`;
-    }
-    const n=values.length,x0=L+16,x1=W-R-16,fx=i=>x0+i*(x1-x0)/(n-1);
-    const P=values.map((v,i)=>({x:fx(i),y:fy(v.s),v}));
+    for(let k=0;k<4;k++){const y=T+k*(H-T-B)/3;svg+=`<line class="crChartGrid" x1="${L}" y1="${y.toFixed(1)}" x2="${W-R}" y2="${y.toFixed(1)}"/>`;}
+    svg+=`<text class="crChartAxis" x="${L}" y="${T-12}" text-anchor="start" font-size="${detail?11:10}" font-weight="800">↑ 速い</text>`;
+    const n=values.length,x0=L+18,x1=W-R-18,fx=i=>x0+i*(x1-x0)/(n-1);
+    const P=values.map((v,i)=>({x:fx(i),y:fy(disp[i]),v}));
     const every=Math.max(1,Math.ceil(n/6));
     P.forEach((p,i)=>{if(i%every&&i!==n-1)return;svg+=`<text class="crChartDate" x="${p.x.toFixed(1)}" y="${H-12}" text-anchor="middle" font-size="${detail?12:11}" font-weight="800">${esc(String(p.v.r.date||'').slice(5).replace('-','/'))}</text>`;});
-    const D=detail?0.5:0.45,lead=0.2;
-    if(anim){
-      for(let i=0;i<n-1;i++){const a=P[i],b=P[i+1];
-        svg+=`<line class="crChartLine trSeg" pathLength="1" style="--d:${(i*D+lead).toFixed(2)}s;--dur:${(D-lead).toFixed(2)}s" x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke-width="${detail?3:2.6}" stroke-linecap="round"/>`;}
-    }else svg+=`<polyline class="crChartLine" points="${P.map(p=>p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ')}" fill="none" stroke-width="${detail?3:2.6}" stroke-linejoin="round" stroke-linecap="round"/>`;
+    // 一本の線を一定の速さで伸ばし、線が届いた瞬間にその点とタイムを出す
+    const cum=[0];for(let i=1;i<n;i++)cum.push(cum[i-1]+Math.hypot(P[i].x-P[i-1].x,P[i].y-P[i-1].y));
+    const total=cum[n-1]||1,start=0.35,dur=Math.min(3.2,Math.max(1.1,(n-1)*(detail?0.5:0.45)));
+    const at=i=>start+cum[i]/total*dur;
+    const sw=detail?3:2.6,pts=P.map(p=>p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ');
+    svg+=`<polyline class="crChartLine${anim?' trLineGrow':''}" style="--len:${Math.ceil(total)+2};--d:${start}s;--dur:${dur.toFixed(2)}s" points="${pts}" fill="none" stroke-width="${sw}" stroke-linejoin="round" stroke-linecap="round"/>`;
     P.forEach((p,i)=>{
-      svg+=`<circle class="${portalIsPracticeRecord(p.v.r)?'crPracticePoint':'crChartPoint'}${anim?' trAnimPop':''}" style="--d:${(i*D).toFixed(2)}s" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${detail?5:4.6}" stroke-width="2"/>`;
+      svg+=`<circle class="${portalIsPracticeRecord(p.v.r)?'crPracticePoint':'crChartPoint'}${anim?' trAnimPop':''}" style="--d:${(i?at(i):0.1).toFixed(2)}s" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${detail?5:4.6}" stroke-width="2"/>`;
     });
     const boxes=[],fs=detail?12.5:12;
-    // 線の上に重ならないよう、山の点は上・谷の点は下にタイムを置く。重なれば反対側へ。
     P.forEach((p,i)=>{
       const text=String(p.v.r.time),w=text.length*fs*0.6;
       const nb=[P[i-1],P[i+1]].filter(Boolean),avg=nb.reduce((t,q)=>t+q.y,0)/nb.length;
       let above=p.y<=avg;
-      let anchor='middle',lx=p.x;if(p.x+w/2>W-4){anchor='end';lx=p.x+8;}else if(p.x-w/2<L-6){anchor='start';lx=p.x-8;}
+      let anchor='middle',lx=p.x;if(p.x+w/2>W-4){anchor='end';lx=p.x+8;}else if(p.x-w/2<4){anchor='start';lx=p.x-8;}
       const bx=anchor==='end'?lx-w:anchor==='start'?lx:lx-w/2;
       const yOf=up=>up?p.y-11:p.y+fs+8;
       const hit=yy=>yy<12||yy>H-B+10||boxes.some(o=>bx<o.x1&&bx+w>o.x0&&yy-fs<o.y1&&yy+2>o.y0);
       let ly=yOf(above);if(hit(ly)){const alt=yOf(!above);if(!hit(alt))ly=alt;}
       boxes.push({x0:bx,x1:bx+w,y0:ly-fs,y1:ly+2});
-      svg+=`<text class="crChartPointLabel${anim?' trAnimFade':''}" style="--d:${(i*D+0.06).toFixed(2)}s" x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anchor}" font-size="${fs}" font-weight="800">${esc(text)}</text>`;
+      svg+=`<text class="crChartPointLabel${anim?' trAnimFade':''}" style="--d:${((i?at(i):0.1)+0.08).toFixed(2)}s" x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anchor}" font-size="${fs}" font-weight="800">${esc(text)}</text>`;
     });
     return svg;
   }
@@ -29042,6 +29040,12 @@ html body #screen-competition-results .crSectionHead>div:first-child>h3{-webkit-
 html body #screen-competition-results .trRaceToggle{border-color:var(--op-fg,#2F3536)!important;color:var(--op-fg,#2F3536)!important;-webkit-text-fill-color:currentColor!important;background:transparent!important}
 html body #screen-competition-results .trRaceToggle span{color:var(--op-accent,#9A7F12)!important}
 html body #screen-competition-results .crHero.trCrHero,html body #screen-competition-results .crHero.trCrHero *{-webkit-text-fill-color:currentColor!important}
+/* v362: 線を一定の速さで伸ばし、届いた時に点とタイムを出す */
+@keyframes trCrGrow{to{stroke-dashoffset:0}}
+:is(#screen-competition-results,#screen-competition-graph-detail) .trLineGrow{stroke-dasharray:calc(var(--len)*1px);stroke-dashoffset:calc(var(--len)*1px);animation:trCrGrow var(--dur,1.5s) linear var(--d,0s) forwards}
+:is(#screen-competition-results,#screen-competition-graph-detail) .trAnimPop{animation-duration:.28s!important}
+:is(#screen-competition-results,#screen-competition-graph-detail) .trAnimFade{animation-duration:.25s!important}
+@media (prefers-reduced-motion: reduce){:is(#screen-competition-results,#screen-competition-graph-detail) .trLineGrow{animation:none!important;stroke-dashoffset:0!important}}
 </style>
 </body>
 </html>
