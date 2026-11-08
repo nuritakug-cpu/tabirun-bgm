@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v373 | 2026-11-09 | Parent v372 (Rules v370). 下のメニューの「潜る・浮く（隙間）」の根本対策：見えている画面の下端を測ってJSで位置を動かす仕組み（v219・v314・v343・v348で調整を重ねたもの）を止め、CSSで画面の下端に固定（bottom:0、ホームバーはsafe-areaの余白）。スクロール中・はね返り中にiPhoneが返す一時的な位置で動かしていたことが再発の原因。表示だけ、通信なし。 -->
 <!-- TOP RUN PORTAL v372 | 2026-11-09 | Parent v371 (Rules v370). 記録推移の詳細：グラフ下の説明文を削除し、SB（今年度）・直近・差を小さく1行で表示。下がっているときは控えめ、SB更新・PB更新・大幅更新（800m2秒/1000m3秒/他5秒以上）・10秒以上の5段階。更新時はグラフを描き終えてから点を光らせ札を弾ませる。年度は4/1〜翌3/31、SBは同じ年度、PBは全記録。色はテーマのアクセントのみ。通信なし。 -->
 <!-- TOP RUN PORTAL v371 | 2026-11-08 | Parent v370 (Rules v370 のまま). 自己ベストの「公認」の印：種目名の横の大きな札（縦に折り返していた）をやめ、日付の横に小さな金色の文字で控えめに表示。表示だけ。 -->
 <!-- TOP RUN PORTAL v370 | 2026-11-08 | Parent v369. REQUIRES Rules v370 (TOPRUNRULESv370.json)。チャットの写真：1日10枚・1回5枚。1日の枚数を端末ではなくFirebase側（chatImageQuota/<uid>：日付と枚数だけ）で数え、写真の保存と枚数の記録を1回の書き込みにまとめ、Rulesが上限を超える書き込みを拒否する（別端末・データ消去・直接書き込みでも超えられない）。開発者は上限なし。通信量は写真1回につき数十バイト増えるだけ。 -->
@@ -6712,7 +6713,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v372</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v373</b></div>
   </div>
 </div>
 
@@ -6949,7 +6950,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v372</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v373</b></div>
   </div>
 </div>
 
@@ -26477,6 +26478,13 @@ body.portalChatIsolated:not(.portalFieldInputActive) #screen-chat>main.chatMain{
   let liftTimer=0,lastMove=0,liftCand=null,liftCandAt=0;const liftLater=()=>{lastMove=Date.now();clearTimeout(liftTimer);liftTimer=setTimeout(lift,300);};
   function lift(){
     root.style.setProperty('--trTabsH',(tabs.offsetHeight||72)+'px');
+    // v373: 下のメニューを「測って動かす」のをやめる（根本の対策）。
+    //   スクロール中やページ端のはね返り中は、iPhoneが返す位置そのものが一時的にずれる。
+    //   それを正しいと思って動かすため、潜る・浮く（隙間）が何度直しても再発していた。
+    //   下のメニューは画面の下端に固定（bottom:0）し、ホームバーの分は余白（safe-area）で確保する。JSでは一切動かさない。
+    if(curLift!==0){curLift=0;}
+    root.style.setProperty('--trTabsLift','0px');
+    return;
     const vv=window.visualViewport;
     if(!vv||body.classList.contains('portalFieldInputActive')||(vv.scale||1)>1.01||tabs.offsetParent===null&&getComputedStyle(tabs).position!=='fixed')return;
     // v348: スクロールの直後や、ページの端のはね返りの最中は測らない（測ると、はね返りでずれた位置を正しいと思い込み、潜る・浮くになる）
@@ -29261,6 +29269,12 @@ html:is([data-portal-personal-color="matte"],[data-portal-personal-color="winter
 @keyframes trSbHalo{0%{opacity:0;transform:scale(.6)}35%{opacity:1;transform:scale(2.2)}100%{opacity:.9;transform:scale(1.6)}}
 @keyframes trSbHaloBeat{0%,100%{transform:scale(1.6);opacity:.9}50%{transform:scale(2);opacity:.5}}
 @media (prefers-reduced-motion: reduce){#screen-competition-graph-detail .trSbStrip .d{animation:none!important;opacity:1!important;transform:none!important}#crDetailSvg .trSbHalo{display:none}}
+</style>
+
+<style id="v373-tabs-fixed">
+/* v373: 下のメニューは画面の下端に固定。JSで位置を動かさない（潜る・浮くの根本対策）。ホームバーの分は safe-area の余白で確保。 */
+html body nav.portalBottomTabs{bottom:0!important}
+body.portalChatIsolated:not(.portalFieldInputActive) #screen-chat .chatComposer{bottom:var(--trTabsH,72px)!important}
 </style>
 </body>
 </html>
