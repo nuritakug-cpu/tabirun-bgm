@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v363 | 2026-11-08 | Parent v362. 基本プロフィールの学年に「保護者」を追加（値 parent。中学1〜3年・保護者・その他。出走条件の学年判定では「その他」と同じ扱い、一覧・CSVでは「保護者」）。winterテーマでチャット名の保存ボタンだけ色が違っていたのを他の保存ボタンとそろえた。自己ベストのカードにメリハリ（種目ラベル小・記録を主役・日付を小さく控えめ）、カードを背景よりはっきり明るくし枠と影を強めた。 -->
 <!-- TOP RUN PORTAL v362 | 2026-11-08 | Parent v361. 推移グラフ：一本の線を一定の速さで伸ばし、線が届いた瞬間にその点とタイムを出す（点が先に出ない・なめらか）。遅くなった大会は、その時点のベストからの差を45%に縮めて描き、急に下がって見えないように（各点のタイムは実際の値）。縦の目盛りの数字は実際の差と合わなくなるため外し「↑ 速い」を表示。 -->
 <!-- TOP RUN PORTAL v361 | 2026-11-08 | Parent v360. 個人記録の新デザインを各テーマ（標準・blue・sakura・winter・matte）の配色に合わせた：固定色をやめ、テーマの文字色・カード色・線・アクセント（--op-fg/--op-bg/--op-line/--op-muted/--op-accent/--gold）を使用。濃いテーマでは上部カードもテーマのカード色。濃いテーマで文字が見えなかった見出し・自己ベスト・駅伝・詳細ボタンを修正。 -->
 <!-- TOP RUN PORTAL v360 | 2026-11-08 | Parent v359. 推移グラフ（個人記録・詳細とも）：点を等間隔に戻し、ベストの階段線をやめて各大会を直線でつなぐ。全ての点にタイムを表示（山は上・谷は下、重なれば反対側）。アニメーション：点とタイムが出る→線が斜めに次の点へ伸びる→次の点とタイム…を順に。個人記録を開いたとき・詳細を開いたとき・種目切替時に再生（同じ内容の再描画では再生しない）。目盛りは4本程度に整理。端末内の描画のみで通信なし。 -->
@@ -6352,7 +6353,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalRuleTitle">基本プロフィール</div>
         <div class="portalBasicProfileGrid">
           <label>性別<select id="portalProfileGender"><option value="">選択してください</option><option value="male">男</option><option value="female">女</option></select></label>
-          <label>学年<select id="portalProfileGrade"><option value="">選択してください</option><option value="1">中学1年</option><option value="2">中学2年</option><option value="3">中学3年</option><option value="other">その他</option></select></label>
+          <label>学年<select id="portalProfileGrade"><option value="">選択してください</option><option value="1">中学1年</option><option value="2">中学2年</option><option value="3">中学3年</option><option value="parent">保護者</option><option value="other">その他</option></select></label>
         </div>
         <label class="portalBasicProfileBib">ゼッケンNo<input type="text" id="portalProfileBib" inputmode="numeric" maxlength="16" autocomplete="off" placeholder="ゼッケン番号"></label>
 
@@ -6702,7 +6703,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v362</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v363</b></div>
   </div>
 </div>
 
@@ -6939,7 +6940,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v362</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v363</b></div>
   </div>
 </div>
 
@@ -8249,7 +8250,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
     }
     const labels={name:'名前（表示名）',kanaFamily:'ふりがな・姓',kanaGiven:'ふりがな・名',chatName:'チャット名',gender:'性別',grade:'学年',bib:'ゼッケンNo'};
     const display=(key,val)=>key==='gender'?(val==='male'?'男':val==='female'?'女':'未設定'):
-      key==='grade'?(['1','2','3'].includes(val)?'中学'+val+'年':val==='other'?'その他':'未設定'):(val||'未入力');
+      key==='grade'?(['1','2','3'].includes(val)?'中学'+val+'年':val==='parent'?'保護者':val==='other'?'その他':'未設定'):(val||'未入力');
     const addLine=(parent,label,value)=>{
       const line=document.createElement('div');line.className='trProfileConfirmLine';
       const k=document.createElement('b');k.textContent=label;
@@ -8310,7 +8311,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       state.textContent='ふりがなは「姓」「名」の両方をひらがなで入力してください（空白不可）。';return;
     }
     const oldBasic=flowBasicProfile(),kanaChanged=kanaFamily!==String(oldBasic.kanaFamily||'')||kanaGiven!==String(oldBasic.kanaGiven||'');
-    const kanaPending=kanaChanged&&(!['male','female'].includes(oldBasic.gender)||!['1','2','3','other'].includes(String(oldBasic.grade||'')));
+    const kanaPending=kanaChanged&&(!['male','female'].includes(oldBasic.gender)||!['1','2','3','parent','other'].includes(String(oldBasic.grade||'')));
     // For a first-time user, save the name now; readings will be saved with gender/grade at the final step.
     if(portalParticipantPreviewMode && isDeveloper){
       if(kanaChanged){state.textContent='試用画面ではふりがなを保存できません。本人のMY PAGEで設定してください。';return;}
@@ -11349,7 +11350,7 @@ const gateway=window.__TR_PORTAL_SYNC__;
     const gate=window.__TR_PORTAL_SYNC__,uid=String(isSelf?(gate?.uid||''):(person?.uid||''));
     const bp=isSelf?flowBasicProfile():((uid&&gate?.clubProfileCache?.[uid])||{});
     const grade=String(bp?.grade||''),bib=String(bp?.bib||'').trim();
-    const parts=[];if(['1','2','3'].includes(grade))parts.push('中学'+grade+'年');else if(grade==='other')parts.push('その他');
+    const parts=[];if(['1','2','3'].includes(grade))parts.push('中学'+grade+'年');else if(grade==='parent')parts.push('保護者');else if(grade==='other')parts.push('その他');
     if(bib)parts.push('ゼッケンNo. '+bib);
     const sub=$('trCrSub');if(sub){sub.textContent=parts.join(' ／ ');sub.hidden=!parts.length;}
     const img=$('trCrLogoImg'),box=$('crTeamLogo'),seq=++trCrHeroSeq;
@@ -12070,12 +12071,12 @@ const chosen=new Set(eventSelectableMetrics(event));
     const requiresGender=rules.some(r=>Array.isArray(r.genders)&&r.genders.length);
     const requiresGrade=rules.some(r=>Array.isArray(r.grades)&&r.grades.length);
     const matches=rules.some(r=>(!Array.isArray(r.genders)||!r.genders.length||r.genders.includes(v.gender))&&(!Array.isArray(r.grades)||!r.grades.length||r.grades.map(Number).includes(Number(v.grade))));
-    if(!matches&&(requiresGender&&!['male','female'].includes(v.gender)||requiresGrade&&v.grade!=='other'&&![1,2,3].includes(Number(v.grade)))){
+    if(!matches&&(requiresGender&&!['male','female'].includes(v.gender)||requiresGrade&&v.grade!=='other'&&v.grade!=='parent'&&![1,2,3].includes(Number(v.grade)))){
       return {allowed:false,text:'出走条件の確認には、MY PAGEの基本プロフィール（性別・学年）の保存が必要です。'};
     }
     if(!matches){
       const gender=v.gender==='male'?'男':v.gender==='female'?'女':'未登録';
-      return {allowed:false,text:`この種目の出走条件に一致しません（登録プロフィール：${gender}／${v.grade==='other'?'その他':v.grade?`${v.grade}年`:'未登録'}）。`};
+      return {allowed:false,text:`この種目の出走条件に一致しません（登録プロフィール：${gender}／${v.grade==='other'?'その他':v.grade==='parent'?'保護者':v.grade?`${v.grade}年`:'未登録'}）。`};
     }
     return {allowed:true,text:'プロフィールの性別・学年は出走条件に一致しています。'};
   }
@@ -12213,7 +12214,7 @@ const chosen=new Set(eventSelectableMetrics(event));
     const v=flowBasicProfile();
     const gender=v.gender==='male'?'男':v.gender==='female'?'女':'';
     const grade=String(v.grade||'');
-    const gradeLabel=['1','2','3'].includes(grade)?'中学'+grade+'年':grade==='other'?'その他':'';
+    const gradeLabel=['1','2','3'].includes(grade)?'中学'+grade+'年':grade==='parent'?'保護者':grade==='other'?'その他':'';
     const bib=String(v.bib||'').trim();
     const briefParts=[];
     if(gender)briefParts.push('性別 '+gender);
@@ -12230,7 +12231,7 @@ const chosen=new Set(eventSelectableMetrics(event));
   function flowLoadBasicProfile(){
     const v=flowBasicProfile();
     $('portalProfileGender').value=['male','female'].includes(v.gender)?v.gender:'';
-    $('portalProfileGrade').value=['1','2','3','other'].includes(String(v.grade))?String(v.grade):'';
+    $('portalProfileGrade').value=['1','2','3','parent','other'].includes(String(v.grade))?String(v.grade):'';
     $('portalProfileBib').value=String(v.bib||'').slice(0,16);
     $('trKanaFamily').value=String(v.kanaFamily||'').slice(0,20);
     $('trKanaGiven').value=String(v.kanaGiven||'').slice(0,20);
@@ -12238,8 +12239,8 @@ const chosen=new Set(eventSelectableMetrics(event));
     portalRefreshProfileDisclosure();
   }
   $('portalSaveBasicProfile').addEventListener('click',async()=>{
-    const actor=flowSelfId(),gender=$('portalProfileGender').value,gradeSelection=$('portalProfileGrade').value,grade=gradeSelection==='other'?'other':Number(gradeSelection),bib=$('portalProfileBib').value.trim();
-    if(!['male','female'].includes(gender)||!(grade==='other'||[1,2,3].includes(grade))){
+    const actor=flowSelfId(),gender=$('portalProfileGender').value,gradeSelection=$('portalProfileGrade').value,grade=gradeSelection==='other'?'other':gradeSelection==='parent'?'parent':Number(gradeSelection),bib=$('portalProfileBib').value.trim();
+    if(!['male','female'].includes(gender)||!(grade==='other'||grade==='parent'||[1,2,3].includes(grade))){
       $('portalBasicProfileState').textContent='性別と学年を選択してください。';return;
     }
     if(bib.length>16){$('portalBasicProfileState').textContent='ゼッケンNoを確認してください。';return;}
@@ -14198,7 +14199,7 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
         const times=flowResultsForEntry(r).map(x=>flowResultLabel(x)).join('／');
         return `<div class="portalAuditMetric"><div><strong>${esc(portalMetricNames[r.metric]||r.metric)}　${esc(String(date).replace(/-/g,'/'))}</strong><small>申告：${esc(r.declaredTime||'—')}　目標：${esc(r.goal||'—')}</small>${times?`<small>結果：${esc(times)}</small>`:''}</div><button class="portalAuditMiniBtn" type="button" data-audit-edit="edit" data-audit-actor="${esc(p.id)}" data-audit-metric="${esc(r.metric)}">修正</button></div>`;
       }).join(''):'<div class="portalAuditMetric"><div><strong>出走登録なし</strong></div></div>';
-      const profileBits=[p.profile.grade?(p.profile.grade==='other'?'その他':p.profile.grade+'年'):'',p.profile.gender==='male'?'男子':p.profile.gender==='female'?'女子':'',p.profile.bib?'No.'+p.profile.bib:''].filter(Boolean);
+      const profileBits=[p.profile.grade?(p.profile.grade==='other'?'その他':p.profile.grade==='parent'?'保護者':p.profile.grade+'年'):'',p.profile.gender==='male'?'男子':p.profile.gender==='female'?'女子':'',p.profile.bib?'No.'+p.profile.bib:''].filter(Boolean);
       const issue=p.issues.length?`<small class="portalAuditIssue">${esc(p.issues.join(' ／ '))}</small>`:'';
       return `<article class="portalAuditCard ${p.issues.length?'needs':''}"><div class="portalAuditCardHead"><div><b>${esc(p.name)}</b><small>${esc(profileBits.join(' ／ ')||'基本プロフィール未設定')}</small></div><span class="portalAuditFlag">${p.issues.length?'対応が必要':'項目OK'}</span></div><label class="portalAuditAttendance">参加回答 ${p.remoteAnswer?`<span class="portalAuditAnswerReadOnly" aria-label="Firebase共有の本人回答">${esc(replyOptions.find(([value])=>value===p.explicit)?.[1]||'未回答')} （本人の共有回答・閲覧のみ）</span>`:`<select data-audit-attendance="${esc(p.id)}" aria-label="${esc(p.name)} の端末内試用回答">${replyOptions.map(([value,label])=>`<option value="${value}" ${p.explicit===value?'selected':''}>${label}</option>`).join('')}</select>`}</label>${issue}<div class="portalAuditEntries">${entryMarkup}</div>${e.raceEntryEnabled!==false?`<div class="portalAuditCardFoot"><button type="button" class="portalAuditMiniBtn" data-audit-edit="${p.entries.length?'edit':'missing'}" data-audit-actor="${esc(p.id)}">${p.entries.length?'出走内容を確認':'既存画面で出走登録 ＋'}</button>${p.entries.length&&eventSelectableMetrics(e).some(m=>!flowEntry(e.id,p.id,m))?`<button type="button" class="portalAuditMiniBtn" data-audit-edit="missing" data-audit-actor="${esc(p.id)}">種目を追加 ＋</button>`:''}</div>`:''}</article>`;
     }).join(''):'<div class="portalEmpty">該当する試作選手はいません。</div>';
@@ -14259,14 +14260,14 @@ flowSelectedManagerActor=actorId;
     if(uid&&['decline','maybe'].includes(a))issues.push('出走登録と回答の不一致');
     const res=r.hasResult?(r.resultTime||'記録あり')+(r.resultKind==='official'?'（公式）':r.resultKind==='provisional'?'（概算）':''):'';
     const m=key(r.metricRaw);
-    rows.push([e.title,portalEventDateLabel(e),e.startTime||'',e.place||'',r.name,profile.grade?(profile.grade==='other'?'その他':String(profile.grade)+'年'):'',profile.gender==='male'?'男子':profile.gender==='female'?'女子':'',profile.bib||'',uid?ansLabel(a)+(a?'':''):'—',portalMetricNames[m]||r.metricRaw||'',r.day||e.metricDates?.[m]||e.date||'',r.declaredTime||'',r.targetTime||'',res,issues.join('／')]);
+    rows.push([e.title,portalEventDateLabel(e),e.startTime||'',e.place||'',r.name,profile.grade?(profile.grade==='other'?'その他':profile.grade==='parent'?'保護者':String(profile.grade)+'年'):'',profile.gender==='male'?'男子':profile.gender==='female'?'女子':'',profile.bib||'',uid?ansLabel(a)+(a?'':''):'—',portalMetricNames[m]||r.metricRaw||'',r.day||e.metricDates?.[m]||e.date||'',r.declaredTime||'',r.targetTime||'',res,issues.join('／')]);
     people.push({uid,name:r.name,issues});
   }
   for(const [uid,a] of Object.entries(answers)){
     if(!a||seenUid.has(uid)||!trAuditScopeAllowed(uid)||!['join','support'].includes(a.answer))continue;
     const issues=a.answer==='join'&&e.raceEntryEnabled!==false?['参加回答あり・出走登録なし']:[];
     const profile=a.profileId?flowBasicProfile(a.profileId):{};
-    rows.push([e.title,portalEventDateLabel(e),e.startTime||'',e.place||'',String(a.name||'参加者').slice(0,24),profile.grade?(profile.grade==='other'?'その他':String(profile.grade)+'年'):'',profile.gender==='male'?'男子':profile.gender==='female'?'女子':'',profile.bib||'',ansLabel(a.answer),e.raceEntryEnabled===false?'対象外':'未登録','','','','',issues.join('／')]);
+    rows.push([e.title,portalEventDateLabel(e),e.startTime||'',e.place||'',String(a.name||'参加者').slice(0,24),profile.grade?(profile.grade==='other'?'その他':profile.grade==='parent'?'保護者':String(profile.grade)+'年'):'',profile.gender==='male'?'男子':profile.gender==='female'?'女子':'',profile.bib||'',ansLabel(a.answer),e.raceEntryEnabled===false?'対象外':'未登録','','','','',issues.join('／')]);
     people.push({uid,name:a.name,issues});
   }
   return {e,people,rows};
@@ -14361,7 +14362,7 @@ function portalAuditRenderOfficialV222(e){
     const answerName=a=>({join:'参加する',support:'会場へ行く（応援・帯同）',decline:'会場へ行かない',maybe:'未定'})[a]||'未回答';
     const profileCols=pid=>{
       const p=pid?flowBasicProfile(pid):{};
-      return [p.grade?(p.grade==='other'?'その他':String(p.grade)+'年'):'',p.gender==='male'?'男子':p.gender==='female'?'女子':'',p.bib||''];
+      return [p.grade?(p.grade==='other'?'その他':p.grade==='parent'?'保護者':String(p.grade)+'年'):'',p.gender==='male'?'男子':p.gender==='female'?'女子':'',p.bib||''];
     };
     const common=[e.title,portalEventDateLabel(e),e.startTime||'',e.place||''];
     for(const p of selected){
@@ -14385,7 +14386,7 @@ function portalAuditRenderOfficialV222(e){
     const columns=['大会名','開催日','開始時刻','会場','氏名','学年','性別','ゼッケン','参加回答','出走種目','種目開催日','申告タイム','目標タイム','結果','確認項目'];
     const rows=[columns];
     for(const p of people){
-      const base=[e.title,portalEventDateLabel(e),e.startTime||'',e.place||'',p.name,p.profile.grade?(p.profile.grade==='other'?'その他':String(p.profile.grade)+'年'):'',p.profile.gender==='male'?'男子':p.profile.gender==='female'?'女子':'',p.profile.bib||'',(p.entries.length?'出走する':({join:'区分未確認',support:'会場へ行く（応援・帯同）',decline:'会場へ行かない',maybe:'未定'})[p.explicit])||'未回答'];
+      const base=[e.title,portalEventDateLabel(e),e.startTime||'',e.place||'',p.name,p.profile.grade?(p.profile.grade==='other'?'その他':p.profile.grade==='parent'?'保護者':String(p.profile.grade)+'年'):'',p.profile.gender==='male'?'男子':p.profile.gender==='female'?'女子':'',p.profile.bib||'',(p.entries.length?'出走する':({join:'区分未確認',support:'会場へ行く（応援・帯同）',decline:'会場へ行かない',maybe:'未定'})[p.explicit])||'未回答'];
       const list=p.entries.length?p.entries:[null];
       for(const r of list){
         rows.push([...base,r?(portalMetricNames[r.metric]||r.metric):(e.raceEntryEnabled===false?'対象外':'未登録'),r?(e.metricDates?.[r.metric]||e.date||''):'',r?.declaredTime||'',r?.goal||'',r?flowResultsForEntry(r).map(x=>flowResultLabel(x)).join('／'):'',p.issues.join('／')]);
@@ -29046,6 +29047,16 @@ html body #screen-competition-results .crHero.trCrHero,html body #screen-competi
 :is(#screen-competition-results,#screen-competition-graph-detail) .trAnimPop{animation-duration:.28s!important}
 :is(#screen-competition-results,#screen-competition-graph-detail) .trAnimFade{animation-duration:.25s!important}
 @media (prefers-reduced-motion: reduce){:is(#screen-competition-results,#screen-competition-graph-detail) .trLineGrow{animation:none!important;stroke-dashoffset:0!important}}
+/* v363: 自己ベストのメリハリ（種目は小さく、記録を主役、日付は控えめ）とカードの明暗 */
+html body #screen-competition-results #crPbGrid .crPbCard.trPb,html body #screen-competition-results #crSecondaryPbGrid .crPbCard.trPb:not(.trPbEmpty){background:color-mix(in srgb,var(--op-bg,#f5f3ef) 45%,#ffffff)!important;border:1px solid var(--op-line,#D6D8D1)!important;box-shadow:0 2px 4px rgba(20,28,28,.06),0 10px 22px rgba(20,28,28,.10)!important}
+html[data-portal-personal-color="winter"] body #screen-competition-results #crPbGrid .crPbCard.trPb,html[data-portal-personal-color="winter"] body #screen-competition-results #crSecondaryPbGrid .crPbCard.trPb:not(.trPbEmpty),html[data-portal-personal-color="matte"] body #screen-competition-results #crPbGrid .crPbCard.trPb,html[data-portal-personal-color="matte"] body #screen-competition-results #crSecondaryPbGrid .crPbCard.trPb:not(.trPbEmpty){background:color-mix(in srgb,var(--op-bg) 88%,#ffffff)!important;box-shadow:0 10px 22px rgba(0,0,0,.28)!important}
+html body #screen-competition-results #crPbGrid .crPbCard.trPb{gap:6px!important;padding:11px 10px 10px!important}
+html body #screen-competition-results #crPbGrid .crPbCard.trPb small,html body #screen-competition-results #crSecondaryPbGrid .crPbCard.trPb small{font-size:11px!important;font-weight:900!important;letter-spacing:.1em!important}
+html body #screen-competition-results #crPbGrid .crPbCard.trPb>b{font-size:19px!important;font-weight:800!important;letter-spacing:-.03em!important;margin:2px 0 0!important}
+html body #screen-competition-results #crPbGrid .crPbCard.trPb>em{font-size:10px!important;font-weight:600!important;letter-spacing:.02em!important;opacity:.85}
+html body #screen-competition-results #crSecondaryPbGrid .crPbCard.trPbWide:not(.trPbEmpty)>b{font-size:15px!important;font-weight:800!important}
+/* v363: winterテーマでチャット名の保存ボタンだけ色が違っていたのをそろえる */
+html[data-portal-personal-color="winter"] .portalNameRow button.trSave{background:linear-gradient(115deg,rgb(9,191,185),rgb(108,255,240))!important;color:rgb(0,43,51)!important;-webkit-text-fill-color:rgb(0,43,51)!important;border-color:rgb(125,255,237)!important}
 </style>
 </body>
 </html>
