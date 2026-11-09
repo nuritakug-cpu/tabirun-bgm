@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v376 | 2026-11-09 | Parent v375 (Rules v370). 通信量の削減（第1段階）：(1) EVENT BASEの大会の出走者・記録は、PORTALを開いただけでは読まず、EVENT BASEを使う画面（イベント・大会詳細・出走登録・管理・選手一覧など）をタップしたときだけ読む（10分以内は読み直さない、開いている間の10分ごとの読み直しは最近タップしたときだけ）。(2) 承認済みメンバー・申請・名前の一覧・本人のつながりは10分間控えを使い、この端末で書き込んだら即座に捨てる。申請の一覧は開くと必ず最新。(3) PDFの資料は端末に保存（同じIDの中身は変わらない）。(4) P149より前の大会の、出走登録済みの記録の取り込み漏れを、開発者の端末で1回だけ自動で埋める。出欠・チャット・お知らせ・イベントは従来どおり毎回最新。Rules変更なし。 -->
 <!-- TOP RUN PORTAL v375 | 2026-11-09 | Parent v374 (Rules v370). 動作の軽量化：(1) Androidでは背景ぼかし（backdrop-filter）を使わない共通の決まり（テーマ差し替え後も有効）。下のメニューは背景を二重にして透けないようにし見た目を保つ。(2)「保存しました」の見張り（v345）を画面全体からチャット以外の画面と確認画面だけに絞る。(3) 画像は画面に入ってから読み込む（loading=lazy・decoding=async）。機能・データ・通信は変更なし。 -->
 <!-- TOP RUN PORTAL v374 | 2026-11-09 | Parent v373 (Rules v370). 管理者の「選手一覧・個人記録」：承認済みメンバー全員ではなく、役職（clubRoster）で「選手」の人だけを表示。役職が未設定の人は一覧の下に小さくまとめる。役職の一覧は既存の loadClubRoster をこの端末で1回だけ読む（常時監視なし）。Rules変更なし。 -->
 <!-- TOP RUN PORTAL v373 | 2026-11-09 | Parent v372 (Rules v370). 下のメニューの「潜る・浮く（隙間）」の根本対策：見えている画面の下端を測ってJSで位置を動かす仕組み（v219・v314・v343・v348で調整を重ねたもの）を止め、CSSで画面の下端に固定（bottom:0、ホームバーはsafe-areaの余白）。スクロール中・はね返り中にiPhoneが返す一時的な位置で動かしていたことが再発の原因。表示だけ、通信なし。 -->
@@ -6715,7 +6716,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v375</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v376</b></div>
   </div>
 </div>
 
@@ -6952,7 +6953,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v375</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v376</b></div>
   </div>
 </div>
 
@@ -8132,6 +8133,8 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
   }
   function showScreen(name, push=true){
     if(window.__TR_PORTAL_VIEW_ONLY__ && !['links'].includes(name))return;
+    // v376: EVENT BASEの情報を使う画面を開いたときだけ、EVENT BASEを読む
+    if(['events-tab','flow-event','flow-entry-result','flow-manager','races','athlete-directory','management'].includes(name)){try{window.__TR_PORTAL_SYNC__?.wantOfficialResults?.();}catch(_){}}
     if(['management','management-settings','athlete-directory','flow-manager'].includes(name) && (!canManage || !verifiedPortalUid || portalParticipantPreviewMode))return;
     if(name==='staff-auth' && (!staffAuthRequested || canManage || portalParticipantPreviewMode))return;
     const next = $('screen-' + name);
@@ -16230,6 +16233,28 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
     return linked.length===1?linked[0]:null;             // dates equal/unknown: the one with records
   }
   function rpHidden(m,idx){return false;} // v271: 同じ名前の登録を自動で隠さない（開発者が選ぶ）
+  // v376: P149より前に終わった大会の、PORTALから出走登録した人の記録を、開発者の端末で1回だけ自動で個人記録に取り込む（ボタン不要）。
+  async function trAutoCatchupV376(){
+    const g=rpG();if(!g||g.role!=='developer'||g.roleVerified!==true||!g.claimRecordId)return;
+    try{if(localStorage.getItem('trCatchupV376')==='done')return;}catch(_){}
+    try{g.wantOfficialResults?.();}catch(_){return;}
+    const targets=(window.__TR_COMMON_PILOT_UI__?.officialTargets?.()||[]).filter(t=>t&&t.id);
+    const ready=()=>targets.every(t=>Array.isArray(g.officialParticipantRoster?.[t.id]));
+    const until=Date.now()+90000;while(!ready()&&Date.now()<until)await new Promise(r=>setTimeout(r,2000));
+    if(!targets.length||!ready())return; // 読み込めなかったら次回またやる
+    try{await rpLoadClaims();}catch(_){return;}
+    let done=0,ng=0;
+    for(const t of targets){
+      const ev={base:true,id:t.id,date:String(t.date||'').slice(0,10),title:t.canonicalTitle||t.title||'大会'};
+      for(const r of (rpRoster(ev)||[]).filter(x=>x&&x.self&&x.time&&x.uid&&!rpClaims.has(x.id))){
+        const m=rpMemberByUid(r.uid);if(!m)continue;
+        try{await rpWrite(m,r);done++;}catch(_){ng++;}
+      }
+    }
+    if(!ng){try{localStorage.setItem('trCatchupV376','done');}catch(_){}}
+    if(done){try{window.__trSavedToast?.('過去の大会の記録を個人記録に取り込みました（'+done+'件）');}catch(_){}}
+  }
+  window.addEventListener('tr-portal-authorized',()=>setTimeout(()=>{trAutoCatchupV376().catch(()=>{});},5000));
   async function rpLoadClaims(){
     try{const list=await rpG().listApprovedMembers?.();if(Array.isArray(list))window.__rpAllMembers=list;}catch(_){} // v276
     const all=await rpG().loadPastEventOverview();rpClaims=new Map();window.__rpClaimPid=new Map();
@@ -18142,7 +18167,26 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
       import('https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js')
     ]);
     // v298: 通信量メーター。get の結果の大きさを数えるだけ（読む場所・回数は変えない）。
-    const dbMod=Object.assign({},dbModRaw,{get:q=>dbModRaw.get(q).then(s=>{try{window.__TR_TRAFFIC_METER__?.add(q,s,'get');}catch(_){}return s;},e=>{try{window.__TR_TRAFFIC_METER__?.fail(q,e);}catch(_){}throw e;})});
+    // v376: めったに変わらない一覧（承認済みメンバー・申請・名前の一覧・本人のつながり）は、1回読んだら10分間はその結果を使う。
+    //   この端末で何かを書き込んだら、すぐに控えを捨てて次は最新を読む。出欠・チャット・お知らせ・イベントは対象外（毎回最新）。
+    const trReadCacheV376=new Map();
+    const trCachePathV376=p=>/\/portalCommon\/topRun\/(memberAccess|memberRequests|nameBook)$/.test(p)||/\/portalCommon\/topRun\/bindings\/[^/]+$/.test(p);
+    const trPathOfV376=q=>{try{return decodeURIComponent(String(q.toString()).replace(/^https?:\/\/[^/]+/,'').split('?')[0]).replace(/\/$/,'');}catch(_){return '';}};
+    const trClearV376=()=>trReadCacheV376.clear();
+    const dbModMetered={get:q=>dbModRaw.get(q).then(s=>{try{window.__TR_TRAFFIC_METER__?.add(q,s,'get');}catch(_){}return s;},e=>{try{window.__TR_TRAFFIC_METER__?.fail(q,e);}catch(_){}throw e;})};
+    const dbMod=Object.assign({},dbModRaw,{
+      get:q=>{
+        const isRef=q&&q.ref===q,p=isRef?trPathOfV376(q):'';
+        if(p&&trCachePathV376(p)){const c=trReadCacheV376.get(p);if(c&&Date.now()-c.at<600000)return Promise.resolve(c.snap);
+          return dbModMetered.get(q).then(snap=>{trReadCacheV376.set(p,{at:Date.now(),snap});return snap;});}
+        return dbModMetered.get(q);
+      },
+      set:(...a)=>{trClearV376();return dbModRaw.set(...a);},
+      update:(...a)=>{trClearV376();return dbModRaw.update(...a);},
+      remove:(...a)=>{trClearV376();return dbModRaw.remove(...a);},
+      runTransaction:(...a)=>{trClearV376();return dbModRaw.runTransaction(...a);}
+    });
+    window.__TR_READ_CACHE_CLEAR__=trClearV376;
     const appA=appMod.getApps().find(a=>a.name==='eventbase-rebuild')||appMod.initializeApp(firebaseConfig,'eventbase-rebuild');
     const appB=appMod.getApps().find(a=>a.name==='eventbase-rebuild-v22')||appMod.initializeApp(firebaseConfig,'eventbase-rebuild-v22');
     const authA=authMod.getAuth(appA),authB=authMod.getAuth(appB);
@@ -21205,7 +21249,15 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
     gate.openPdf=async item=>{
       if(!gate.uid||auth.currentUser?.uid!==gate.uid||!gate.profileId)throw Error('PDFの本人接続が未成立です');
       if(!fileIdOK(item?.fileId))throw Error('有効なPDF参照ではありません');
-      const record=(await dbMod.get(ref('resourceFiles/'+item.fileId))).val();
+      // v376: PDF本体は一度読んだら端末に保存（PDFを差し替えると別のIDになるので、同じIDの中身は変わらない）
+      const pdfIdb=()=>new Promise((res,rej)=>{try{const q=indexedDB.open('trPdfCacheV376',1);q.onupgradeneeded=()=>q.result.createObjectStore('f');q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error);}catch(e){rej(e);}});
+      let record=null;
+      try{const dbx=await pdfIdb();record=await new Promise(res=>{const r=dbx.transaction('f').objectStore('f').get(item.fileId);r.onsuccess=()=>res(r.result||null);r.onerror=()=>res(null);});}catch(_){record=null;}
+      if(!record){
+        record=(await dbMod.get(ref('resourceFiles/'+item.fileId))).val();
+        try{if(record&&record.data){const dbx=await pdfIdb();const tx=dbx.transaction('f','readwrite');const st=tx.objectStore('f');st.put({data:record.data,at:Date.now()},item.fileId);
+          const keysReq=st.getAllKeys();keysReq.onsuccess=()=>{const keys=keysReq.result||[];if(keys.length>6)keys.slice(0,keys.length-6).forEach(k=>{if(k!==item.fileId)st.delete(k);});};}}catch(_){}
+      }
       gate.loaded.resourceFiles=true;delete gate.errors.resourceFiles;statusResources();
       if(!record||!/^data:application\/pdf;base64,[A-Za-z0-9+/=]+$/.test(record.data||''))throw Error('PDF本体を取得できません');
       const bin=atob(record.data.split(',')[1]);
@@ -21303,8 +21355,11 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         if(old!==(gate.legacySubjectUid||'')){gate.legacySubjectUid=old;gate.refreshOfficialRaceRead();}
       }).catch(()=>{legacyLookupKey='';});
     };
+    // v376: EVENT BASEの大会の出走者・記録は、PORTALを開いただけでは読まない。必要な画面をタップしたときだけ読む（10分以内は読み直さない）。
+    gate.wantOfficialResults=()=>{const fresh=Date.now()-(gate.officialWantedAt||0)<600000;gate.officialWantedAt=Date.now();if(!fresh){officialSignature='';gate.watchOfficialResults();}};
     gate.watchOfficialResults=()=>{
       if(!gate.uid||!gate.profileId)return;
+      if(!gate.officialWantedAt)return; // v376
       loadLegacySubject();
       const targets=(ui?.officialTargets?.()||[]).filter(v=>/^[a-zA-Z0-9_-]{6,100}$/.test(v.id)).slice(0,8);
       const signature=targets.map(v=>v.id).sort().join('|');
@@ -21443,7 +21498,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
           if(playersStopped||seq!==generation)return;playersAt=Date.now();
           dbMod.get(dbMod.ref(db,'events/'+info.id+'/players')).then(snap=>{if(!playersStopped)applyPlayers(snap);}).catch(playersError);
         };
-        const playersOnVisible=()=>{if(!document.hidden&&Date.now()-playersAt>600000)readPlayers();};
+        const playersOnVisible=()=>{if(!document.hidden&&Date.now()-playersAt>600000&&Date.now()-(gate.officialWantedAt||0)<600000)readPlayers();}; // v376: 最近タップした画面があるときだけ
         document.addEventListener('visibilitychange',playersOnVisible);
         readPlayers();
         officialSubs.push(()=>{playersStopped=true;document.removeEventListener('visibilitychange',playersOnVisible);});
@@ -23106,6 +23161,7 @@ setInterval(display,1000);
     for(const id of ['portalParticipantLoginHelp','portalParticipantHelpDetails']){const el=$(id);if(el)el.hidden=false;}});
   const mList=$('portalMemberApprovalList'),mLog=$('portalMemberApprovalDevState');
   const refreshMembers=()=>run(async()=>{
+    try{window.__TR_READ_CACHE_CLEAR__?.();}catch(_){} // v376: 申請の一覧を開いた・更新したときは、必ず最新を読む
     const g=gate();if(!g?.listMemberApprovalRequests)throw Error('共通本人モジュールが準備できていません');
     const rows=await g.listMemberApprovalRequests();
     mList.replaceChildren();
