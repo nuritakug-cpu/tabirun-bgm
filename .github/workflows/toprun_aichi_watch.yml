@@ -1,0 +1,35 @@
+name: TOP RUN official athletics updates
+on:
+  push:
+    paths:
+      - ".github/workflows/toprun_aichi_watch.yml"
+      - "integrations/aichi/monitor/**"
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: toprun-official-watch
+  cancel-in-progress: false
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install HTML parser
+        run: python -m pip install beautifulsoup4==4.12.3
+      - name: Parser tests
+        run: python -m unittest discover -s integrations/aichi/monitor -v
+      - name: Detect published additions and revisions
+        run: python integrations/aichi/monitor/watch_aichi.py
+      - name: Store metadata without touching PORTAL or Firebase
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add integrations/aichi/data/aichi_catalog.json integrations/aichi/data/aichi_changes.json
+          git diff --cached --quiet || (git commit -m "chore: refresh official athletics metadata" && git push)
