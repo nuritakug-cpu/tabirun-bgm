@@ -33,7 +33,8 @@ def parse_dates(raw,month,year=2026):
  for m in re.finditer(r"(?<!\d)(?:(\d{1,2})/)?(\d{1,2})\s*[（(]",raw):
   mo,day=int(m.group(1) or month or 0),int(m.group(2))
   try:
-   v=f"{year:04d}-{mo:02d}-{day:02d}"
+   actual_year=year+(1 if mo<=3 else 0)
+   v=f"{actual_year:04d}-{mo:02d}-{day:02d}"
    datetime.strptime(v,"%Y-%m-%d")
    if v not in out:out.append(v)
   except ValueError:pass
@@ -69,7 +70,7 @@ def parse(raw,key,url,year=2026):
     label=txt(a).strip() or (a.find("img") or {}).get("alt") or kind
     doc={"kind":kind,"label":label[:100],"url":link}
     if doc not in docs:docs.append(doc)
-  out.append({"id":eid,"name":name,"dates":dates,"venue":place,"source":key,"sourceUrl":url,"documents":docs})
+  out.append({"id":eid,"name":name,"dates":dates,"venue":place,"source":key,"sourceUrl":url,"documents":docs,"listingState":"active"})
  return out
 
 def fetch(url,limit=4*1024*1024):
@@ -90,6 +91,10 @@ def diff(current,old,oldhash,hashes,stamp):
  changes=[]
  for eid,e in after.items():
   b=before.get(eid)
+  if b is not None and e.get("listingState")=="not_found" and b.get("listingState")!="not_found":
+   changes.append({"type":"event_not_found","eventId":eid,"name":e["name"],"at":stamp})
+  if b is not None and e.get("listingState")=="active" and b.get("listingState")=="not_found":
+   changes.append({"type":"event_reappeared","eventId":eid,"name":e["name"],"at":stamp})
   if b is None:
    changes.append({"type":"new_event","eventId":eid,"name":e["name"],"at":stamp})
    continue
@@ -118,7 +123,10 @@ def run():
  events=[];errors=[];status={};ok=set()
  for key,url in SOURCES.items():
   try:
-   rows=parse(fetch(url),key,url)
+   raw=fetch(url)
+   year_hint=re.search(r"(20\d{2})年度",txt(BeautifulSoup(raw,"html.parser")))
+   y=int(year_hint.group(1)) if year_hint else now.year
+   rows=parse(raw,key,url,year=y)
    if not rows:raise ValueError("No event rows recognized: HTML may have changed")
    events.extend(rows);ok.add(key)
    status[key]={"ok":True,"events":len(rows),"at":stamp}
@@ -126,8 +134,14 @@ def run():
    msg=f"{key}: {type(ex).__name__} {str(ex)[:120]}";errors.append(msg)
    status[key]={"ok":False,"message":msg,"at":stamp}
  if not ok:raise RuntimeError("All official sources failed. Keep last published data.")
+ newids={e["id"] for e in events}
  for e in old.get("events",[]):
   if e["source"] not in ok:events.append(e)
+  elif e["id"] not in newids:
+   missing=dict(e)
+   missing["listingState"]="not_found"
+   missing["missingSince"]=missing.get("missingSince") or stamp
+   events.append(missing)
  events.sort(key=lambda e:(e["dates"][0] if e["dates"] else "9999",e["source"],e["name"]))
  hashes=dict(old.get("documentHashes",{}));nbytes=0;checks=0
  for e in events:
