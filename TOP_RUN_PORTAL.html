@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v384 | 2026-11-10 | Parent: v383 (GitHub). イベントに「保存版」（archive：TOPRUNARCHIVE…の名前だけ）を追加。管理画面のイベント修正で、正式大会URLの下に入力欄（EVENT BASEのときだけ）。保存版が入った大会は「EVENT BASEを開く」で保存版を開く。正式大会URL・記録の紐付け・カレンダー・公認判定は変更なし。Firebase：eventItems に archive を1項目追加（Rules v371 が必要）。読み込み回数・常時監視は増やさない。iPhone実機は未確認。 -->
 <!-- TOP RUN PORTAL v383 | 2026-11-09 | parent: uploaded v380; Android HOME numerals and RUN only. No JS/Auth/Firebase changes. -->
 <!-- TOP RUN PORTAL v380 | 2026-11-09 | Parent TOPRUNPORTALv379.html
 Scope correction: v379 visual changes apply only when the existing Android marker is present.
@@ -7115,7 +7116,7 @@ html.portalAndroidHomeFontMatch .shell > main #calendar .day{
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v383</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v384</b></div>
   </div>
 </div>
 
@@ -7352,7 +7353,7 @@ html.portalAndroidHomeFontMatch .shell > main #calendar .day{
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v383</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v384</b></div>
   </div>
 </div>
 
@@ -7645,7 +7646,7 @@ html.portalAndroidHomeFontMatch .shell > main #calendar .day{
           <label for="manageEventUrl" id="manageEventUrlLabel">リンク先URL</label>
           <input id="manageEventUrl" type="url" inputmode="url" autocomplete="off" placeholder="https://nuritakug-cpu.github.io/tabirun-bgm/…">
           <p class="portalHelp" id="manageEventUrlHelp">PORTAL内は https:// で始まるリンク先を指定します。EVENT BASE／駅伝BASEは正式大会URLを指定します。リンク先URLは全員に共通です。認証番号やownerKeyは入力しないでください。</p>
-        </div>
+        </div> <div class="portalFormRow" id="manageEventArchiveRow" hidden> <label for="manageEventArchive">保存版（大会が終わったら）</label> <input id="manageEventArchive" type="url" inputmode="url" autocomplete="off" placeholder="https://nuritakug-cpu.github.io/tabirun-bgm/EVENT_BASE_PRODUCTION.html?archive=…"> <p class="portalHelp">EVENT BASEの「保存版を作る」で表示された保存版のURLを貼ります。入れると、この大会を開いたときに保存版（見るだけの記録ページ）が開きます。正式大会URLはそのまま残してください。空欄にして保存すると、元のEVENT BASEが開くように戻ります。</p> </div>
         <p class="portalHelp" id="portalEventCreationOrderNote">PORTAL内イベントはリンク先URLを指定して保存できます。未指定の場合は従来どおりPORTAL内の日付詳細を使用します。</p>
         <button class="portalPrimary" type="button" id="manageEventAdd">PORTALにイベントを保存</button>
         <div class="portalManageState" id="manageEventState" role="status" aria-live="polite"></div>
@@ -10364,9 +10365,7 @@ if(view==='list')portalApplyManageSearch(kind);
   function portalEventDisplayCategory(item){return item?.displayCategory==='event'?'event':'competition';}
   function portalSyncEventLinkEditor(){
     // One eventItems.url field for all event types; no new Firebase data source.
-    const kind=$('manageEventType').value;
-    const row=$('manageEventUrlRow');
-    if(row)row.hidden=false;
+    const kind=$('manageEventType').value; const row=$('manageEventUrlRow'); if(row)row.hidden=false; const archiveRow=$('manageEventArchiveRow'); if(archiveRow)archiveRow.hidden=kind!=='EVENT BASE';
     const label=$('manageEventUrlLabel'),help=$('manageEventUrlHelp');
     if(label)label.textContent=kind==='OTHER'?'PORTAL内イベントのリンク先URL（未指定可）':'EVENT BASE／駅伝BASEの正式大会URL';
     if(help)help.textContent=kind==='OTHER'
@@ -10642,8 +10641,7 @@ if(view==='list')portalApplyManageSearch(kind);
       }
       if(kind==='event'){
         const item=eventItems.find(x=>x.id===id); if(!item)return;
-        editingEventId=null; copyingEventFromId=id;
-        $('manageEventDate').value=item.date||todayDateKey();portalEventTimeSet(item.startTime); $('manageEventTitle').value=item.title||'';
+        editingEventId=null; copyingEventFromId=id; if($('manageEventArchive'))$('manageEventArchive').value=''; $('manageEventDate').value=item.date||todayDateKey();portalEventTimeSet(item.startTime); $('manageEventTitle').value=item.title||'';
         setPlaceSelectValue('manageEventPlace','manageEventCustomPlaceRow','manageEventCustomPlace',item.place||'');
         $('manageEventDisplayCategory').value=portalEventDisplayCategory(item);$('manageEventType').value=item.type||'EVENT BASE'; $('manageEventUrl').value=item.url||'';$('manageEventEntryDeadline').value=item.entryDeadline||'';document.querySelector('input[name="manageEventDeclaredRequired"][value="'+(item.requiresDeclaredTime===true?'yes':'no')+'"]').checked=true;portalRulesLoad(item);portalLoadEventDates(item);portalUpdateEventDisplayCategory();
         portalSetEventRaceMode(item);$('manageEventAdd').textContent='コピーを新規保存';
@@ -10705,7 +10703,7 @@ if(view==='list')portalApplyManageSearch(kind);
         copyingEventFromId=null; editingEventId=id;
         $('manageEventDate').value=item.date||'';portalEventTimeSet(item.startTime); $('manageEventTitle').value=item.title||'';
         setPlaceSelectValue('manageEventPlace','manageEventCustomPlaceRow','manageEventCustomPlace',item.place||'');
-        $('manageEventDisplayCategory').value=portalEventDisplayCategory(item);$('manageEventType').value=item.type||'EVENT BASE'; $('manageEventUrl').value=item.type==='OTHER'?(item.url||''):(portalOfficialPublicLink(item.url||'')?.url||item.url||'');$('manageEventEntryDeadline').value=item.entryDeadline||'';document.querySelector('input[name="manageEventDeclaredRequired"][value="'+(item.requiresDeclaredTime===true?'yes':'no')+'"]').checked=true;portalRulesLoad(item);portalLoadEventDates(item);portalUpdateEventDisplayCategory();
+        $('manageEventDisplayCategory').value=portalEventDisplayCategory(item);$('manageEventType').value=item.type||'EVENT BASE'; $('manageEventUrl').value=item.type==='OTHER'?(item.url||''):(portalOfficialPublicLink(item.url||'')?.url||item.url||'');if($('manageEventArchive'))$('manageEventArchive').value=portalArchiveName(item.archive)?portalArchiveUrl(item.archive):'';$('manageEventEntryDeadline').value=item.entryDeadline||'';document.querySelector('input[name="manageEventDeclaredRequired"][value="'+(item.requiresDeclaredTime===true?'yes':'no')+'"]').checked=true;portalRulesLoad(item);portalLoadEventDates(item);portalUpdateEventDisplayCategory();
         portalSetEventRaceMode(item);$('manageEventAdd').textContent='修正を反映'; $('manageEventState').textContent='修正中：'+item.title;
         portalSwitchEventWorkspace('new');
         $('manage-pane-event').scrollIntoView({behavior:'smooth',block:'start'});
@@ -11099,10 +11097,7 @@ if(view==='list')portalApplyManageSearch(kind);
     if(['EVENT BASE','RELAY EVENT BASE'].includes(type)&&url){
       const target=portalOfficialPublicLink(url);
       if(!target||target.ekidenNext!==(type==='RELAY EVENT BASE')){
-        $('manageEventState').textContent='リンク先が大会種別と一致しません。EVENT BASE／駅伝BASEの正規大会URLを指定してください。';return;
-      }
-      url=target.url;
-    }
+        $('manageEventState').textContent='リンク先が大会種別と一致しません。EVENT BASE／駅伝BASEの正規大会URLを指定してください。';return; } url=target.url; } const archive=type==='EVENT BASE'?portalArchiveName($('manageEventArchive')?.value):''; if(archive===null){$('manageEventState').textContent='保存版のURLの形が違います。EVENT BASEの「保存版を作る」で表示されたURLを貼ってください。';return;} if(archive&&!url){$('manageEventState').textContent='保存版は、正式大会URLを入れた大会にだけ設定できます。';return;}
     const existingEdit=editingEventId?eventItems.find(x=>x.id===editingEventId):null;
     if(displayCategory==='event'&&existingEdit&&(['EVENT BASE','RELAY EVENT BASE'].includes(existingEdit.type)||flowState.entries.some(r=>r.eventId===existingEdit.id))){$('manageEventState').textContent='大会の接続先や出走登録があるため通常イベントへ変更できません。元の大会を維持してください。';return;}
     if(type==='OTHER'&&url&&!portalGeneralEventLink({type,url})){
@@ -11157,9 +11152,9 @@ if(view==='list')portalApplyManageSearch(kind);
     const oldDate=item?.date||'';
     const formerItem=item?{...item}:null;
     if(item){
-      Object.assign(item,{date,dates,metricDates,startTime,title,place:place||'未定',type,url,state:url?'ACCESS OPEN':'DEVELOPMENT',registration:attendanceOpen?'受付中':'受付前',relay,official,eligibility,requiresDeclaredTime,raceMetrics,raceEntryEnabled,entryDeadline,attendanceOpen,displayCategory,managedOverride:true});
+      Object.assign(item,{date,dates,metricDates,startTime,title,place:place||'未定',type,url,archive,state:url?'ACCESS OPEN':'DEVELOPMENT',registration:attendanceOpen?'受付中':'受付前',relay,official,eligibility,requiresDeclaredTime,raceMetrics,raceEntryEnabled,entryDeadline,attendanceOpen,displayCategory,managedOverride:true});
     }else{
-      item={id:'event-'+Date.now(),date,dates,metricDates,startTime,title,place:place||'未定',type,url,state:url?'ACCESS OPEN':'DEVELOPMENT',relay,displayCategory,registration:attendanceOpen?'受付中':'受付前',enabled:source?source.enabled!==false:true,copiedFrom:source?.id||'',previewOnly:false,pendingId:'',official,eligibility,requiresDeclaredTime,raceMetrics,raceEntryEnabled,entryDeadline,attendanceOpen,goalDefaultFromMyPage:true};
+      item={id:'event-'+Date.now(),date,dates,metricDates,startTime,title,place:place||'未定',type,url,archive,state:url?'ACCESS OPEN':'DEVELOPMENT',relay,displayCategory,registration:attendanceOpen?'受付中':'受付前',enabled:source?source.enabled!==false:true,copiedFrom:source?.id||'',previewOnly:false,pendingId:'',official,eligibility,requiresDeclaredTime,raceMetrics,raceEntryEnabled,entryDeadline,attendanceOpen,goalDefaultFromMyPage:true};
       eventItems.push(item);
     }
     const gateway=window.__TR_PORTAL_SYNC__;
@@ -11180,7 +11175,7 @@ if(view==='list')portalApplyManageSearch(kind);
     $('manageEventState').textContent=formerItem?'大会の修正をFirebaseに保存しました。':source?'コピーから新しい大会をFirebaseに保存しました。':'新しい大会をFirebaseに保存しました。';
     portalPrepareEventNotice(item,formerItem);
     editingEventId=null;copyingEventFromId=null;$('manageEventAdd').textContent='PORTALにイベントを保存';portalSwitchEventWorkspace('new');
-    $('manageEventDisplayCategory').value='competition';$('manageEventType').value='OTHER';portalUpdateEventDisplayCategory();$('manageEventTitle').value='';$('manageEventUrl').value='';$('manageEventEntryDeadline').value='';$('manageEventPlace').value='';$('manageEventCustomPlaceRow').classList.add('hidden');$('manageEventCustomPlace').value='';portalEventExtraDateDraft=[];portalEventMetricDateDraft={};portalDrawEventDates();portalEventTimeSet('');portalRulesLoad(null);document.querySelector('input[name="manageEventDeclaredRequired"][value="no"]').checked=true;portalSetEventRaceMode(null);
+    $('manageEventDisplayCategory').value='competition';$('manageEventType').value='OTHER';portalUpdateEventDisplayCategory();$('manageEventTitle').value='';$('manageEventUrl').value='';if($('manageEventArchive'))$('manageEventArchive').value='';$('manageEventEntryDeadline').value='';$('manageEventPlace').value='';$('manageEventCustomPlaceRow').classList.add('hidden');$('manageEventCustomPlace').value='';portalEventExtraDateDraft=[];portalEventMetricDateDraft={};portalDrawEventDates();portalEventTimeSet('');portalRulesLoad(null);document.querySelector('input[name="manageEventDeclaredRequired"][value="no"]').checked=true;portalSetEventRaceMode(null);
     eventListMonth=date.slice(0,7);$('manageEventMonth').value=eventListMonth;
     renderHomeCalendar();renderFullCalendar();renderEventTab();renderManagedHomeEvents();renderManageEvents();renderHomeNextEvent();
     if(['EVENT BASE','RELAY EVENT BASE'].includes(item.type)&&!item.url){
@@ -14070,9 +14065,7 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
   // One verified navigation path for both calendar and the management list.
   // Linking an event does not register a runner; it only opens its saved service.
   let portalEkidenOpening=false;
-  async function portalOpenLinkedBase(item){
-    window.__roundtripDiag?.("PORTAL: 入場操作開始");
-    if(portalEkidenOpening)return false;
+  async function portalOpenLinkedBase(item){ window.__roundtripDiag?.("PORTAL: 入場操作開始"); if(portalEkidenOpening)return false; /* v384: 保存版が入っている大会は、保存版（Firebaseに接続しない見るだけの記録ページ）を開く */ if(item&&item.type==='EVENT BASE'&&portalArchiveName(item.archive)){ try{sessionStorage.setItem(portalCalendarReturnKey20261022,JSON.stringify({eventId:item.id,t:Date.now()}));}catch(_){} window.location.assign(portalArchiveUrl(item.archive)); return true; }
     const link=item&&portalOfficialPublicLink(item.url||'');
     if(!item||!['EVENT BASE','RELAY EVENT BASE'].includes(item.type)||
        !link||link.ekidenNext!==(item.type==='RELAY EVENT BASE')){
@@ -14155,8 +14148,7 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
     void portalSaveOfficialConnection(e,$('portalEventConnectionUrl').value,$('portalEventConnectionStatus'),$('portalEventConnectionSave'));
   });
   // Reuse the EXISTING eventItems writer for both connection entry points.
-  let portalOfficialHandoffBusy=false;
-  function portalOfficialPublicLink(raw){
+  let portalOfficialHandoffBusy=false; /* v384: 保存版（EVENT BASE v180 の ?archive=TOPRUNARCHIVE…）。''=未設定、null=形が違う。保存するのは名前だけ。 */ function portalArchiveName(raw){ const s=String(raw||'').trim(); if(!s)return ''; let n=s; if(/^https?:/i.test(s)){ try{ const u=new URL(s); if(u.protocol!=='https:'||u.hostname!=='nuritakug-cpu.github.io'||u.pathname!=='/tabirun-bgm/EVENT_BASE_PRODUCTION.html')return null; n=u.searchParams.get('archive')||''; }catch(_){return null;} } return /^TOPRUNARCHIVE[0-9A-Za-z]{4,60}$/.test(n)?n:null; } function portalArchiveUrl(name){ return 'https://nuritakug-cpu.github.io/tabirun-bgm/EVENT_BASE_PRODUCTION.html?archive='+encodeURIComponent(name); } function portalOfficialPublicLink(raw){
     try{
       const u=new URL(String(raw||'').trim());
       const id=u.searchParams.get('event')||'';
@@ -20784,7 +20776,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       const closeDay=/^\d{4}-\d{2}-\d{2}$/.test(String(v.entryDeadline||''))?v.entryDeadline:v.date;
       const raceDeadlineAt=/^\d{4}-\d{2}-\d{2}$/.test(String(closeDay||''))?Date.parse(closeDay+'T23:59:59.999+09:00'):0;
       const metricDates=Object.fromEntries(Object.entries(v.metricDates||{}).filter(([k,d])=>/^[A-Za-z0-9._-]+$/.test(k)&&typeof d==='string').slice(0,30).map(([k,v])=>[k.replace(/\./g,'%2E'),v]));
-      return {displayCategory:v.displayCategory==='event'?'event':'competition',date:String(v.date||''),dates,metricDates,startTime:String(v.startTime||''),title:String(v.title||'').slice(0,180),place:String(v.place||'未定').slice(0,160),type:String(v.type||''),url:String(v.url||''),state:String(v.state||''),relay:v.relay===true,registration:String(v.registration||((v.attendanceOpen===false)?'受付前':'受付中')).slice(0,40),enabled:v.enabled!==false,previewOnly:v.previewOnly===true,managedOverride:v.managedOverride===true,pendingId:String(v.pendingId||''),copiedFrom:String(v.copiedFrom||''),official:v.official===true,requiresDeclaredTime:v.requiresDeclaredTime===true,entryDeadline:String(v.entryDeadline||''),goalDefaultFromMyPage:v.goalDefaultFromMyPage===true,hiddenDefault:v.hiddenDefault===true,raceMetrics:metrics,raceMetricCodes,raceDeadlineAt,raceEntryEnabled:v.raceEntryEnabled!==false,eligibility:{enabled:eligibility.enabled===true,note:String(eligibility.note||'').slice(0,1000),rules},createdAt:old?.createdAt||Date.now(),createdByUid:old?.createdByUid||uid,updatedAt:Date.now(),updatedByUid:uid};
+      return {displayCategory:v.displayCategory==='event'?'event':'competition',date:String(v.date||''),dates,metricDates,startTime:String(v.startTime||''),title:String(v.title||'').slice(0,180),place:String(v.place||'未定').slice(0,160),type:String(v.type||''),url:String(v.url||''),...((String(v.type||'')==='EVENT BASE'&&/^TOPRUNARCHIVE[0-9A-Za-z]{4,60}$/.test(String(v.archive||'')))?{archive:String(v.archive)}:{}),state:String(v.state||''),relay:v.relay===true,registration:String(v.registration||((v.attendanceOpen===false)?'受付前':'受付中')).slice(0,40),enabled:v.enabled!==false,previewOnly:v.previewOnly===true,managedOverride:v.managedOverride===true,pendingId:String(v.pendingId||''),copiedFrom:String(v.copiedFrom||''),official:v.official===true,requiresDeclaredTime:v.requiresDeclaredTime===true,entryDeadline:String(v.entryDeadline||''),goalDefaultFromMyPage:v.goalDefaultFromMyPage===true,hiddenDefault:v.hiddenDefault===true,raceMetrics:metrics,raceMetricCodes,raceDeadlineAt,raceEntryEnabled:v.raceEntryEnabled!==false,eligibility:{enabled:eligibility.enabled===true,note:String(eligibility.note||'').slice(0,1000),rules},createdAt:old?.createdAt||Date.now(),createdByUid:old?.createdByUid||uid,updatedAt:Date.now(),updatedByUid:uid};
     };
     gate.saveEvent=async(item,previous)=>{
       if(previous?.type==='OTHER'&&previous.displayCategory==='competition'){
