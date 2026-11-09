@@ -1,0 +1,32 @@
+name: auto-rename-production
+on:
+  push:
+    paths:
+      - 'EVENTBASEPRODUCTION*.html'
+  workflow_dispatch:
+permissions:
+  contents: write
+  pages: write
+jobs:
+  rename:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: rename
+        run: |
+          f=$(ls EVENTBASEPRODUCTION*.html 2>/dev/null | sort -V | tail -n 1)
+          [ -n "$f" ] || exit 0
+          git rm -q --cached EVENTBASEPRODUCTION*.html
+          mv -f "$f" EVENT_BASE_PRODUCTION.html
+          rm -f EVENTBASEPRODUCTION*.html
+          git add EVENT_BASE_PRODUCTION.html
+          git config user.name github-actions
+          git config user.email github-actions@users.noreply.github.com
+          git commit -m "EVENT BASE本番用を $f で戻す"
+          git push
+      - name: request pages build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X POST "repos/${{ github.repository }}/pages/builds" || true
