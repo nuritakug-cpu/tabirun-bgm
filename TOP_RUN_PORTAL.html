@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v375 | 2026-11-09 | Parent v374 (Rules v370). 動作の軽量化：(1) Androidでは背景ぼかし（backdrop-filter）を使わない共通の決まり（テーマ差し替え後も有効）。下のメニューは背景を二重にして透けないようにし見た目を保つ。(2)「保存しました」の見張り（v345）を画面全体からチャット以外の画面と確認画面だけに絞る。(3) 画像は画面に入ってから読み込む（loading=lazy・decoding=async）。機能・データ・通信は変更なし。 -->
 <!-- TOP RUN PORTAL v374 | 2026-11-09 | Parent v373 (Rules v370). 管理者の「選手一覧・個人記録」：承認済みメンバー全員ではなく、役職（clubRoster）で「選手」の人だけを表示。役職が未設定の人は一覧の下に小さくまとめる。役職の一覧は既存の loadClubRoster をこの端末で1回だけ読む（常時監視なし）。Rules変更なし。 -->
 <!-- TOP RUN PORTAL v373 | 2026-11-09 | Parent v372 (Rules v370). 下のメニューの「潜る・浮く（隙間）」の根本対策：見えている画面の下端を測ってJSで位置を動かす仕組み（v219・v314・v343・v348で調整を重ねたもの）を止め、CSSで画面の下端に固定（bottom:0、ホームバーはsafe-areaの余白）。スクロール中・はね返り中にiPhoneが返す一時的な位置で動かしていたことが再発の原因。表示だけ、通信なし。 -->
 <!-- TOP RUN PORTAL v372 | 2026-11-09 | Parent v371 (Rules v370). 記録推移の詳細：グラフ下の説明文を削除し、SB（今年度）・直近・差を小さく1行で表示。下がっているときは控えめ、SB更新・PB更新・大幅更新（800m2秒/1000m3秒/他5秒以上）・10秒以上の5段階。更新時はグラフを描き終えてから点を光らせ札を弾ませる。年度は4/1〜翌3/31、SBは同じ年度、PBは全記録。色はテーマのアクセントのみ。通信なし。 -->
@@ -6714,7 +6715,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v374</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v375</b></div>
   </div>
 </div>
 
@@ -6951,7 +6952,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v374</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v375</b></div>
   </div>
 </div>
 
@@ -29064,7 +29065,12 @@ html[data-portal-personal-color="matte"] #screen-management-settings :is(#portal
     if(seen.get(host)===t)return;seen.set(host,t);
     const m=t.match(/[^。\n]*保存しました/);window.__trSavedToast(m?m[0].trim().slice(-24):'保存しました');
   }
-  new MutationObserver(ms=>{for(const m of ms){if(m.type==='characterData')check(m.target);else for(const n of m.addedNodes){if(n.nodeType===1){mark(n);check(n);}else if(n.nodeType===3)check(n);} if(m.type==='childList'&&m.target&&m.target.nodeType===1&&m.addedNodes.length)check(m.target);}}).observe(document.documentElement,{childList:true,subtree:true,characterData:true});
+  // v375: 見張る範囲を、チャット以外の画面と、画面の一番上に出る確認画面だけに絞る（チャットが流れるたびに動いて重くなっていた）
+  const onMut=ms=>{for(const m of ms){if(m.type==='characterData')check(m.target);else for(const n of m.addedNodes){if(n.nodeType===1){mark(n);check(n);}else if(n.nodeType===3)check(n);} if(m.type==='childList'&&m.target&&m.target.nodeType===1&&m.addedNodes.length)check(m.target);}};
+  const obs=new MutationObserver(onMut),seenScreens=new WeakSet();
+  const watchScreens=()=>document.querySelectorAll('.portalScreen').forEach(sc=>{if(sc.id==='screen-chat'||seenScreens.has(sc))return;seenScreens.add(sc);obs.observe(sc,{childList:true,subtree:true,characterData:true});});
+  new MutationObserver(ms=>{for(const m of ms)for(const n of m.addedNodes){if(n.nodeType!==1)continue;if(n.classList?.contains('portalScreen'))watchScreens();else if(n.id!=='trSavedToast'){mark(n);check(n);}}}).observe(document.body||document.documentElement,{childList:true});
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',watchScreens);else watchScreens();
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>mark());else mark();
 })();
 </script>
@@ -29288,5 +29294,21 @@ html:is([data-portal-personal-color="matte"],[data-portal-personal-color="winter
 html body nav.portalBottomTabs{bottom:0!important}
 body.portalChatIsolated:not(.portalFieldInputActive) #screen-chat .chatComposer{bottom:var(--trTabsH,72px)!important}
 </style>
+
+<style id="v375-android-light">
+/* v375: Androidでは、すりガラス（背景ぼかし）の効果を使わない（スクロールの引っかかりの主な原因）。テーマを差し替えても同じ決まりで効く。
+   下のメニューは後ろが透けないよう、同じ背景をもう1枚重ねて今と同じ見た目に保つ。 */
+html.trAndroid *,html.trAndroid *::before,html.trAndroid *::after{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+html.trAndroid nav.portalBottomTabs::before{content:"";position:absolute;inset:0;z-index:-1;background:inherit;border-radius:inherit;pointer-events:none}
+</style>
+<script id="v375-android-light-js">
+/* v375: Androidの判定（見た目の軽量化だけに使う）と、画像を画面に入ってから読み込む設定 */
+(function(){
+  try{if(/Android/i.test(navigator.userAgent||''))document.documentElement.classList.add('trAndroid');}catch(_){}
+  const lazy=()=>{try{document.querySelectorAll('img:not([loading])').forEach(im=>{if(im.closest('#trImgView'))return;im.loading='lazy';im.decoding='async';});}catch(_){}};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',lazy);else lazy();
+  window.addEventListener('tr-portal-authorized',()=>setTimeout(lazy,500));
+})();
+</script>
 </body>
 </html>
