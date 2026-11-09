@@ -43,6 +43,9 @@ def parse(raw,key,url,year=2026):
  soup=BeautifulSoup(raw,"html.parser")
  month=None;out=[];seen={}
  for tr in soup.find_all("tr"):
+  # Monthly headings often sit outside the schedule table.
+  heading=tr.find_previous(string=lambda v: bool(re.fullmatch(r"\s*(?:1[0-2]|[1-9])\s*月\s*",str(v or ""))))
+  if heading:month=int(re.search(r"(1[0-2]|[1-9])\s*月",str(heading)).group(1))
   cells=tr.find_all(["td","th"],recursive=False)
   if len(cells)<3:
    if cells:
