@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v377 | 2026-11-09 | Parent v376 (Rules v370). 記録の紐付け（開発者）に「モック用にこの大会の結果を書き出す」を追加：選んだEVENT BASEの大会の、記録のある人の氏名・種目・区間・タイムと大会名・日付・会場だけをJSONで表示しコピー（本人ID・UID・profileIdは含めない）。過去の大会を見るだけのページ（モック）にするため。書き込みなし・読み込みは画面を開いたときの既存分のみ。 -->
 <!-- TOP RUN PORTAL v376 | 2026-11-09 | Parent v375 (Rules v370). 通信量の削減（第1段階）：(1) EVENT BASEの大会の出走者・記録は、PORTALを開いただけでは読まず、EVENT BASEを使う画面（イベント・大会詳細・出走登録・管理・選手一覧など）をタップしたときだけ読む（10分以内は読み直さない、開いている間の10分ごとの読み直しは最近タップしたときだけ）。(2) 承認済みメンバー・申請・名前の一覧・本人のつながりは10分間控えを使い、この端末で書き込んだら即座に捨てる。申請の一覧は開くと必ず最新。(3) PDFの資料は端末に保存（同じIDの中身は変わらない）。(4) P149より前の大会の、出走登録済みの記録の取り込み漏れを、開発者の端末で1回だけ自動で埋める。出欠・チャット・お知らせ・イベントは従来どおり毎回最新。Rules変更なし。 -->
 <!-- TOP RUN PORTAL v375 | 2026-11-09 | Parent v374 (Rules v370). 動作の軽量化：(1) Androidでは背景ぼかし（backdrop-filter）を使わない共通の決まり（テーマ差し替え後も有効）。下のメニューは背景を二重にして透けないようにし見た目を保つ。(2)「保存しました」の見張り（v345）を画面全体からチャット以外の画面と確認画面だけに絞る。(3) 画像は画面に入ってから読み込む（loading=lazy・decoding=async）。機能・データ・通信は変更なし。 -->
 <!-- TOP RUN PORTAL v374 | 2026-11-09 | Parent v373 (Rules v370). 管理者の「選手一覧・個人記録」：承認済みメンバー全員ではなく、役職（clubRoster）で「選手」の人だけを表示。役職が未設定の人は一覧の下に小さくまとめる。役職の一覧は既存の loadClubRoster をこの端末で1回だけ読む（常時監視なし）。Rules変更なし。 -->
@@ -6716,7 +6717,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v376</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v377</b></div>
   </div>
 </div>
 
@@ -6953,7 +6954,7 @@ main > .hero .heroDate span { font-size:10px; letter-spacing:.13em; }
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v376</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v377</b></div>
   </div>
 </div>
 
@@ -16297,7 +16298,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
       const ev=rpEvent(),roster=rpRoster(ev);
       if(!ev){list.innerHTML='<p class="portalHelp">EVENT BASEの大会がありません。</p>';return;}
       if(roster===null){list.innerHTML='<p class="portalHelp">大会の記録を読み込み中です…</p>';if(rpRetry++<8)setTimeout(rpRender,2000);return;}
-      tools.innerHTML=trLinkedImportButtonV365(); // v366: 今の1画面の紐付けに「まとめて取り込む」を表示（v365は使われていない画面に置いていた）
+      tools.innerHTML=trLinkedImportButtonV365()+trMockExportButtonV377(); // v377: モック用の書き出しも表示 / v366: 今の1画面の紐付けに「まとめて取り込む」を表示（v365は使われていない画面に置いていた）
       const mem=rpMembers().slice().sort((a,b)=>a.name.localeCompare(b.name,'ja'));
       const cnt=new Map();for(const m of mem){const k=rpNorm(m.name);cnt.set(k,(cnt.get(k)||0)+1);}
       const label=m=>m.name+(cnt.get(rpNorm(m.name))>1?'（'+(rpDay(m.at)||'日付不明')+'承認）':'');
@@ -16400,6 +16401,21 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
     const ev=rpEvent();if(!ev?.base)return [];
     return (rpRoster(ev)||[]).filter(r=>r&&r.self&&r.time&&r.uid&&!rpClaims.has(r.id)&&rpMemberByUid(r.uid));
   }
+  // v377: 過去の大会を「見るだけのページ（モック）」にするため、この大会の結果を書き出す（開発者だけ）。
+  //   書き出すのは 大会名・日付・会場・各選手の氏名・種目・区間・タイム だけ（本人ID・UID・profileIdは含めない）。
+  function trMockExportButtonV377(){
+    const ev=rpEvent();if(!ev?.base)return '';
+    return `<div style="width:100%;flex:1 1 100%"><button type="button" class="rpBtn" data-rp-act="export-mock" style="width:100%;margin-top:8px">モック用にこの大会の結果を書き出す</button><div id="trMockOutV377"></div></div>`;
+  }
+  function trMockDataV377(){
+    const ev=rpEvent();if(!ev?.base)return null;
+    const rows=(rpRoster(ev)||[]).filter(r=>r&&r.time&&r.name);
+    const metricName=m=>({'800':'800m','1000':'1000m','1500':'1500m','3000':'3000m','5000':'5000m','relay':'駅伝'}[String(m)]||String(m||''));
+    return {format:'toprun-mock-v1',exportedAt:new Date().toISOString().slice(0,16).replace('T',' '),
+      event:{id:ev.id,title:String(ev.title||''),date:String(ev.date||''),place:String(ev.place||'')},
+      results:rows.map(r=>({name:String(r.name),event:metricName(r.metric),leg:r.leg?Number(r.leg)||String(r.leg):'',time:String(r.time),official:!!r.official}))
+        .sort((a,b)=>String(a.event).localeCompare(String(b.event),'ja')||String(a.leg).localeCompare(String(b.leg))||String(a.name).localeCompare(String(b.name),'ja'))};
+  }
   function trLinkedImportButtonV365(){
     const ev=rpEvent();if(!ev?.base)return '';
     const n=trLinkedImportRowsV365().length;
@@ -16409,6 +16425,15 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
     if(rpBusy)return;
     const act=btn.dataset.rpAct;
     const run=async fn=>{rpBusy=true;btn.disabled=true;let tm=null;try{await Promise.race([fn(),new Promise((_,rej)=>{tm=setTimeout(()=>rej(Error('通信に時間がかかっています。電波を確認して、もう一度押してください')),20000);})]);}catch(err){rpSay('できませんでした：'+String(err?.message||err).slice(0,140));}finally{clearTimeout(tm);rpBusy=false;rpRender();}};
+    if(act==='export-mock'){ // v377
+      const data=trMockDataV377(),out=$('trMockOutV377');if(!data||!out)return;
+      if(!data.results.length){out.innerHTML='<p class="portalHelp">書き出す結果がありません（記録のある人が0人です）。</p>';return;}
+      const text=JSON.stringify(data,null,1);
+      out.innerHTML=`<p class="portalHelp" style="margin:8px 0 4px">${esc(data.event.title)}：${data.results.length}件。下の「コピー」を押して、そのままClaudeに貼り付けてください。</p><textarea readonly style="width:100%;min-height:140px;font-size:11px;border-radius:10px;padding:8px" id="trMockTextV377"></textarea><button type="button" class="rpBtn portalPrimary" id="trMockCopyV377" style="width:100%;margin-top:6px">コピー</button>`;
+      $('trMockTextV377').value=text;
+      $('trMockCopyV377').onclick=async()=>{try{await navigator.clipboard.writeText(text);window.__trSavedToast?.('コピーしました');}catch(_){const t=$('trMockTextV377');t.focus();t.select();try{document.execCommand('copy');window.__trSavedToast?.('コピーしました');}catch(__){rpSay('コピーできませんでした。文字を長押しして全部選択してコピーしてください。');}}};
+      return;
+    }
     if(act==='import-linked'){ // v365
       const jobs=trLinkedImportRowsV365().map(r=>({m:rpMemberByUid(r.uid),r})).filter(x=>x.m);
       if(!jobs.length)return rpSay('取り込む記録はありません。');
