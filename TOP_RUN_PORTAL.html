@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v385 | 2026-11-10 | Parent: v384. (1) 開発者の「選手の個人記録を閲覧」を管理者と同じ一覧（PORTAL承認済み・役職「選手」）に統一。「選択した選手を管理者に公開」・点線の取得状況の枠を削除。名前を押すと個人記録。同じ名前でまだ付いていない大会記録がある人は「確認待ち N件」→押すと候補を表示→「この選手の記録です」でまとめて個人記録（pastRecords）に保存（既存の saveStaffPastRecord・同じ記録ID）。(2) 既読を見られる人：管理者の権限から外し、開発者が「お知らせの既読」「チャットの既読」を別々に付与（readViewers/<uid>、管理画面の設定の「ルームを作れる人」の下）。開発者は両方。お知らせの既読は表示名だけ、チャットの既読はチャット名だけ、開発者は両方の名前。Firebase：readViewers/<uid> を開いたとき1回読む（数十バイト）。付与の保存には Rules の追加が必要（未追加なら保存できない旨を表示。今は付与する人なし）。常時監視は増やさない。iPhone実機は未確認。 -->
 <!-- TOP RUN PORTAL v384 | 2026-11-10 | Parent: v383 (GitHub). イベントに「保存版」（archive：TOPRUNARCHIVE…の名前だけ）を追加。管理画面のイベント修正で、正式大会URLの下に入力欄（EVENT BASEのときだけ）。保存版が入った大会は「EVENT BASEを開く」で保存版を開く。正式大会URL・記録の紐付け・カレンダー・公認判定は変更なし。Firebase：eventItems に archive を1項目追加（Rules v371 が必要）。読み込み回数・常時監視は増やさない。iPhone実機は未確認。 -->
 <!-- TOP RUN PORTAL v383 | 2026-11-09 | parent: uploaded v380; Android HOME numerals and RUN only. No JS/Auth/Firebase changes. -->
 <!-- TOP RUN PORTAL v380 | 2026-11-09 | Parent TOPRUNPORTALv379.html
@@ -7116,7 +7117,7 @@ html.portalAndroidHomeFontMatch .shell > main #calendar .day{
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v384</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v385</b></div>
   </div>
 </div>
 
@@ -7353,7 +7354,7 @@ html.portalAndroidHomeFontMatch .shell > main #calendar .day{
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v384</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v385</b></div>
   </div>
 </div>
 
@@ -10096,13 +10097,15 @@ if(prefix==='home'){
     }
   }
   // v180: 既読N for the common chat (everyone sees it). Developers/admins can tap it to see who has not seen it yet.
+  // v385: 既読を見られる人。開発者は両方。ほかは開発者が付与した人だけ（管理者の権限とは別）。
+  window.trCanSeeReadsV385=kind=>{const g=window.__TR_PORTAL_SYNC__;if(!g||g.roleVerified!==true)return false;if(g.role==='developer')return true;return kind==='notice'?g.readNotice===true:g.readChat===true;};
   function portalChatReadMini(m){
     const g=window.__TR_PORTAL_SYNC__,map=g?.chatReadMap?.(),people=g?.chatReadPeople?.();
     const ts=Number(m?.ts)||0;
     if(!map||!people||!ts)return '';
     const sender=String(m?.senderUid||'');let n=0;
     for(const uid of Object.keys(people)){if(uid!==sender&&Number(map[uid]||0)>=ts)n++;} // v183: chat participants only
-    const staff=['developer','admin'].includes(g?.role);
+    const staff=!!window.trCanSeeReadsV385?.('chat'); // v385
     if(!n&&!staff)return '';
     const tap=staff?` role="button" tabindex="0" data-chat-read-ts="${ts}" data-chat-read-sender="${esc(sender)}"`:'';
     return `<div class="trReadMini${isMyPortalChat(m)?' mine':''}${staff?' trReadTap':''}"${tap} aria-label="既読${n}"><span>既読${n}${staff?' ›':''}</span></div>`;
@@ -10538,7 +10541,7 @@ if(view==='list')portalApplyManageSearch(kind);
         <button class="portalManageDelete" type="button" data-delete-kind="${kind}" data-delete-id="${esc(id)}">削除</button>
         <label class="portalPublicToggle"><input type="checkbox" data-public-kind="${kind}" data-public-id="${esc(id)}" ${enabled===false?'':'checked'}><i></i><em>公開</em></label>
         <button class="portalManageCopy" type="button" data-copy-kind="${kind}" data-copy-id="${esc(id)}">コピー</button>
-        ${kind==='notice'?`<button type="button" class="portalManageEdit" data-notice-reads="${esc(id)}">既読状況</button>`:''}
+        ${kind==='notice'&&window.trCanSeeReadsV385?.('notice')?`<button type="button" class="portalManageEdit" data-notice-reads="${esc(id)}">既読状況</button>`:''}
         ${needsConnection?`<button type="button" class="portalManageEdit" data-portal-event-connect="${esc(id)}">大会を接続</button>`:''}
         ${hasServiceLink?`<button type="button" class="portalManageEdit" data-portal-event-open="${esc(id)}">${eventForConnection.type==='RELAY EVENT BASE'?'駅伝BASEを開く':'EVENT BASEを開く'}</button>`:''}
       </div>
@@ -10790,6 +10793,7 @@ if(view==='list')portalApplyManageSearch(kind);
   function wireManageCommon(container){
     wireManageEdits(container); wireManageDeletes(container); wireManagePublic(container); wireManageCopies(container);
   }
+  ['tr-read-viewer','tr-portal-authorized'].forEach(ev=>window.addEventListener(ev,()=>{try{renderManageNotices();}catch(_){}})); // v385
   function renderManageNotices(){
     let items=noticeItems.slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
     items=items.filter(x=>portalListAccept('notice',x.date));
@@ -12060,11 +12064,17 @@ const gateway=window.__TR_PORTAL_SYNC__;
     const rowHtml=(m,sub)=>`<button type="button" class="portalDirectoryRow" data-tr-member-record="${esc(m.uid)}" data-tr-member-pid="${esc(m.profileId)}"><span><b>${esc(m.name)}</b><small>${esc(sub)}</small></span><strong>›</strong></button>`;
     const status=trAdminMembersErrV364?trAdminMembersErrV364:
       (!trAdminMembersV364||!roster)?'選手の一覧を読み込んでいます…':'選手 '+athletes.length+'人。名前を押すと、その人の個人記録を見られます。';
-    const html=(roster?athletes.map(m=>rowHtml(m,'個人記録を見る')).join(''):'')+
-      (unassigned.length?`<div class="portalDeveloperEmpty" style="margin-top:12px">役職が未設定の人 ${unassigned.length}人（「管理画面の設定」で役職を付けると、選手は上の一覧に入ります）</div>`+unassigned.map(m=>rowHtml(m,'役職未設定・個人記録を見る')).join(''):'');
+    // v385: 開発者には、同じ名前でまだ付いていない大会記録がある人に「確認待ち N件」を出す
+    const RPX=isDeveloper?window.__trRpV385:null;
+    if(RPX)RPX.prepare(()=>renderPortalAthleteDirectory());
+    let waitN=0;
+    const subFor=(m,def)=>{if(!RPX)return def;const n=RPX.candidates(m).length;if(n){waitN++;return '確認待ち '+n+'件（押して確認）';}return def;};
+    const html=(roster?athletes.map(m=>rowHtml(m,subFor(m,'個人記録を見る'))).join(''):'')+
+      (unassigned.length?`<div class="portalDeveloperEmpty" style="margin-top:12px">役職が未設定の人 ${unassigned.length}人（「管理画面の設定」で役職を付けると、選手は上の一覧に入ります）</div>`+unassigned.map(m=>rowHtml(m,subFor(m,'役職未設定・個人記録を見る'))).join(''):'');
+    const status2=status+(waitN?'\n「確認待ち」は、同じ名前でまだ個人記録に付いていない大会記録がある人です。':'');
     for(const id of ['portalAthleteDirectoryList','portalAthleteInlineList']){
       const target=$(id);if(!target)continue;
-      target.innerHTML='<div class="portalDeveloperEmpty" role="status">'+esc(status)+'</div>'+(html||'');
+      target.innerHTML='<div class="portalDeveloperEmpty" role="status" style="white-space:pre-line">'+esc(status2)+'</div>'+(html||'');
     }
     const pairs=[['portalAthleteDirectoryList','portalAthleteDirectorySearch'],['portalAthleteInlineList','portalAthleteInlineSearch']];
     for(const [listId,inputId] of pairs){
@@ -12073,9 +12083,42 @@ const gateway=window.__TR_PORTAL_SYNC__;
     }
   }
   async function trOpenAdminMemberRecordV364(e){
-    const b=e.target.closest('[data-tr-member-record]');if(!b||isDeveloper||!canManage||portalParticipantPreviewMode)return;
+    const b=e.target.closest('[data-tr-member-record]');if(!b||!canManage||portalParticipantPreviewMode)return;
     const uid=String(b.dataset.trMemberRecord||''),pid=String(b.dataset.trMemberPid||''),name=String(b.querySelector('b')?.textContent||'').trim();
     if(!uid||!pid)return;
+    // v385: 開発者は、確認待ちの記録があれば先に候補を出す
+    if(isDeveloper&&window.__trRpV385){const c=window.__trRpV385.candidates({uid,profileId:pid,name});if(c.length){trShowCandidatesV385({uid,profileId:pid,name},c);return;}}
+    await trOpenMemberRecordV385(uid,pid,name);
+  }
+  // v385: 「この選手の記録はこれです → はい」だけの画面
+  function trShowCandidatesV385(m,rows){
+    document.querySelector('.trReadSheet')?.remove();
+    const RPX=window.__trRpV385;
+    const el=document.createElement('div');
+    el.className='trReadSheet trCandSheetV385';el.setAttribute('role','dialog');el.setAttribute('aria-label','記録の確認');
+    el.innerHTML='<div class="trReadCard">'+
+      '<div class="trReadTop"><span class="trReadTitle">'+esc(m.name)+' さんの記録</span><span class="trReadSum"><b>'+rows.length+'</b>件</span></div>'+
+      '<p class="trCandNoteV385">同じ名前で、まだ個人記録に付いていない大会記録です。この選手の記録で合っていれば保存してください。</p>'+
+      '<ul class="trCandListV385">'+rows.map(r=>'<li>'+RPX.line(r)+'</li>').join('')+'</ul>'+
+      '<button type="button" class="trCandSaveV385">この選手の記録です（'+rows.length+'件を保存）</button>'+
+      '<button type="button" class="trReadClose trCandViewV385">保存せずに個人記録を見る</button>'+
+      '<button type="button" class="trReadClose trCandCloseV385">閉じる</button></div>';
+    el.addEventListener('click',async e=>{
+      if(e.target===el||e.target.closest('.trCandCloseV385')){el.remove();return;}
+      if(e.target.closest('.trCandViewV385')){el.remove();await trOpenMemberRecordV385(m.uid,m.profileId,m.name);return;}
+      const sv=e.target.closest('.trCandSaveV385');if(!sv)return;
+      el.querySelectorAll('button').forEach(x=>x.disabled=true);sv.textContent='保存中…';
+      let ok=0,ng=0,why='';
+      for(const r of rows){try{await RPX.write(m,r);ok++;}catch(err){ng++;why=String(err?.message||err).slice(0,100);}}
+      el.remove();
+      if(ok){try{window.__trSavedToast?.('保存しました（'+ok+'件）');}catch(_){}}
+      if(ng)showActionFeedback(ng+'件を保存できませんでした',why);
+      renderPortalAthleteDirectory();
+      try{await window.__TR_PORTAL_SYNC__?.loadPastRecordsFor?.(m.uid,m.profileId);}catch(_){}
+    });
+    document.body.appendChild(el);
+  }
+  async function trOpenMemberRecordV385(uid,pid,name){
     (window.__trExtraAthletes=window.__trExtraAthletes||{})[pid]={profileId:pid,uid,name};
     flowUpdateRecords();
     portalPersonalTargetId=pid;portalPersonalMetric='3000';showScreen('competition-results');
@@ -12087,7 +12130,8 @@ const gateway=window.__TR_PORTAL_SYNC__;
   }
   function renderPortalAthleteDirectory(){
     if(!canManage||portalParticipantPreviewMode)return;
-    if(!isDeveloper){trRenderAdminMemberDirectoryV364();return;} // v364
+    // v364/v385: 開発者も管理者と同じ一覧（PORTAL承認済み・役職「選手」）。旧「管理者に公開」の画面は使わない。
+    trRenderAdminMemberDirectoryV364();if(isDeveloper)refreshPortalDevVerifiedPicker();return;
     const available=portalCompetitionAthletes();
     // v274: PORTALの承認済みと同じ名前のEVENT BASE本人情報だけ外す（PORTAL未登録で記録だけある人は残す）
     const apprUids=new Set(portalApprovedMemberRows.map(m=>m.uid)),nk=v=>String(v||'').normalize('NFKC').replace(/[\s\u3000]/g,'');
@@ -16801,6 +16845,32 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
     await rpG().saveStaffPastRecord({uid:member.uid,profileId:member.profileId},{id:row.id,name:String(row.eventTitle||'大会').slice(0,120),date,metric:row.metric||'other',time:row.time,status:'time',venue:'',official:!!row.official},null);
     rpClaims.set(row.id,member.uid);
   }
+  // v385: 選手一覧（開発者）から使う。同じ名前（空白は無視）または本人IDが同じで、まだ誰にも付いていない記録。
+  let rpPrepAtV385=0,rpPrepBusyV385=false;
+  window.__trRpV385={
+    candidates(m){
+      if(!rpIsDev()||!rpLoaded||!m?.uid)return [];
+      const full=(Array.isArray(window.__rpAllMembers)?window.__rpAllMembers:[]).find(x=>x.uid===m.uid)||m;
+      const keys=new Set([rpNorm(full.name),rpNorm(full.reg),rpNorm(m.name)].filter(Boolean));
+      return rpAllRows().filter(r=>r&&r.time&&r.id&&!rpClaims.has(r.id)&&(r.uid===m.uid||keys.has(rpNorm(r.name))))
+        .sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+    },
+    prepare(cb){
+      if(!rpIsDev()||rpPrepBusyV385)return;
+      const g=rpG();try{g.wantOfficialResults?.();}catch(_){}
+      if(Date.now()-rpPrepAtV385<600000)return; // 10分以内は読み直さない（失敗しても繰り返さない）
+      rpPrepBusyV385=true;rpPrepAtV385=Date.now();
+      const targets=()=>(window.__TR_COMMON_PILOT_UI__?.officialTargets?.()||[]).filter(t=>t&&t.id);
+      const ready=()=>{const ts=targets();return ts.length>0&&ts.every(t=>Array.isArray(g.officialParticipantRoster?.[t.id]));};
+      (async()=>{
+        try{await rpLoadClaims();const until=Date.now()+60000;while(!ready()&&Date.now()<until)await new Promise(r=>setTimeout(r,2000));}catch(_){}
+        finally{rpPrepBusyV385=false;}
+        try{cb&&cb();}catch(_){}
+      })();
+    },
+    write:(m,row)=>rpWrite({uid:m.uid,profileId:m.profileId},row),
+    line:r=>rpRecLine(r)
+  };
   // v365: PORTALから出走登録して本人とつながっている人の大会記録（EVENT BASEの出走カードの記録）を、
   //   紐付けと同じ保存のしかた（同じ記録番号）でPORTALの個人記録へまとめて取り込む。
   //   これで本人・保護者・管理者が同じ記録を見られる。すでに取り込み・紐付け済みのものは上書きしない。
@@ -21063,16 +21133,23 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         finally{CR.busy=false;}
       };
       // v183: the people to check are exactly 管理画面の設定「チャットの参加者」 (chatPeople). Same list for the 既読N number.
-      const readDirectory=async()=>{
-        if(!cStaff())throw Error('開発者・管理者のみ確認できます');
+      // v385: 見られるのは開発者と、付与された人だけ。名前：開発者は両方、お知らせは表示名だけ、チャットはチャット名だけ。
+      const readDirectory=async(kind)=>{
+        if(!cOk()||!window.trCanSeeReadsV385?.(kind))throw Error('既読を見る権限がありません');
+        const dev=gate.role==='developer',N=window.__TR_NAMES__;
         const items=((await dbMod.get(ref('chatPeople'))).val()||{}).items||{},names={};
-        for(const [uid,it] of Object.entries(items)){const n0=String(it?.name||'').trim().slice(0,24),n=window.trChatNameLabel?window.trChatNameLabel(uid,n0,''):n0;if(cUid(uid))names[uid]=n||('名前なし（末尾'+uid.slice(-6)+'）');}
+        for(const [uid,it] of Object.entries(items)){
+          if(!cUid(uid))continue;
+          const n0=String(it?.name||'').trim().slice(0,24);
+          const n=dev?(window.trChatNameLabel?window.trChatNameLabel(uid,n0,''):n0):kind==='notice'?(N?.book?.[uid]?.displayName||n0):(window.trChatName?window.trChatName(uid,n0):n0);
+          names[uid]=n||('名前なし（末尾'+uid.slice(-6)+'）');
+        }
         return names;
       };
       const byName=(a,b)=>a.localeCompare(b,'ja');
       gate.chatReadStatus=async(ts,senderUid)=>{
         const at=Number(ts)||0,sender=String(senderUid||'');if(!at)throw Error('メッセージを確認できません');
-        const names=await readDirectory();CR.people=names;
+        const names=await readDirectory('chat');CR.people=names;
         const map=CR.ready?CR.map:((await dbMod.get(ref('chatRead'))).val()||{});
         const read=[],unread=[];
         for(const [uid,name] of Object.entries(names)){if(uid===sender)continue;(Number(map[uid]||0)>=at?read:unread).push(name);}
@@ -21081,7 +21158,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       gate.noticeReadStatus=async({key,version})=>{
         if(!/^(?:p|e)_[A-Za-z0-9_-]{1,298}$/.test(String(key||'')))throw Error('お知らせを確認できません');
         const need=Number(version)||1;
-        const names=await readDirectory(),uids=Object.keys(names);
+        const names=await readDirectory('notice'),uids=Object.keys(names);
         const vals=await Promise.all(uids.map(uid=>dbMod.get(dbMod.ref(db,'profiles/'+uid+'/portalSelf/noticeReads/'+key)).then(s=>Number(s.val())||0)));
         const read=[],unread=[];
         uids.forEach((uid,i)=>(vals[i]>=need?read:unread).push(names[uid]));
@@ -21190,6 +21267,8 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
         const uid=gate.uid;RM.uid=uid;
         // v239: ルームを作れる人か（1回だけ読む・数十バイト）
         dbMod.get(ref('roomCreators/'+uid)).then(s=>{if(RM.uid!==uid)return;gate.roomCreator=s.val()?.active===true;emit();}).catch(()=>{gate.roomCreator=false;});
+        // v385: 既読を見られる人か（1回だけ読む・数十バイト）。開発者は読まない。
+        if(gate.role!=='developer')dbMod.get(ref('readViewers/'+uid)).then(s=>{if(RM.uid!==uid)return;const v=s.val()||{};gate.readNotice=v.notice===true;gate.readChat=v.chat===true;emit();try{window.dispatchEvent(new Event('tr-read-viewer'));}catch(_){}}).catch(()=>{gate.readNotice=false;gate.readChat=false;});
         if(gate.role==='developer'){
           RM.all=p94WatchValue(ref('roomMeta'),s=>{
             if(RM.uid!==uid)return;
@@ -21380,6 +21459,22 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
           if(!rUid(p?.uid))continue;
           if(p.on){u['roomCreators/'+p.uid]={active:true,name:String(p.name||'名前なし').slice(0,24)||'名前なし',at:now};n++;}
           else u['roomCreators/'+p.uid]=null;
+        }
+        if(Object.keys(u).length)await dbMod.update(dbMod.ref(db,root),u);
+        return n;
+      };
+      // v385: 「既読を見られる人」（開発者だけ読み書き）。readViewers/<uid> = {notice,chat,name,at}
+      gate.readViewersLoad=async()=>{
+        if(!isDevRole())throw Error('開発者の権限が必要です');
+        return (await dbMod.get(ref('readViewers'))).val()||{};
+      };
+      gate.readViewersSave=async(list)=>{
+        if(!isDevRole()||auth.currentUser?.uid!==gate.uid)throw Error('開発者の権限が必要です');
+        const u={},now=Date.now();let n=0;
+        for(const p of (Array.isArray(list)?list:[])){
+          if(!rUid(p?.uid))continue;
+          if(p.notice||p.chat){u['readViewers/'+p.uid]={notice:!!p.notice,chat:!!p.chat,name:String(p.name||'名前なし').slice(0,24)||'名前なし',at:now};n++;}
+          else u['readViewers/'+p.uid]=null;
         }
         if(Object.keys(u).length)await dbMod.update(dbMod.ref(db,root),u);
         return n;
@@ -24171,17 +24266,19 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
       if(memberUid===sender||String(row?.status||'')!=='joined')continue;
       if(Number(row?.readAt||0)>=ts)count++;
     }
-    const staff=['developer','admin'].includes(window.__TR_PORTAL_SYNC__?.role);
+    const staff=!!window.trCanSeeReadsV385?.('chat'); // v385
     if(!count&&!staff)return '';
     const tap=staff?' role="button" tabindex="0" data-room-read-ts="'+ts+'" data-room-read-sender="'+esc(sender)+'"':'';
     return '<div class="trReadMini'+(sender===uid?' mine':'')+(staff?' trReadTap':'')+'"'+tap+' aria-label="既読'+count+'"><span>既読'+count+(staff?' ›':'')+'</span></div>';
   }
   function roomOpenReadStatus(el){
+    if(!window.trCanSeeReadsV385?.('chat'))return; // v385
+    const devV385=window.__TR_PORTAL_SYNC__?.role==='developer';
     const s=window.__TR_PORTAL_SYNC__?.roomsState?.()||{},members=s.openMembers||{};
     const ts=Number(el.dataset.roomReadTs)||0,sender=el.dataset.roomReadSender||'',read=[],unread=[];
     for(const [u,row] of Object.entries(members)){
       if(u===sender||String(row?.status||'')!=='joined')continue;
-      const name=(window.trChatNameLabel?window.trChatNameLabel(u,row?.name,''):String(row?.name||'').trim())||('名前なし（末尾'+u.slice(-6)+'）');
+      const name=(devV385&&window.trChatNameLabel?window.trChatNameLabel(u,row?.name,''):window.trChatName?window.trChatName(u,row?.name):String(row?.name||'').trim())||('名前なし（末尾'+u.slice(-6)+'）'); // v385: 開発者は両方、ほかはチャット名だけ
       (Number(row?.readAt||0)>=ts?read:unread).push(name);
     }
     read.sort((a,b)=>a.localeCompare(b,'ja'));unread.sort((a,b)=>a.localeCompare(b,'ja'));
@@ -28109,6 +28206,66 @@ window.__trFilePickStart=function(input){
   tick();let n=0;const iv=setInterval(()=>{tick();if(++n>120)clearInterval(iv);},1000);
   window.addEventListener('tr-portal-authorized',tick);
 })();
+/* v385: 管理画面の設定「既読を見られる人（開発者）」。お知らせ・チャットを別々に付与。readViewers/<uid>（開発者だけ書ける）。 */
+(function(){
+  'use strict';
+  const $=id=>document.getElementById(id);
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const g=()=>window.__TR_PORTAL_SYNC__;
+  const isDev=()=>{const x=g();return x?.role==='developer'&&x.roleVerified===true;};
+  let busy=false;
+  function mount(){
+    if($('trReadViewersSection'))return true;
+    const anchor=$('trRoomCreatorsSection');if(!anchor)return false;
+    anchor.insertAdjacentHTML('afterend',
+      '<section id="trReadViewersSection" class="portalManagementSettingsSection" hidden>'+
+        '<div class="portalPanelHead"><small>CHAT / READ</small><b>既読を見られる人（開発者）</b></div>'+
+        '<details class="portalManageAccessDisclosure" id="trReadViewersDetails"><summary>既読を見られる人を選ぶ</summary>'+
+          '<div class="portalIdentityLinkBody">'+
+            '<p style="font-size:13px">だれが見た・見ていないかを確認できる人を選びます（管理者の権限とは別です）。お知らせの既読は表示名、チャットの既読はチャット名で表示されます。開発者は両方を確認できます。</p>'+
+            '<button id="trReadViewersLoad" type="button" style="min-height:43px">読み込む</button>'+
+            '<div id="trReadViewersList"></div>'+
+            '<button id="trReadViewersSave" type="button" style="min-height:43px;margin-top:12px;width:100%" hidden>保存する</button>'+
+            '<p id="trReadViewersState" role="status" style="white-space:pre-wrap;font-size:12px"></p>'+
+          '</div>'+
+        '</details>'+
+      '</section>');
+    $('trReadViewersLoad').addEventListener('click',load);
+    $('trReadViewersSave').addEventListener('click',save);
+    return true;
+  }
+  const say=t=>{const p=$('trReadViewersState');if(p)p.textContent=t;};
+  const rulesMsg=e=>/permission|denied/i.test(String(e?.code||e?.message||e))?'Firebase のルール（Rules）に「既読を見られる人」の追加が必要です。':String(e?.code||e?.message||e).slice(0,80);
+  async function load(){
+    if(busy)return;busy=true;say('読み込み中です。');
+    try{
+      const roster=await g().roomRoster();
+      let cur={},note='';
+      try{cur=await g().readViewersLoad();}catch(e){note='今の設定を読めません：'+rulesMsg(e);}
+      const people=[...(roster.athletes||[]),...(roster.others||[])];
+      const seen=new Set(people.map(p=>p.uid));
+      for(const [uid,it] of Object.entries(cur||{}))if(!seen.has(uid)&&(it?.notice||it?.chat))people.push({uid,name:String(it.name||'名前なし')+'（チャットの参加者にいません）'});
+      const box=(uid,kind,on)=>'<label style="display:inline-flex;gap:4px;align-items:center;white-space:nowrap;font-size:13px"><input type="checkbox" data-rv="'+esc(uid)+'" data-kind="'+kind+'"'+(on?' checked':'')+'>'+(kind==='notice'?'お知らせ':'チャット')+'</label>';
+      $('trReadViewersList').innerHTML=people.length?people.map(p=>'<div class="trCpRow" data-rv-row="'+esc(p.uid)+'" data-name="'+esc(String(p.name).replace(/（チャットの参加者にいません）$/,''))+'" style="display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:8px 0"><span style="flex:1 1 9em;min-width:0;overflow-wrap:anywhere">'+esc(p.name)+'</span>'+box(p.uid,'notice',cur?.[p.uid]?.notice===true)+box(p.uid,'chat',cur?.[p.uid]?.chat===true)+'</div>').join(''):'<p style="font-size:13px">「チャットの参加者」に選んだ人がいません。</p>';
+      $('trReadViewersSave').hidden=!people.length;
+      const vals=Object.values(cur||{});
+      say((note?note+'\n':'')+'お知らせ '+vals.filter(x=>x?.notice).length+'人・チャット '+vals.filter(x=>x?.chat).length+'人が許可されています。');
+    }catch(e){say('読み込めません：'+rulesMsg(e));}
+    finally{busy=false;}
+  }
+  async function save(){
+    if(busy)return;busy=true;say('保存中です。');
+    try{
+      const list=[...document.querySelectorAll('#trReadViewersList [data-rv-row]')].map(row=>({uid:row.dataset.rvRow,name:row.dataset.name,notice:!!row.querySelector('[data-kind="notice"]')?.checked,chat:!!row.querySelector('[data-kind="chat"]')?.checked}));
+      const n=await g().readViewersSave(list);
+      say('保存しました（'+n+'人が許可されています）。許可された人は、PORTALを開き直すと既読を確認できます。');
+    }catch(e){say('保存できません：'+rulesMsg(e));}
+    finally{busy=false;}
+  }
+  function tick(){if(!mount())return;$('trReadViewersSection').hidden=!isDev();}
+  tick();let n=0;const iv=setInterval(()=>{tick();if(++n>120)clearInterval(iv);},1000);
+  window.addEventListener('tr-portal-authorized',tick);
+})();
 </script>
 
 
@@ -28393,6 +28550,14 @@ html[data-portal-personal-color="matte"] body .portalScreen input[type="file"]::
 html[data-portal-personal-color="matte"] body :is(#screen-management,#screen-flow-manager) .v88DateShell>input[type="date"]:not(#v256x){opacity:.015!important;color:transparent!important;-webkit-text-fill-color:transparent!important;background:transparent!important}
 </style>
 <style id="v258-wider-bubbles">
+/* v385: 記録の確認（選手一覧・開発者）。既読シートと同じ暗いカード（テーマに左右されない） */
+.trCandSheetV385 .trCandNoteV385{margin:8px 0 10px;font-size:12.5px;line-height:1.5;color:#e6ddd6}
+.trCandSheetV385 .trCandListV385{list-style:none;margin:0;padding:0;display:grid;gap:5px}
+.trCandSheetV385 .trCandListV385 li{box-sizing:border-box;min-width:0;padding:7px 10px;border-radius:9px;background:rgba(255,255,255,.07);font-size:13px;line-height:1.4;overflow-wrap:anywhere}
+.trCandSheetV385 .trCandListV385 li b{color:#ffe367}
+.trCandSheetV385 .trCandSaveV385{display:block;width:100%;margin-top:14px;min-height:40px;border-radius:11px;border:0;background:#ffe367;color:#2b3130;font-size:14px;font-weight:900}
+.trCandSheetV385 button:disabled{opacity:.55}
+.trCandSheetV385 .trCandViewV385{margin-top:8px}
 /* v258: 吹き出しを横に広く（既読・時刻を小さく、余白を詰める） */
 #screen-chat>main.chatMain{padding-left:6px!important;padding-right:6px!important}
 #screen-chat :is(#portalChatThread,#trRoomThread) .msg{padding-left:10px!important;padding-right:10px!important}
