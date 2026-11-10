@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v388 | 2026-11-10 | Parent: v387 (Rules v372). (1) 人を選ぶプルダウンを区分（選手は学年）→ふりがな順にそろえる。(2) 新規選手の目標タイムをプルダウンに。(3) トップの見出し（RUN.・日付・MY PAGE など）は iPhone・Android とも同じ書体（Inter／Noto Sans JP、表示する文字だけ読み込み）で表示。Android のほかの指定（カレンダー・一覧の数字など）はそのまま。(4) 管理画面の設定の人の一覧（クラブ区分・家族・チャットの参加者・ルームを作れる人・既読を見られる人）を「まだの人」と「登録済み（たたむ）」に分ける。(5) お知らせの本文の URL をタップで開けるように。(6) PORTAL 外の大会に複数のリンク（大会要項・タイムスケジュール・スタートリスト・大会速報・その他）を登録し、イベント・カレンダーに小さく表示（別の画面で開く）。「リンク先を開く」の大きな黄色いボタンをやめ、出走登録を目立たせる。Firebase：イベントにリンクの一覧が増えるだけ（読み込み・常時監視は増えない）。REQUIRES Rules v372（eventItems/links）。iPhone・Android 実機は未確認。 -->
 <!-- TOP RUN PORTAL v387 | 2026-11-10 | Parent: v386. 大会を分けない：過去大会の一括取り込み（14大会・197件）の記録も、EVENT BASEの大会と同じに「記録の紐付け（開発者）」の大会の選択と、選手一覧（開発者）の「確認待ち」に出す。取り込み後にPORTALに登録した人も、確認して「この選手の記録です」で個人記録に保存できる。保存の中身・記録IDは一括取り込みと同じ（DNF・DNSを含む）ので二重にならない。Firebase：新しい読み込みなし。iPhone実機は未確認。 -->
 <!-- TOP RUN PORTAL v386 | 2026-11-10 | Parent: v385. 選手一覧（開発者）の「確認待ち」・記録の紐付けに、旧EVENT BASEの本人情報を持つ人／本人とつながっている人の駅伝の計測記録（半田・第75回など）も出す。以前は本人情報なしの人だけで、駅伝の記録が候補に出なかった。二重登録は同じ記録IDで防ぐ。Firebase：新しい読み込みなし（すでに読んでいる計測記録を使う）。iPhone実機は未確認。 -->
 <!-- TOP RUN PORTAL v385 | 2026-11-10 | Parent: v384. (1) 開発者の「選手の個人記録を閲覧」を管理者と同じ一覧（PORTAL承認済み・役職「選手」）に統一。「選択した選手を管理者に公開」・点線の取得状況の枠を削除。名前を押すと個人記録。同じ名前でまだ付いていない大会記録がある人は「確認待ち N件」→押すと候補を表示→「この選手の記録です」でまとめて個人記録（pastRecords）に保存（既存の saveStaffPastRecord・同じ記録ID）。(2) 既読を見られる人：管理者の権限から外し、開発者が「お知らせの既読」「チャットの既読」を別々に付与（readViewers/<uid>、管理画面の設定の「ルームを作れる人」の下）。開発者は両方。お知らせの既読は表示名だけ、チャットの既読はチャット名だけ、開発者は両方の名前。Firebase：readViewers/<uid> を開いたとき1回読む（数十バイト）。付与の保存には Rules の追加が必要（未追加なら保存できない旨を表示。今は付与する人なし）。常時監視は増やさない。iPhone実機は未確認。 -->
@@ -6530,6 +6531,39 @@ html.portalAndroidHomeFontMatch .shell > main #calendar .day{
   html.portalAndroidHomeFontMatch .shell > main > .hero h1{font-size:39px}
 }
 </style>
+<!-- v388: トップの見出しは iPhone・Android とも同じ書体で表示（表示する文字だけを読み込む。Firebase は使わない） -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,800;0,900;1,900&family=Noto+Sans+JP:wght@700&display=swap&text=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.%2F%20%E4%BA%88%E5%AE%9A%E3%81%8B%E3%82%89%E3%80%81%E5%A4%A7%E4%BC%9A%E3%81%B8%E3%80%82">
+<script>document.documentElement.classList.add('trHeroV388');</script>
+<style id="v388-hero-same-font">
+/* v388: RUN.・日付・MY PAGE などトップの見出しだけ。Android のほかの指定（カレンダー・一覧の数字）は変えない。 */
+html.trHeroV388 .shell > main > .hero h1{font-family:"Inter",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;font-weight:900;font-style:italic;letter-spacing:-.045em;line-height:1;-webkit-text-stroke:0;transform:none}
+html.trHeroV388:not([data-portal-personal-color="matte"]) .shell > main > .hero h1{font-size:38px}
+html.trHeroV388 .shell > main > .hero h1 .runDot{font-style:normal}
+html.trHeroV388 .shell > main > .hero h1 span{font-family:"Noto Sans JP","Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif;font-style:normal;font-weight:700;-webkit-text-stroke:0;transform:none}
+html.trHeroV388 .shell > main > .hero .heroDate strong{font-family:"Inter",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;font-weight:900;font-style:normal;font-size:32px;line-height:.95;letter-spacing:-.04em;font-variant-numeric:lining-nums;-webkit-text-stroke:0;transform:none}
+html.trHeroV388 .shell > main > .hero .heroDate span,html.trHeroV388 .shell > main > .hero .heroKicker{font-family:"Inter",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;font-weight:800}
+html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;font-weight:900;-webkit-text-stroke:0}
+@media(max-width:400px){html.trHeroV388:not([data-portal-personal-color="matte"]) .shell > main > .hero h1{font-size:35px} html.trHeroV388 .shell > main > .hero .heroDate strong{font-size:29px}}
+/* v388: 大会の資料・リンク（小さく控えめに。出走登録を目立たせる） */
+.trLinksV388{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px}
+.trLinkV388{display:inline-flex;align-items:center;gap:6px;min-height:34px;box-sizing:border-box;padding:6px 12px;border-radius:999px;border:1px solid rgba(127,127,127,.45);background:transparent;color:inherit;font-size:13px;font-weight:800;line-height:1.2;text-decoration:none;max-width:100%}
+.trLinkV388 span{overflow-wrap:anywhere}
+.trLinkV388 i{font-style:normal;font-size:12px;opacity:.7}
+.trLinkV388:active{opacity:.6}
+.trLinkEditV388{display:grid;grid-template-columns:1fr auto;gap:6px;padding:8px 0;border-bottom:1px solid rgba(127,127,127,.25)}
+.trLinkEditV388 select,.trLinkEditV388 input{min-height:40px;font-size:16px;box-sizing:border-box;width:100%;min-width:0}
+.trLinkEditV388 [data-link-url]{grid-column:1 / -1}
+.trLinkEditV388 [data-link-label][hidden]{display:none}
+.trLinkEditV388 [data-link-del]{min-height:40px;padding:0 12px}
+/* v388: 登録済み・まだの人を分ける */
+.trGrpHeadV388{margin:10px 0 2px;font-size:12px;font-weight:900;opacity:.8}
+.trGrpOnV388{margin-top:10px}
+.trGrpOnV388>summary{cursor:pointer;font-size:13px;font-weight:900;padding:8px 0}
+/* v388: お知らせの本文のリンク */
+.trNoticeLinkV388{color:inherit;text-decoration:underline;overflow-wrap:anywhere}
+</style>
 </head>
 <body>
 <div id="portalFirstPaintAuthOverlay" role="status" aria-live="polite" aria-label="TOP RUN PORTAL 認証中">
@@ -7119,7 +7153,7 @@ html.portalAndroidHomeFontMatch .shell > main #calendar .day{
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v387</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v388</b></div>
   </div>
 </div>
 
@@ -7356,7 +7390,7 @@ html.portalAndroidHomeFontMatch .shell > main #calendar .day{
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v387</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v388</b></div>
   </div>
 </div>
 
@@ -7403,7 +7437,7 @@ html.portalAndroidHomeFontMatch .shell > main #calendar .day{
           <div id="trwNewForm" hidden>
             <label class="portalFlowLabel">選手名 <input id="trwNewName" maxlength="24" autocomplete="off" placeholder="例：山田 太郎"></label>
             <label class="portalFlowLabel">種目 <select id="trwNewMetric"></select></label>
-            <label class="portalFlowLabel">目標タイム（分かる場合） <input id="trwNewGoal" inputmode="decimal" autocomplete="off" placeholder="例：10:24"></label>
+            <div class="flowTimeField" data-flow-time="trwNewGoal"><div class="flowTimeHeading"><span>目標タイム（分かる場合）</span><button type="button" class="flowTimeClear" data-flow-clear="trwNewGoal">未設定に戻す</button></div><input type="hidden" id="trwNewGoal" value=""><div class="flowTimeControls" role="group" aria-label="目標タイムの選択"></div><span class="flowTimeCurrent" aria-live="polite">未設定（分・秒を選択してください）</span></div>
             <button type="button" class="portalPrimary" id="trwNewSave" style="width:100%;margin-top:6px">この選手を出走登録する</button>
           </div>
           <label class="portalFlowLabel" id="trwSearchWrap" hidden>名前で絞り込み <input id="trwSearch" type="search" autocomplete="off" placeholder="例：山田"></label>
@@ -7649,7 +7683,7 @@ html.portalAndroidHomeFontMatch .shell > main #calendar .day{
           <label for="manageEventUrl" id="manageEventUrlLabel">リンク先URL</label>
           <input id="manageEventUrl" type="url" inputmode="url" autocomplete="off" placeholder="https://nuritakug-cpu.github.io/tabirun-bgm/…">
           <p class="portalHelp" id="manageEventUrlHelp">PORTAL内は https:// で始まるリンク先を指定します。EVENT BASE／駅伝BASEは正式大会URLを指定します。リンク先URLは全員に共通です。認証番号やownerKeyは入力しないでください。</p>
-        </div> <div class="portalFormRow" id="manageEventArchiveRow" hidden> <label for="manageEventArchive">保存版（大会が終わったら）</label> <input id="manageEventArchive" type="url" inputmode="url" autocomplete="off" placeholder="https://nuritakug-cpu.github.io/tabirun-bgm/EVENT_BASE_PRODUCTION.html?archive=…"> <p class="portalHelp">EVENT BASEの「保存版を作る」で表示された保存版のURLを貼ります。入れると、この大会を開いたときに保存版（見るだけの記録ページ）が開きます。正式大会URLはそのまま残してください。空欄にして保存すると、元のEVENT BASEが開くように戻ります。</p> </div>
+        </div> <div class="portalFormRow" id="manageEventLinksRow" hidden><label>大会の資料・リンク（複数可）</label><div id="manageEventLinks"></div><button type="button" id="manageEventLinkAdd" style="min-height:40px;margin-top:6px">＋ リンクを追加</button><p class="portalHelp">大会要項・タイムスケジュール・スタートリスト・大会速報など。https:// で始まるURLを入れてください。イベント・カレンダーに小さく並び、タップすると別の画面で開きます。</p></div> <div class="portalFormRow" id="manageEventArchiveRow" hidden> <label for="manageEventArchive">保存版（大会が終わったら）</label> <input id="manageEventArchive" type="url" inputmode="url" autocomplete="off" placeholder="https://nuritakug-cpu.github.io/tabirun-bgm/EVENT_BASE_PRODUCTION.html?archive=…"> <p class="portalHelp">EVENT BASEの「保存版を作る」で表示された保存版のURLを貼ります。入れると、この大会を開いたときに保存版（見るだけの記録ページ）が開きます。正式大会URLはそのまま残してください。空欄にして保存すると、元のEVENT BASEが開くように戻ります。</p> </div>
         <p class="portalHelp" id="portalEventCreationOrderNote">PORTAL内イベントはリンク先URLを指定して保存できます。未指定の場合は従来どおりPORTAL内の日付詳細を使用します。</p>
         <button class="portalPrimary" type="button" id="manageEventAdd">PORTALにイベントを保存</button>
         <div class="portalManageState" id="manageEventState" role="status" aria-live="polite"></div>
@@ -9490,7 +9524,8 @@ if(prefix==='home'){
        // users look for another screen or confuse access with race entry status.
        const hasConnectedBase=portalConnectedBase(item);
        const portalHref=portalGeneralEventLink(item);
-       const baseOpen=portalHref?`<button class="portalRsvpGo portalScheduleBaseOpen" type="button" data-cal-open-portal="${esc(entry.eventId)}">リンク先を開く <span>›</span></button>`:hasConnectedBase?`<button class="portalScheduleBaseOpen portalV199BaseSmall" type="button" data-cal-open-base="${esc(entry.eventId)}">${item.type==='RELAY EVENT BASE'?'駅伝BASEを開く':'EVENT BASEを開く'} <span>›</span></button>`:portalMissingBaseAccessMarkup(item,true);
+       const linksV388=trEventLinksHtmlV388(item); // v388
+       const baseOpen=linksV388?linksV388:portalHref?`<button class="portalRsvpGo portalScheduleBaseOpen" type="button" data-cal-open-portal="${esc(entry.eventId)}">リンク先を開く <span>›</span></button>`:hasConnectedBase?`<button class="portalScheduleBaseOpen portalV199BaseSmall" type="button" data-cal-open-base="${esc(entry.eventId)}">${item.type==='RELAY EVENT BASE'?'駅伝BASEを開く':'EVENT BASEを開く'} <span>›</span></button>`:portalMissingBaseAccessMarkup(item,true);
        // v120: a connected EVENT BASE / EKIDEN BASE event still takes its race entry here (official Firebase card).
        const raceLink=allowRace&&(!hasConnectedBase||!!flowOfficialDestination(item))?`<button class="portalRsvpGo" type="button" data-cal-entry="${esc(entry.eventId)}">${registered?'出走内容・取消を確認':ended?'出走内容・記録を確認':'出走する（種目と目標を登録）'} <span>›</span></button>`:'';
        // v152: 大会 = 参加する／参加しない／帯同・応援として参加 (未定なし)。選んだボタンの再タップで解除。
@@ -9796,7 +9831,7 @@ if(prefix==='home'){
       el.setAttribute('role','button');el.setAttribute('tabindex','0');
       el.dataset.noticeId=item.id;el.dataset.source=source;
       const stamp=isEvent?(entry.when?new Date(entry.when).toLocaleDateString('ja-JP'):''):String(item.date||'').replaceAll('-','.');
-      el.innerHTML=`<div class="portalNoticeItemTop"><small>${esc(stamp)}</small>${unread?'<span class="portalNoticeNew">NEW</span>':''}</div>${isEvent?'<span class="trNoticeSource">駅伝BASE</span><b>EKIDENBASEからのお知らせ</b>'+ (item.title?`<span class="trNoticeOriginal">${esc(portalEventName(item.title))}</span>`:''):`<b>${esc(portalNoticeDisplayTitle(item.title))}</b>`}<p>${esc(item.body||'')}</p>`;
+      el.innerHTML=`<div class="portalNoticeItemTop"><small>${esc(stamp)}</small>${unread?'<span class="portalNoticeNew">NEW</span>':''}</div>${isEvent?'<span class="trNoticeSource">駅伝BASE</span><b>EKIDENBASEからのお知らせ</b>'+ (item.title?`<span class="trNoticeOriginal">${esc(portalEventName(item.title))}</span>`:''):`<b>${esc(portalNoticeDisplayTitle(item.title))}</b>`}<p>${trLinkifyV388(esc(item.body||''))}</p>`;
       const open=()=>isEvent?showUnifiedNoticeDetail('event',item,eventId):openNoticeDetail(item.id);
       el.addEventListener('click',open);
       el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open();}});
@@ -9901,7 +9936,8 @@ if(prefix==='home'){
     const protectedOfficialTarget=window.__TR_COMMON_PILOT_UI__?.officialTargetFor?.(item);
     const protectedEventHref=protectedOfficialTarget?portalOfficialSafeOpenUrl(protectedOfficialTarget):(item.url||'');
     const missingConnection=portalMissingBaseAccessMarkup(item);
-    const action=portalHref ? `<button class="openBtn" type="button" data-event-open-portal="${esc(item.id)}"><span>リンク先を開く</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : portalEventDisplayCategory(item)==='event' ? `<button class="openBtn" type="button" data-event-rsvp-date="${esc(portalEventDates(item).find(d=>d>=todayDateKey())||portalEventFirstDate(item))}"><span>参加予定・詳細を確認</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : portalConnectedBase(item) ? `<button type="button" class="openBtn" data-event-open-base="${esc(item.id)}"><span>${item.type==='RELAY EVENT BASE'?'駅伝BASEを開く':'EVENT BASEを開く'}</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : item.previewOnly ? `<button class="openBtn" type="button" ${item.raceEntryEnabled===false?'data-event-rsvp-date="'+esc(portalEventDates(item).find(d=>d>=todayDateKey())||portalEventFirstDate(item))+'"':'data-flow-event="'+esc(item.id)+'"'}><span>${item.raceEntryEnabled===false||isEntryClosed?'詳細を見る':'詳細・出走登録'}</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : item.type==='OTHER' ? `<button type="button" class="openBtn" data-event-rsvp-date="${esc(portalEventDates(item).find(d=>d>=todayDateKey())||portalEventFirstDate(item))}"><span>イベントの詳細を見る</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : item.url
+    const linksV388=trEventLinksHtmlV388(item); // v388
+    const action=linksV388 ? linksV388+(portalEventDisplayCategory(item)==='event'?`<button class="openBtn" type="button" data-event-rsvp-date="${esc(portalEventDates(item).find(d=>d>=todayDateKey())||portalEventFirstDate(item))}"><span>参加予定・詳細を確認</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>`:'') : portalHref ? `<button class="openBtn" type="button" data-event-open-portal="${esc(item.id)}"><span>リンク先を開く</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : portalEventDisplayCategory(item)==='event' ? `<button class="openBtn" type="button" data-event-rsvp-date="${esc(portalEventDates(item).find(d=>d>=todayDateKey())||portalEventFirstDate(item))}"><span>参加予定・詳細を確認</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : portalConnectedBase(item) ? `<button type="button" class="openBtn" data-event-open-base="${esc(item.id)}"><span>${item.type==='RELAY EVENT BASE'?'駅伝BASEを開く':'EVENT BASEを開く'}</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : item.previewOnly ? `<button class="openBtn" type="button" ${item.raceEntryEnabled===false?'data-event-rsvp-date="'+esc(portalEventDates(item).find(d=>d>=todayDateKey())||portalEventFirstDate(item))+'"':'data-flow-event="'+esc(item.id)+'"'}><span>${item.raceEntryEnabled===false||isEntryClosed?'詳細を見る':'詳細・出走登録'}</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : item.type==='OTHER' ? `<button type="button" class="openBtn" data-event-rsvp-date="${esc(portalEventDates(item).find(d=>d>=todayDateKey())||portalEventFirstDate(item))}"><span>イベントの詳細を見る</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>` : item.url
       ? protectedEventHref?`<a class="openBtn" href="${esc(protectedEventHref)}"><span>${item.relay?'駅伝EVENT BASEを開く':'EVENT BASEを開く'}</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></a>`:`<button type="button" class="openBtn" disabled title="開発者本人の接続を確認してください">大会への接続を保護中</button>`
       : `<button class="openBtn" type="button" data-ui-event-coming="${esc(item.id)}"><span>${esc(noLinkLabel)}</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>`;
     const topDate=(!portalConnectedBase(item)&&!item.relay&&item.type!=='EVENT BASE'&&item.type!=='RELAY EVENT BASE')?v199Date:''; // v324
@@ -10297,7 +10333,7 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
       $('practiceEntrySingle').classList.remove('hidden');$('practiceEntryBulk').classList.add('hidden');
     }else if(kind==='event'){
       editingEventId=null;copyingEventFromId=null;
-      $('manageEventDate').value='';$('manageEventTitle').value='';$('manageEventUrl').value='';
+      $('manageEventDate').value='';$('manageEventTitle').value='';$('manageEventUrl').value='';window.trLinksSetV388?.([]);
       $('manageEventDisplayCategory').value='competition';$('manageEventType').value='OTHER';
       if($('portalEventCreatedConnection'))$('portalEventCreatedConnection').hidden=true;
       $('manageEventEntryDeadline').value='';$('manageEventPlace').value='';$('manageEventCustomPlaceRow').classList.add('hidden');$('manageEventCustomPlace').value='';$('manageEventAdd').textContent='イベントを登録';$('manageEventState').textContent='';
@@ -10370,7 +10406,7 @@ if(view==='list')portalApplyManageSearch(kind);
   function portalEventDisplayCategory(item){return item?.displayCategory==='event'?'event':'competition';}
   function portalSyncEventLinkEditor(){
     // One eventItems.url field for all event types; no new Firebase data source.
-    const kind=$('manageEventType').value; const row=$('manageEventUrlRow'); if(row)row.hidden=false; const archiveRow=$('manageEventArchiveRow'); if(archiveRow)archiveRow.hidden=kind!=='EVENT BASE';
+    const kind=$('manageEventType').value; const row=$('manageEventUrlRow'); if(row)row.hidden=(kind==='OTHER'); const archiveRow=$('manageEventArchiveRow'); if(archiveRow)archiveRow.hidden=kind!=='EVENT BASE'; const linksRow=$('manageEventLinksRow'); if(linksRow)linksRow.hidden=kind!=='OTHER'; // v388: PORTAL 外の大会はリンクの一覧で指定
     const label=$('manageEventUrlLabel'),help=$('manageEventUrlHelp');
     if(label)label.textContent=kind==='OTHER'?'PORTAL内イベントのリンク先URL（未指定可）':'EVENT BASE／駅伝BASEの正式大会URL';
     if(help)help.textContent=kind==='OTHER'
@@ -10388,6 +10424,10 @@ if(view==='list')portalApplyManageSearch(kind);
     const info=$('portalEventCreationOrderNote');if(info)info.textContent=ordinary?'通常イベントは観戦・応援・交流などの開催です。リンク先を指定しても、参加の回答はPORTALのカレンダーで確認できます。':'PORTAL内イベントはリンク先だけ設定できます。EVENT BASE／駅伝BASEは既存の接続検証を使用します。';
   }
   $('manageEventDisplayCategory').addEventListener('change',portalUpdateEventDisplayCategory);
+  // v388: リンクの追加・削除・種類の切り替え
+  $('manageEventLinkAdd')?.addEventListener('click',()=>{const box=$('manageEventLinks');if(!box)return;if(box.querySelectorAll('[data-link-row]').length>=20)return;box.insertAdjacentHTML('beforeend',trLinkRowV388({type:box.querySelector('[data-link-row]')?'other':'guide'}));box.lastElementChild?.querySelector('[data-link-url]')?.focus();});
+  $('manageEventLinks')?.addEventListener('click',e=>{const d=e.target.closest('[data-link-del]');if(d)d.closest('[data-link-row]')?.remove();});
+  $('manageEventLinks')?.addEventListener('change',e=>{const t=e.target.closest('[data-link-type]');if(!t)return;const lab=t.closest('[data-link-row]').querySelector('[data-link-label]');if(lab)lab.hidden=t.value!=='other';});
   function portalSyncEventRaceMode(){
     const allow=$('manageEventDisplayCategory').value!=='event'&&document.querySelector('input[name="manageEventRaceEntryEnabled"]:checked')?.value!=='no';
     const raceFields=document.querySelector('#manage-pane-event .portalEventDisciplines');
@@ -10648,7 +10688,7 @@ if(view==='list')portalApplyManageSearch(kind);
         const item=eventItems.find(x=>x.id===id); if(!item)return;
         editingEventId=null; copyingEventFromId=id; if($('manageEventArchive'))$('manageEventArchive').value=''; $('manageEventDate').value=item.date||todayDateKey();portalEventTimeSet(item.startTime); $('manageEventTitle').value=item.title||'';
         setPlaceSelectValue('manageEventPlace','manageEventCustomPlaceRow','manageEventCustomPlace',item.place||'');
-        $('manageEventDisplayCategory').value=portalEventDisplayCategory(item);$('manageEventType').value=item.type||'EVENT BASE'; $('manageEventUrl').value=item.url||'';$('manageEventEntryDeadline').value=item.entryDeadline||'';document.querySelector('input[name="manageEventDeclaredRequired"][value="'+(item.requiresDeclaredTime===true?'yes':'no')+'"]').checked=true;portalRulesLoad(item);portalLoadEventDates(item);portalUpdateEventDisplayCategory();
+        $('manageEventDisplayCategory').value=portalEventDisplayCategory(item);$('manageEventType').value=item.type||'EVENT BASE'; $('manageEventUrl').value=item.url||'';window.trLinksSetV388?.(item.links||(item.type==='OTHER'&&item.url?[{type:'other',label:'リンク',url:item.url}]:[]));$('manageEventEntryDeadline').value=item.entryDeadline||'';document.querySelector('input[name="manageEventDeclaredRequired"][value="'+(item.requiresDeclaredTime===true?'yes':'no')+'"]').checked=true;portalRulesLoad(item);portalLoadEventDates(item);portalUpdateEventDisplayCategory();
         portalSetEventRaceMode(item);$('manageEventAdd').textContent='コピーを新規保存';
         $('manageEventState').textContent='コピー元は残ります。必要箇所を変更して新規保存してください。';
         portalSwitchEventWorkspace('new');
@@ -10708,7 +10748,7 @@ if(view==='list')portalApplyManageSearch(kind);
         copyingEventFromId=null; editingEventId=id;
         $('manageEventDate').value=item.date||'';portalEventTimeSet(item.startTime); $('manageEventTitle').value=item.title||'';
         setPlaceSelectValue('manageEventPlace','manageEventCustomPlaceRow','manageEventCustomPlace',item.place||'');
-        $('manageEventDisplayCategory').value=portalEventDisplayCategory(item);$('manageEventType').value=item.type||'EVENT BASE'; $('manageEventUrl').value=item.type==='OTHER'?(item.url||''):(portalOfficialPublicLink(item.url||'')?.url||item.url||'');if($('manageEventArchive'))$('manageEventArchive').value=portalArchiveName(item.archive)?portalArchiveUrl(item.archive):'';$('manageEventEntryDeadline').value=item.entryDeadline||'';document.querySelector('input[name="manageEventDeclaredRequired"][value="'+(item.requiresDeclaredTime===true?'yes':'no')+'"]').checked=true;portalRulesLoad(item);portalLoadEventDates(item);portalUpdateEventDisplayCategory();
+        $('manageEventDisplayCategory').value=portalEventDisplayCategory(item);$('manageEventType').value=item.type||'EVENT BASE'; $('manageEventUrl').value=item.type==='OTHER'?(item.url||''):(portalOfficialPublicLink(item.url||'')?.url||item.url||'');window.trLinksSetV388?.(item.links||(item.type==='OTHER'&&item.url?[{type:'other',label:'リンク',url:item.url}]:[]));if($('manageEventArchive'))$('manageEventArchive').value=portalArchiveName(item.archive)?portalArchiveUrl(item.archive):'';$('manageEventEntryDeadline').value=item.entryDeadline||'';document.querySelector('input[name="manageEventDeclaredRequired"][value="'+(item.requiresDeclaredTime===true?'yes':'no')+'"]').checked=true;portalRulesLoad(item);portalLoadEventDates(item);portalUpdateEventDisplayCategory();
         portalSetEventRaceMode(item);$('manageEventAdd').textContent='修正を反映'; $('manageEventState').textContent='修正中：'+item.title;
         portalSwitchEventWorkspace('new');
         $('manage-pane-event').scrollIntoView({behavior:'smooth',block:'start'});
@@ -11091,7 +11131,10 @@ if(view==='list')portalApplyManageSearch(kind);
   $('manageEventAdd').addEventListener('click',async()=>{
     if(!canManage){$('manageEventState').textContent='管理者として確認できていません。PORTALを開き直してから、もう一度押してください。';showActionFeedback('登録できません','管理者の確認ができていません。');return;}
     const displayCategory=$('manageEventDisplayCategory').value;
-    const date=$('manageEventDate').value,dates=portalReadEventDates(),title=$('manageEventTitle').value.trim(),entryDeadline=$('manageEventEntryDeadline').value; let place=placeValue('manageEventPlace','manageEventCustomPlace'); const startTime=portalEventTimeGet(),type=$('manageEventType').value;let url=String($('manageEventUrl').value||'').trim();
+    // v388: PORTAL 外の大会はリンクの一覧から。リンク先（url）は1件目（通常イベントは空のまま）。
+    const linksV388=$('manageEventType').value==='OTHER'?(window.trLinksReadV388?window.trLinksReadV388():[]):[];
+    if(linksV388===null){$('manageEventState').textContent='リンクのURLは https:// で始まる正しいURLを入れてください。';return;}
+    const date=$('manageEventDate').value,dates=portalReadEventDates(),title=$('manageEventTitle').value.trim(),entryDeadline=$('manageEventEntryDeadline').value; let place=placeValue('manageEventPlace','manageEventCustomPlace'); const startTime=portalEventTimeGet(),type=$('manageEventType').value;let url=String($('manageEventUrl').value||'').trim();if(type==='OTHER')url=displayCategory==='event'?'':(linksV388[0]?.url||''); // v388
     // On paste, a canonical EVENT BASE link is the whole connection setting.
     // Never persist ownerKey, PIN, admin secrets or foreign query parameters.
     if(url){
@@ -11158,9 +11201,9 @@ if(view==='list')portalApplyManageSearch(kind);
     const oldDate=item?.date||'';
     const formerItem=item?{...item}:null;
     if(item){
-      Object.assign(item,{date,dates,metricDates,startTime,title,place:place||'未定',type,url,archive,state:url?'ACCESS OPEN':'DEVELOPMENT',registration:attendanceOpen?'受付中':'受付前',relay,official,eligibility,requiresDeclaredTime,raceMetrics,raceEntryEnabled,entryDeadline,attendanceOpen,displayCategory,managedOverride:true});
+      Object.assign(item,{links:linksV388,date,dates,metricDates,startTime,title,place:place||'未定',type,url,archive,state:url?'ACCESS OPEN':'DEVELOPMENT',registration:attendanceOpen?'受付中':'受付前',relay,official,eligibility,requiresDeclaredTime,raceMetrics,raceEntryEnabled,entryDeadline,attendanceOpen,displayCategory,managedOverride:true});
     }else{
-      item={id:'event-'+Date.now(),date,dates,metricDates,startTime,title,place:place||'未定',type,url,archive,state:url?'ACCESS OPEN':'DEVELOPMENT',relay,displayCategory,registration:attendanceOpen?'受付中':'受付前',enabled:source?source.enabled!==false:true,copiedFrom:source?.id||'',previewOnly:false,pendingId:'',official,eligibility,requiresDeclaredTime,raceMetrics,raceEntryEnabled,entryDeadline,attendanceOpen,goalDefaultFromMyPage:true};
+      item={id:'event-'+Date.now(),links:linksV388,date,dates,metricDates,startTime,title,place:place||'未定',type,url,archive,state:url?'ACCESS OPEN':'DEVELOPMENT',relay,displayCategory,registration:attendanceOpen?'受付中':'受付前',enabled:source?source.enabled!==false:true,copiedFrom:source?.id||'',previewOnly:false,pendingId:'',official,eligibility,requiresDeclaredTime,raceMetrics,raceEntryEnabled,entryDeadline,attendanceOpen,goalDefaultFromMyPage:true};
       eventItems.push(item);
     }
     const gateway=window.__TR_PORTAL_SYNC__;
@@ -11181,7 +11224,7 @@ if(view==='list')portalApplyManageSearch(kind);
     $('manageEventState').textContent=formerItem?'大会の修正をFirebaseに保存しました。':source?'コピーから新しい大会をFirebaseに保存しました。':'新しい大会をFirebaseに保存しました。';
     portalPrepareEventNotice(item,formerItem);
     editingEventId=null;copyingEventFromId=null;$('manageEventAdd').textContent='PORTALにイベントを保存';portalSwitchEventWorkspace('new');
-    $('manageEventDisplayCategory').value='competition';$('manageEventType').value='OTHER';portalUpdateEventDisplayCategory();$('manageEventTitle').value='';$('manageEventUrl').value='';if($('manageEventArchive'))$('manageEventArchive').value='';$('manageEventEntryDeadline').value='';$('manageEventPlace').value='';$('manageEventCustomPlaceRow').classList.add('hidden');$('manageEventCustomPlace').value='';portalEventExtraDateDraft=[];portalEventMetricDateDraft={};portalDrawEventDates();portalEventTimeSet('');portalRulesLoad(null);document.querySelector('input[name="manageEventDeclaredRequired"][value="no"]').checked=true;portalSetEventRaceMode(null);
+    $('manageEventDisplayCategory').value='competition';$('manageEventType').value='OTHER';portalUpdateEventDisplayCategory();$('manageEventTitle').value='';$('manageEventUrl').value='';window.trLinksSetV388?.([]);if($('manageEventArchive'))$('manageEventArchive').value='';$('manageEventEntryDeadline').value='';$('manageEventPlace').value='';$('manageEventCustomPlaceRow').classList.add('hidden');$('manageEventCustomPlace').value='';portalEventExtraDateDraft=[];portalEventMetricDateDraft={};portalDrawEventDates();portalEventTimeSet('');portalRulesLoad(null);document.querySelector('input[name="manageEventDeclaredRequired"][value="no"]').checked=true;portalSetEventRaceMode(null);
     eventListMonth=date.slice(0,7);$('manageEventMonth').value=eventListMonth;
     renderHomeCalendar();renderFullCalendar();renderEventTab();renderManagedHomeEvents();renderManageEvents();renderHomeNextEvent();
     if(['EVENT BASE','RELAY EVENT BASE'].includes(item.type)&&!item.url){
@@ -13061,6 +13104,7 @@ function portalGoalSwitchTab(tab,{keepScroll=false}={}){
     field.querySelector('.flowTimeCurrent').textContent=raw?`選択中：${raw}`:'未設定（分・秒を選択してください）';
     portalGoalHighlightTimeField(field);
   }
+  window.flowSetTimeV388=(id,v)=>flowSetTime(id,v); // v388
   function flowReadTime(id){
     const field=document.querySelector(`[data-flow-time="${id}"]`);if(!field)return;
     const selects=[...field.querySelectorAll('select[data-time-part]')];
@@ -14030,6 +14074,43 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
     // PXX numbers are not authorization rules; staff edit eventItems explicitly.
     return !publicLink||publicLink.ekidenNext!==(item.type==='RELAY EVENT BASE');
   }
+  // v388: お知らせの本文の https:// をタップで開けるように（別の画面で開く）。文字はすでにエスケープ済みのものを受け取る。
+  function trLinkifyV388(html){
+    return String(html||'').replace(/https?:\/\/[^\s<>"'（）「」『』、。]+/g,u=>{const t=u.replace(/[.,!?)\]]+$/,''),rest=u.slice(t.length);return '<a class="trNoticeLinkV388" href="'+t+'" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">'+t+'</a>'+rest;});
+  }
+  // v388: PORTAL 外の大会の資料・リンク（複数）。links が無い大会は、今までのリンク先を「リンク」として出す。
+  const TR_LINK_TYPES_V388=[['guide','大会要項'],['schedule','タイムスケジュール'],['startlist','スタートリスト'],['live','大会速報'],['other','その他']];
+  function trEventLinksV388(item){
+    if(!item||item.type!=='OTHER')return [];
+    const raw=item.links?(Array.isArray(item.links)?item.links:Object.values(item.links)):[];
+    const name=t=>(TR_LINK_TYPES_V388.find(x=>x[0]===t)||[])[1]||'';
+    const out=raw.filter(l=>l&&/^https:\/\/\S+$/.test(String(l.url||''))).map(l=>({type:String(l.type||'other'),label:l.type&&l.type!=='other'&&name(l.type)?name(l.type):(String(l.label||'').trim()||'その他'),url:String(l.url)}));
+    if(!out.length){const h=portalGeneralEventLink(item);if(h)out.push({type:'other',label:'リンク',url:h});}
+    return out;
+  }
+  function trEventLinksHtmlV388(item){
+    const ls=trEventLinksV388(item);if(!ls.length)return '';
+    return '<div class="trLinksV388" aria-label="大会の資料・リンク">'+ls.map(l=>'<a class="trLinkV388" href="'+esc(l.url)+'" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()"><span>'+esc(l.label)+'</span><i aria-hidden="true">↗</i></a>').join('')+'</div>';
+  }
+  // v388: イベント作成のリンク一覧（編集）
+  function trLinkRowV388(l){
+    const t=TR_LINK_TYPES_V388.some(x=>x[0]===l?.type)?l.type:'guide';
+    return '<div class="trLinkEditV388" data-link-row><select data-link-type aria-label="リンクの種類">'+TR_LINK_TYPES_V388.map(([k,v])=>'<option value="'+k+'"'+(k===t?' selected':'')+'>'+v+'</option>').join('')+'</select>'+
+      '<button type="button" data-link-del>削除</button>'+
+      '<input data-link-label maxlength="40" placeholder="名前（例：駐車場の案内）" value="'+esc(l?.label||'')+'"'+(t==='other'?'':' hidden')+'>'+
+      '<input data-link-url type="url" inputmode="url" autocomplete="off" placeholder="https://…" value="'+esc(l?.url||'')+'"></div>';
+  }
+  window.trLinksSetV388=links=>{const box=$('manageEventLinks');if(!box)return;const arr=links?(Array.isArray(links)?links:Object.values(links)):[];box.innerHTML=arr.map(trLinkRowV388).join('');};
+  window.trLinksReadV388=()=>{
+    const out=[];
+    for(const row of document.querySelectorAll('#manageEventLinks [data-link-row]')){
+      const type=row.querySelector('[data-link-type]').value,url=String(row.querySelector('[data-link-url]').value||'').trim(),label=String(row.querySelector('[data-link-label]').value||'').trim().slice(0,40);
+      if(!url)continue;
+      try{const u=new URL(url);if(u.protocol!=='https:'||!u.hostname)return null;}catch(_){return null;}
+      out.push({type,label:type==='other'?label:'',url:url.slice(0,2048)});
+    }
+    return out.slice(0,20);
+  };
   function portalGeneralEventLink(item){
     if(!item||item.type!=='OTHER'||!String(item.url||'').trim())return '';
     try{
@@ -20858,7 +20939,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       const closeDay=/^\d{4}-\d{2}-\d{2}$/.test(String(v.entryDeadline||''))?v.entryDeadline:v.date;
       const raceDeadlineAt=/^\d{4}-\d{2}-\d{2}$/.test(String(closeDay||''))?Date.parse(closeDay+'T23:59:59.999+09:00'):0;
       const metricDates=Object.fromEntries(Object.entries(v.metricDates||{}).filter(([k,d])=>/^[A-Za-z0-9._-]+$/.test(k)&&typeof d==='string').slice(0,30).map(([k,v])=>[k.replace(/\./g,'%2E'),v]));
-      return {displayCategory:v.displayCategory==='event'?'event':'competition',date:String(v.date||''),dates,metricDates,startTime:String(v.startTime||''),title:String(v.title||'').slice(0,180),place:String(v.place||'未定').slice(0,160),type:String(v.type||''),url:String(v.url||''),...((String(v.type||'')==='EVENT BASE'&&/^TOPRUNARCHIVE[0-9A-Za-z]{4,60}$/.test(String(v.archive||'')))?{archive:String(v.archive)}:{}),state:String(v.state||''),relay:v.relay===true,registration:String(v.registration||((v.attendanceOpen===false)?'受付前':'受付中')).slice(0,40),enabled:v.enabled!==false,previewOnly:v.previewOnly===true,managedOverride:v.managedOverride===true,pendingId:String(v.pendingId||''),copiedFrom:String(v.copiedFrom||''),official:v.official===true,requiresDeclaredTime:v.requiresDeclaredTime===true,entryDeadline:String(v.entryDeadline||''),goalDefaultFromMyPage:v.goalDefaultFromMyPage===true,hiddenDefault:v.hiddenDefault===true,raceMetrics:metrics,raceMetricCodes,raceDeadlineAt,raceEntryEnabled:v.raceEntryEnabled!==false,eligibility:{enabled:eligibility.enabled===true,note:String(eligibility.note||'').slice(0,1000),rules},createdAt:old?.createdAt||Date.now(),createdByUid:old?.createdByUid||uid,updatedAt:Date.now(),updatedByUid:uid};
+      return {displayCategory:v.displayCategory==='event'?'event':'competition',date:String(v.date||''),dates,metricDates,startTime:String(v.startTime||''),title:String(v.title||'').slice(0,180),place:String(v.place||'未定').slice(0,160),type:String(v.type||''),url:String(v.url||''),...((String(v.type||'')==='EVENT BASE'&&/^TOPRUNARCHIVE[0-9A-Za-z]{4,60}$/.test(String(v.archive||'')))?{archive:String(v.archive)}:{}),...((String(v.type||'')==='OTHER'&&Array.isArray(v.links)&&v.links.length)?{links:v.links.slice(0,20).map(l=>({type:['guide','schedule','startlist','live','other'].includes(l?.type)?l.type:'other',label:String(l?.label||'').slice(0,40),url:String(l?.url||'').slice(0,2048)})).filter(l=>/^https:\/\/\S+$/.test(l.url))}:{}),state:String(v.state||''),relay:v.relay===true,registration:String(v.registration||((v.attendanceOpen===false)?'受付前':'受付中')).slice(0,40),enabled:v.enabled!==false,previewOnly:v.previewOnly===true,managedOverride:v.managedOverride===true,pendingId:String(v.pendingId||''),copiedFrom:String(v.copiedFrom||''),official:v.official===true,requiresDeclaredTime:v.requiresDeclaredTime===true,entryDeadline:String(v.entryDeadline||''),goalDefaultFromMyPage:v.goalDefaultFromMyPage===true,hiddenDefault:v.hiddenDefault===true,raceMetrics:metrics,raceMetricCodes,raceDeadlineAt,raceEntryEnabled:v.raceEntryEnabled!==false,eligibility:{enabled:eligibility.enabled===true,note:String(eligibility.note||'').slice(0,1000),rules},createdAt:old?.createdAt||Date.now(),createdByUid:old?.createdByUid||uid,updatedAt:Date.now(),updatedByUid:uid};
     };
     gate.saveEvent=async(item,previous)=>{
       if(previous?.type==='OTHER'&&previous.displayCategory==='competition'){
@@ -24721,7 +24802,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
       main.push({r:list[0],same:list.length>1});
       list.slice(1).forEach(r=>older.push(r));
     }
-    main.sort((a,b)=>a.r.name.localeCompare(b.r.name,'ja'));
+    main.sort((a,b)=>window.trClubCompareV333?window.trClubCompareV333(a.r,b.r):a.r.name.localeCompare(b.r.name,'ja')); // v388
     older.sort((a,b)=>a.name.localeCompare(b.name,'ja')||b.at-a.at);
     // v223: 承認だけで、まだPORTALに入っていない人はたたむ（選択済みの人・管理者・この端末は常に表示）
     const waiting=[];
@@ -24732,7 +24813,9 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
       main=keep;
     }
     let html=seenOk?'':'<p style="font-size:12px">入室の記録はまだ読めません（Firebaseのルールの更新が必要です）。</p>';
-    html+=main.length?main.map(x=>rowHtml(x.r,x.same)).join(''):'<p style="font-size:13px">選べる人がいません。</p>';
+    // v388: まだ選んでいない人を上に、選んでいる人はたたむ
+    const selV388=main.filter(x=>x.r.selected),offV388=main.filter(x=>!x.r.selected);
+    html+=main.length?('<p class="trGrpHeadV388">まだ選んでいない人 '+offV388.length+'人</p>'+offV388.map(x=>rowHtml(x.r,x.same)).join('')+(selV388.length?'<details class="trCpOlder trGrpOnV388"><summary>選んでいる人（'+selV388.length+'人）</summary>'+selV388.map(x=>rowHtml(x.r,x.same)).join('')+'</details>':'')):'<p style="font-size:13px">選べる人がいません。</p>';
     if(waiting.length)html+='<details class="trCpOlder"><summary>承認済み・まだ入っていない人（'+waiting.length+'人）</summary>'+waiting.map(x=>rowHtml(x.r,x.same)).join('')+'</details>';
     if(older.length)html+='<details class="trCpOlder"><summary>同じ名前の古い登録（'+older.length+'件）</summary>'+older.map(r=>rowHtml(r,true)).join('')+'</details>';
     html+='<p class="trCpCount" id="trCpCount"></p>';
@@ -25116,7 +25199,7 @@ window.trEventLabel=(id,fallback)=>{
     if(!staff())return;
     mode=m;const t=TEXT[m];
     $('trwTitle').textContent=t.title;$('trwHead').textContent=t.title;$('trwEyebrow').textContent=t.eyebrow;$('trwHelp').textContent=t.help;
-    $('trwSearch').value='';$('trwNewName').value='';$('trwNewGoal').value='';say('');
+    $('trwSearch').value='';$('trwNewName').value='';if(window.flowSetTimeV388)window.flowSetTimeV388('trwNewGoal','');else $('trwNewGoal').value='';say('');
     fillEvents();
     const pane=$('manage-pane-athletes');pane.dataset.mwView='work';
     render(true);pane.scrollIntoView({behavior:'auto',block:'start'});
@@ -25143,7 +25226,7 @@ window.trEventLabel=(id,fallback)=>{
       if(!name)return say('選手名を入力してください。');
       if(!confirm(`「${name}」を ${ev.title} の ${metricName(metricKey(metric))} に出走登録しますか？`))return;
       act(async()=>{await g().staffCreateEntry(ev.id,{subject:null,name,metric,targetTime:goal,date:dateOf(ev,metric)});
-        $('trwNewName').value='';$('trwNewGoal').value='';delete cards[ev.id];
+        $('trwNewName').value='';if(window.flowSetTimeV388)window.flowSetTimeV388('trwNewGoal','');else $('trwNewGoal').value='';delete cards[ev.id];
         say(`出走登録しました：${name}（${metricName(metricKey(metric))}）`);try{showActionFeedback?.('出走登録しました',name);}catch(_){}});
       return;
     }
@@ -28199,7 +28282,9 @@ window.__trFilePickStart=function(input){
       const people=[...(roster.athletes||[]),...(roster.others||[])];
       const seen=new Set(people.map(p=>p.uid));
       for(const [uid,it] of Object.entries(cur||{}))if(!seen.has(uid)&&it?.active)people.push({uid,name:String(it.name||'名前なし')+'（チャットの参加者にいません）'});
+      if(window.trClubSortV333)people.splice(0,people.length,...window.trClubSortV333(people)); // v388
       $('trRoomCreatorsList').innerHTML=people.length?people.map(p=>'<label class="trCpRow" style="display:flex;gap:10px;align-items:center;padding:8px 0"><input type="checkbox" data-rc="'+esc(p.uid)+'" data-name="'+esc(String(p.name).replace(/（チャットの参加者にいません）$/,''))+'"'+(cur?.[p.uid]?.active?' checked':'')+'><span>'+esc(p.name)+'</span></label>').join(''):'<p style="font-size:13px">「チャットの参加者」に選んだ人がいません。</p>';
+      {const box=$('trRoomCreatorsList');window.trGroupRowsV388?.(box,[...box.querySelectorAll(':scope > .trCpRow')],r=>!!r.querySelector('input:checked'),'まだ許可していない人','ルームを作れる人');} // v388
       $('trRoomCreatorsSave').hidden=!people.length;
       say(Object.values(cur||{}).filter(x=>x?.active).length+'人が許可されています。');
     }catch(e){say('読み込めません：'+String(e?.code||e?.message||e).slice(0,80));}
@@ -28258,7 +28343,9 @@ window.__trFilePickStart=function(input){
       const seen=new Set(people.map(p=>p.uid));
       for(const [uid,it] of Object.entries(cur||{}))if(!seen.has(uid)&&(it?.notice||it?.chat))people.push({uid,name:String(it.name||'名前なし')+'（チャットの参加者にいません）'});
       const box=(uid,kind,on)=>'<label style="display:inline-flex;gap:4px;align-items:center;white-space:nowrap;font-size:13px"><input type="checkbox" data-rv="'+esc(uid)+'" data-kind="'+kind+'"'+(on?' checked':'')+'>'+(kind==='notice'?'お知らせ':'チャット')+'</label>';
+      if(window.trClubSortV333)people.splice(0,people.length,...window.trClubSortV333(people)); // v388
       $('trReadViewersList').innerHTML=people.length?people.map(p=>'<div class="trCpRow" data-rv-row="'+esc(p.uid)+'" data-name="'+esc(String(p.name).replace(/（チャットの参加者にいません）$/,''))+'" style="display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:8px 0"><span style="flex:1 1 9em;min-width:0;overflow-wrap:anywhere">'+esc(p.name)+'</span>'+box(p.uid,'notice',cur?.[p.uid]?.notice===true)+box(p.uid,'chat',cur?.[p.uid]?.chat===true)+'</div>').join(''):'<p style="font-size:13px">「チャットの参加者」に選んだ人がいません。</p>';
+      {const lb=$('trReadViewersList');window.trGroupRowsV388?.(lb,[...lb.querySelectorAll(':scope > .trCpRow')],r=>!!r.querySelector('input:checked'),'まだ許可していない人','既読を見られる人');} // v388
       $('trReadViewersSave').hidden=!people.length;
       const vals=Object.values(cur||{});
       say((note?note+'\n':'')+'お知らせ '+vals.filter(x=>x?.notice).length+'人・チャット '+vals.filter(x=>x?.chat).length+'人が許可されています。');
@@ -28697,17 +28784,24 @@ body.portalChatIsolated > #trQuick{visibility:visible!important;opacity:1!import
     $('trFamilySection').hidden=!(g?.roleVerified===true&&g?.role==='developer'&&!window.__TR_COMMON_PILOT_UI__?.isParticipantPreview?.());
   }
   function render(){
-    const people=data.people.slice().sort((a,b)=>(a.disp||a.chat).localeCompare(b.disp||b.chat,'ja'));
-    const opts='<option value="">選んでください</option>'+people.map(p=>'<option value="'+esc(p.uid)+'">'+esc(label(p))+'</option>').join('');
-    for(const id of ['trFamilyGuardian','trFamilyChild']){const el=$(id),before=el.value;el.innerHTML=opts;if(people.some(p=>p.uid===before))el.value=before;}
+    const people0=data.people.slice().map(p=>({...p,name:p.disp||p.chat||''}));
+    const people=window.trClubSortV333?window.trClubSortV333(people0):people0.sort((a,b)=>(a.disp||a.chat).localeCompare(b.disp||b.chat,'ja'));
+    // v388: まだつないでいない人と、つないでいる人を分けて出す
+    const linkedG=new Set(Object.entries(data.links||{}).filter(([,k])=>k&&Object.keys(k).length).map(([g])=>g));
+    const linkedC=new Set(Object.values(data.links||{}).flatMap(k=>Object.keys(k||{})));
+    const opt=p=>'<option value="'+esc(p.uid)+'">'+esc(label(p))+'</option>';
+    const optsFor=set=>'<option value="">選んでください</option>'+
+      '<optgroup label="まだつないでいない人">'+people.filter(p=>!set.has(p.uid)).map(opt).join('')+'</optgroup>'+
+      (people.some(p=>set.has(p.uid))?'<optgroup label="つないでいる人">'+people.filter(p=>set.has(p.uid)).map(opt).join('')+'</optgroup>':'');
+    for(const [id,set] of [['trFamilyGuardian',linkedG],['trFamilyChild',linkedC]]){const el=$(id),before=el.value;el.innerHTML=optsFor(set);if(people.some(p=>p.uid===before))el.value=before;}
     $('trFamilyForm').hidden=false;
     const groups=Object.entries(data.links||{}).filter(([,kids])=>kids&&typeof kids==='object'&&Object.keys(kids).length)
       .sort((a,b)=>nameOf(a[0]).localeCompare(nameOf(b[0]),'ja'));
-    $('trFamilyLinks').innerHTML=groups.length?groups.map(([g,kids])=>
+    $('trFamilyLinks').innerHTML=groups.length?'<details class="trCpOlder trGrpOnV388"><summary>つないだ家族（'+groups.reduce((t,[,k])=>t+Object.keys(k).length,0)+'件）</summary>'+groups.map(([g,kids])=>
       '<div class="trFamGroup"><b>保護者：'+esc(nameOf(g))+'</b>'+
       Object.entries(kids).map(([c,v])=>'<div class="trFamRow"><span>→ '+esc(v?.name||nameOf(c))+(v?.rel?'（保護者は'+esc(v.rel)+'）':'')+'</span>'+
         '<button type="button" data-fam-remove="'+esc(g)+'|'+esc(c)+'">外す</button></div>').join('')+
-      '</div>').join(''):'<p style="font-size:13px">まだつないだ家族はいません。</p>';
+      '</div>').join('')+'</details>':'<p style="font-size:13px">まだつないだ家族はいません。</p>';
   }
   async function load(){
     if(busy)return;busy=true;$('trFamilyLoad').disabled=true;say('読み込み中…');
@@ -29710,9 +29804,11 @@ html[data-portal-personal-color="matte"] #screen-management-settings :is(#portal
       const saved=(g.clubRoster||{})[p.uid]||{},chosen=String(saved.roleCodes||'').split(',');
       const readable=(g.clubProfileCache||{})[p.uid]||{};
       const err=p.readError?'<div><small>プロフィールを取得できません：'+esc(p.readError)+'</small></div>':'';
-      return '<div class="trClubCard" data-club-uid="'+esc(p.uid)+'"><h4>'+esc(p.name)+'</h4><small>本人ID：'+esc(p.uid.slice(0,6)+'…'+p.uid.slice(-6))+' / profileId：'+esc(p.profileId.slice(0,6)+'…'+p.profileId.slice(-6))+'</small>'+err+
+      return '<div class="trClubCard" data-club-uid="'+esc(p.uid)+'" data-club-has="'+(chosen.filter(Boolean).length?'1':'')+'"><h4>'+esc(p.name)+'</h4><small>本人ID：'+esc(p.uid.slice(0,6)+'…'+p.uid.slice(-6))+' / profileId：'+esc(p.profileId.slice(0,6)+'…'+p.profileId.slice(-6))+'</small>'+err+
         '<div class="trClubChecks">'+roleCodes.map(code=>'<label><input type="checkbox" data-club-role="'+code+'" '+(chosen.includes(code)?'checked':'')+'>'+label[code]+'</label>').join('')+'</div><label class="trClubRank">同じ区分内の優先順（任意）<input type="number" min="0" max="9999" step="1" data-club-order value="'+esc(saved.sortOrder||0)+'"></label><small>0＝ふりがな自動順。数字を指定した人は数字の小さい順を優先。</small><button class="portalPrimary trClubSave" data-club-save type="button">この人の役職・順番を保存</button><span class="trClubSaveState" aria-live="polite"></span></div>';
     }).join('');
+    // v388: 役職がまだの人を上に、役職を付けた人はたたむ
+    window.trGroupRowsV388?.(target,[...target.querySelectorAll(':scope > .trClubCard')],r=>r.dataset.clubHas==='1','役職がまだの人','役職を付けた人');
   }
   $('trClubLoad')?.addEventListener('click',async()=>{
     const g=gate(),button=$('trClubLoad'),state=$('trClubStatus');
@@ -29758,6 +29854,60 @@ html[data-portal-personal-color="matte"] #screen-management-settings :is(#portal
 #trSavedToast.on{transform:translate(-50%,0);opacity:1}
 #trSavedToast i{display:inline-flex;width:20px;height:20px;border-radius:50%;background:var(--gold,#d8b52a);color:#1d2421;align-items:center;justify-content:center;font-style:normal;font-size:12px}
 </style>
+<script id="v388-people-order">
+/* v388: 人を選ぶプルダウンを、区分（選手は学年）→ふりがな順（trClubCompareV333）にそろえる。表示の並びだけで、保存の中身は変えない。 */
+(function(){
+  'use strict';
+  const IDS=['trHubPerson','portalEbResultPlayer','portalDevVerifiedSelector','portalDevPreviewSelector','managePracticeRecordAthlete','trPrPerson','flowProxyFor','trAuditPerson','flowManagerAthlete','flowMgrExtAthlete','portalClaimAthlete','portalGrantAdminPick','trDelTarget','trFamilyGuardian','trFamilyChild','trRecMoveFrom','trRecMoveTo','trRevokePick'];
+  const SEL=IDS.map(i=>'#'+i).join(',')+',select[data-rp-pick]';
+  const uidOf=v=>{
+    if(!v)return '';const g=window.__TR_PORTAL_SYNC__;
+    if((g?.clubRoster||{})[v]||(g?.clubProfileCache||{})[v])return v;
+    const m=(Array.isArray(window.__rpAllMembers)?window.__rpAllMembers:[]).find(x=>x.uid===v||x.profileId===v);
+    return m?m.uid:'';
+  };
+  function sortSel(sel){
+    if(!window.trClubCompareV333||sel.dataset.trSorting)return;
+    const boxes=sel.querySelector('optgroup')?[...sel.querySelectorAll('optgroup')]:[sel];
+    const cur=sel.value;let changed=false;sel.dataset.trSorting='1';
+    try{
+      for(const box of boxes){
+        const opts=[...box.children].filter(o=>o.tagName==='OPTION'&&o.value);
+        if(opts.length<2)continue;
+        const rows=opts.map(o=>({o,uid:uidOf(o.value),name:String(o.textContent||'').replace(/[（(].*$/,'').trim()}));
+        const sorted=rows.slice().sort((a,b)=>{try{return window.trClubCompareV333(a,b);}catch(_){return a.name.localeCompare(b.name,'ja');}});
+        if(sorted.every((r,i)=>r===rows[i]))continue;
+        changed=true;for(const r of sorted)box.appendChild(r.o);
+      }
+      if(changed)sel.value=cur;
+    }finally{delete sel.dataset.trSorting;}
+  }
+  const run=()=>document.querySelectorAll(SEL).forEach(sortSel);
+  const mo=new MutationObserver(ms=>{
+    const todo=new Set();
+    for(const m of ms){
+      const t=m.target;
+      if(t.tagName==='SELECT'&&t.matches(SEL))todo.add(t);
+      else if(t.tagName==='OPTGROUP'&&t.parentElement?.matches?.(SEL))todo.add(t.parentElement);
+      for(const n of m.addedNodes){if(n.nodeType!==1||n.tagName==='OPTION')continue;if(n.matches?.(SEL))todo.add(n);n.querySelectorAll?.(SEL).forEach(x=>todo.add(x));}
+    }
+    todo.forEach(sortSel);
+  });
+  const start=()=>{mo.observe(document.body,{childList:true,subtree:true});run();};
+  if(document.body)start();else document.addEventListener('DOMContentLoaded',start);
+  window.addEventListener('tr-club-roster-loaded',run);
+  // v388: 一覧を「まだの人」と「登録済み（たたむ）」に分ける。行はそのまま移すだけ（チェックや保存の仕組みは変えない）。
+  window.trGroupRowsV388=(box,rows,isOn,offLabel,onLabel)=>{
+    if(!box||!rows||!rows.length)return;
+    const on=rows.filter(isOn),off=rows.filter(r=>!isOn(r));
+    const wrap=document.createElement('div');
+    const head=document.createElement('p');head.className='trGrpHeadV388';head.textContent=offLabel+' '+off.length+'人';wrap.appendChild(head);
+    off.forEach(r=>wrap.appendChild(r));
+    if(on.length){const d=document.createElement('details');d.className='trCpOlder trGrpOnV388';const s=document.createElement('summary');s.textContent=onLabel+'（'+on.length+'人）';d.appendChild(s);on.forEach(r=>d.appendChild(r));wrap.appendChild(d);}
+    box.insertBefore(wrap,box.firstChild);
+  };
+})();
+</script>
 <script id="v345-save-unified-js">
 /* v345: 保存ボタンに共通の形を付け、「保存しました」を画面の上にはっきり出す（保存の処理そのものは変えない） */
 (function(){
