@@ -1,4 +1,5 @@
-<!-- TOP RUN PORTAL v392 | 2026-11-10 | Parent: v391（駅伝の保存版の開き先の修正）。追加：管理画面「練習」「イベント」に「スプレッドシートから取り込む」（PORTALの既存の保存処理を使用。Firebase・Rulesの変更なし）。
+<!-- TOP RUN PORTAL v394 | 2026-11-10 | Parent: v393. リンクプレビューを本番用に：取得先を専用Worker（top-run-linkpreview）に変更しMicrolinkを廃止、カードの長押しでメニュー、テーマ色に合わせる、取得失敗時は従来のURL表示、リンクのコピー（カードのボタン・長押しメニュー）、お知らせ詳細のURLをリンク化＋カード。Firebase・Rules・認証・送受信・保存形式は変更なし。 -->
+<!-- TOP RUN PORTAL v393 | 2026-11-10 | Parent: v392. チャットURLにOGPカードを追加（外部のメタ情報APIを表示時のみ利用・端末キャッシュ）。Firebase・Rules・認証・送受信変更なし。 Former: v392 | v391（駅伝の保存版の開き先の修正）。追加：管理画面「練習」「イベント」に「スプレッドシートから取り込む」（PORTALの既存の保存処理を使用。Firebase・Rulesの変更なし）。
      v391: Parent: v390. 駅伝の保存版の開き先を、GitHub に実際に入っている名前（EVENTBASEEKIDENNEXTP150ARCHIVE.html。名前の付け替えが動かなかったため）に合わせた。保存版のURLは、アンダーバーあり・なしのどちらの駅伝BASEのURLを貼っても名前を読み取れるようにした。Firebase・Rules 変更なし。 -->
 <!-- TOP RUN PORTAL v390 | 2026-11-10 | Parent: v389. 大会のリンクの表示を戻す：イベント一覧のカードは今までどおり「リンク先を開く」。リンクが1つならそのまま開く、複数なら一覧（大会要項・タイムスケジュールなど）を別の画面で出して、選んだものを新しいタブで開く。日付の詳細の「リンク先を開く」は、横幅いっぱい・控えめな色・出走登録より小さい高さに。Firebase・Rules 変更なし。iPhone実機は未確認。 -->
 <!-- TOP RUN PORTAL v389 | 2026-11-10 | Parent: v388 (Rules v372). (1) 大会を分けない：「過去大会記録を登録・修正・削除」で EVENT BASE・駅伝の大会も選んで記録を登録・修正できる（今までは EVENT BASE の大会を止めていた）。保存の仕組み・記録IDは今までの過去大会記録と同じ。(2) 駅伝の大会にも「保存版（大会が終わったら）」を入れられる。駅伝の保存版は駅伝BASE P150（EVENT_BASE_EKIDEN_NEXT_P150_ARCHIVE.html）で開く。(3) 「モック用にこの大会の結果を書き出す」から大会IDを外した（保存版は誰でも見られるため）。Firebase：変更なし（読み込み・常時監視は増えない）。Rules 変更なし。iPhone実機は未確認。 -->
@@ -7189,7 +7190,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v392</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v394</b></div>
   </div>
 </div>
 
@@ -7426,7 +7427,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v392</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v394</b></div>
   </div>
 </div>
 
@@ -8487,6 +8488,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
     $('modalNoticeDate').hidden=!$('modalNoticeDate').textContent;
     $('modalNoticeBody').textContent=(isEvent&&item.title?String(item.title)+'\n\n':'')+String(item.body||'');
     $('modalNoticeBody').hidden=false;
+    window.trLPNoticeV394?.($('modalNoticeBody')); // v394: URLを押せるリンクに＋リンクのカード
     modal.classList.add('portalNoticeDetailOpen');
     void markUnifiedNoticeRead(source,item,eventId);
   }
@@ -9894,6 +9896,7 @@ if(prefix==='home'){
       $('modalNoticeDate').hidden=!item.date;
       $('modalNoticeBody').textContent=item.body||'';
       $('modalNoticeBody').hidden=false;
+      window.trLPNoticeV394?.($('modalNoticeBody')); // v394
       modal.classList.add('portalNoticeDetailOpen');return;
     }
     showUnifiedNoticeDetail('common',item);
@@ -30461,5 +30464,335 @@ html.trAndroid nav.portalBottomTabs::before{content:"";position:absolute;inset:0
 :where(html.portalAndroidHomeFontMatch) .trProfileAnnounce{margin:0 0 12px;padding:12px 14px;border-radius:14px;background:var(--gold,#d7b117);color:#2a2105;font-weight:800;font-size:14px;line-height:1.4}
 .trProfileAnnounce small{display:block;font-size:11px;font-weight:800;opacity:.8;margin-top:2px}
 </style>
+
+<style id="tr-v394-link-preview">
+/* v394: link preview card for common CHAT, ROOM and the notice detail.
+   Colors follow the bubble / modal text color (currentColor), so all 5 themes and own/other bubbles match.
+   No backdrop-filter (Android). */
+.trLPWrap{position:relative;display:block;box-sizing:border-box;width:300px;max-width:100%;margin:9px 0 3px;white-space:normal;text-align:left;font-size:13px;line-height:1.45}
+.trLPCard{display:block!important;box-sizing:border-box;width:100%;min-width:0;margin:0!important;padding:0!important;overflow:hidden;
+  border-radius:12px!important;border:1px solid rgba(127,127,127,.38)!important;border-color:color-mix(in srgb,currentColor 22%,transparent)!important;
+  background:rgba(127,127,127,.10)!important;background:color-mix(in srgb,currentColor 7%,transparent)!important;
+  color:inherit!important;-webkit-text-fill-color:currentColor;text-decoration:none!important;box-shadow:none!important;
+  -webkit-tap-highlight-color:transparent;-webkit-touch-callout:none!important}
+.trLPCard:active{opacity:.78}
+.trLPCard:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+.trLPImage{display:block!important;width:100%!important;height:auto!important;aspect-ratio:1.91/1;object-fit:cover;max-height:none!important;margin:0!important;
+  background:rgba(127,127,127,.16);border:0!important;border-radius:0!important;box-shadow:none!important;-webkit-user-drag:none}
+.trLPBody{display:block;padding:9px 11px 10px;min-width:0}
+.trLPTitle{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:13.5px;font-weight:800;line-height:1.42;overflow-wrap:anywhere}
+.trLPDesc{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-top:4px;font-size:12px;font-weight:500;line-height:1.5;opacity:.78;overflow-wrap:anywhere}
+.trLPDomain{display:block;margin-top:6px;padding-right:72px;min-height:28px;line-height:28px;font-size:11px;font-weight:700;opacity:.62;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.trLPCard.trLPLoading .trLPTitle{font-size:12px;font-weight:700;opacity:.7}
+.trLPCard.trLPLoading .trLPDomain{margin-top:2px}
+.trLPCopy{position:absolute;right:7px;bottom:8px;display:inline-flex;align-items:center;gap:4px;box-sizing:border-box;min-height:28px;margin:0;padding:0 10px;
+  border-radius:999px;border:1px solid rgba(127,127,127,.4);border-color:color-mix(in srgb,currentColor 30%,transparent);
+  background:transparent;color:inherit;-webkit-text-fill-color:currentColor;font:inherit;font-size:11px;font-weight:800;line-height:1;
+  cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.trLPCopy svg{width:13px;height:13px;fill:currentColor;flex:none}
+.trLPCopy:active{transform:scale(.94);background:rgba(127,127,127,.18)}
+.trLPCopy:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+@media(max-width:380px){.trLPBody{padding:8px 10px 9px}.trLPTitle{font-size:13px}}
+/* notice detail: the body uses pre-wrap and 17px; the card keeps its own size */
+#modal .portalNoticeDetailBody .trLPWrap{margin-top:14px;width:340px}
+/* long-press menu: link copy row under the normal actions (the existing 3/5 button grid is not changed) */
+#trQuick .trLPQuickLinks{display:grid;gap:6px;margin-top:6px}
+#trQuick .trLPQuickLinks button{display:flex;align-items:center;justify-content:center;gap:6px;min-width:0;min-height:40px;padding:0 12px;
+  border-radius:12px;border:1px solid transparent;background:rgba(127,127,127,.12);color:var(--portal-theme-text,inherit);
+  font-size:12.5px;font-weight:800;touch-action:manipulation}
+#trQuick .trLPQuickLinks button span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:0}
+#trQuick .trLPQuickLinks button svg{width:17px;height:17px;fill:currentColor;flex:none;opacity:.9}
+#trQuick .trLPQuickLinks button:active{transform:scale(.97);background:rgba(127,127,127,.24)}
+</style>
+<script id="tr-v394-link-preview">
+/* v394: link preview (common CHAT, ROOM, notice detail) + link copy.
+   UI only: no Firebase path, auth, listener or message write. Message save format is unchanged.
+   Metadata comes from our own Cloudflare Worker (top-run-linkpreview), not from Microlink. */
+(function(){
+  'use strict';
+  const ENDPOINT='https://top-run-linkpreview.nuritaku-g.workers.dev';
+  const STORE='toprun.linkpreview.v394';
+  const SUCCESS_MS=14*24*60*60*1000,FAILED_MS=60*60*1000,MAX_CACHE=120;
+  const caches=new Map(),jobs=new Map(),queue=[];
+  let active=0,scheduled=false,pausedUntil=0;
+  const $=id=>document.getElementById(id);
+  const now=()=>Date.now();
+  const COPY_SVG='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/></svg>';
+  const LINK_SVG='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.9 12a3.1 3.1 0 0 1 3.1-3.1h4V7H7a5 5 0 0 0 0 10h4v-1.9H7A3.1 3.1 0 0 1 3.9 12zM8 13h8v-2H8v2zm9-6h-4v1.9h4a3.1 3.1 0 0 1 0 6.2h-4V17h4a5 5 0 0 0 0-10z"/></svg>';
+
+  // Only public https pages are previewed. Private hosts and links with secrets in the query are skipped.
+  function safeWebURL(raw){
+    try{
+      if(typeof raw!=='string'||raw.length>2048)return '';
+      const u=new URL(raw);
+      if(u.protocol!=='https:'||u.username||u.password||!u.hostname||(u.port&&u.port!=='443'))return '';
+      const host=u.hostname.toLowerCase().replace(/\.$/,'');
+      if(!host.includes('.')||host==='localhost'||/\.(?:localhost|local|internal|test|invalid|onion|lan|home|arpa)$/.test(host))return '';
+      if(/^\d+$/.test(host)||host.includes(':')||host.startsWith('['))return '';
+      if(/^\d+(?:\.\d+){3}$/.test(host)){
+        const n=host.split('.').map(Number);
+        if(n.some(x=>x>255)||n[0]===0||n[0]===10||n[0]===127||n[0]>=224||(n[0]===169&&n[1]===254)||(n[0]===172&&n[1]>=16&&n[1]<=31)||(n[0]===192&&n[1]===168)||(n[0]===100&&n[1]>=64&&n[1]<=127))return '';
+      }
+      for(const k of u.searchParams.keys()){
+        if(/^(?:token|access_token|id_token|password|passwd|secret|private_key|api_key|apikey|authorization|auth_token|signature)$/i.test(k))return '';
+      }
+      u.hash='';
+      return u.href;
+    }catch(_){return '';}
+  }
+  function safeImageURL(raw){
+    try{
+      if(typeof raw!=='string'||!raw||raw.length>2048)return '';
+      const u=new URL(raw);
+      if(u.protocol!=='https:'||u.username||u.password||(u.port&&u.port!=='443'))return '';
+      const h=u.hostname.toLowerCase();
+      if(!h.includes('.')||/^\d+(?:\.\d+){3}$/.test(h)||h.includes(':'))return '';
+      return u.href;
+    }catch(_){return '';}
+  }
+  function clip(x,n){return String(x||'').replace(/[\u0000-\u001f\u007f]/g,' ').replace(/\s+/g,' ').trim().slice(0,n);}
+  function normalize(obj){
+    if(!obj||typeof obj!=='object')return null;
+    const title=clip(obj.title,170),description=clip(obj.description,300),image=safeImageURL(obj.image);
+    if(!title&&!description)return null; // image only = not enough to show a useful card
+    return {title,description,image};
+  }
+
+  // ---- device cache (localStorage). Same URL is not requested again for 14 days (failure: 1 hour).
+  try{localStorage.removeItem('toprun.chat.linkpreview.v393');}catch(_){} // v393 (Microlink) cache is not used
+  try{
+    const old=JSON.parse(localStorage.getItem(STORE)||'{}');
+    if(old&&typeof old==='object')for(const [u,it] of Object.entries(old)){
+      if(!safeWebURL(u)||!it||!Number.isFinite(it.until)||it.until<now())continue;
+      caches.set(u,{until:it.until,data:it.data?normalize(it.data):null});
+    }
+  }catch(_){}
+  function save(){
+    try{
+      const keep=[...caches.entries()].filter(([,v])=>v.until>now()).slice(-MAX_CACHE);
+      localStorage.setItem(STORE,JSON.stringify(Object.fromEntries(keep)));
+    }catch(_){}
+  }
+  function cached(url){const c=caches.get(url);return c&&c.until>now()?c:null;}
+  function remember(url,data){
+    caches.delete(url);caches.set(url,{until:now()+(data?SUCCESS_MS:FAILED_MS),data});
+    while(caches.size>MAX_CACHE)caches.delete(caches.keys().next().value);
+    save();
+  }
+  async function request(url){
+    if(now()<pausedUntil)return null;
+    const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),10000);
+    try{
+      const res=await fetch(ENDPOINT+'/?url='+encodeURIComponent(url),{method:'GET',signal:ctrl.signal,credentials:'omit',referrerPolicy:'no-referrer',headers:{'Accept':'application/json'}});
+      if(res.status===429||res.status>=500){pausedUntil=now()+10*60*1000;return null;}
+      if(!res.ok)return null;
+      return normalize(await res.json());
+    }catch(_){return null;}
+    finally{clearTimeout(timer);}
+  }
+  function pump(){
+    while(active<2&&queue.length){
+      const {url,done}=queue.shift();active++;
+      request(url).then(d=>{remember(url,d);done(d);},()=>{remember(url,null);done(null);})
+        .finally(()=>{active--;jobs.delete(url);pump();});
+    }
+  }
+  function get(url){
+    const c=cached(url);if(c)return Promise.resolve(c.data);
+    if(jobs.has(url))return jobs.get(url);
+    const p=new Promise(done=>{queue.push({url,done});pump();});
+    jobs.set(url,p);return p;
+  }
+
+  // ---- copy
+  function legacyCopy(t){
+    try{
+      const ta=document.createElement('textarea');ta.value=t;ta.setAttribute('readonly','');
+      ta.style.cssText='position:fixed;top:0;left:-9999px;opacity:0;font-size:16px';
+      document.body.appendChild(ta);ta.select();ta.setSelectionRange(0,t.length);
+      const ok=document.execCommand('copy');ta.remove();return !!ok;
+    }catch(_){return false;}
+  }
+  function feedback(ok){
+    try{window.showActionFeedback?.(ok?'リンクをコピーしました':'自動でコピーできませんでした',ok?'':'リンクを長押しして「コピー」を選んでください');}catch(_){}
+  }
+  function copyLink(url){
+    if(!url){feedback(false);return;}
+    if(navigator.clipboard?.writeText&&window.isSecureContext!==false){
+      let p=null;try{p=navigator.clipboard.writeText(url);}catch(_){}
+      if(p&&p.then){p.then(()=>feedback(true),()=>feedback(legacyCopy(url)));return;}
+    }
+    feedback(legacyCopy(url));
+  }
+  window.trCopyLinkV394=copyLink;
+
+  // ---- keep the latest message in view when a card above it changes height
+  function chatMain(){return document.querySelector('#screen-chat > main.chatMain');}
+  function keepBottom(card,fn){
+    const main=card.closest('#portalChatThread,#trRoomThread')?chatMain():null;
+    const atBottom=!!main&&main.scrollHeight-main.scrollTop-main.clientHeight<60;
+    fn();
+    if(atBottom)main.scrollTop=main.scrollHeight;
+  }
+
+  // ---- card
+  function buildCard(url){
+    const host=new URL(url).hostname.replace(/^www\./,'');
+    const wrap=document.createElement('div');wrap.className='trLPWrap';
+    const card=document.createElement('a');
+    card.className='trLPCard trLPLoading';card.href=url;card.target='_blank';card.rel='noopener noreferrer';
+    card.dataset.lpUrl=url;card.dataset.lpHost=host;
+    card.setAttribute('aria-label','リンクを開く: '+host);
+    const body=document.createElement('span');body.className='trLPBody';
+    const t=document.createElement('span');t.className='trLPTitle';t.textContent='リンク先の情報を読み込み中';
+    const d=document.createElement('span');d.className='trLPDomain';d.textContent=host;
+    body.append(t,d);card.appendChild(body);
+    const btn=document.createElement('button');btn.type='button';btn.className='trLPCopy';
+    btn.setAttribute('aria-label','リンクをコピー');btn.innerHTML=COPY_SVG+'<span>コピー</span>';
+    wrap.append(card,btn);
+    return wrap;
+  }
+  function fill(card,data){
+    if(!card.isConnected||card.dataset.lpDone)return;
+    const wrap=card.parentElement;
+    if(!data){ // failure: remove the card; the URL text link in the message stays as before
+      card.dataset.lpDone='1';
+      keepBottom(card,()=>wrap?.remove());
+      return;
+    }
+    card.dataset.lpDone='1';
+    keepBottom(card,()=>{
+      card.classList.remove('trLPLoading');card.replaceChildren();
+      if(data.image){
+        const im=document.createElement('img');im.className='trLPImage';im.src=data.image;im.alt='';
+        im.loading='lazy';im.decoding='async';im.referrerPolicy='no-referrer';im.draggable=false;
+        im.addEventListener('error',()=>im.remove(),{once:true});card.appendChild(im);
+      }
+      const body=document.createElement('span');body.className='trLPBody';
+      const t=document.createElement('span');t.className='trLPTitle';t.textContent=data.title||card.dataset.lpHost||'';body.appendChild(t);
+      if(data.description){const d=document.createElement('span');d.className='trLPDesc';d.textContent=data.description;body.appendChild(d);}
+      const dm=document.createElement('span');dm.className='trLPDomain';dm.textContent=card.dataset.lpHost||'';body.appendChild(dm);
+      card.appendChild(body);
+    });
+  }
+  function fillAll(url,data){
+    for(const el of document.querySelectorAll('a.trLPCard[data-lp-url]'))if(el.dataset.lpUrl===url)fill(el,data);
+  }
+  function start(card){
+    if(card.dataset.lpStarted)return;card.dataset.lpStarted='1';
+    const url=card.dataset.lpUrl;get(url).then(d=>fillAll(url,d));
+  }
+  function attach(card){
+    const c=cached(card.dataset.lpUrl);
+    if(c)fill(card,c.data);else if(io)io.observe(card);else start(card);
+  }
+  const io=typeof IntersectionObserver==='function'?new IntersectionObserver(es=>{
+    for(const e of es)if(e.isIntersecting){io.unobserve(e.target);start(e.target);}
+  },{root:chatMain()||null,rootMargin:'120px 0px'}):null;
+
+  // tap = open the link (do not open the message menu); long press = message menu (existing code)
+  document.addEventListener('click',e=>{
+    const btn=e.target.closest?.('.trLPCopy');
+    if(btn){e.preventDefault();e.stopPropagation();copyLink(btn.parentElement?.querySelector('a.trLPCard')?.href||'');return;}
+    if(e.target.closest?.('a.trLPCard'))e.stopPropagation();
+  },true);
+
+  // ---- chat: first public https URL in each message
+  function firstUrl(p){
+    for(const a of p.querySelectorAll('a.trLink[href]')){const u=safeWebURL(a.getAttribute('href'));if(u)return u;}
+    return '';
+  }
+  function scan(){
+    scheduled=false;
+    for(const id of ['portalChatThread','trRoomThread']){
+      const wrap=$(id);if(!wrap)continue;
+      for(const msg of wrap.querySelectorAll('.msg[data-mid]')){
+        if(msg.querySelector(':scope > .trLPWrap'))continue;
+        const p=msg.querySelector(':scope > p');if(!p)continue;
+        const url=firstUrl(p);if(!url)continue;
+        const w=buildCard(url);p.insertAdjacentElement('afterend',w);
+        attach(w.querySelector('a.trLPCard'));
+      }
+    }
+  }
+  function schedule(){if(scheduled)return;scheduled=true;Promise.resolve().then(scan);}
+
+  // ---- long-press menu: add "リンクをコピー" under the normal buttons when the message has links
+  function addQuickLinks(q){
+    if(!q||q.querySelector('.trLPQuickLinks'))return;
+    const msg=document.querySelector('#portalChatThread .msg.trPicked,#trRoomThread .msg.trPicked');
+    const p=msg?.querySelector(':scope > p');if(!p)return;
+    const urls=[];
+    for(const a of p.querySelectorAll('a.trLink[href]')){
+      const h=a.getAttribute('href');if(/^https?:\/\//i.test(h)&&!urls.includes(h))urls.push(h);
+      if(urls.length>=3)break;
+    }
+    if(!urls.length)return;
+    const box=document.createElement('div');box.className='trLPQuickLinks';
+    urls.forEach(u=>{
+      const b=document.createElement('button');b.type='button';b.dataset.lpCopy=u;
+      let label='リンクをコピー';
+      if(urls.length>1){try{label='リンクをコピー（'+new URL(u).hostname.replace(/^www\./,'')+'）';}catch(_){}}
+      b.innerHTML=LINK_SVG;const s=document.createElement('span');s.textContent=label;b.appendChild(s);
+      box.appendChild(b);
+    });
+    const cardEl=q.querySelector('.trQCard');if(!cardEl)return;
+    cardEl.appendChild(box);
+    box.addEventListener('click',e=>{
+      const b=e.target.closest('[data-lp-copy]');if(!b)return;
+      e.stopPropagation();
+      const u=b.dataset.lpCopy;
+      q.remove();document.querySelectorAll('.msg.trPicked').forEach(x=>x.classList.remove('trPicked'));
+      copyLink(u);
+    });
+    // the menu grew: keep it on screen (same limits as the existing menu)
+    const vh=window.innerHeight,H=cardEl.offsetHeight,top=parseFloat(cardEl.style.top)||0;
+    if(top+H>vh-150)cardEl.style.top=Math.round(Math.max(88,vh-150-H))+'px';
+  }
+
+  // ---- notice detail: URLs become links, and the first https URL gets a card
+  const NOTICE_URL=/https?:\/\/[^\s<>"'（）「」『』、。]+/g;
+  window.trLPNoticeV394=function(el){
+    try{
+      if(!el)return;
+      const text=el.textContent||'';
+      NOTICE_URL.lastIndex=0;if(!NOTICE_URL.test(text))return;
+      NOTICE_URL.lastIndex=0;
+      const frag=document.createDocumentFragment();let last=0,m,first='';
+      while((m=NOTICE_URL.exec(text))){
+        const raw=m[0],url=raw.replace(/[.,!?)\]]+$/,'');
+        if(!url){continue;}
+        frag.appendChild(document.createTextNode(text.slice(last,m.index)));
+        const a=document.createElement('a');a.className='trNoticeLinkV388';a.href=url;a.target='_blank';a.rel='noopener noreferrer';a.textContent=url;
+        frag.appendChild(a);
+        last=m.index+url.length;
+        if(!first)first=safeWebURL(url);
+      }
+      frag.appendChild(document.createTextNode(text.slice(last)));
+      el.replaceChildren(frag);
+      if(first){const w=buildCard(first);el.appendChild(w);const c=w.querySelector('a.trLPCard');const hit=cached(first);if(hit)fill(c,hit.data);else start(c);}
+    }catch(_){/* keep the plain text if anything fails */}
+  };
+
+  function init(){
+    const screen=$('screen-chat');
+    if(screen){
+      new MutationObserver(rs=>{
+        for(const r of rs){
+          for(const n of r.addedNodes){
+            if(n.nodeType!==1)continue;
+            if(n.matches?.('.msg[data-mid],#portalChatThread,#trRoomThread')||n.querySelector?.('.msg[data-mid]')){schedule();return;}
+          }
+        }
+      }).observe(screen,{subtree:true,childList:true});
+      schedule();
+    }
+    new MutationObserver(rs=>{
+      for(const r of rs)for(const n of r.addedNodes)if(n.nodeType===1&&n.id==='trQuick'){addQuickLinks(n);return;}
+    }).observe(document.body,{childList:true});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+})();
+</script>
 </body>
 </html>
