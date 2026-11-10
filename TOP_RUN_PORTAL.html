@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v395 | 2026-11-10 | Parent: v394. リンクカードの画像をWorker経由（/img、Worker v2が必要）で表示・遅延読み込みをやめた、本文の文字リンクの長押しでもメニュー（リンクをコピー付き）、読めないリンクは小さなカードを残す、保存版リンクはイベント一覧の大会名を表示（Worker呼び出しなし）。Firebase・Rules・認証・送受信・保存形式は変更なし。 -->
 <!-- TOP RUN PORTAL v394 | 2026-11-10 | Parent: v393. リンクプレビューを本番用に：取得先を専用Worker（top-run-linkpreview）に変更しMicrolinkを廃止、カードの長押しでメニュー、テーマ色に合わせる、取得失敗時は従来のURL表示、リンクのコピー（カードのボタン・長押しメニュー）、お知らせ詳細のURLをリンク化＋カード。Firebase・Rules・認証・送受信・保存形式は変更なし。 -->
 <!-- TOP RUN PORTAL v393 | 2026-11-10 | Parent: v392. チャットURLにOGPカードを追加（外部のメタ情報APIを表示時のみ利用・端末キャッシュ）。Firebase・Rules・認証・送受信変更なし。 Former: v392 | v391（駅伝の保存版の開き先の修正）。追加：管理画面「練習」「イベント」に「スプレッドシートから取り込む」（PORTALの既存の保存処理を使用。Firebase・Rulesの変更なし）。
      v391: Parent: v390. 駅伝の保存版の開き先を、GitHub に実際に入っている名前（EVENTBASEEKIDENNEXTP150ARCHIVE.html。名前の付け替えが動かなかったため）に合わせた。保存版のURLは、アンダーバーあり・なしのどちらの駅伝BASEのURLを貼っても名前を読み取れるようにした。Firebase・Rules 変更なし。 -->
@@ -7190,7 +7191,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v394</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v395</b></div>
   </div>
 </div>
 
@@ -7427,7 +7428,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v394</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v395</b></div>
   </div>
 </div>
 
@@ -26583,7 +26584,7 @@ html[data-portal-personal-color="matte"] #screen-chat #trRoomThread .trReadIssue
   // so it never hits a button of the sheet that just opened.
   let timer=null,sx=0,sy=0,fired=false;
   const cancel=()=>{if(timer){clearTimeout(timer);timer=null;}};
-  const target=e=>{const msg=e.target.closest?.('#portalChatThread .msg[data-mid],#trRoomThread .msg[data-mid]');return msg&&!e.target.closest('.trQuote,.trReact,a.trLink')?msg:null;};
+  const target=e=>{const msg=e.target.closest?.('#portalChatThread .msg[data-mid],#trRoomThread .msg[data-mid]');return msg&&!e.target.closest('.trQuote,.trReact')?msg:null; /* v395: a.trLink も長押しでメニュー（タップは今どおり開く） */};
   let lpAt=0;
   const start=(msg,x,y)=>{sx=x;sy=y;cancel();
     const ctx=ctxOf(msg),mid=msg.dataset.mid;
@@ -30485,6 +30486,11 @@ html.trAndroid nav.portalBottomTabs::before{content:"";position:absolute;inset:0
 .trLPDomain{display:block;margin-top:6px;padding-right:72px;min-height:28px;line-height:28px;font-size:11px;font-weight:700;opacity:.62;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .trLPCard.trLPLoading .trLPTitle{font-size:12px;font-weight:700;opacity:.7}
 .trLPCard.trLPLoading .trLPDomain{margin-top:2px}
+/* v395: small card for links whose page info cannot be read (still openable / copyable) */
+.trLPCard.trLPMini .trLPTitle{font-size:13px}
+.trLPCard.trLPMini .trLPDomain{margin-top:3px}
+/* v395: long press on a text link opens the message menu; keep iPhone from starting a link drag */
+#portalChatThread .msg a,#trRoomThread .msg a{-webkit-user-drag:none}
 .trLPCopy{position:absolute;right:7px;bottom:8px;display:inline-flex;align-items:center;gap:4px;box-sizing:border-box;min-height:28px;margin:0;padding:0 10px;
   border-radius:999px;border:1px solid rgba(127,127,127,.4);border-color:color-mix(in srgb,currentColor 30%,transparent);
   background:transparent;color:inherit;-webkit-text-fill-color:currentColor;font:inherit;font-size:11px;font-weight:800;line-height:1;
@@ -30511,6 +30517,7 @@ html.trAndroid nav.portalBottomTabs::before{content:"";position:absolute;inset:0
 (function(){
   'use strict';
   const ENDPOINT='https://top-run-linkpreview.nuritaku-g.workers.dev';
+  const IMG=ENDPOINT+'/img?u='; // v395: preview images are loaded through the Worker (needs Worker v2)
   const STORE='toprun.linkpreview.v394';
   const SUCCESS_MS=14*24*60*60*1000,FAILED_MS=60*60*1000,MAX_CACHE=120;
   const caches=new Map(),jobs=new Map(),queue=[];
@@ -30544,11 +30551,27 @@ html.trAndroid nav.portalBottomTabs::before{content:"";position:absolute;inset:0
     try{
       if(typeof raw!=='string'||!raw||raw.length>2048)return '';
       const u=new URL(raw);
-      if(u.protocol!=='https:'||u.username||u.password||(u.port&&u.port!=='443'))return '';
+      if(!/^https?:$/.test(u.protocol)||u.username||u.password||u.port)return ''; // v395: http is fine (loaded via the Worker)
       const h=u.hostname.toLowerCase();
       if(!h.includes('.')||/^\d+(?:\.\d+){3}$/.test(h)||h.includes(':'))return '';
       return u.href;
     }catch(_){return '';}
+  }
+  // v395: archive links (?archive=TOPRUNARCHIVE…) cannot be read by the Worker. Use the event name PORTAL already has.
+  function archiveTitle(url){
+    try{
+      const u=new URL(url);
+      if(u.hostname!=='nuritakug-cpu.github.io')return '';
+      const name=u.searchParams.get('archive')||'';
+      if(!/^TOPRUNARCHIVE[0-9A-Za-z]{4,60}$/.test(name))return '';
+      const items=window.__TR_PORTAL_SYNC__?.eventItems;
+      const list=items&&typeof items==='object'?Object.values(items):[];
+      const hit=list.find(e=>e&&String(e.archive||'')===name&&e.title);
+      return hit?String(hit.title).slice(0,120)+'（記録）':'大会の記録（保存版）';
+    }catch(_){return '';}
+  }
+  function shortUrl(url){
+    try{const u=new URL(url);let t=u.hostname.replace(/^www\./,'')+decodeURI(u.pathname==='/'?'':u.pathname);return t.length>60?t.slice(0,59)+'…':t;}catch(_){return '';}
   }
   function clip(x,n){return String(x||'').replace(/[\u0000-\u001f\u007f]/g,' ').replace(/\s+/g,' ').trim().slice(0,n);}
   function normalize(obj){
@@ -30655,17 +30678,24 @@ html.trAndroid nav.portalBottomTabs::before{content:"";position:absolute;inset:0
   function fill(card,data){
     if(!card.isConnected||card.dataset.lpDone)return;
     const wrap=card.parentElement;
-    if(!data){ // failure: remove the card; the URL text link in the message stays as before
-      card.dataset.lpDone='1';
-      keepBottom(card,()=>wrap?.remove());
+    card.dataset.lpDone='1';
+    if(!data){ // v395: page info not readable -> keep a small card (open + copy still work)
+      keepBottom(card,()=>{
+        card.classList.remove('trLPLoading');card.classList.add('trLPMini');card.replaceChildren();
+        const body=document.createElement('span');body.className='trLPBody';
+        const t=document.createElement('span');t.className='trLPTitle';
+        t.textContent=archiveTitle(card.dataset.lpUrl)||card.dataset.lpHost||'リンク';
+        const dm=document.createElement('span');dm.className='trLPDomain';dm.textContent=shortUrl(card.dataset.lpUrl);
+        body.append(t,dm);card.appendChild(body);
+      });
       return;
     }
-    card.dataset.lpDone='1';
     keepBottom(card,()=>{
       card.classList.remove('trLPLoading');card.replaceChildren();
       if(data.image){
-        const im=document.createElement('img');im.className='trLPImage';im.src=data.image;im.alt='';
-        im.loading='lazy';im.decoding='async';im.referrerPolicy='no-referrer';im.draggable=false;
+        const im=document.createElement('img');im.className='trLPImage';im.alt='';
+        im.decoding='async';im.referrerPolicy='origin';im.draggable=false; // v395: no lazy loading; the Worker checks the PORTAL address
+        im.src=IMG+encodeURIComponent(data.image);
         im.addEventListener('error',()=>im.remove(),{once:true});card.appendChild(im);
       }
       const body=document.createElement('span');body.className='trLPBody';
@@ -30683,6 +30713,7 @@ html.trAndroid nav.portalBottomTabs::before{content:"";position:absolute;inset:0
     const url=card.dataset.lpUrl;get(url).then(d=>fillAll(url,d));
   }
   function attach(card){
+    if(archiveTitle(card.dataset.lpUrl)){fill(card,null);return;} // v395: no Worker call for archive links
     const c=cached(card.dataset.lpUrl);
     if(c)fill(card,c.data);else if(io)io.observe(card);else start(card);
   }
@@ -30691,7 +30722,10 @@ html.trAndroid nav.portalBottomTabs::before{content:"";position:absolute;inset:0
   },{root:chatMain()||null,rootMargin:'120px 0px'}):null;
 
   // tap = open the link (do not open the message menu); long press = message menu (existing code)
+  let quickAt=0;
   document.addEventListener('click',e=>{
+    // v395: the click that ends a long press on a link must not open the link
+    if(now()-quickAt<800&&e.target.closest?.('#portalChatThread .msg a[href],#trRoomThread .msg a[href]')){e.preventDefault();e.stopPropagation();return;}
     const btn=e.target.closest?.('.trLPCopy');
     if(btn){e.preventDefault();e.stopPropagation();copyLink(btn.parentElement?.querySelector('a.trLPCard')?.href||'');return;}
     if(e.target.closest?.('a.trLPCard'))e.stopPropagation();
@@ -30770,7 +30804,7 @@ html.trAndroid nav.portalBottomTabs::before{content:"";position:absolute;inset:0
       }
       frag.appendChild(document.createTextNode(text.slice(last)));
       el.replaceChildren(frag);
-      if(first){const w=buildCard(first);el.appendChild(w);const c=w.querySelector('a.trLPCard');const hit=cached(first);if(hit)fill(c,hit.data);else start(c);}
+      if(first){const w=buildCard(first);el.appendChild(w);const c=w.querySelector('a.trLPCard');if(archiveTitle(first))fill(c,null);else{const hit=cached(first);if(hit)fill(c,hit.data);else start(c);}}
     }catch(_){/* keep the plain text if anything fails */}
   };
 
@@ -30788,7 +30822,7 @@ html.trAndroid nav.portalBottomTabs::before{content:"";position:absolute;inset:0
       schedule();
     }
     new MutationObserver(rs=>{
-      for(const r of rs)for(const n of r.addedNodes)if(n.nodeType===1&&n.id==='trQuick'){addQuickLinks(n);return;}
+      for(const r of rs)for(const n of r.addedNodes)if(n.nodeType===1&&n.id==='trQuick'){quickAt=now();addQuickLinks(n);return;}
     }).observe(document.body,{childList:true});
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
