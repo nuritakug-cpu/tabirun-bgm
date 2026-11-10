@@ -1,4 +1,5 @@
-<!-- TOP RUN PORTAL v391 | 2026-11-10 | Parent: v390. 駅伝の保存版の開き先を、GitHub に実際に入っている名前（EVENTBASEEKIDENNEXTP150ARCHIVE.html。名前の付け替えが動かなかったため）に合わせた。保存版のURLは、アンダーバーあり・なしのどちらの駅伝BASEのURLを貼っても名前を読み取れるようにした。Firebase・Rules 変更なし。 -->
+<!-- TOP RUN PORTAL v392 | 2026-11-10 | Parent: v391（駅伝の保存版の開き先の修正）。追加：管理画面「練習」「イベント」に「スプレッドシートから取り込む」（PORTALの既存の保存処理を使用。Firebase・Rulesの変更なし）。
+     v391: Parent: v390. 駅伝の保存版の開き先を、GitHub に実際に入っている名前（EVENTBASEEKIDENNEXTP150ARCHIVE.html。名前の付け替えが動かなかったため）に合わせた。保存版のURLは、アンダーバーあり・なしのどちらの駅伝BASEのURLを貼っても名前を読み取れるようにした。Firebase・Rules 変更なし。 -->
 <!-- TOP RUN PORTAL v390 | 2026-11-10 | Parent: v389. 大会のリンクの表示を戻す：イベント一覧のカードは今までどおり「リンク先を開く」。リンクが1つならそのまま開く、複数なら一覧（大会要項・タイムスケジュールなど）を別の画面で出して、選んだものを新しいタブで開く。日付の詳細の「リンク先を開く」は、横幅いっぱい・控えめな色・出走登録より小さい高さに。Firebase・Rules 変更なし。iPhone実機は未確認。 -->
 <!-- TOP RUN PORTAL v389 | 2026-11-10 | Parent: v388 (Rules v372). (1) 大会を分けない：「過去大会記録を登録・修正・削除」で EVENT BASE・駅伝の大会も選んで記録を登録・修正できる（今までは EVENT BASE の大会を止めていた）。保存の仕組み・記録IDは今までの過去大会記録と同じ。(2) 駅伝の大会にも「保存版（大会が終わったら）」を入れられる。駅伝の保存版は駅伝BASE P150（EVENT_BASE_EKIDEN_NEXT_P150_ARCHIVE.html）で開く。(3) 「モック用にこの大会の結果を書き出す」から大会IDを外した（保存版は誰でも見られるため）。Firebase：変更なし（読み込み・常時監視は増えない）。Rules 変更なし。iPhone実機は未確認。 -->
 <!-- TOP RUN PORTAL v388 | 2026-11-10 | Parent: v387 (Rules v372). (1) 人を選ぶプルダウンを区分（選手は学年）→ふりがな順にそろえる。(2) 新規選手の目標タイムをプルダウンに。(3) トップの見出し（RUN.・日付・MY PAGE など）は iPhone・Android とも同じ書体（Inter／Noto Sans JP、表示する文字だけ読み込み）で表示。Android のほかの指定（カレンダー・一覧の数字など）はそのまま。(4) 管理画面の設定の人の一覧（クラブ区分・家族・チャットの参加者・ルームを作れる人・既読を見られる人）を「まだの人」と「登録済み（たたむ）」に分ける。(5) お知らせの本文の URL をタップで開けるように。(6) PORTAL 外の大会に複数のリンク（大会要項・タイムスケジュール・スタートリスト・大会速報・その他）を登録し、イベント・カレンダーに小さく表示（別の画面で開く）。「リンク先を開く」の大きな黄色いボタンをやめ、出走登録を目立たせる。Firebase：イベントにリンクの一覧が増えるだけ（読み込み・常時監視は増えない）。REQUIRES Rules v372（eventItems/links）。iPhone・Android 実機は未確認。 -->
@@ -5059,6 +5060,30 @@ html[data-portal-personal-color="matte"] #portalReportCenter{--tr-report-accent:
 #portalPracticeReportPanel .trPrListDisclosure .trPracticeReportList{padding:9px;margin:0;border-top:1px solid #509995}
 #portalPracticeReportPanel .trPrListDisclosure .trPracticeReportPaging{padding:0 10px 12px}
 </style>
+<style id="tr-v391-sheet-import">
+/* v391: スプレッドシートから取り込む（練習予定・イベント）。保存はPORTALの既存の保存処理を使う */
+#screen-management #manage-pane-practice[data-mw-view="sheet"] .portalWorkflowArea[data-mw-area="sheet"],
+#screen-management #manage-pane-event[data-mw-view="sheet"] .portalWorkflowArea[data-mw-area="sheet"]{display:block!important}
+#screen-management #manage-pane-event[data-mw-view="sheet"] .portalEventWorkspace{display:none!important}
+.trSbBox .trSbConn{margin:0 0 12px}
+.trSbBox .trSbConn summary{cursor:pointer;font-size:13px;font-weight:700;opacity:.85;padding:4px 0}
+.trSbBox .trSbConn input{width:100%;box-sizing:border-box;margin:6px 0;font-size:13px}
+.trSbBox .trSbConn button{min-height:38px;padding:0 14px}
+.trSbBox .trSbActions{display:grid;gap:8px;margin:10px 0}
+.trSbBox .trSbSummary{font-size:13px;font-weight:700;margin:10px 0 6px}
+.trSbBox .trSbAll{display:flex!important;align-items:center;justify-content:flex-start;gap:8px;font-size:13px;margin:4px 0 8px;width:auto}
+.trSbBox .trSbAll input{width:20px!important;height:20px;flex:0 0 auto;margin:0}
+.trSbBox .trSbList{display:grid;gap:8px}
+.trSbBox .trSbRow{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;padding:10px 12px;border:1px solid rgba(127,127,127,.35);border-radius:12px}
+.trSbBox .trSbRow.off{opacity:.55}
+.trSbBox .trSbRow input[type=checkbox]{width:20px;height:20px;margin:2px 0 0}
+.trSbBox .trSbMain{min-width:0;overflow-wrap:anywhere}
+.trSbBox .trSbMain b{display:block;font-size:14px;line-height:1.4}
+.trSbBox .trSbMain small{display:block;font-size:12px;line-height:1.5;opacity:.85;margin-top:2px}
+.trSbBox .trSbTag{display:inline-block;font-size:11px;font-weight:800;line-height:1;padding:4px 7px;border-radius:999px;border:1px solid currentColor;margin:0 6px 4px 0;vertical-align:middle}
+.trSbBox .trSbTag.warn{color:#d9822b}
+.trSbBox .trSbResult{display:block;font-size:12px;font-weight:700;margin-top:4px}
+</style>
 <style id="tr-v330-practice-report">
 #screen-management #manage-pane-practice[data-mw-view="report"] .portalWorkflowArea[data-mw-area="report"]{display:block!important}
 #portalPracticeReportPanel .trPracticeReportFilter{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:14px 0}
@@ -7164,7 +7189,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v391</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v392</b></div>
   </div>
 </div>
 
@@ -7401,7 +7426,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v391</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v392</b></div>
   </div>
 </div>
 
@@ -7515,8 +7540,13 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
   <button type="button" class="portalWorkflowChoice" data-workflow-open="practice:list"><span><b>✎ 修正・削除</b><small>登録済みの練習予定を一覧から探して選ぶ</small></span><strong>›</strong></button>
   <button type="button" class="portalWorkflowChoice" data-workflow-open="practice:month"><span><b>▤ 今月の練習メニュー</b><small>月別PDFの登録・差し替え・削除</small></span><strong>›</strong></button>
   <button type="button" class="portalWorkflowChoice" data-workflow-open="practice:report"><span><b>練習参加・記録の確認と帳票</b><small>日付／月／期間で絞り込み、未回答・記録なしも含めてCSV・印刷</small></span><strong>›</strong></button>
+  <button type="button" class="portalWorkflowChoice" data-workflow-open="practice:sheet"><span><b>⇩ スプレッドシートから取り込む</b><small>シートに入力した練習予定を確認して登録する</small></span><strong>›</strong></button>
   
 </section>
+<div class="portalWorkflowArea" data-mw-area="sheet">
+<div class="portalWorkflowTop"><button type="button" data-workflow-back="practice">← 操作選択へ戻る</button><strong>スプレッドシートから取り込む</strong></div>
+<section class="portalManageForm trSbBox" data-sheet-import="practice"></section>
+</div>
 <div class="portalWorkflowArea" data-mw-area="form">
 <div class="portalWorkflowTop"><button type="button" data-workflow-back="practice">← 操作選択へ戻る</button><strong data-workflow-title="practice">練習予定を新規作成</strong></div>
       <div class="portalManageModeSwitch" aria-label="練習登録方法">
@@ -7638,7 +7668,12 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
   <button type="button" class="portalWorkflowChoice" data-workflow-open="event:new"><span><b>＋ 新規作成</b><small>新しいイベントを登録する</small></span><strong>›</strong></button>
   <button type="button" class="portalWorkflowChoice" data-workflow-open="event:list"><span><b>✎ 修正・削除</b><small>登録済みのイベントを一覧から探して選ぶ</small></span><strong>›</strong></button>
   <button type="button" class="portalWorkflowChoice" data-workflow-open="event:participants"><span><b>参加者・出走者</b><small>大会ごとの参加状況・出走登録・結果を確認する</small></span><strong>›</strong></button>
+  <button type="button" class="portalWorkflowChoice" id="trSbEventOpen"><span><b>⇩ スプレッドシートから取り込む</b><small>シートで選んだ大会を確認して登録する</small></span><strong>›</strong></button>
 </section>
+<div class="portalWorkflowArea" data-mw-area="sheet">
+<div class="portalWorkflowTop"><button type="button" data-workflow-back="event">← 操作選択へ戻る</button><strong>スプレッドシートから取り込む</strong></div>
+<section class="portalManageForm trSbBox" data-sheet-import="event"></section>
+</div>
       <div class="portalEventWorkspaceTabs" role="group" aria-label="イベントの管理内容">
         <button type="button" class="active" data-event-workspace="new" aria-pressed="true">新規作成</button>
         <button type="button" data-event-workspace="list" aria-pressed="false">作成済みの管理</button>
@@ -18011,6 +18046,209 @@ applyNotices(rows){
     disableChat(){$('portalChatSend').disabled=true;$('portalChatSend').textContent='接続待ち';},
     enableChat(){$('portalChatSend').disabled=false;$('portalChatSend').textContent='送信';}
   };
+  // v391: スプレッドシートから取り込む（練習予定・イベント）
+  // シート側（Apps Script のウェブアプリ）から読み込み、差分を確認してから PORTAL の既存の保存処理
+  // （gateway.savePractice / resetPracticeResponses / saveEvent）で保存する。新しい保存先・Rules変更はない。
+  // 通信量：押したときにシートを1回読むだけ。Firebaseは選んだ項目の保存時だけ。
+  (function trSheetImportV391(){
+    const URL_KEY='trSheetBridgeUrlV391';
+    const RK={TT:'TT',selection:'選考',trial:'試走',other:'その他'};
+    const state={practice:null,event:null};
+    const box=kind=>qs('[data-sheet-import="'+kind+'"]');
+    const savedUrl=()=>{try{return localStorage.getItem(URL_KEY)||'';}catch(_){return '';}};
+    const validUrl=u=>/^https:\/\/script\.google(usercontent)?\.com\/\S+[?&]key=[A-Za-z0-9]+/.test(String(u||''));
+    const gw=()=>window.__TR_PORTAL_SYNC__;
+    const dayLabel=d=>{const m=String(d||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);if(!m)return d||'';const w='日月火水木金土'[new Date(+m[1],+m[2]-1,+m[3]).getDay()];return (+m[2])+'/'+(+m[3])+'（'+w+'）';};
+
+    function shell(kind){
+      const el=box(kind);if(!el)return;
+      const what=kind==='practice'?'シートの「PORTAL練習予定」で「PORTALへ」にチェックした練習予定':'シートの大会一覧で「PORTAL登録」にチェックした大会';
+      el.innerHTML=`<p class="portalHelp">${what}を読み込みます。内容を確認してから保存します。</p>
+        <details class="trSbConn"${savedUrl()?'':' open'}><summary>接続URL${savedUrl()?'（設定済み）':''}</summary>
+          <input type="url" data-sb-url placeholder="https://script.google.com/macros/s/…/exec?key=…" autocomplete="off" value="${esc(savedUrl())}">
+          <button type="button" class="portalSmallButton" data-sb-url-save>このURLを使う</button>
+          <p class="portalHelp">シートのメニュー「TOP RUN 自動収集」→「PORTAL取込の接続URLを表示」で出るURLを貼ってください。この端末にだけ保存されます。</p>
+        </details>
+        <div class="trSbActions"><button type="button" class="portalPrimary" data-sb-load>シートを読み込む</button></div>
+        <div data-sb-out></div>
+        <div class="portalManageState" data-sb-state role="status" aria-live="polite"></div>`;
+      el.querySelector('[data-sb-url-save]').addEventListener('click',()=>{
+        const v=el.querySelector('[data-sb-url]').value.trim();
+        if(!validUrl(v)){say(kind,'URLの形が違います。シートで表示した接続URL（…/exec?key=…）をそのまま貼ってください。');return;}
+        try{localStorage.setItem(URL_KEY,v);}catch(_){}
+        shell('practice');shell('event');say(kind,'接続URLを保存しました。「シートを読み込む」を押してください。');
+      });
+      el.querySelector('[data-sb-load]').addEventListener('click',()=>load(kind));
+    }
+    function say(kind,text){const s=box(kind)?.querySelector('[data-sb-state]');if(s)s.textContent=text;}
+
+    async function load(kind){
+      if(!canManage){say(kind,'管理者として確認できていません。PORTALを開き直してから、もう一度押してください。');return;}
+      const url=savedUrl();
+      if(!validUrl(url)){say(kind,'先に接続URLを設定してください。');const d=box(kind)?.querySelector('.trSbConn');if(d)d.open=true;return;}
+      const g=gw();
+      const need=kind==='practice'?'practices':'eventItems';
+      if(!g?.canWrite?.(need)){say(kind,'PORTALの'+(kind==='practice'?'練習予定':'イベント')+'の受信を確認中です。少し待ってから、もう一度押してください。');return;}
+      say(kind,'シートを読み込んでいます…');
+      let data;
+      try{
+        const res=await Promise.race([fetch(url,{cache:'no-store',redirect:'follow'}),new Promise((_,ng)=>setTimeout(()=>ng(Error('シートから20秒応答がありません')),20000))]);
+        data=await res.json();
+      }catch(error){say(kind,'シートを読み込めませんでした：'+String(error?.message||error).slice(0,100));return;}
+      if(!data||data.ok!==true){say(kind,'シートが読み込みを断りました：'+String(data?.error||'不明').slice(0,80)+'（接続URLを確認してください）');return;}
+      const rows=kind==='practice'?diffPractices(data.practices||[]):diffEvents(data.events||[]);
+      state[kind]={rows,warnings:(data.warnings||[]).filter(w=>kind==='practice'?/^練習/.test(w):/^大会/.test(w))};
+      render(kind);
+      say(kind,'');
+    }
+
+    // ---------- 練習
+    function diffPractices(list){
+      const perDay={};list.forEach(x=>{const d=x.prevDate||x.date;perDay[d]=(perDay[d]||0)+1;});
+      const g=gw();
+      return list.map(x=>{
+        const target=x.prevDate||x.date;
+        const ids=portalPracticeIdsOn(target,true);
+        let key=ids.find(id=>schedules[id]?.start===x.start)||'';
+        if(!key&&ids.length===1&&perDay[target]===1)key=ids[0];            // その日の練習が1件ずつなら開始時刻の変更とみなす
+        const r={kind:'practice',x,key,changes:[],reset:'',answers:0,status:'',note:''};
+        r.title=dayLabel(x.date)+'　'+x.start+'〜'+x.end+'　'+x.place;
+        if(!key){
+          if(x.prevDate){r.status='warn';r.note='変更前の日付（'+dayLabel(x.prevDate)+'）の練習がPORTALに見つかりません';return r;}
+          const same=portalPracticeIdsOn(x.date,true);
+          if(same.length>=PORTAL_PRACTICE_MAX_PER_DAY){r.status='warn';r.note='この日は練習予定がすでに3件あります';return r;}
+          r.status='new';r.note=(x.practiceMode==='record'?'記録練習（'+(RK[x.recordKind]||'その他')+'）':'通常練習')+(x.noticeKind?'　'+(x.noticeKind==='cancel'?'中止':'変更')+'：'+x.noticeText:'')+(x.other&&x.other!=='—'?'　'+x.other:'');
+          return r;
+        }
+        const cur=schedules[key]||{};
+        const curDay=portalPracticeDay(key,cur);
+        const add=(label,a,b)=>{if(String(a||'')!==String(b||''))r.changes.push(label+'：'+(a||'なし')+' → '+(b||'なし'));};
+        add('日付',dayLabel(curDay),dayLabel(x.date));
+        add('開始',cur.start,x.start);add('終了',cur.end,x.end);add('場所',cur.place,x.place);
+        add('連絡事項',cur.other&&cur.other!=='—'?cur.other:'',x.other!=='—'?x.other:'');
+        const curMode=cur.practiceMode==='record'?'記録練習（'+(RK[cur.recordKind]||'その他')+'）':'通常練習';
+        add('練習区分',curMode,x.practiceMode==='record'?'記録練習（'+(RK[x.recordKind]||'その他')+'）':'通常練習');
+        const ck=cur.noticeKind==='cancel'?'中止：'+cur.noticeText:cur.noticeKind==='change'?'変更：'+cur.noticeText:'';
+        const nk=x.noticeKind==='cancel'?'中止：'+x.noticeText:x.noticeKind==='change'?'変更：'+x.noticeText:'';
+        add('中止・変更',ck,nk);
+        if(!r.changes.length){r.status='same';return r;}
+        const noticeReset=!!x.noticeKind&&(String(cur.noticeKind||'')!==x.noticeKind||String(cur.noticeText||'')!==x.noticeText);
+        const dateReset=curDay!==x.date;
+        r.answers=Object.keys(g?.practiceResponses?.[cur._sourceKey||key]||{}).length;
+        if(noticeReset||dateReset)r.reset=noticeReset?(x.noticeKind==='cancel'?'中止':'変更'):'日付の変更';
+        r.status='change';return r;
+      });
+    }
+    async function savePractice(r){
+      const g=gw(),x=r.x;
+      const cur=r.key?schedules[r.key]:null;
+      const saved=await portalTimeout(g.savePractice({oldKey:r.key||null,date:x.date,place:x.place,start:x.start,end:x.end,other:x.other||'—',
+        enabled:cur?cur.enabled!==false:true,practiceMode:x.practiceMode,recordKind:x.recordKind||'other',noticeKind:x.noticeKind||'',noticeText:x.noticeText||''}));
+      const key=(typeof saved==='string'&&PORTAL_PRACTICE_ID_RE.test(saved))?saved:(r.key||x.date);
+      if(r.reset){
+        try{await g.resetPracticeResponses(key);return '保存しました（参加回答をリセットしました）';}
+        catch(error){return '保存しましたが、参加回答をリセットできませんでした（'+String(error?.message||error).slice(0,50)+'）';}
+      }
+      return '保存しました';
+    }
+
+    // ---------- イベント
+    const linkSig=ls=>JSON.stringify((ls||[]).map(l=>[l.type,l.label||'',l.url]));
+    function diffEvents(list){
+      return list.map(x=>{
+        const r={kind:'event',x,changes:[],status:'',note:''};
+        r.title=(x.dates&&x.dates.length>1?dayLabel(x.dates[0])+'〜'+dayLabel(x.dates[x.dates.length-1]):dayLabel(x.date))+'　'+x.title;
+        if(!/^event-[A-Za-z0-9_-]{1,80}$/.test(String(x.id||''))){r.status='warn';r.note='大会IDを決められません（シートを確認してください）';return r;}
+        const cur=eventItems.find(e=>e.id===x.id);
+        if(!cur){r.status='new';r.note='会場：'+x.place+(x.links.length?'　リンク：'+x.links.map(l=>l.label).join('・'):'')+'　参加回答を受け付け、出走登録は受付前で作成';return r;}
+        const add=(label,a,b)=>{if(String(a||'')!==String(b||''))r.changes.push(label+'：'+(a||'なし')+' → '+(b||'なし'));};
+        add('大会名',cur.title,x.title);
+        const cd=(Array.isArray(cur.dates)&&cur.dates.length?cur.dates:[cur.date]).map(dayLabel).join('・'),nd=(x.dates.length?x.dates:[x.date]).map(dayLabel).join('・');
+        add('開催日',cd,nd);add('会場',cur.place,x.place);
+        if(cur.type==='OTHER'&&linkSig(cur.links)!==linkSig(x.links))r.changes.push('リンク：'+((cur.links||[]).map(l=>l.label).join('・')||'なし')+' → '+(x.links.map(l=>l.label).join('・')||'なし'));
+        if(!r.changes.length){r.status='same';return r;}
+        if(cd!==nd&&Array.isArray(cur.raceMetrics)&&cur.raceMetrics.length)r.note='開催日が変わります。種目の開催日をイベントの修正画面で確認してください';
+        r.status='change';return r;
+      });
+    }
+    async function saveEvent(r){
+      const g=gw(),x=r.x,cur=eventItems.find(e=>e.id===x.id);
+      const links=(x.links||[]).filter(l=>/^https:\/\/\S+$/.test(l.url)).slice(0,20).map(l=>({type:l.type,label:String(l.label||'').slice(0,40),url:l.url}));
+      const dates=(x.dates&&x.dates.length?x.dates:[x.date]).slice(0,31);
+      let item,previous=null;
+      if(cur){
+        previous={...cur};
+        item={...cur,title:x.title,date:dates[0],dates,place:x.place||cur.place||'未定'};
+        if(cur.type==='OTHER'){item.links=links;if(cur.displayCategory!=='event')item.url=links[0]?.url||'';}
+      }else{
+        item={id:x.id,links,date:dates[0],dates,metricDates:{},startTime:x.startTime||'',title:x.title,place:x.place||'未定',type:'OTHER',url:links[0]?.url||'',archive:'',
+          state:links.length?'ACCESS OPEN':'DEVELOPMENT',relay:false,displayCategory:'competition',registration:'受付中',enabled:true,copiedFrom:'',previewOnly:false,pendingId:'',
+          official:false,eligibility:{enabled:false,rules:[],note:''},requiresDeclaredTime:false,raceMetrics:[],raceEntryEnabled:false,entryDeadline:'',attendanceOpen:true,goalDefaultFromMyPage:true};
+      }
+      await portalTimeout(g.saveEvent(item,previous));
+      return '保存しました';
+    }
+
+    // ---------- 表示
+    function render(kind){
+      const el=box(kind),st=state[kind];if(!el||!st)return;
+      const out=el.querySelector('[data-sb-out]');
+      const rows=st.rows;
+      const n=k=>rows.filter(r=>r.status===k).length;
+      const tag=r=>r.status==='new'?'<span class="trSbTag">新規</span>':r.status==='change'?'<span class="trSbTag">変更</span>':r.status==='warn'?'<span class="trSbTag warn">要確認</span>':'<span class="trSbTag">変更なし</span>';
+      const pick=rows.filter(r=>r.status==='new'||r.status==='change');
+      out.innerHTML=`<p class="trSbSummary">新規 ${n('new')}件・変更 ${n('change')}件・変更なし ${n('same')}件${n('warn')||st.warnings.length?'・要確認 '+(n('warn')+st.warnings.length)+'件':''}</p>
+        ${pick.length?'<label class="trSbAll"><input type="checkbox" data-sb-all checked> 新規・変更をすべて選ぶ</label>':''}
+        <div class="trSbList">${rows.map((r,i)=>{
+          const can=r.status==='new'||r.status==='change';
+          const sub=[...r.changes,r.note,r.reset?'参加回答をリセットします（'+r.reset+(r.answers?'・'+r.answers+'人':'')+'）':''].filter(Boolean);
+          return `<label class="trSbRow${can?'':' off'}"><input type="checkbox" data-sb-i="${i}"${can?' checked':' disabled'}><span class="trSbMain">${tag(r)}<b>${esc(r.title)}</b>${sub.map(t=>'<small>'+esc(t)+'</small>').join('')}<span class="trSbResult" data-sb-result="${i}"></span></span></label>`;
+        }).join('')}${st.warnings.map(w=>`<div class="trSbRow off"><span></span><span class="trSbMain"><span class="trSbTag warn">要確認</span><b>${esc(w)}</b><small>シートを直してから、もう一度読み込んでください</small></span></div>`).join('')}</div>
+        ${pick.length?'<div class="trSbActions"><button type="button" class="portalPrimary" data-sb-save>選んだ'+pick.length+'件をPORTALに保存</button></div>':(rows.length?'<p class="portalHelp">PORTALと同じ内容です。保存するものはありません。</p>':'<p class="portalHelp">シートに対象がありません。</p>')}`;
+      const all=out.querySelector('[data-sb-all]');
+      const boxes=()=>[...out.querySelectorAll('[data-sb-i]:not([disabled])')];
+      const count=()=>{const c=boxes().filter(b=>b.checked).length,btn=out.querySelector('[data-sb-save]');if(btn){btn.textContent='選んだ'+c+'件をPORTALに保存';btn.disabled=!c;}if(all)all.checked=c===boxes().length;};
+      if(all)all.addEventListener('change',()=>{boxes().forEach(b=>b.checked=all.checked);count();});
+      boxes().forEach(b=>b.addEventListener('change',count));
+      out.querySelector('[data-sb-save]')?.addEventListener('click',()=>save(kind));
+    }
+
+    let busy=false;
+    async function save(kind){
+      if(busy)return;
+      const el=box(kind),st=state[kind];if(!el||!st)return;
+      const chosen=[...el.querySelectorAll('[data-sb-i]:checked:not([disabled])')].map(b=>+b.dataset.sbI);
+      if(!chosen.length)return;
+      const resets=chosen.map(i=>st.rows[i]).filter(r=>r.reset);
+      if(resets.length&&!confirm(resets.length+'件の練習は、中止・変更または日付の変更のため参加回答をリセットします（代理回答も含む）。\n\nよろしいですか？'))return;
+      const g=gw();
+      if(!g?.canWrite?.(kind==='practice'?'practices':'eventItems')){say(kind,'PORTALの接続（本人・管理者権限）を確認中です。少し待ってから、もう一度押してください。');return;}
+      busy=true;const btn=el.querySelector('[data-sb-save]');if(btn)btn.disabled=true;
+      let ok=0,ng=0;
+      for(const i of chosen){
+        const r=st.rows[i],res=el.querySelector('[data-sb-result="'+i+'"]');
+        if(res)res.textContent='保存中…';
+        try{const msg=kind==='practice'?await savePractice(r):await saveEvent(r);if(res)res.textContent=msg;ok++;r.status='done';}
+        catch(error){if(res)res.textContent='保存できませんでした：'+String(error?.message||error).slice(0,90);ng++;}
+        const cb=el.querySelector('[data-sb-i="'+i+'"]');
+        if(cb&&r.status==='done'){cb.checked=false;cb.disabled=true;const t=cb.closest('.trSbRow')?.querySelector('.trSbTag');if(t)t.textContent='保存済み';}
+      }
+      busy=false;if(btn)btn.disabled=false;
+      if(kind==='practice'){try{renderHomeCalendar();renderFullCalendar();renderManagePractices();}catch(_){}}
+      else{try{renderHomeCalendar();renderFullCalendar();renderEventTab();renderManageEvents();}catch(_){}}
+      say(kind,ok+'件を保存しました'+(ng?'。'+ng+'件は保存できませんでした（理由は各行に表示）':'。'));
+      showActionFeedback(ng?'一部保存できませんでした':'保存しました',ok+'件をPORTALに保存しました'+(ng?'（'+ng+'件は未保存）':''));
+    }
+
+    shell('practice');shell('event');
+    qsa('[data-workflow-open="practice:sheet"]').forEach(b=>b.addEventListener('click',()=>{if(!state.practice)shell('practice');}));
+    $('trSbEventOpen')?.addEventListener('click',()=>{
+      const pane=$('manage-pane-event');if(!pane||!canManage)return;
+      if(!state.event)shell('event');
+      pane.dataset.mwView='sheet';pane.scrollIntoView({behavior:'auto',block:'start'});
+    });
+  })();
+
   window.__TR_COMMON_PILOT_UI__.disableChat();
 })();
 </script>
