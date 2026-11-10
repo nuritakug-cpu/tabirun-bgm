@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v396 | 2026-11-10 | Parent: v395. リンクカードの画像：Workerで取れないときは元の画像を直接読む（Googleは幅600px）、出ない画像は端末に覚えて枠を作らない（描き直しのたびの高さの変化をなくす）、画面より上のカードの大きさが変わったら表示位置を保つ。Worker v3 と合わせて使う。Firebase・Rules・認証・送受信・保存形式は変更なし。 -->
 <!-- TOP RUN PORTAL v395 | 2026-11-10 | Parent: v394. リンクカードの画像をWorker経由（/img、Worker v2が必要）で表示・遅延読み込みをやめた、本文の文字リンクの長押しでもメニュー（リンクをコピー付き）、読めないリンクは小さなカードを残す、保存版リンクはイベント一覧の大会名を表示（Worker呼び出しなし）。Firebase・Rules・認証・送受信・保存形式は変更なし。 -->
 <!-- TOP RUN PORTAL v394 | 2026-11-10 | Parent: v393. リンクプレビューを本番用に：取得先を専用Worker（top-run-linkpreview）に変更しMicrolinkを廃止、カードの長押しでメニュー、テーマ色に合わせる、取得失敗時は従来のURL表示、リンクのコピー（カードのボタン・長押しメニュー）、お知らせ詳細のURLをリンク化＋カード。Firebase・Rules・認証・送受信・保存形式は変更なし。 -->
 <!-- TOP RUN PORTAL v393 | 2026-11-10 | Parent: v392. チャットURLにOGPカードを追加（外部のメタ情報APIを表示時のみ利用・端末キャッシュ）。Firebase・Rules・認証・送受信変更なし。 Former: v392 | v391（駅伝の保存版の開き先の修正）。追加：管理画面「練習」「イベント」に「スプレッドシートから取り込む」（PORTALの既存の保存処理を使用。Firebase・Rulesの変更なし）。
@@ -7191,7 +7192,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v395</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v396</b></div>
   </div>
 </div>
 
@@ -7428,7 +7429,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v395</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v396</b></div>
   </div>
 </div>
 
@@ -30521,6 +30522,26 @@ html.trAndroid nav.portalBottomTabs::before{content:"";position:absolute;inset:0
   const STORE='toprun.linkpreview.v394';
   const SUCCESS_MS=14*24*60*60*1000,FAILED_MS=60*60*1000,MAX_CACHE=120;
   const caches=new Map(),jobs=new Map(),queue=[];
+  // v396: per-image result on this phone. 'd' = Worker failed but direct load worked, 'x' = no image (do not draw the frame).
+  const IMG_STORE='toprun.linkpreview.img.v396',IMG_MS=7*24*60*60*1000;
+  const imgMode=new Map();
+  try{const o=JSON.parse(localStorage.getItem(IMG_STORE)||'{}');for(const [k,v] of Object.entries(o||{}))if(v&&v.until>Date.now()&&(v.m==='d'||v.m==='x'))imgMode.set(k,v);}catch(_){}
+  function setImgMode(src,m){
+    imgMode.delete(src);imgMode.set(src,{m,until:Date.now()+IMG_MS});
+    while(imgMode.size>200)imgMode.delete(imgMode.keys().next().value);
+    try{localStorage.setItem(IMG_STORE,JSON.stringify(Object.fromEntries(imgMode)));}catch(_){}
+  }
+  function getImgMode(src){const v=imgMode.get(src);return v&&v.until>Date.now()?v.m:'';}
+  function smallGoogle(src){
+    try{
+      const u=new URL(src),h=u.hostname;
+      const g=(h==='sites.google.com'&&u.pathname.startsWith('/sitesv-images'))||/(^|\.)googleusercontent\.com$/.test(h)||/(^|\.)ggpht\.com$/.test(h);
+      if(!g)return src;
+      if(/=[swh]\d+[^\/=]*$/.test(u.pathname))u.pathname=u.pathname.replace(/=[swh]\d+[^\/=]*$/,'=w600');
+      else if(/(^|\.)googleusercontent\.com$/.test(h)&&!u.pathname.includes('='))u.pathname+='=w600';
+      return u.href;
+    }catch(_){return src;}
+  }
   let active=0,scheduled=false,pausedUntil=0;
   const $=id=>document.getElementById(id);
   const now=()=>Date.now();
@@ -30651,11 +30672,19 @@ html.trAndroid nav.portalBottomTabs::before{content:"";position:absolute;inset:0
 
   // ---- keep the latest message in view when a card above it changes height
   function chatMain(){return document.querySelector('#screen-chat > main.chatMain');}
+  // v396: a card that changes size must not move what the person is reading.
+  // At the bottom -> stay at the newest message. Card above the visible area -> shift by the size change.
   function keepBottom(card,fn){
-    const main=card.closest('#portalChatThread,#trRoomThread')?chatMain():null;
-    const atBottom=!!main&&main.scrollHeight-main.scrollTop-main.clientHeight<60;
+    const main=card.isConnected&&card.closest('#portalChatThread,#trRoomThread')?chatMain():null;
+    if(!main){fn();return;}
+    const atBottom=main.scrollHeight-main.scrollTop-main.clientHeight<60;
+    const box=card.closest('.trLPWrap')||card;
+    const before=box.getBoundingClientRect(),mainTop=main.getBoundingClientRect().top;
     fn();
-    if(atBottom)main.scrollTop=main.scrollHeight;
+    if(atBottom){main.scrollTop=main.scrollHeight;return;}
+    if(!box.isConnected)return; // removed: only possible above if it was above; handled by its own height (0)
+    const after=box.getBoundingClientRect();
+    if(before.top<mainTop+4){const d=after.height-before.height;if(d)main.scrollTop+=d;}
   }
 
   // ---- card
@@ -30692,11 +30721,22 @@ html.trAndroid nav.portalBottomTabs::before{content:"";position:absolute;inset:0
     }
     keepBottom(card,()=>{
       card.classList.remove('trLPLoading');card.replaceChildren();
-      if(data.image){
+      const mode=data.image?getImgMode(data.image):'x';
+      if(data.image&&mode!=='x'){
         const im=document.createElement('img');im.className='trLPImage';im.alt='';
-        im.decoding='async';im.referrerPolicy='origin';im.draggable=false; // v395: no lazy loading; the Worker checks the PORTAL address
-        im.src=IMG+encodeURIComponent(data.image);
-        im.addEventListener('error',()=>im.remove(),{once:true});card.appendChild(im);
+        im.decoding='async';im.draggable=false;
+        const direct=/^https:/i.test(data.image)?smallGoogle(data.image):'';
+        const viaWorker=()=>{im.referrerPolicy='origin';im.src=IMG+encodeURIComponent(data.image);};
+        const viaDirect=()=>{im.removeAttribute('referrerpolicy');im.dataset.lpDirect='1';im.src=direct;};
+        im.addEventListener('error',()=>{
+          // v396: Worker failed -> try the original image once; still failed -> remember and remove the frame
+          if(!im.dataset.lpDirect&&direct){viaDirect();return;}
+          setImgMode(data.image,'x');
+          keepBottom(card,()=>im.remove());
+        });
+        im.addEventListener('load',()=>{if(im.dataset.lpDirect&&getImgMode(data.image)!=='d')setImgMode(data.image,'d');},{once:true});
+        if(mode==='d'&&direct)viaDirect();else viaWorker();
+        card.appendChild(im);
       }
       const body=document.createElement('span');body.className='trLPBody';
       const t=document.createElement('span');t.className='trLPTitle';t.textContent=data.title||card.dataset.lpHost||'';body.appendChild(t);
