@@ -1,3 +1,5 @@
+<!-- TOP RUN PORTAL v387 | 2026-11-10 | Parent: v386. 大会を分けない：過去大会の一括取り込み（14大会・197件）の記録も、EVENT BASEの大会と同じに「記録の紐付け（開発者）」の大会の選択と、選手一覧（開発者）の「確認待ち」に出す。取り込み後にPORTALに登録した人も、確認して「この選手の記録です」で個人記録に保存できる。保存の中身・記録IDは一括取り込みと同じ（DNF・DNSを含む）ので二重にならない。Firebase：新しい読み込みなし。iPhone実機は未確認。 -->
+<!-- TOP RUN PORTAL v386 | 2026-11-10 | Parent: v385. 選手一覧（開発者）の「確認待ち」・記録の紐付けに、旧EVENT BASEの本人情報を持つ人／本人とつながっている人の駅伝の計測記録（半田・第75回など）も出す。以前は本人情報なしの人だけで、駅伝の記録が候補に出なかった。二重登録は同じ記録IDで防ぐ。Firebase：新しい読み込みなし（すでに読んでいる計測記録を使う）。iPhone実機は未確認。 -->
 <!-- TOP RUN PORTAL v385 | 2026-11-10 | Parent: v384. (1) 開発者の「選手の個人記録を閲覧」を管理者と同じ一覧（PORTAL承認済み・役職「選手」）に統一。「選択した選手を管理者に公開」・点線の取得状況の枠を削除。名前を押すと個人記録。同じ名前でまだ付いていない大会記録がある人は「確認待ち N件」→押すと候補を表示→「この選手の記録です」でまとめて個人記録（pastRecords）に保存（既存の saveStaffPastRecord・同じ記録ID）。(2) 既読を見られる人：管理者の権限から外し、開発者が「お知らせの既読」「チャットの既読」を別々に付与（readViewers/<uid>、管理画面の設定の「ルームを作れる人」の下）。開発者は両方。お知らせの既読は表示名だけ、チャットの既読はチャット名だけ、開発者は両方の名前。Firebase：readViewers/<uid> を開いたとき1回読む（数十バイト）。付与の保存には Rules の追加が必要（未追加なら保存できない旨を表示。今は付与する人なし）。常時監視は増やさない。iPhone実機は未確認。 -->
 <!-- TOP RUN PORTAL v384 | 2026-11-10 | Parent: v383 (GitHub). イベントに「保存版」（archive：TOPRUNARCHIVE…の名前だけ）を追加。管理画面のイベント修正で、正式大会URLの下に入力欄（EVENT BASEのときだけ）。保存版が入った大会は「EVENT BASEを開く」で保存版を開く。正式大会URL・記録の紐付け・カレンダー・公認判定は変更なし。Firebase：eventItems に archive を1項目追加（Rules v371 が必要）。読み込み回数・常時監視は増やさない。iPhone実機は未確認。 -->
 <!-- TOP RUN PORTAL v383 | 2026-11-09 | parent: uploaded v380; Android HOME numerals and RUN only. No JS/Auth/Firebase changes. -->
@@ -7117,7 +7119,7 @@ html.portalAndroidHomeFontMatch .shell > main #calendar .day{
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v385</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v387</b></div>
   </div>
 </div>
 
@@ -7354,7 +7356,7 @@ html.portalAndroidHomeFontMatch .shell > main #calendar .day{
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v385</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v387</b></div>
   </div>
 </div>
 
@@ -16612,13 +16614,15 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
     }
     for(const e of eventItems){
       if(!e?.id||!e.title||e.enabled===false||ui?.officialTargetFor?.(e))continue;
-      list.push({id:'portal:'+e.id,catalogId:e.id,base:false,date:String(e.date||''),title:String(e.title)});
+      const pastV387=!!window.__trPastImpV387?.has(e.id); // v387: 過去大会の一括取り込みの大会も「記録のある大会」として同じに扱う
+      list.push({id:'portal:'+e.id,catalogId:e.id,base:pastV387,past:pastV387,date:String(e.date||''),title:String(e.title)});
     }
     return list.sort((a,b)=>a.date.localeCompare(b.date));
   }
   const rpEvent=()=>rpEvents().find(e=>e.id===$('rpEvent')?.value)||null;
   function rpRoster(ev){
     const g=rpG();if(!ev)return null;
+    if(ev.past)return window.__trPastImpV387?.rowsFor(ev.catalogId,ev.id)||[]; // v387
     if(!ev.base){
       const answers=g?.eventResponses?.[ev.catalogId];if(!answers)return [];
       return Object.entries(answers).filter(([,a])=>a&&['join','support'].includes(a.answer)).map(([uid,a])=>({id:'',name:String(a.name||'参加者'),uid,self:true,time:''}));
@@ -16630,10 +16634,13 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
     // v348: 駅伝の計測記録（大会結果一覧）のうち、本人とまだつながっていない人の記録も紐付けの一覧に出す。
     //   すでに読み込んである計測記録を使うだけ（新しい読み込み・常時監視なし）。本人とつながっている人の記録は入れない（二重に付けないため）。
     const byPid=new Map(base.map(x=>[x.playerId,x]));
+    // v386: 旧EVENT BASEの本人情報（profileId）だけを持つ人・本人とつながっている人の駅伝の計測記録も出す。
+    //   以前は「本人情報なし（pending）」の人だけだったため、旧EVENT BASEから登録した人の駅伝記録が候補に出なかった。
+    //   二重に付けないのは、同じ記録ID（大会ID＋出走カードID）が個人記録にあるかどうか（rpClaims）で判定する。
     for(const t of (g?.officialTimingPeople?.[ev.id]||[])){
-      if(!t||!t.pending)continue;const time=rpTimeOk(t.resultTime)?String(t.resultTime).trim():'';if(!time)continue;
+      if(!t)continue;const time=rpTimeOk(t.resultTime)?String(t.resultTime).trim():'';if(!time)continue;
       const pid=String(t.playerId||'');const ex=byPid.get(pid);
-      if(ex){if(!ex.time&&!ex.self){ex.time=time;ex.metric='relay';ex.leg=ex.leg||String(t.leg||'');}continue;}
+      if(ex){if(!ex.time){ex.time=time;ex.metric='relay';ex.leg=ex.leg||String(t.leg||'');}continue;}
       const row={id:g.claimRecordId(ev.id,pid),eventId:ev.id,playerId:pid,name:String(t.name||''),uid:'',self:false,time,official:false,metric:'relay',date:String(t.day||ev.date||'').slice(0,10),leg:String(t.leg||''),eventTitle:ev.title};
       base.push(row);byPid.set(pid,row);
     }
@@ -16710,7 +16717,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
   async function rpLoadClaims(){
     try{const list=await rpG().listApprovedMembers?.();if(Array.isArray(list))window.__rpAllMembers=list;}catch(_){} // v276
     const all=await rpG().loadPastEventOverview();rpClaims=new Map();window.__rpClaimPid=new Map();
-    for(const [uid,recs] of Object.entries(all||{}))for(const [id,rec] of Object.entries(recs||{}))if(id.startsWith('local-flow-claim-')){rpClaims.set(id,uid);window.__rpClaimPid.set(id,String(rec?.profileId||''));}
+    for(const [uid,recs] of Object.entries(all||{}))for(const [id,rec] of Object.entries(recs||{}))if(id.startsWith('local-flow-claim-')||/^local-flow-.+__[0-9a-f]{8}$/.test(id)){rpClaims.set(id,uid);window.__rpClaimPid.set(id,String(rec?.profileId||''));}
     rpLoaded=true;
   }
   function rpFillEvents(){
@@ -16839,10 +16846,15 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
     const ppl=rpSortList([...byUid.entries()].map(([uid,rs])=>({uid,name:rpMemberByUid(uid)?.disp||rpMemberByUid(uid)?.name||'（PORTALの参加者）',at:rpMemberByUid(uid)?.at||0,rs})).filter(p=>hit(p.name)),p=>p);
     list.innerHTML=ppl.length?ppl.map(p=>`<details class="rpCard"><summary><b>${esc(p.name)}</b><span class="rpSub">記録${p.rs.length}件</span></summary>${p.rs.sort((a,b)=>a.date.localeCompare(b.date)).map(r=>`<div class="rpLine"><span>${rpRecLine(r)}</span><button type="button" class="portalFlowSecondary" data-rp-act="unlink" data-id="${esc(r.id)}">外す</button></div>`).join('')}</details>`).join(''):'<p class="portalHelp">まだ紐付けた人はいません。①で「これでよいので紐付ける」を押してください。</p>';
   }
+  // v387: 保存する中身。過去大会の一括取り込みの記録は、取り込みと同じ中身（DNF・DNSを含む）で保存する。
+  function rpValueOf(row,id){
+    if(row.pastValue)return {...row.pastValue,id:id||row.pastValue.id};
+    return {id:id||row.id,name:String(row.eventTitle||'大会').slice(0,120),date:String(row.date||'').slice(0,10),metric:row.metric||'other',time:row.time,status:'time',venue:'',official:!!row.official};
+  }
   async function rpWrite(member,row){
     const date=String(row.date||'').slice(0,10);
     if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||date>rpToday())throw Error('日付を確認できません');
-    await rpG().saveStaffPastRecord({uid:member.uid,profileId:member.profileId},{id:row.id,name:String(row.eventTitle||'大会').slice(0,120),date,metric:row.metric||'other',time:row.time,status:'time',venue:'',official:!!row.official},null);
+    await rpG().saveStaffPastRecord({uid:member.uid,profileId:member.profileId},rpValueOf(row),null);
     rpClaims.set(row.id,member.uid);
   }
   // v385: 選手一覧（開発者）から使う。同じ名前（空白は無視）または本人IDが同じで、まだ誰にも付いていない記録。
@@ -16955,7 +16967,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
       if(!from||!to||!row)return rpSay('移す記録・参加者を確認できません。');
       if(!confirm(`この記録を\nいま：${from.disp||from.name}\nから\n移す先：${to.disp||to.name}\nへ移しますか？`))return;
       return run(async()=>{
-        await rpG().saveStaffPastRecord({uid:to.uid,profileId:to.profileId},{id,name:String(row.eventTitle||'大会').slice(0,120),date:row.date,metric:row.metric||'other',time:row.time,status:'time',venue:'',official:!!row.official},null);
+        await rpG().saveStaffPastRecord({uid:to.uid,profileId:to.profileId},rpValueOf(row,id),null); // v387
         await rpG().deleteStaffPastRecord({uid:from.uid,profileId:from.profileId},id,null);
         rpClaims.set(id,to.uid);rpSay(`移しました：${row.eventTitle} → ${to.disp||to.name}`);
       });
@@ -16992,7 +17004,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
       if(!fromUid||!fromPid||!row)return rpSay('記録を確認できません。画面を開き直してください。');
       if(!confirm(`この記録（${row.name}）を「${to.name}」さんに付け直しますか？`))return;
       return run(async()=>{
-        await rpG().saveStaffPastRecord({uid:to.uid,profileId:to.profileId},{id,name:String(row.eventTitle||'大会').slice(0,120),date:row.date,metric:row.metric||'other',time:row.time,status:'time',venue:'',official:!!row.official},null);
+        await rpG().saveStaffPastRecord({uid:to.uid,profileId:to.profileId},rpValueOf(row,id),null); // v387
         await rpG().deleteStaffPastRecord({uid:fromUid,profileId:fromPid},id,null);
         rpClaims.set(id,to.uid);window.__rpClaimPid?.set(id,to.profileId);rpSay(`付け直しました：${row.name} の記録 → ${to.name}`);rpRender();
       });
@@ -28850,6 +28862,26 @@ body.portalChatIsolated > #trQuick{visibility:visible!important;opacity:1!import
   const isDev=()=>{const g=gate();return g?.roleVerified===true&&g?.role==='developer'&&!window.__TR_COMMON_PILOT_UI__?.isParticipantPreview?.();};
   let plan=null,busy=false;
   const say=t=>{const el=$('trPastImpState');if(el)el.textContent=t||'';};
+  // v387: 取り込んだ過去大会の記録を、記録の紐付け・選手一覧の「確認待ち」でも同じ大会として扱えるように出す（読むだけ）。
+  //   PORTALのイベントになっている大会（一括取り込みで作った大会）だけ。記録IDは取り込みと同じ（local-flow-<大会ID>__<記録キー>）。
+  const useIdOf=e=>{const items=gate()?.eventItems||{};if(items[e.id])return e.id;const hit=Object.entries(items).find(([k,v])=>v&&String(v.title||'').trim()===e.title&&String(v.date||'')===e.dates[0]);return hit?hit[0]:'';};
+  window.__trPastImpV387={
+    has(catalogId){return !!catalogId&&DATA.events.some(e=>useIdOf(e)===catalogId);},
+    rowsFor(catalogId,evKey){
+      const out=[];
+      for(const e of DATA.events){
+        if(useIdOf(e)!==catalogId)continue;
+        for(const r of DATA.records){
+          if(r.e!==e.id)continue;
+          const id='local-flow-'+catalogId+'__'+r.k,title=e.title+(r.r?'（'+r.r+'）':'');
+          const time=r.s==='time'?String(r.t||''):String(r.s||'');if(!time)continue;
+          out.push({id,eventId:evKey,playerId:r.k,name:String(r.n||'').replace(/（本人）$/,''),uid:'',self:false,time,official:false,metric:r.m,date:r.d,leg:'',eventTitle:title,
+            pastValue:{id,name:title,date:r.d,metric:r.m,time:r.s==='time'?r.t:'',status:r.s,venue:e.venue||'',official:false}});
+        }
+      }
+      return out.sort((a,b)=>a.name.localeCompare(b.name,'ja'));
+    }
+  };
   function mount(){
     if($('trPastImpSection'))return true;
     const anchor=$('trRecMoveSection')||$('trFamilySection')||document.querySelector('#screen-management-settings .portalScreenBody > section');
