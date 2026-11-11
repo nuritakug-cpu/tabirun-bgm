@@ -7203,7 +7203,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v404</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v405</b></div>
   </div>
 </div>
 
@@ -7446,7 +7446,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v404</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v405</b></div>
   </div>
 </div>
 
@@ -31547,7 +31547,7 @@ html[data-portal-personal-color="matte"] .crTag.gold{background:var(--gold,#ff78
 #screen-chat .chatBox.trHasAttach:focus-within .trAttach{display:none!important}
 @media(max-width:360px){#screen-chat .chatBox.trHasAttach{grid-template-columns:40px minmax(0,1fr) 52px!important}#screen-chat .chatBox.trHasAttach:focus-within{grid-template-columns:minmax(0,1fr) 52px!important}}
 </style>
-<!-- TOP RUN PORTAL v404 | 2026-11-11 | Parent v403. Full-page capture UI; visible version labels v404. Firebase/Rules unchanged. -->
+<!-- TOP RUN PORTAL v405 | 2026-11-11 | Parent v404. Full-page capture UI; visible version labels v405. Firebase/Rules unchanged. -->
 <style id="trFullCaptureStyle">
 #trCaptureLaunch{position:fixed;right:12px;bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:1800;border:1px solid #e4c44c;border-radius:25px;background:#15191e;color:#f7e16b;box-shadow:0 4px 14px #0005;font:700 12px/1.2 system-ui,-apple-system,sans-serif;padding:11px 13px;cursor:pointer}
 #trCaptureLaunch[hidden],#trCaptureModal[hidden]{display:none!important}
@@ -31615,8 +31615,11 @@ html[data-portal-personal-color="matte"] .crTag.gold{background:var(--gold,#ff78
        const rect=root.getBoundingClientRect();
        const width=Math.max(1,Math.ceil(rect.width));
        const maxHeight=16000;const height=Math.min(maxHeight,Math.max(Math.ceil(rect.height),root.scrollHeight));
-       const scale=Math.min(2,window.devicePixelRatio||1,8192/width,16000/height);
-       canvas=await h2c(root,{backgroundColor:'#ffffff',useCORS:true,allowTaint:false,logging:false,scale:Math.max(.5,scale),width:width,height:height,windowWidth:document.documentElement.clientWidth,scrollX:0,scrollY:0,onclone:expandClone});
+       // Never reduce the capture below native CSS resolution: this made text illegible on long pages.
+       // Prefer 2x on iPhone; use 1x only for pages that exceed the safe canvas dimension.
+       if(height>=16000)throw new Error('この画面は長すぎるため一枚に保存できません。表示範囲を短くしてください');
+       const scale=(height*2<=16000&&width*2<=8192)?2:1;
+       canvas=await h2c(root,{backgroundColor:'#ffffff',useCORS:true,allowTaint:false,logging:false,scale:scale,width:width,height:height,windowWidth:document.documentElement.clientWidth,scrollX:0,scrollY:0,onclone:expandClone});
      }finally{delete root.dataset.trCaptureRoot}
      if(!canvas.width||!canvas.height)throw new Error('画像を生成できませんでした');
      captureBlob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('画像の保存に失敗しました')),'image/png'));
