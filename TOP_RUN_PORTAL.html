@@ -7203,7 +7203,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v406</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v410</b></div>
   </div>
 </div>
 
@@ -7446,7 +7446,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v406</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v410</b></div>
   </div>
 </div>
 
@@ -31670,5 +31670,73 @@ html[data-portal-personal-color="matte"] .crTag.gold{background:var(--gold,#ff78
 #screen-chat .chatBox.trHasAttach .trAttach.trAttachOpen{z-index:200!important}
 @media(max-width:360px){#screen-chat .chatBox.trHasAttach,#screen-chat .chatBox.trHasAttach:focus-within{grid-template-columns:44px minmax(0,1fr) 52px!important}}
 </style>
+<!-- TOP RUN PORTAL v408 | 添付は＋展開。画面保存は画面の空白を長押しして呼び出す。認証・Firebase・送信処理変更なし。 -->
+<style id="v408-attachment-capture">
+#screen-chat .chatBox.trHasAttach,#screen-chat .chatBox.trHasAttach:focus-within{grid-template-columns:44px minmax(0,1fr) 56px!important;column-gap:6px!important;overflow:visible!important;isolation:isolate!important}
+#screen-chat .chatBox.trHasAttach .trAttach,#screen-chat .chatBox.trHasAttach:focus-within .trAttach{display:flex!important;position:relative!important;width:44px!important;min-width:44px!important;overflow:visible!important;z-index:300!important}
+#screen-chat .chatBox.trHasAttach .trAttach .trAttachToggle{display:flex!important;width:44px!important;min-width:44px!important;max-width:44px!important;height:44px!important;align-items:center!important;justify-content:center!important}
+#screen-chat .chatBox.trHasAttach .trAttach .trAttachPick,#screen-chat .chatBox.trHasAttach .trAttach .trAttachCam{display:none!important}
+#screen-chat .chatBox.trHasAttach .trAttach.trAttachOpen .trAttachPick,#screen-chat .chatBox.trHasAttach .trAttach.trAttachOpen .trAttachCam{display:flex!important;position:absolute!important;bottom:58px!important;left:0!important;width:48px!important;min-width:48px!important;max-width:48px!important;height:48px!important;background:#fff!important;color:#293238!important;border:1px solid #b9b9b9!important;border-radius:12px!important;box-shadow:0 4px 15px #0004!important;opacity:1!important;visibility:visible!important;align-items:center!important;justify-content:center!important;z-index:310!important}
+#screen-chat .chatBox.trHasAttach .trAttach.trAttachOpen .trAttachCam{left:54px!important}
+#screen-chat .chatBox.trHasAttach .trAttach button svg{width:25px!important;height:25px!important}
+#trCaptureLaunch{display:none!important}
+@media(max-width:360px){#screen-chat .chatBox.trHasAttach,#screen-chat .chatBox.trHasAttach:focus-within{grid-template-columns:44px minmax(0,1fr) 52px!important}}
+</style>
+<script id="v408-capture-longpress">
+(function(){'use strict';
+const launch=document.getElementById('trCaptureLaunch');if(!launch)return;
+let timer=null,origin=null,triggered=false;
+function blank(target){
+ if(!(target instanceof Element))return false;
+ if(target.closest('button,a,input,textarea,select,label,[role="button"],[contenteditable],.chatBox,.chatBubble,.msgBubble,.message,.noticeCard,.eventCard,.card,.portalCard,.trCaptureModal,#trCaptureModal,nav,header,footer'))return false;
+ const screen=target.closest('.portalScreen');if(!screen)return false;
+ // Only empty background; do not intercept message text, cards, images, lists or interactive controls.
+ const el=document.elementFromPoint(origin.x,origin.y);
+ return !!el && (el===screen || el.classList.contains('portalScreen') || (el===target && !target.children.length && !target.textContent.trim()));
+}
+function clear(){if(timer!==null)clearTimeout(timer);timer=null;origin=null}
+document.addEventListener('touchstart',e=>{
+ clear();if(e.touches.length!==1)return;const t=e.touches[0];origin={x:t.clientX,y:t.clientY,target:e.target};
+ if(!blank(e.target)){origin=null;return}
+ timer=setTimeout(()=>{timer=null;if(!origin)return;triggered=true;launch.click();origin=null},700);
+},{passive:true});
+document.addEventListener('touchmove',e=>{if(!origin)return;const t=e.touches[0];if(!t||Math.hypot(t.clientX-origin.x,t.clientY-origin.y)>12)clear()},{passive:true});
+document.addEventListener('touchend',clear,{passive:true});document.addEventListener('touchcancel',clear,{passive:true});
+document.addEventListener('contextmenu',e=>{if(triggered){e.preventDefault();triggered=false}},{capture:true});
+})();
+</script>
+<!-- TOP RUN PORTAL v410 | ＋メニューをチャット領域の外側に独立表示。既存の写真・カメラ送信処理を再利用。 -->
+<style id="v410-attach-menu">
+#screen-chat .chatBox .trAttach.trAttachOpen>.trAttachPick,
+#screen-chat .chatBox .trAttach.trAttachOpen>.trAttachCam{display:none!important}
+#tr410AttachMenu{position:fixed;display:flex;gap:8px;padding:8px;box-sizing:border-box;border-radius:16px;background:#f9f9f7;border:1px solid #d2d0c8;box-shadow:0 8px 28px #0005;z-index:2147483000;align-items:center;max-width:calc(100vw - 20px)}
+#tr410AttachMenu[hidden]{display:none!important}
+#tr410AttachMenu button{display:flex;align-items:center;justify-content:center;gap:7px;min-height:48px;padding:8px 12px;border:1px solid #d1d0c9;border-radius:12px;background:white;color:#283333;font-size:14px;font-weight:700;white-space:nowrap;touch-action:manipulation}
+#tr410AttachMenu button svg{width:22px;height:22px;flex-shrink:0}
+</style>
+<script id="v410-attach-menu-js">
+(function(){'use strict';
+const menu=document.createElement('div');menu.id='tr410AttachMenu';menu.hidden=true;
+menu.innerHTML='<button type="button" data-act="photo" aria-label="写真を選ぶ">🖼 写真</button><button type="button" data-act="camera" aria-label="カメラで撮影">📷 カメラ</button>';
+document.body.appendChild(menu);
+let current=null;
+function close(){menu.hidden=true;if(current){current.classList.remove('trAttachOpen');const b=current.querySelector('.trAttachToggle');if(b)b.setAttribute('aria-expanded','false');}current=null;}
+function show(wrap){const toggle=wrap.querySelector('.trAttachToggle');if(!toggle)return;current=wrap;wrap.classList.add('trAttachOpen');toggle.setAttribute('aria-expanded','true');menu.hidden=false;
+const r=toggle.getBoundingClientRect();const mw=menu.offsetWidth||220,mh=menu.offsetHeight||66;
+const x=Math.max(10,Math.min(r.left,window.innerWidth-mw-10));
+const y=r.top-mh-10>=8?r.top-mh-10:Math.min(window.innerHeight-mh-8,r.bottom+10);
+menu.style.left=x+'px';menu.style.top=y+'px';}
+// Capture-phase delegation: works for both common chat and dynamically recreated room inputs.
+document.addEventListener('click',function(e){
+const toggle=e.target.closest?.('#screen-chat .trAttachToggle');
+if(toggle){e.preventDefault();e.stopImmediatePropagation();const wrap=toggle.closest('.trAttach');if(!wrap)return;if(current===wrap&&!menu.hidden)close();else{close();show(wrap);}return;}
+const act=e.target.closest?.('#tr410AttachMenu button[data-act]');
+if(act){e.preventDefault();e.stopImmediatePropagation();const wrap=current;const selector=act.dataset.act==='photo'?'.trAttachPick':'.trAttachCam';close();wrap?.querySelector(selector)?.click();return;}
+if(!menu.hidden&&!e.target.closest?.('#tr410AttachMenu'))close();
+},true);
+document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});
+window.addEventListener('resize',close);window.addEventListener('scroll',()=>{if(!menu.hidden)close();},true);
+})();
+</script>
 </body>
 </html>
