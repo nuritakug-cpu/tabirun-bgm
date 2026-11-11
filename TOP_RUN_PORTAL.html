@@ -1,3 +1,5 @@
+<!-- TOP RUN PORTAL v402 | 2026-11-11 | Parent v401. チャット（共通・ルーム）の写真／カメラのはみ出しを修正し、タップ領域を独立。入力欄と送信ボタンを少し縮小。その他の接続・保存・画面は不変更。 -->
+<!-- TOP RUN PORTAL v401 | 2026-11-11 | Parent v400. スプレッドシートから取り込む（イベント）：PORTALで先に作った大会と同じ日・似た名前なら「新規」にせず確認し、［同じ大会として紐付ける］でシートの「PORTAL ID」に既存の大会IDを書く（シート v11 が必要）。紐付けた大会はPORTAL側の大会名・日付・会場・種目・出走登録を変えず、資料リンクの追加だけ。Firebase：通信量の増加なし、Rules変更なし。 -->
 <!-- TOP RUN PORTAL v400 | 2026-11-11 | Parent v399. (1)下のメニューが沈む：画面の切り替え・キーボードを閉じたとき、裏のHOMEのスクロール位置が範囲外なら戻す（メニューはJSで動かさない）。(2)名前の保存後はチャット名の欄へ移動。(3)参加者の画面に「Firebase」の文を出さない（管理画面以外は表示の直前に言い換え、カラー設定などは文を直接修正）。(4)マットでPB・公認大会の札が見えないのを修正。(5)写真：Rules v374にない枚数の記録（chatImageQuota）を書かない（参加者の写真が全部断られていた）、細長い画像は総画素数で縮小、縦長はチャットで上を切り出して表示。(6)チャットに撮影ボタン（写真の横、小さめ）。Firebase：通信量の増加なし、Rules変更なし。 -->
 <!-- TOP RUN PORTAL v399 | 2026-11-11 | Parent v398. リンクプレビュー: 端末の画像失敗7日固定を廃止、画面外の取得・再描画を抑制、画像の読込完了後だけ挿入。チャット/Firebase/認証/保存形式は変更なし。 -->
 <!-- TOP RUN PORTAL v398 | 2026-11-10 | Parent: v397. 登録一覧を歯車（管理画面の設定）へ移し、チャット名も表示、長押しでつかんで並べ替え。ルームの一覧：「ルームを作る」を上に、参加中・招待・閲覧のみで折りたたみ、長押しで並べ替え、下のメニューに隠れない高さ。共通チャット・ルームのメンバー表示（チャット用アイコン＋チャット名、登録一覧と同じ並び）。退会の処理（開発者）：承認・チャット・ルーム・役職・家族・権限・名前・プロフィール・画像を消し、個人記録は残し、メッセージの名前は「退会者」に。Rules v374 が必要（参加者が役職・学年を読む、退会の削除・名前の書き換え）。Firebase：常時監視なし、並び・折りたたみは端末に保存。 -->
@@ -5090,6 +5092,9 @@ html[data-portal-personal-color="matte"] #portalReportCenter{--tr-report-accent:
 .trSbBox .trSbTag{display:inline-block;font-size:11px;font-weight:800;line-height:1;padding:4px 7px;border-radius:999px;border:1px solid currentColor;margin:0 6px 4px 0;vertical-align:middle}
 .trSbBox .trSbTag.warn{color:#d9822b}
 .trSbBox .trSbResult{display:block;font-size:12px;font-weight:700;margin-top:4px}
+.trSbBox .trSbLinkBtns{display:grid;gap:6px;margin-top:8px}
+.trSbBox .trSbLinkBtns button{min-height:40px;text-align:left;padding:8px 12px;white-space:normal;line-height:1.4}
+.trSbBox .trSbLinkBtns .trSbGhost{opacity:.8}
 </style>
 <style id="tr-v330-practice-report">
 #screen-management #manage-pane-practice[data-mw-view="report"] .portalWorkflowArea[data-mw-area="report"]{display:block!important}
@@ -7198,7 +7203,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v400</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v402</b></div>
   </div>
 </div>
 
@@ -7441,7 +7446,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v400</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v402</b></div>
   </div>
 </div>
 
@@ -18064,6 +18069,7 @@ applyNotices(rows){
     enableChat(){$('portalChatSend').disabled=false;$('portalChatSend').textContent='送信';}
   };
   // v391: スプレッドシートから取り込む（練習予定・イベント）
+  // v401: PORTALで先に作った大会との紐付け（同じ日・似た名前の大会を見つけたら「新規」にせず確認。紐付けた大会は資料リンクの追加だけ）
   // シート側（Apps Script のウェブアプリ）から読み込み、差分を確認してから PORTAL の既存の保存処理
   // （gateway.savePractice / resetPracticeResponses / saveEvent）で保存する。新しい保存先・Rules変更はない。
   // 通信量：押したときにシートを1回読むだけ。Firebaseは選んだ項目の保存時だけ。
@@ -18171,13 +18177,44 @@ applyNotices(rows){
 
     // ---------- イベント
     const linkSig=ls=>JSON.stringify((ls||[]).map(l=>[l.type,l.label||'',l.url]));
+    const simKey=t=>{let s=String(t||'');try{s=s.normalize('NFKC');}catch(_){}return s.replace(/【[^】]*】/g,'').replace(/(19|20)\d{2}年度?|令和\s*\d+\s*年度?/g,'').replace(/[\s\u3000・･、。,.()（）「」『』\-ー－]/g,'').toLowerCase();};
+    const similar=(a,b)=>{a=simKey(a);b=simKey(b);if(!a||!b)return 0;if(a.includes(b)||b.includes(a))return 1;
+      const bg=t=>{const m={};for(let i=0;i<t.length-1;i++){const k=t.slice(i,i+2);m[k]=(m[k]||0)+1;}return m;};
+      const A=bg(a),B=bg(b);let inter=0,na=0,nb=0;for(const k in A){na+=A[k];if(B[k])inter+=Math.min(A[k],B[k]);}for(const k in B)nb+=B[k];return na+nb?2*inter/(na+nb):0;};
+    const evDates=e=>(Array.isArray(e.dates)&&e.dates.length?e.dates:[e.date]).filter(Boolean);
+    function mergedLinks(cur,x){
+      const have=new Set((cur.links||[]).map(l=>l.url)),out=(cur.links||[]).map(l=>({type:l.type,label:l.label||'',url:l.url}));
+      (x.links||[]).forEach(l=>{if(out.length<20&&/^https:\/\/\S+$/.test(l.url)&&!have.has(l.url)){out.push({type:l.type,label:String(l.label||'').slice(0,40),url:l.url});have.add(l.url);}});
+      return out;
+    }
     function diffEvents(list){
+      const claimed=new Set(list.map(x=>x.id).filter(Boolean));
       return list.map(x=>{
         const r={kind:'event',x,changes:[],status:'',note:''};
         r.title=(x.dates&&x.dates.length>1?dayLabel(x.dates[0])+'〜'+dayLabel(x.dates[x.dates.length-1]):dayLabel(x.date))+'　'+x.title;
         if(!/^event-[A-Za-z0-9_-]{1,80}$/.test(String(x.id||''))){r.status='warn';r.note='大会IDを決められません（シートを確認してください）';return r;}
         const cur=eventItems.find(e=>e.id===x.id);
+        if(!cur&&!x.forceNew){
+          // PORTALで先に作った同じ大会がないか（日付が重なり、名前が似ている）
+          const xd=new Set(evDates(x));
+          const cands=eventItems.filter(e=>String(e.id||'').startsWith('event-')&&!claimed.has(e.id)&&evDates(e).some(d=>xd.has(d))&&similar(e.title,x.title)>=0.5)
+            .map(e=>({id:e.id,title:e.title,date:evDates(e)[0]}));
+          if(cands.length){r.status='link';r.cands=cands;r.note='PORTALに同じ日の似た大会があります。同じ大会なら紐付けてください（二重に作りません）';return r;}
+        }
         if(!cur){r.status='new';r.note='会場：'+x.place+(x.links.length?'　リンク：'+x.links.map(l=>l.label).join('・'):'')+'　参加回答を受け付け、出走登録は受付前で作成';return r;}
+        if(x.linked){
+          // 紐付けた大会：PORTAL側の大会名・日付・会場・種目・出走登録は変えない。資料リンクの追加だけ
+          r.info=[];
+          const ref=(label,a,b)=>{if(String(a||'')!==String(b||''))r.info.push('参考（PORTALはそのまま）'+label+'：PORTAL「'+(a||'なし')+'」／シート「'+(b||'なし')+'」');};
+          ref('大会名',cur.title,x.title);ref('開催日',evDates(cur).map(dayLabel).join('・'),evDates(x).map(dayLabel).join('・'));ref('会場',cur.place,x.place);
+          if(x.cancelled)r.info.push('シートでは「中止」になっています。PORTAL側はイベントの修正画面で確認してください');
+          if(cur.type==='OTHER'){
+            const add=(x.links||[]).filter(l=>!(cur.links||[]).some(c=>c.url===l.url));
+            if(add.length)r.changes.push('資料リンクを追加：'+add.map(l=>l.label).join('・'));
+          }else if((x.links||[]).length)r.info.push('この大会はEVENT BASE連携のため、リンクは追加しません');
+          r.title=r.title+'（紐付け済み）';
+          r.status=r.changes.length?'change':'same';return r;
+        }
         const add=(label,a,b)=>{if(String(a||'')!==String(b||''))r.changes.push(label+'：'+(a||'なし')+' → '+(b||'なし'));};
         add('大会名',cur.title,x.title);
         const cd=(Array.isArray(cur.dates)&&cur.dates.length?cur.dates:[cur.date]).map(dayLabel).join('・'),nd=(x.dates.length?x.dates:[x.date]).map(dayLabel).join('・');
@@ -18193,7 +18230,12 @@ applyNotices(rows){
       const links=(x.links||[]).filter(l=>/^https:\/\/\S+$/.test(l.url)).slice(0,20).map(l=>({type:l.type,label:String(l.label||'').slice(0,40),url:l.url}));
       const dates=(x.dates&&x.dates.length?x.dates:[x.date]).slice(0,31);
       let item,previous=null;
-      if(cur){
+      if(cur&&x.linked){
+        if(cur.type!=='OTHER')return '変更なし';
+        previous={...cur};
+        item={...cur,links:mergedLinks(cur,x)};
+        if(cur.displayCategory!=='event')item.url=cur.url||item.links[0]?.url||'';
+      }else if(cur){
         previous={...cur};
         item={...cur,title:x.title,date:dates[0],dates,place:x.place||cur.place||'未定'};
         if(cur.type==='OTHER'){item.links=links;if(cur.displayCategory!=='event')item.url=links[0]?.url||'';}
@@ -18212,13 +18254,19 @@ applyNotices(rows){
       const out=el.querySelector('[data-sb-out]');
       const rows=st.rows;
       const n=k=>rows.filter(r=>r.status===k).length;
-      const tag=r=>r.status==='new'?'<span class="trSbTag">新規</span>':r.status==='change'?'<span class="trSbTag">変更</span>':r.status==='warn'?'<span class="trSbTag warn">要確認</span>':'<span class="trSbTag">変更なし</span>';
+      const tag=r=>r.status==='new'?'<span class="trSbTag">新規</span>':r.status==='change'?'<span class="trSbTag">変更</span>':(r.status==='warn'||r.status==='link')?'<span class="trSbTag warn">要確認</span>':'<span class="trSbTag">変更なし</span>';
       const pick=rows.filter(r=>r.status==='new'||r.status==='change');
-      out.innerHTML=`<p class="trSbSummary">新規 ${n('new')}件・変更 ${n('change')}件・変更なし ${n('same')}件${n('warn')||st.warnings.length?'・要確認 '+(n('warn')+st.warnings.length)+'件':''}</p>
+      out.innerHTML=`<p class="trSbSummary">新規 ${n('new')}件・変更 ${n('change')}件・変更なし ${n('same')}件${n('warn')+n('link')||st.warnings.length?'・要確認 '+(n('warn')+n('link')+st.warnings.length)+'件':''}</p>
         ${pick.length?'<label class="trSbAll"><input type="checkbox" data-sb-all checked> 新規・変更をすべて選ぶ</label>':''}
         <div class="trSbList">${rows.map((r,i)=>{
           const can=r.status==='new'||r.status==='change';
-          const sub=[...r.changes,r.note,r.reset?'参加回答をリセットします（'+r.reset+(r.answers?'・'+r.answers+'人':'')+'）':''].filter(Boolean);
+          const sub=[...r.changes,r.note,...(r.info||[]),r.reset?'参加回答をリセットします（'+r.reset+(r.answers?'・'+r.answers+'人':'')+'）':''].filter(Boolean);
+          if(r.status==='link'){
+            return `<div class="trSbRow"><span></span><span class="trSbMain">${tag(r)}<b>${esc(r.title)}</b>${sub.map(t=>'<small>'+esc(t)+'</small>').join('')}
+              <span class="trSbLinkBtns">${r.cands.map((c,j)=>`<button type="button" class="portalSmallButton" data-sb-link="${i}" data-sb-cand="${j}">PORTALの「${esc(c.title)}」（${esc(dayLabel(c.date))}）と同じ大会として紐付ける</button>`).join('')}
+              <button type="button" class="portalSmallButton trSbGhost" data-sb-new="${i}">別の大会として新しく作る</button></span>
+              <span class="trSbResult" data-sb-result="${i}"></span></span></div>`;
+          }
           return `<label class="trSbRow${can?'':' off'}"><input type="checkbox" data-sb-i="${i}"${can?' checked':' disabled'}><span class="trSbMain">${tag(r)}<b>${esc(r.title)}</b>${sub.map(t=>'<small>'+esc(t)+'</small>').join('')}<span class="trSbResult" data-sb-result="${i}"></span></span></label>`;
         }).join('')}${st.warnings.map(w=>`<div class="trSbRow off"><span></span><span class="trSbMain"><span class="trSbTag warn">要確認</span><b>${esc(w)}</b><small>シートを直してから、もう一度読み込んでください</small></span></div>`).join('')}</div>
         ${pick.length?'<div class="trSbActions"><button type="button" class="portalPrimary" data-sb-save>選んだ'+pick.length+'件をPORTALに保存</button></div>':(rows.length?'<p class="portalHelp">PORTALと同じ内容です。保存するものはありません。</p>':'<p class="portalHelp">シートに対象がありません。</p>')}`;
@@ -18228,6 +18276,30 @@ applyNotices(rows){
       if(all)all.addEventListener('change',()=>{boxes().forEach(b=>b.checked=all.checked);count();});
       boxes().forEach(b=>b.addEventListener('change',count));
       out.querySelector('[data-sb-save]')?.addEventListener('click',()=>save(kind));
+      out.querySelectorAll('[data-sb-link]').forEach(b=>b.addEventListener('click',()=>linkEvent(+b.dataset.sbLink,+b.dataset.sbCand)));
+      out.querySelectorAll('[data-sb-new]').forEach(b=>b.addEventListener('click',()=>{
+        const i=+b.dataset.sbNew,r=st.rows[i];
+        if(!confirm('PORTALの似た大会とは別に、新しい大会を作ります。同じ大会が2つにならないか確認しましたか？'))return;
+        r.x.forceNew=true;st.rows[i]=diffEvents([r.x])[0];render(kind);
+      }));
+    }
+
+    async function linkEvent(i,j){
+      const st=state.event,r=st?.rows?.[i],c=r?.cands?.[j];if(!r||!c)return;
+      if(!confirm('シートの「'+r.x.title+'」を、PORTALの「'+c.title+'」と同じ大会として紐付けます。\n\nPORTAL側の大会名・種目・出走登録は変わりません。よろしいですか？'))return;
+      const res=box('event')?.querySelector('[data-sb-result="'+i+'"]');if(res)res.textContent='紐付けています…';
+      try{
+        const u=new URL(savedUrl());
+        u.searchParams.set('action','link');u.searchParams.set('portalId',c.id);u.searchParams.set('sheetId',r.x.sheetId||'');
+        u.searchParams.set('row',String(r.x.row||''));u.searchParams.set('date',r.x.date||'');
+        const resp=await Promise.race([fetch(u.toString(),{cache:'no-store',redirect:'follow'}),new Promise((_,ng)=>setTimeout(()=>ng(Error('シートから20秒応答がありません')),20000))]);
+        const data=await resp.json();
+        if(!data||data.ok!==true)throw Error(data?.error||'シートが紐付けを断りました');
+        r.x.id=c.id;r.x.linked=true;
+        st.rows[i]=diffEvents(st.rows.map(z=>z.x)).find(z=>z.x===r.x)||diffEvents([r.x])[0];
+        render('event');
+        say('event','紐付けました。シートの「PORTAL ID」にPORTALの大会IDを書きました。');
+      }catch(error){if(res)res.textContent='紐付けできませんでした：'+String(error?.message||error).slice(0,90);}
     }
 
     let busy=false;
@@ -31395,6 +31467,53 @@ html[data-portal-personal-color="matte"] .crTag.gold{background:var(--gold,#ff78
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
 </script>
+
+<style id="v402-chat-composer-spacing">
+/* v402: 写真・カメラの2ボタンを独立した幅に収める。旧38px列に計64pxを詰め込んでいたはみ出しを解消。共通CHATとルームのみ。 */
+#screen-chat .chatBox.trHasAttach{
+  grid-template-columns:76px minmax(0,1fr) 56px!important;
+  column-gap:8px!important;
+  padding:6px 8px!important;
+}
+#screen-chat .chatBox.trHasAttach .trAttach{
+  box-sizing:border-box!important;
+  display:flex!important;
+  width:76px!important;
+  min-width:0!important;
+  gap:4px!important;
+  justify-content:space-between!important;
+  align-items:center!important;
+}
+#screen-chat .chatBox.trHasAttach .trAttach button{
+  box-sizing:border-box!important;
+  flex:0 0 36px!important;
+  width:36px!important;
+  min-width:36px!important;
+  max-width:36px!important;
+  height:44px!important;
+  min-height:44px!important;
+  padding:0!important;
+  margin:0!important;
+  touch-action:manipulation;
+}
+#screen-chat .chatBox.trHasAttach .trAttach button svg{width:22px!important;height:22px!important;pointer-events:none}
+#screen-chat .chatBox.trHasAttach textarea{min-width:0!important;width:100%!important}
+#screen-chat .chatBox.trHasAttach .primary{
+  box-sizing:border-box!important;
+  width:56px!important;
+  min-width:56px!important;
+  max-width:56px!important;
+  height:44px!important;
+  min-height:44px!important;
+  font-size:14px!important;
+}
+@media(max-width:360px){
+  #screen-chat .chatBox.trHasAttach{grid-template-columns:72px minmax(0,1fr) 52px!important;column-gap:6px!important;padding:6px!important}
+  #screen-chat .chatBox.trHasAttach .trAttach{width:72px!important;gap:4px!important}
+  #screen-chat .chatBox.trHasAttach .trAttach button{flex-basis:34px!important;width:34px!important;min-width:34px!important;max-width:34px!important}
+  #screen-chat .chatBox.trHasAttach .primary{width:52px!important;min-width:52px!important;max-width:52px!important}
+}
+</style>
 
 </body>
 </html>
