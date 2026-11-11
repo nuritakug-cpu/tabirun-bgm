@@ -7203,7 +7203,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v402</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v404</b></div>
   </div>
 </div>
 
@@ -7446,7 +7446,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v402</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v404</b></div>
   </div>
 </div>
 
@@ -28213,6 +28213,24 @@ window.__trFilePickStart=function(input){
     if(!box||box.querySelector('.trAttach'))return;
     const wrap=document.createElement('span');wrap.className='trAttach';
     wrap.innerHTML='<button type="button" class="trAttachPick" aria-label="写真を選んで送る">'+ICON+'</button><input type="file" class="trAttachPickIn" accept="image/*" multiple hidden><button type="button" class="trAttachCam" aria-label="撮影して送る">'+CAM+'</button><input type="file" class="trAttachCamIn" accept="image/*" capture="environment" hidden>';
+    // v403: 添付操作は＋に集約。文字入力中は添付操作を畳む。
+    const toggle=document.createElement('button');
+    toggle.type='button';toggle.className='trAttachToggle';
+    toggle.setAttribute('aria-label','写真・カメラのメニュー');toggle.setAttribute('aria-expanded','false');
+    toggle.textContent='＋';
+    wrap.insertBefore(toggle,wrap.firstChild);
+    toggle.addEventListener('click',e=>{
+      e.stopPropagation();
+      const open=!wrap.classList.contains('trAttachOpen');
+      document.querySelectorAll('#screen-chat .trAttachOpen').forEach(el=>{
+        el.classList.remove('trAttachOpen');el.querySelector('.trAttachToggle')?.setAttribute('aria-expanded','false');
+      });
+      wrap.classList.toggle('trAttachOpen',open);toggle.setAttribute('aria-expanded',String(open));
+    });
+    input.addEventListener('focus',()=>{wrap.classList.remove('trAttachOpen');toggle.setAttribute('aria-expanded','false');});
+    wrap.querySelectorAll('.trAttachPick,.trAttachCam').forEach(b=>b.addEventListener('click',()=>{
+      wrap.classList.remove('trAttachOpen');toggle.setAttribute('aria-expanded','false');
+    }));
     box.insertBefore(wrap,box.firstChild);box.classList.add('trHasAttach');
     if(input.placeholder&&input.placeholder.length>10)input.placeholder='メッセージを入力';
     // v400: 「写真を選ぶ」と「撮影する」の2つ。どちらも同じ送信の流れ（縮小・確認・1日の枚数）
@@ -31515,5 +31533,116 @@ html[data-portal-personal-color="matte"] .crTag.gold{background:var(--gold,#ff78
 }
 </style>
 
+
+<style id="v403-chat-attach-compact">
+/* v403: 共通CHAT／ルームの入力幅を確保。添付は＋から選択。 */
+#screen-chat .chatBox.trHasAttach{grid-template-columns:40px minmax(0,1fr) 56px!important;column-gap:6px!important}
+#screen-chat .chatBox.trHasAttach .trAttach{position:relative!important;width:40px!important;min-width:0!important;display:flex!important;overflow:visible!important}
+#screen-chat .chatBox.trHasAttach .trAttach .trAttachToggle{display:flex!important;flex:0 0 40px!important;width:40px!important;min-width:40px!important;max-width:40px!important;height:44px!important;font-size:29px!important;font-weight:400!important;align-items:center!important;justify-content:center!important}
+#screen-chat .chatBox.trHasAttach .trAttach .trAttachPick,#screen-chat .chatBox.trHasAttach .trAttach .trAttachCam{display:none!important}
+#screen-chat .chatBox.trHasAttach .trAttach.trAttachOpen .trAttachPick,#screen-chat .chatBox.trHasAttach .trAttach.trAttachOpen .trAttachCam{display:flex!important;position:absolute!important;bottom:51px!important;width:44px!important;min-width:44px!important;max-width:44px!important;height:44px!important;background:#fff!important;color:#293238!important;border:1px solid #bbb!important;border-radius:12px!important;box-shadow:0 3px 12px #0003!important;z-index:30!important}
+#screen-chat .chatBox.trHasAttach .trAttach.trAttachOpen .trAttachPick{left:0!important}
+#screen-chat .chatBox.trHasAttach .trAttach.trAttachOpen .trAttachCam{left:49px!important}
+#screen-chat .chatBox.trHasAttach:focus-within{grid-template-columns:minmax(0,1fr) 56px!important}
+#screen-chat .chatBox.trHasAttach:focus-within .trAttach{display:none!important}
+@media(max-width:360px){#screen-chat .chatBox.trHasAttach{grid-template-columns:40px minmax(0,1fr) 52px!important}#screen-chat .chatBox.trHasAttach:focus-within{grid-template-columns:minmax(0,1fr) 52px!important}}
+</style>
+<!-- TOP RUN PORTAL v404 | 2026-11-11 | Parent v403. Full-page capture UI; visible version labels v404. Firebase/Rules unchanged. -->
+<style id="trFullCaptureStyle">
+#trCaptureLaunch{position:fixed;right:12px;bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:1800;border:1px solid #e4c44c;border-radius:25px;background:#15191e;color:#f7e16b;box-shadow:0 4px 14px #0005;font:700 12px/1.2 system-ui,-apple-system,sans-serif;padding:11px 13px;cursor:pointer}
+#trCaptureLaunch[hidden],#trCaptureModal[hidden]{display:none!important}
+#trCaptureModal{position:fixed;inset:0;z-index:99990;background:#000d;display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box}
+#trCapturePanel{background:#f9fafb;color:#171a1f;border-radius:15px;width:min(100%,540px);max-height:94dvh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 45px #0008;font:14px/1.5 system-ui,-apple-system,sans-serif}
+#trCaptureTop{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid #ddd}
+#trCaptureTop strong{flex:1}#trCaptureTop button,#trCaptureActions button{border:1px solid #bbb;border-radius:9px;padding:9px 12px;background:white;color:#111;font-weight:650}
+#trCapturePreview{overflow:auto;min-height:80px;max-height:62dvh;background:#dce0e4;padding:10px;text-align:center}
+#trCapturePreview img{max-width:100%;height:auto;box-shadow:0 2px 10px #0003}
+#trCaptureActions{display:flex;gap:8px;padding:10px 12px;flex-wrap:wrap}#trCaptureActions button{flex:1}#trCaptureActions button:first-child{background:#1d242a;color:white}
+#trCaptureNote{padding:0 12px 12px;color:#5c626b;font-size:11px}
+@media print{#trCaptureLaunch,#trCaptureModal{display:none!important}}
+</style>
+<button id="trCaptureLaunch" type="button" hidden aria-label="表示画面を縦長画像で保存">📷 画面保存</button>
+<div id="trCaptureModal" hidden role="dialog" aria-modal="true" aria-label="画面保存">
+ <div id="trCapturePanel">
+  <div id="trCaptureTop"><strong>画面を縦長画像で保存</strong><button id="trCaptureClose" type="button">閉じる</button></div>
+  <div id="trCapturePreview" aria-live="polite">画像を準備しています…</div>
+  <div id="trCaptureActions"><button id="trCaptureShare" type="button" disabled>共有・写真に保存</button><button id="trCaptureDownload" type="button" disabled>画像を保存</button></div>
+  <div id="trCaptureNote">表示中のポータル画面を撮影します。外部地図・一部の画像・長いチャット履歴は完全に写らない場合があります。共有時は個人情報にご注意ください。</div>
+ </div>
+</div>
+<script id="trFullCaptureScript">
+(function(){
+ 'use strict';
+ const launch=document.getElementById('trCaptureLaunch'),modal=document.getElementById('trCaptureModal'),preview=document.getElementById('trCapturePreview');
+ const share=document.getElementById('trCaptureShare'),save=document.getElementById('trCaptureDownload');
+ let captureBlob=null,captureUrl=null,busy=false,loading=null;
+ const visible=el=>{if(!el)return false;const st=getComputedStyle(el);return st.display!=='none'&&st.visibility!=='hidden'&&el.getAttribute('aria-hidden')!=='true'&&el.getBoundingClientRect().width>0};
+ function currentScreen(){return Array.from(document.querySelectorAll('.portalScreen')).find(visible)||null}
+ function sync(){launch.hidden=!!modal.hidden? !currentScreen():true}
+ function loadLibrary(){
+   if(window.html2canvas)return Promise.resolve(window.html2canvas);
+   if(loading)return loading;
+   loading=new Promise((resolve,reject)=>{
+     const script=document.createElement('script');script.src='https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';script.async=true;
+     script.onload=()=>window.html2canvas?resolve(window.html2canvas):reject(new Error('画像化ライブラリを読み込めません'));
+     script.onerror=()=>reject(new Error('画像化ライブラリの通信に失敗しました'));
+     document.head.appendChild(script);
+   }).catch(e=>{loading=null;throw e});return loading;
+ }
+ function reset(){captureBlob=null;share.disabled=true;save.disabled=true;if(captureUrl){URL.revokeObjectURL(captureUrl);captureUrl=null}}
+ function expandClone(doc){
+   const root=doc.querySelector('[data-tr-capture-root="1"]');if(!root)return;
+   root.style.cssText+=';height:auto!important;max-height:none!important;min-height:0!important;overflow:visible!important;transform:none!important;';
+   root.querySelectorAll('*').forEach(el=>{
+     if(el.closest('.trAttach')||el.matches('button,input,textarea,select'))return;
+     const st=doc.defaultView.getComputedStyle(el);
+     if((st.overflowY==='auto'||st.overflowY==='scroll')&&el.scrollHeight>el.clientHeight+10){
+       el.style.setProperty('height','auto','important');el.style.setProperty('max-height','none','important');el.style.setProperty('overflow-y','visible','important');
+     }
+     if(st.position==='sticky'||st.position==='fixed')el.style.setProperty('position','relative','important');
+   });
+   doc.querySelectorAll('#trCaptureLaunch,#trCaptureModal,.portalBottomTabs').forEach(el=>el.style.setProperty('display','none','important'));
+ }
+ async function capture(){
+   if(busy)return;const root=currentScreen();if(!root){preview.textContent='保存する画面が見つかりません。';return}
+   busy=true;reset();modal.hidden=false;launch.hidden=true;preview.textContent='画面を画像に変換しています…';
+   try{
+     const h2c=await loadLibrary();
+     // Mark only the active screen for the cloned-document expansion.
+     root.dataset.trCaptureRoot='1';
+     let canvas;
+     try{
+       const rect=root.getBoundingClientRect();
+       const width=Math.max(1,Math.ceil(rect.width));
+       const maxHeight=16000;const height=Math.min(maxHeight,Math.max(Math.ceil(rect.height),root.scrollHeight));
+       const scale=Math.min(2,window.devicePixelRatio||1,8192/width,16000/height);
+       canvas=await h2c(root,{backgroundColor:'#ffffff',useCORS:true,allowTaint:false,logging:false,scale:Math.max(.5,scale),width:width,height:height,windowWidth:document.documentElement.clientWidth,scrollX:0,scrollY:0,onclone:expandClone});
+     }finally{delete root.dataset.trCaptureRoot}
+     if(!canvas.width||!canvas.height)throw new Error('画像を生成できませんでした');
+     captureBlob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('画像の保存に失敗しました')),'image/png'));
+     captureUrl=URL.createObjectURL(captureBlob);
+     preview.replaceChildren();const img=document.createElement('img');img.src=captureUrl;img.alt='撮影した画面のプレビュー';preview.appendChild(img);
+     share.disabled=false;save.disabled=false;
+   }catch(err){preview.textContent='画像化できませんでした。'+(err&&err.message?err.message:'')+'。通信環境や画像の表示状態をご確認ください。'}
+   finally{busy=false;sync()}
+ }
+ function filename(){return 'TOP_RUN_PORTAL_'+new Date().toISOString().replace(/[:.]/g,'-')+'.png'}
+ launch.addEventListener('click',capture);
+ document.getElementById('trCaptureClose').addEventListener('click',()=>{modal.hidden=true;reset();preview.textContent='';sync()});
+ modal.addEventListener('click',e=>{if(e.target===modal)document.getElementById('trCaptureClose').click()});
+ save.addEventListener('click',()=>{if(!captureUrl)return;const a=document.createElement('a');a.href=captureUrl;a.download=filename();document.body.appendChild(a);a.click();a.remove()});
+ share.addEventListener('click',async()=>{
+   if(!captureBlob)return;
+   const file=new File([captureBlob],filename(),{type:'image/png'});
+   if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+     try{await navigator.share({files:[file],title:'TOP RUN PORTAL 画面保存'});return}catch(e){if(e.name==='AbortError')return}
+   }
+   save.click();
+ });
+ const obs=new MutationObserver(()=>{if(modal.hidden)sync()});
+ obs.observe(document.body,{subtree:true,attributes:true,attributeFilter:['class','aria-hidden','style']});
+ document.addEventListener('visibilitychange',sync);sync();
+})();
+</script>
 </body>
 </html>
