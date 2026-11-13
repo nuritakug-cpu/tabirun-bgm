@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v423 | 2026-11-13 | Parent v422. (1)引継ぎコード：開発者が管理画面の設定「本人の引継ぎコード（開発者）」で、選んだ人のコードを出す。入れない人は入口の画面の「運営から届いた引継ぎコード」に入れると元の本人に戻る。中継は Cloudflare Worker top-run-identity（TOPRUNIDENTITYWORKERv1.js）。新しい本人IDは作らない。Rules変更なし。(2)画面を画像に：「共通チャットに送る」「このルームに送る」（いつもの写真の送信と同じ流れ）。(3)お知らせの窓：右上に×とコピー、下に「続きがあります」。Firebase：通信量の増加なし（コードを出す・使うときだけWorkerがFirebaseを数回読む）。 -->
 <!-- TOP RUN PORTAL v422 | 2026-11-13 | Parent v421. ＋のメニューがまだ出なかった：チャットを開いている間の「ほかの部品を隠す」決まり（IDを含むため強い）にv421の除外が負けていた→IDで指定して確実に表示。Firebase：変更なし。 -->
 <!-- TOP RUN PORTAL v421 | 2026-11-13 | Parent v420. (1)＋のメニューが出ない：チャットを開いている間は画面の外の部品を隠す決まり（portalChatIsolated）でメニューも隠れていた→メニューと画像保存の窓は隠さない。(2)画面を画像に：トップページ（HOME）でも使える・実際に見えている画面だけを対象・大きすぎて作れないときは解像度を下げて自動でやり直す。(3)リンクカード：ページの情報が読めないリンクはカードを出さない（文字のリンクだけ。コピーは長押し）、カードの見た目を整理。Firebase：通信量の増加なし、Rules変更なし。 -->
 <!-- TOP RUN PORTAL v420 | 2026-11-13 | Parent v418（v401の大会の紐付けは残す。v402〜v418のチャット入力欄・画面保存の付け足しは外して作り直し）。(1)ログインの確認：プロフィールが見つからないときは通信の文でなく正しい案内（再登録しない・運営に報告）、時間切れ・権限の読み込み失敗は自動で1回やり直し、止まった段階を表示、「運営に報告する」（確認番号・状態を共有／コピー。Firebaseに書かない）。ログイン・登録の処理そのものは変更なし。(2)チャット：入力欄の左に＋（カメラ・写真のメニュー）、送信は丸い↑。(3)画面のヘッダーの題名をタップ→この画面を画像で保存（html2canvasを使うときだけcdnjsから読む）。(4)リンクカード：古い覚えを捨てる（画像なしは1日で読み直し）、画像の枠を先に取る、見た目を整理、コピーは小さなアイコン。(5)v400の言い換えの監視をチャット画面では止める（カクつき対策）。Firebase：通信量の増加なし、Rules変更なし。 -->
@@ -491,7 +492,7 @@ window.addEventListener('unhandledrejection',function(e){try{var r=e&&e.reason;w
 <meta name="apple-mobile-web-app-title" content="TOP RUN">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="top-run-handoff-api" content="https://eventbase-handoff-gateway-1071631357620.asia-southeast1.run.app">
+<meta name="top-run-handoff-api" content="https://top-run-identity.nuritaku-g.workers.dev">
 <title>TOP RUN PORTAL</title>
 <style id="portal-20261026-ui-navigation-only">
 /* The HOME must never expose any management tooling. Header icon is an authorized navigation affordance. */
@@ -7206,7 +7207,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v422</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v423</b></div>
   </div>
 </div>
 
@@ -7449,7 +7450,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v422</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v423</b></div>
   </div>
 </div>
 
@@ -18642,7 +18643,7 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
     <div id="portalHandoffIssued" hidden><strong id="portalHandoffIssuedCode"></strong><small>使い切り・期限付き。引継ぎ先の端末で入力してください。</small></div>
     <button id="portalHandoffIssueButton" type="button" hidden>この本人の引継ぎコードを発行</button>
     <form id="portalHandoffCodeForm" autocomplete="off" hidden>
-      <label for="portalHandoffCodeInput">別の端末から引き継ぐコード（32文字）</label>
+      <label for="portalHandoffCodeInput">運営から届いた引継ぎコード（32文字）</label>
       <input id="portalHandoffCodeInput" maxlength="39" inputmode="text" spellcheck="false" autocapitalize="characters" autocomplete="one-time-code" placeholder="32桁のコードを入力" aria-label="引継ぎコード">
       <button id="portalHandoffRedeemButton" type="submit">同じ本人でログイン</button>
     </form>
@@ -18772,6 +18773,15 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
     {const lf=document.getElementById('portalIdentityLinkRequestForm'),ly=document.getElementById('portalLinkYes');if(lf)lf.hidden=true;if(ly)ly.hidden=true;}
     codeForm.hidden=true;issueBox.hidden=true;issueButton.hidden=true;cancel.hidden=true;
     handoffState.hidden=true;
+    // v423: 前に登録していた人が入れなくなったとき用に、運営から届く引継ぎコードの欄をいつも出す
+    if(configured){codeForm.hidden=false;redeemButton.disabled=false;}
+    if(orphanRecoveryAllowed){
+      heading.textContent='この端末で、あなたの登録が見つかりません';
+      message.textContent='前に TOP RUN PORTAL を使っていた方は、登録をやり直さないでください（記録が別の人になってしまいます）。「運営に報告する」で運営に連絡し、届いた引継ぎコードを下の欄に入れると、元の登録に戻ります。';
+      helper.textContent='はじめて TOP RUN に登録する方だけ、「登録をはじめる」から進んでください。';
+    }else{
+      helper.textContent='前の大会に参加したことがある方も、同じように登録してください。前の記録は、運営がつなぎます。前に PORTAL を使っていて入れなくなった方は、登録せずに運営へ連絡し、届いた引継ぎコードを下の欄に入れてください。';
+    }
     scrollToEntryStart();requestAnimationFrame(updateScrollHint);
   };
   roleChoiceBack.addEventListener('click',showEntryChoice);
@@ -18913,7 +18923,7 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
     if(noProf){
       t1='この端末で、あなたの登録が見つかりません';
       m1='この端末のログイン情報に、TOP RUN の登録がつながっていません。ホーム画面のアイコンを入れ直したときや、端末の保存データが消えたときに起きます。通信の問題ではありません。';
-      steps=['登録をやり直さないでください（記録が別の人になってしまいます）。','下の「運営に報告する」を押して、BAND（LINEでも可）で運営に送ってください。','はじめて TOP RUN に登録する方だけ、「登録をはじめる」から進んでください。'];
+      steps=['登録をやり直さないでください（記録が別の人になってしまいます）。','下の「運営に報告する」を押して、BAND（LINEでも可）で運営に送ってください。','運営から「引継ぎコード」が届いたら、この画面の下の「運営から届いた引継ぎコード」に入れて「同じ本人でログイン」を押してください。元の登録に戻ります。','はじめて TOP RUN に登録する方だけ、「登録をはじめる」から進んでください。'];
       btn='もう一度確認する';
     }else if(isTimeout&&!offline){
       t1='ログインの確認が終わりません';
@@ -23181,7 +23191,10 @@ try{
         CLAIM_BUSY:'認証リクエストが集中しています。時間をおいてください。',
         SOURCE_IDENTITY_UNAVAILABLE:'元の本人アカウントが利用できません。管理者に確認してください。',
         SOURCE_AUTH_REVOKED:'元の本人認証が失効しました。管理者に確認してください。',
-        TEMPORARILY_UNAVAILABLE:'本人引継ぎサービスに接続できません。しばらくして再試行してください。'
+        TEMPORARILY_UNAVAILABLE:'本人引継ぎサービスに接続できません。しばらくして再試行してください。',
+        NOT_DEVELOPER:'開発者だけが使えます。',
+        TARGET_NOT_FOUND:'この人の登録が見つかりません。',
+        TARGET_NOT_ACTIVE:'この人は参加の承認がありません（退会など）。'
       };
       if(!response.ok||result?.ok!==true){
         const code=String(result?.code||'');
@@ -23194,6 +23207,12 @@ try{
       if(gate.personal?.profileId&&gate.personal.profileId!==gate.profileId)throw Error('本人profileIdが一致しません');
       const idToken=await auth.currentUser.getIdToken();
       return handoffFetch('/v1/identity-handoff/create',{},idToken);
+    };
+    // v423: 開発者が、ログイン情報が消えた人のための引継ぎコードを出す（Worker が開発者かどうかを Firebase で確かめる）
+    gate.adminIssueHandoff=async(targetUid)=>{
+      if(!auth.currentUser||gate.role!=='developer'||gate.roleVerified!==true)throw Error('開発者だけが使えます');
+      const idToken=await auth.currentUser.getIdToken();
+      return handoffFetch('/v1/identity-handoff/admin-create',{targetUid:String(targetUid||'')},idToken);
     };
     gate.redeemHandoff=async(code)=>{
       const value=String(code||'').toUpperCase().replace(/[\s-]/g,'');
@@ -28210,6 +28229,9 @@ window.__trFilePickStart=function(input){
     });
   }
   let busy=false;
+  // v423: 画面を画像にした結果を、いつもの写真の送信の流れ（縮小・確認・枚数）でチャットへ送る
+  window.__trSendImagesToChat=(ctx,files)=>{const box=document.getElementById(ctx==='room'?'trRoomInput':'portalChatInput')?.closest('.chatBox');return onFiles(ctx,files,box?.querySelector('.trAttachPlus')||document.createElement('button'));};
+  window.__trChatRoomOpen=()=>{try{const s=document.getElementById('screen-chat');return !!(s&&!s.classList.contains('hidden')&&g()?.roomReactCtx?.().openId);}catch(_){return false;}};
   async function onFiles(ctx,files,btn){
     files=[...(files||[])].filter(f=>/^image\//.test(f.type||'image/'));
     if(!files.length||busy)return;
@@ -31646,10 +31668,17 @@ html[data-portal-personal-color="matte"] .crTag.gold{background:var(--gold,#ff78
       const name='TOPRUN'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+pad(d.getHours())+pad(d.getMinutes())+'.jpg';
       const file=new File([blob],name,{type:'image/jpeg'});
       const canShare=!!(navigator.canShare&&navigator.canShare({files:[file]}));
+      const roomOpen=!!window.__trChatRoomOpen?.();
       const el=sheet('<p class="trCapMsg">できました。'+(canShare?'「保存・送る」から写真に保存できます。':'画像を長押しして保存してください。')+'</p>'+
         '<div class="trCapImg"><img alt="この画面の画像" src="'+url+'"></div>'+
+        '<div class="trCapBtns trCapSend">'+(roomOpen?'<button type="button" class="trCapToChat" data-ctx="room">このルームに送る</button>':'')+'<button type="button" class="trCapToChat" data-ctx="common">共通チャットに送る</button></div>'+
         '<div class="trCapBtns">'+(canShare?'<button type="button" class="trCapShare">保存・送る</button>':'')+'<button type="button" data-cap-close>閉じる</button></div>');
       el.querySelector('.trCapShare')?.addEventListener('click',async()=>{try{await navigator.share({files:[file]});}catch(_){}});
+      // v423: その場で PORTAL のチャットへ（いつもの「この写真を送りますか？」が出る）
+      el.querySelectorAll('.trCapToChat').forEach(b=>b.addEventListener('click',()=>{
+        if(typeof window.__trSendImagesToChat!=='function'){say('チャットに送れませんでした。');return;}
+        el.hidden=true;void window.__trSendImagesToChat(b.dataset.ctx,[file]);
+      }));
     }catch(e){
       say('画像にできませんでした。'+String(e?.message||'').slice(0,60));
     }finally{
@@ -31700,5 +31729,123 @@ header.top .brandText{cursor:pointer}
 .trLPCard.trLPLoading{min-height:0}
 .trLPCard.trLPLoading .trLPTitle{font-size:11.5px!important;font-weight:600!important;opacity:.55}
 </style>
+<script id="v423-handoff-admin">
+/* v423: 管理画面の設定「本人の引継ぎコード（開発者）」。ログイン情報が消えて入れない人を、元の本人に戻すコードを出す。
+   コードは 24時間・1回だけ。Firebase への書き込みは Worker（top-run-identity）が行う。PORTAL からは書かない。 */
+(function(){
+  'use strict';
+  const $=id=>document.getElementById(id);
+  const g=()=>window.__TR_PORTAL_SYNC__;
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const nk=v=>String(v||'').normalize('NFKC').replace(/[\s\u3000]/g,'');
+  let list=null,busy=false;
+  function mount(){
+    const body=document.querySelector('#screen-management-settings .portalScreenBody');if(!body)return;
+    let sec=$('trHoSection');
+    if(!sec){
+      sec=document.createElement('section');sec.id='trHoSection';sec.className='portalManagementSettingsSection';sec.hidden=true;
+      sec.innerHTML='<div class="portalPanelHead"><small>DEVICE HANDOFF</small><b>本人の引継ぎコード（開発者）</b></div>'+
+        '<details class="portalManageAccessDisclosure" id="trHoDetails"><summary>入れなくなった人を選ぶ</summary><div class="portalIdentityLinkBody">'+
+        '<p style="font-size:13px;line-height:1.7">端末のログイン情報が消えて入れなくなった人に、<b>元の本人に戻るためのコード</b>を出します。コードは<b>24時間・1回だけ</b>使えます。BAND（LINEでも可）でその人だけに送ってください。その人は、入れない画面の「運営から届いた引継ぎコード」に入れて「同じ本人でログイン」を押します。</p>'+
+        '<p style="font-size:12px;line-height:1.6;opacity:.8">入れない人が「運営に報告する」で送ってきた確認番号は、新しく入れ替わったログインの番号です。下の一覧の番号（元の登録）とは違います。名前で探してください。</p>'+
+        '<label style="display:block;font-size:13px;font-weight:800">名前で探す<input type="text" id="trHoSearch" autocomplete="off" placeholder="例：山田"></label>'+
+        '<div id="trHoList"></div><div id="trHoResult"></div><p id="trHoState" role="status" aria-live="polite"></p></div></details>';
+      body.appendChild(sec);
+      $('trHoDetails').addEventListener('toggle',()=>{if($('trHoDetails').open&&!list)void load();});
+      $('trHoSearch').addEventListener('input',render);
+      sec.addEventListener('click',onClick);
+    }
+    const G=g();sec.hidden=!(G?.role==='developer'&&G.roleVerified===true);
+  }
+  const say=t=>{const p=$('trHoState');if(p)p.textContent=t;};
+  async function load(){
+    try{say('読み込んでいます…');list=(await g().listApprovedMembers()).filter(m=>m.uid!==g().uid);say('');render();}
+    catch(e){say('読み込めませんでした：'+String(e?.message||e).slice(0,100));}
+  }
+  function render(){
+    const box=$('trHoList');if(!box||!list)return;
+    const q=nk($('trHoSearch')?.value);
+    if(!q){box.innerHTML='<p style="font-size:13px;opacity:.75">名前を入れると候補が出ます。</p>';return;}
+    const rows=list.filter(m=>nk(m.name).includes(q)||nk(m.reg).includes(q)).sort((a,b)=>String(a.name).localeCompare(String(b.name),'ja')).slice(0,30);
+    box.innerHTML=rows.map(m=>'<div class="trWdRow"><span>'+esc(m.name)+'<small>元の登録 末尾'+esc(m.uid.slice(-6))+(m.reg&&m.reg!==m.name?'・登録名 '+esc(m.reg):'')+'</small></span><button type="button" data-ho-pick="'+esc(m.uid)+'">コードを出す</button></div>').join('')||'<p style="font-size:13px">見つかりません。</p>';
+  }
+  async function onClick(e){
+    const b=e.target.closest('[data-ho-pick]');
+    if(b){
+      if(busy)return;const who=list.find(m=>m.uid===b.dataset.hoPick);if(!who)return;
+      if(!confirm(who.name+' さんの引継ぎコードを出します。\nこのコードで、その人として PORTAL に入れます。本人だけに送ってください。'))return;
+      busy=true;say('コードを出しています…');$('trHoResult').innerHTML='';
+      try{
+        const r=await g().adminIssueHandoff(who.uid);
+        const code=String(r.code||'').toUpperCase();const pretty=code.replace(/(.{4})(?=.)/g,'$1-');
+        const until=r.expiresAt?new Date(r.expiresAt).toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+        $('trHoResult').innerHTML='<div class="trHoBox"><b>'+esc(who.name)+'</b> さんの引継ぎコード<code>'+esc(pretty)+'</code><small>'+(until?until+' まで・':'')+'1回だけ使えます</small><button type="button" data-ho-copy="'+esc(pretty)+'">コードと手順をコピー</button></div>';
+        say('');
+      }catch(err){say('出せませんでした：'+String(err?.message||err).slice(0,140));}
+      finally{busy=false;}
+      return;
+    }
+    const c=e.target.closest('[data-ho-copy]');
+    if(c){
+      const txt='TOP RUN PORTAL の引継ぎコードです（24時間・1回だけ）\n'+c.dataset.hoCopy+'\n\nPORTAL を開き、入れない画面のいちばん下の「運営から届いた引継ぎコード」に入れて、「同じ本人でログイン」を押してください。元の登録に戻ります。登録はやり直さないでください。';
+      let ok=false;try{await navigator.clipboard.writeText(txt);ok=true;}catch(_){}
+      c.textContent=ok?'✓ コピーしました':'コードを長押ししてコピーしてください';
+    }
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});else mount();
+  window.addEventListener('tr-portal-authorized',mount);
+  let n=0;const iv=setInterval(()=>{mount();if(++n>60)clearInterval(iv);},1000);
+})();
+
+/* v423: お知らせの窓。右上に「コピー」と「×」、本文が続くときは下に「↓ 続きがあります」。 */
+(function(){
+  'use strict';
+  const COPY='<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/></svg>';
+  function setup(){
+    const modal=document.getElementById('modal'),card=modal?.querySelector('.modalCard');
+    if(!card||card.querySelector('.trModalTools'))return !!card;
+    const tools=document.createElement('div');tools.className='trModalTools';
+    tools.innerHTML='<button type="button" class="trModalCopy" aria-label="お知らせをコピー">'+COPY+'</button><button type="button" class="trModalX" aria-label="閉じる">×</button>';
+    card.insertBefore(tools,card.firstChild);
+    const more=document.createElement('div');more.className='trModalMore';more.textContent='↓ 続きがあります';card.appendChild(more);
+    tools.querySelector('.trModalX').addEventListener('click',()=>document.getElementById('modalClose')?.click());
+    tools.querySelector('.trModalCopy').addEventListener('click',async()=>{
+      const title=document.getElementById('modalTitle')?.textContent||'';
+      const date=document.getElementById('modalNoticeDate');
+      const body=document.getElementById('modalNoticeBody')?.cloneNode(true);
+      body?.querySelectorAll('.trLPWrap').forEach(x=>x.remove());
+      const txt=[title,date&&!date.hidden?date.textContent:'',(body?.textContent||'').trim()].filter(Boolean).join('\n\n');
+      let ok=false;try{await navigator.clipboard.writeText(txt);ok=true;}catch(_){}
+      try{window.showActionFeedback?.(ok?'お知らせをコピーしました':'コピーできませんでした',ok?'':'本文を長押しして選んでください');}catch(_){}
+    });
+    const upd=()=>{const can=card.scrollHeight-card.clientHeight>8;more.hidden=!(modal.classList.contains('portalNoticeDetailOpen')&&can&&card.scrollTop+card.clientHeight<card.scrollHeight-24);};
+    card.addEventListener('scroll',upd,{passive:true});
+    more.addEventListener('click',()=>card.scrollBy({top:Math.round(card.clientHeight*0.7),behavior:'smooth'}));
+    new MutationObserver(()=>{card.scrollTop=0;setTimeout(upd,60);setTimeout(upd,400);}).observe(modal,{attributes:true,attributeFilter:['class']});
+    upd();return true;
+  }
+  if(!setup()){let n=0;const iv=setInterval(()=>{if(setup()||++n>30)clearInterval(iv);},500);}
+})();
+</script>
+<style id="v423-style">
+/* v423: お知らせの窓（右上に×とコピー、下に続きの案内）。色は窓の文字色に合わせる（5テーマ共通） */
+#modal .trModalTools{display:none}
+#modal.portalNoticeDetailOpen .trModalTools{display:flex;position:sticky;top:-14px;z-index:3;justify-content:flex-end;gap:8px;height:0;overflow:visible;margin:-10px -8px 0 0}
+#modal.portalNoticeDetailOpen .trModalTools button{width:36px;height:36px;min-height:36px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:50%;
+  border:1px solid color-mix(in srgb,currentColor 22%,transparent);background:var(--portal-notice-detail-bg,var(--op-deep,#fbfaf7));color:inherit;font-size:22px;line-height:1;font-weight:500;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+#modal.portalNoticeDetailOpen .trModalTools svg{width:17px;height:17px}
+#modal.portalNoticeDetailOpen #modalKicker,#modal.portalNoticeDetailOpen #modalTitle{padding-right:88px}
+#modal .trModalMore{display:none}
+#modal.portalNoticeDetailOpen .trModalMore:not([hidden]){display:block;position:sticky;bottom:-24px;margin:12px -21px -24px;padding:22px 0 12px;text-align:center;font-size:13px;font-weight:800;cursor:pointer;
+  background:linear-gradient(to bottom,transparent,var(--portal-notice-detail-bg,var(--op-deep,#fbfaf7)) 45%);color:inherit;opacity:.9}
+/* v423: 画像にしたあと、チャットへ送るボタン */
+#trCapSheet .trCapToChat{background:var(--gold,#d8b236);border-color:transparent;color:#211b08}
+#trCapSheet .trCapSend + .trCapBtns .trCapShare{background:transparent;color:inherit;border:1px solid var(--op-line,rgba(127,127,127,.35))}
+/* v423: 引継ぎコード */
+#trHoSection .trHoBox{margin-top:10px;padding:12px;border-radius:12px;border:1px solid color-mix(in srgb,currentColor 25%,transparent);display:grid;gap:8px;font-size:13px}
+#trHoSection .trHoBox code{display:block;font-size:17px;font-weight:800;letter-spacing:.04em;word-break:break-all;user-select:all;-webkit-user-select:all}
+#trHoSection .trHoBox button{min-height:40px;border-radius:12px}
+</style>
+
 </body>
 </html>
