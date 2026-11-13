@@ -1,4 +1,4 @@
-<!-- 2026-11-14 EVENT BASE v181 | Parent: v180. (1)左上のロゴをタップすると PORTAL（TOP_RUN_PORTAL.html）に戻る（保存版モードでも同じ）。(2)開発者：駅伝BASEと同じく、PORTALで開発者と確認済み（portalRoles の developer と ownerProof）なら認証コードなしで運営者として入る。戻る・入り直しでもコード不要。証明はRulesが毎回確認。(3)開発者でない人が ownerKey 付きのリンクで開いても、開発者認証の画面を出さず、ふつうの入口へ。見た目・Firebase・保存版データの形は変更なし。 -->
+<!-- 2026-11-14 EVENT BASE v181 | Parent: v180. (1)左上のロゴをタップすると PORTAL（TOP_RUN_PORTAL.html）に戻る（保存版モードでも同じ）。(2)開発者：駅伝BASEと同じく、PORTALで開発者と確認済み（portalRoles の developer と ownerProof）なら認証コードなしで運営者として入る。戻る・入り直しでもコード不要。証明はRulesが毎回確認。(3)開発者でない人が ownerKey 付きのリンクで開いても、開発者認証の画面を出さず、PORTALからの接続へ。(4)接続・認証中の入口の画面に TOP RUN のロゴを表示。(5)大会要項・スタートリスト・大会スケジュールを PDF かリンクで登録（どちらかを選ぶ）。HOMEには選んだ方を出す（リンクは extraResources/links/doc_<種類>。Rules変更なし）。見た目・Firebase・保存版データの形は変更なし。 -->
 <!-- 2026-11-10 EVENT BASE v180 | Parent: v179. (1) 保存版データを新しい形（eb-archive-v2）にする：GitHubで公開されるため、入れてよいものだけを選んで入れる（大会情報・お知らせ・資料は公式リンクだけ・選手は名前と記録だけ）。PDF・本人ID・運営者名・性別・学年・コメント・目標タイム・日時・組/レーンは入れない。(2) 結果一覧は男女別をやめ、出走順。保存版では「予定」タブを出さない（出走時刻などを入れないため）。(3)「保存版を作る」をHOMEから、歯車→設定・管理（大会結果一覧の下）へ移す。(4)「PORTALへ戻る」ボタンを削除。Firebaseの通信量は変わらない。 -->
 <!-- 2026-11-09 EVENT BASE v179 | Parent: EVENT_BASE_PRODUCTION (v177). 保存版モード：?archive=TOPRUNARCHIVE<日付>v<n> で開くと、Firebaseに接続せず、GitHubの保存版データ（同名.json）を読んでいつものEVENT BASEの画面で見るだけ表示（LIVE・CHAT・設定は非表示、右上に結果一覧＝男女別）。運営者はHOMEの一番下「この大会を保存版にする」で保存版データを作る（events/<id>からCHAT・LIVE・安全確認・本人ID類を除き、資料PDFと性別（PORTALプロフィール）を添える）。EVENT BASEを更新すれば保存版の見た目も自動で新しくなる。通常の大会運営の動き・Rulesは変更なし。 -->
 <!-- 2026-10-25 PRODUCTION CANDIDATE / SAME UID / PORTAL RETURN ONLY IN portal=1 / NO RULES OR DATA CHANGES -->
@@ -14481,21 +14481,22 @@ function renderHome(){
     if(todayBtn69){todayBtn69.classList.add('unavailable');$('todayResultsSub69').textContent='COMING SOON';}
   }
 
+  const extra=extraResourcesV60();
+  const docLink181=k=>extra.links?.['doc_'+k]; // v181: 大会要項などをリンクで登録したとき（選んだ方をHOMEに出す）
   const docs=[
-    ['guidelines','大会要項',!!data.docs.guidelines],
-    ['startlist','スタートリスト',!!data.docs.startlist],
-    ['eventSchedule','大会スケジュール',!!data.docs.eventSchedule],
+    ['guidelines','大会要項',!!(docLink181('guidelines')||data.docs.guidelines)],
+    ['startlist','スタートリスト',!!(docLink181('startlist')||data.docs.startlist)],
+    ['eventSchedule','大会スケジュール',!!(docLink181('eventSchedule')||data.docs.eventSchedule)],
     ['results','大会速報',!!data.resultsUrl]
   ];
-  const extra=extraResourcesV60();
   const extraPdfs=Object.values(extra.pdfs||{}).sort((a,b)=>(Number(a.updatedAt)||0)-(Number(b.updatedAt)||0));
-  const extraLinks=Object.values(extra.links||{}).sort((a,b)=>(Number(a.updatedAt)||0)-(Number(b.updatedAt)||0));
+  const extraLinks=Object.values(extra.links||{}).filter(r=>!/^doc_/.test(String(r.id||''))).sort((a,b)=>(Number(a.updatedAt)||0)-(Number(b.updatedAt)||0));
   const readyCount=docs.filter(x=>x[2]).length+extraPdfs.length+extraLinks.length;
   const totalCount=docs.length+extraPdfs.length+extraLinks.length;
   $('docsSummary').textContent=`${readyCount}/${totalCount} 登録済み`;
   const fixedHtml=docs.map(([k,t,ready])=>`<button class="docItem ${ready?'ready':'missing'}" data-home-doc="${k}">
-    <span><b>${t}</b><span class="docStatusBadge ${ready?'ready':'missing'}">${ready?'登録済み':'未登録'}</span></span>
-    <span class="arrow">${ready?'›':'－'}</span>
+    <span><b>${t}</b><span class="docStatusBadge ${ready?'ready':'missing'}">${ready?(docLink181(k)?'LINK':'登録済み'):'未登録'}</span></span>
+    <span class="arrow">${ready?(docLink181(k)?'↗':'›'):'－'}</span>
   </button>`).join('');
   const extraPdfHtml=extraPdfs.map(r=>`<button class="docItem ready" data-home-extra-pdf="${esc(r.id)}">
     <span><b>${esc(r.title)}</b><span class="docStatusBadge ready">PDF</span></span><span class="arrow">›</span>
@@ -14523,9 +14524,54 @@ function renderHome(){
 }
 async function openHomeDoc(k){
   if(k==='results'){if(!data.resultsUrl)return toast('速報リンクは未登録です');window.open(data.resultsUrl,'_blank','noopener');return}
+  const lk=extraResourcesV60().links?.['doc_'+k];if(lk){window.open(lk.url,'_blank','noopener');return} // v181: リンクを選んだとき
   if(!data.docs[k])return toast('PDFは未登録です');
   await openPdf(k,k==='guidelines'?'大会要項':k==='startlist'?'スタートリスト':'大会スケジュール');
 }
+/* v181: 大会要項・スタートリスト・大会スケジュールを「PDF」か「リンク」で登録（どちらかを選ぶ）。HOMEには選んだ方を出す。
+   リンクは「その他資料」と同じ保存先（extraResources/links/doc_<種類>）。Rules の変更なし。 */
+(function(){
+  var KINDS={guidelines:'大会要項',startlist:'スタートリスト',eventSchedule:'大会スケジュール'};
+  function cur(k){try{return extraResourcesV60().links['doc_'+k]||null}catch(_){return null}}
+  function mount(k){
+    var ed=document.getElementById('editor-'+k);var card=ed&&ed.querySelector('.card');if(!card)return;
+    var box=card.querySelector('.docModeV181');
+    if(!box){
+      box=document.createElement('div');box.className='docModeV181';
+      box.innerHTML='<b>'+KINDS[k]+'の出し方（HOMEに出す方）</b><div class="seg"><button type="button" data-m="pdf">PDF</button><button type="button" data-m="link">リンク</button></div>'+
+        '<div class="lk"><input type="url" inputmode="url" autocomplete="off" placeholder="https://… 大会公式のページ"><button type="button" class="save">リンクを保存</button><p>リンクを選ぶと、HOMEの「'+KINDS[k]+'」はこのリンクを開きます。PDFは消さずに残ります。</p></div>'+
+        '<div class="pd"><p>下の PDF を使います。「PDF」を選ぶと、保存してあるリンクは外れます。</p></div>';
+      card.insertBefore(box,card.firstChild);
+      box.addEventListener('click',async function(e){
+        var b=e.target.closest('button');if(!b)return;
+        if(b.dataset.m==='link'){box.dataset.mode='link';paint();return}
+        if(b.dataset.m==='pdf'){
+          if(cur(k)){
+            if(!confirm(KINDS[k]+'をPDFに戻します。保存したリンクは外れます。よろしいですか？'))return;
+            try{var next=normalizeExtraResourcesV60(extraResourcesV60());delete next.links['doc_'+k];await saveExtraResourcesV60(next);toast('PDFを表示するようにしました')}catch(err){toast(String(err&&err.message||'保存できません'));return}
+          }
+          box.dataset.mode='pdf';paint();return;
+        }
+        if(b.classList.contains('save')){
+          var raw=String(box.querySelector('input').value||'').trim(),url='';
+          try{var u=new URL(raw);if(!/^https?:$/.test(u.protocol))throw 0;url=u.toString()}catch(_){toast('https:// で始まるURLを入れてください');return}
+          try{var nx=normalizeExtraResourcesV60(extraResourcesV60());nx.links['doc_'+k]={id:'doc_'+k,title:KINDS[k],url:url,updatedAt:Date.now()};await saveExtraResourcesV60(nx);toast('✓ 保存しました');box.dataset.mode='link';paint()}
+          catch(err){toast(String(err&&err.message||'保存できません'))}
+        }
+      });
+    }
+    function paint(){
+      var c=cur(k),mode=box.dataset.mode||(c?'link':'pdf');box.dataset.mode=mode;
+      box.querySelectorAll('.seg button').forEach(function(x){x.classList.toggle('on',x.dataset.m===mode)});
+      box.querySelector('.lk').hidden=mode!=='link';box.querySelector('.pd').hidden=mode!=='pdf';
+      var inp=box.querySelector('input');if(c&&document.activeElement!==inp&&!inp.value)inp.value=c.url;
+    }
+    box._paint=paint;paint();
+  }
+  function all(){Object.keys(KINDS).forEach(mount)}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',all);else all();
+  document.addEventListener('click',function(e){if(e.target.closest&&e.target.closest('[data-editor="guidelines"],[data-editor="startlist"],[data-editor="eventSchedule"],[data-flow],[data-next-editor],[data-prev-editor]'))setTimeout(function(){all();document.querySelectorAll('.docModeV181').forEach(function(b){b.dataset.mode='';b._paint&&b._paint()})},60)});
+})();
 
 
 $('eventInfoMoreBtn').onclick=()=>$('homeEventNote').classList.toggle('open');
@@ -20536,5 +20582,36 @@ boot();
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',set);else set();
 })();
 </script>
+<style id="eb-v181-gate-logo">
+.entryGateHead105 .ebGateLogo181{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.entryGateHead105 .ebGateLogo181 img{width:56px;height:56px;border-radius:14px;object-fit:cover;box-shadow:0 2px 10px rgba(0,0,0,.35);animation:ebGatePulse181 1.6s ease-in-out infinite}
+.entryGateHead105 .ebGateLogo181 span{font-size:13px;font-weight:900;color:#ffd60a;letter-spacing:.04em}
+body:not(.accessLocked105) .ebGateLogo181 img{animation:none}
+@keyframes ebGatePulse181{0%,100%{opacity:1}50%{opacity:.55}}
+@media (prefers-reduced-motion:reduce){.entryGateHead105 .ebGateLogo181 img{animation:none}}
+</style>
+<script id="eb-v181-gate-logo-js">
+/* v181: 接続・認証中の入口の画面にも TOP RUN のロゴを出す（何が開いているか分かるように）。Firebase は使わない。 */
+(function(){
+  function put(){
+    var head=document.querySelector('#entryGate105 .entryGateHead105');if(!head||head.querySelector('.ebGateLogo181'))return;
+    var src=(document.querySelector('header.top .logo img')||{}).src||'';if(!src)return;
+    var w=document.createElement('div');w.className='ebGateLogo181';
+    w.innerHTML='<img alt="TOP RUN AGUI"><span>TOP RUN AGUI</span>';w.querySelector('img').src=src;
+    head.insertBefore(w,head.firstChild);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',put);else put();
+})();
+</script>
+<style id="eb-v181-doclink">
+.docModeV181{margin:0 0 14px;padding:12px;border-radius:14px;border:1px solid rgba(255,214,10,.35);background:rgba(255,214,10,.06)}
+.docModeV181 b{display:block;font-size:13px;margin-bottom:8px}
+.docModeV181 .seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
+.docModeV181 .seg button{min-height:42px;border-radius:12px;border:1px solid #4a5258;background:transparent;color:inherit;font-weight:900;font-size:14px}
+.docModeV181 .seg button.on{background:#ffd60a;color:#111;border-color:#ffd60a}
+.docModeV181 input{width:100%;box-sizing:border-box;min-height:44px;border-radius:12px;padding:0 12px;font-size:16px}
+.docModeV181 .save{width:100%;min-height:44px;margin-top:8px;border-radius:12px;border:0;background:#ffd60a;color:#111;font-weight:900}
+.docModeV181 p{margin:8px 0 0;font-size:12px;opacity:.8;line-height:1.6}
+</style>
 </body>
 </html>
