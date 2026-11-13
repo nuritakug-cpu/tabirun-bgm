@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v428 | 2026-11-14 | Parent v427. REQUIRES Rules v375. 管理者が「EVENT BASEを開く」を押したとき、運営者（manager）としての接続を自動で作る（portalLinkProof: verified-portal-admin-v1。駅伝BASEと同じ考え）。前に見る用（participant）の接続ができていたら、運営者の接続に作り直す。Rules v375 が未公開のときは今までどおり見る用。 -->
 <!-- TOP RUN PORTAL v427 | 2026-11-14 | Parent v426. 参加者がPORTALのイベントから「EVENT BASEを開く」を押したとき、EVENT BASEへの接続（bindings/<大会ID>/<uid>：approved-member-link-v1）がなければ、その場で作ってから開く（今までは本人が出走登録したときだけ作っていたため、運営が代わりに登録した人は入れなかった）。条件・書き込みは本人の出走登録と同じ（Rules v374 のまま）。管理者も同じ条件で閲覧用の接続を作る（運営の操作はEVENT BASEの管理番号）。駅伝BASEは変更なし。 -->
 <!-- TOP RUN PORTAL v426 | 2026-11-14 | Parent v425. (1)駅伝の保存版は駅伝BASE P154（EVENT_BASE_EKIDEN_NEXT_P154_ARCHIVE.html：見やすくした表示）で開く。前のP150のリンクもP154で開く。(2)リンクカードの乱れ：カードはチャットを開いたときに作り、読んだことのあるリンクはその場で完成した高さで出す。スクロール中はスクロールの位置を動かさない（一番下にいるときだけ最新に合わせる）。Firebase：変更なし。 -->
 <!-- TOP RUN PORTAL v425 | 2026-11-14 | Parent v424. (1)駅伝の保存版の開き先を EVENT_BASE_EKIDEN_NEXT_P150_ARCHIVE.html（アンダーバーあり。GitHubで名前の付け替えが済んでいた）に。前のアンダーバーなしのリンクを押しても、新しい名前で開く。(2)イベントの「保存版」の欄：空で始め、保存済みは名前（TOPRUNARCHIVE…）だけを表示。「貼り付け」「消す」のボタン。URL全体・名前だけ・.json のURL のどれを貼っても受け付ける。Firebase：変更なし。 -->
@@ -7211,7 +7212,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v427</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v428</b></div>
   </div>
 </div>
 
@@ -7454,7 +7455,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v427</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v428</b></div>
   </div>
 </div>
 
@@ -20175,9 +20176,17 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
       const name=(await dbMod.get(dbMod.ref(db,'profiles/'+gate.uid+'/displayName'))).val();
       if(typeof name!=='string'||!name)throw Error('PORTALの表示名を確認できません');
       if(gate.role==='participant')return officialBinding(eventId,{uid:gate.uid,profileId:gate.profileId,name},catalogId);
-      // 管理者：EVENT BASE の閲覧用に、参加者と同じ接続を作る（運営の操作は EVENT BASE の管理番号で）
+      // v428: 管理者は運営者（manager）として入る（Rules v375）。だめなら見る用（participant）
       const loc=dbMod.ref(db,'bindings/'+eventId+'/'+gate.uid);
-      const cur=(await dbMod.get(loc)).val();if(cur)return cur;
+      let cur=(await dbMod.get(loc)).val();
+      if(cur&&cur.role!=='participant')return cur; // すでに運営者・開発者の接続
+      if(cur&&cur.portalLinkProof==='approved-member-link-v1'){try{await dbMod.remove(loc);cur=null;}catch(_){return cur;}}
+      if(cur)return cur;
+      const mb={role:'manager',displayName:name,boundAt:Date.now(),profileId:gate.profileId,eventId,portalCatalogId:catalogId,portalLinkProof:'verified-portal-admin-v1'};
+      try{
+        const r=await dbMod.runTransaction(loc,prev=>prev===null?mb:undefined,{applyLocally:false});
+        if(r.committed)return (await dbMod.get(loc)).val();
+      }catch(e){console.warn('v428 manager binding (Rules v375?)',e);}
       const nb={role:'participant',displayName:name,boundAt:Date.now(),portalCatalogId:catalogId,portalLinkProof:'approved-member-link-v1'};
       await dbMod.runTransaction(loc,prev=>prev===null?nb:undefined,{applyLocally:false});
       return (await dbMod.get(loc)).val();
