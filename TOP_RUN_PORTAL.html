@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v424 | 2026-11-14 | Parent v423. (1)入口の画面を状態ごとに1つに絞る：ブラウザ（Safari・BAND・LINE）では「ホーム画面に追加してアイコンから開く」だけ。アイコンからで登録がないときは「はじめて登録する」「前に使っていた（入れなくなった）」の2つ（後者で運営への連絡と引継ぎコードの欄）。登録があるのに入れないときは「もう一度」と「運営に連絡する」だけ。運営用の詳しい状態は画面に出さず連絡の文にだけ入れる。ログイン・登録の処理は変更なし。(2)チャットのリンクカードの震え：画像のふわっと表示をやめ、カードを囲って描き直しを広げない、同じカードの作り直しが続いたら止める、下の余白の測り直しは値が変わったときだけ。Firebase：変更なし。 -->
 <!-- TOP RUN PORTAL v423 | 2026-11-13 | Parent v422. (1)引継ぎコード：開発者が管理画面の設定「本人の引継ぎコード（開発者）」で、選んだ人のコードを出す。入れない人は入口の画面の「運営から届いた引継ぎコード」に入れると元の本人に戻る。中継は Cloudflare Worker top-run-identity（TOPRUNIDENTITYWORKERv1.js）。新しい本人IDは作らない。Rules変更なし。(2)画面を画像に：「共通チャットに送る」「このルームに送る」（いつもの写真の送信と同じ流れ）。(3)お知らせの窓：右上に×とコピー、下に「続きがあります」。Firebase：通信量の増加なし（コードを出す・使うときだけWorkerがFirebaseを数回読む）。 -->
 <!-- TOP RUN PORTAL v422 | 2026-11-13 | Parent v421. ＋のメニューがまだ出なかった：チャットを開いている間の「ほかの部品を隠す」決まり（IDを含むため強い）にv421の除外が負けていた→IDで指定して確実に表示。Firebase：変更なし。 -->
 <!-- TOP RUN PORTAL v421 | 2026-11-13 | Parent v420. (1)＋のメニューが出ない：チャットを開いている間は画面の外の部品を隠す決まり（portalChatIsolated）でメニューも隠れていた→メニューと画像保存の窓は隠さない。(2)画面を画像に：トップページ（HOME）でも使える・実際に見えている画面だけを対象・大きすぎて作れないときは解像度を下げて自動でやり直す。(3)リンクカード：ページの情報が読めないリンクはカードを出さない（文字のリンクだけ。コピーは長押し）、カードの見た目を整理。Firebase：通信量の増加なし、Rules変更なし。 -->
@@ -7207,7 +7208,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v423</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v424</b></div>
   </div>
 </div>
 
@@ -7450,7 +7451,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v423</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v424</b></div>
   </div>
 </div>
 
@@ -18960,7 +18961,7 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
           try{ // v242: 原因確認用（運営用）
             const v=window.__TR_PORTAL_SYNC__,errs=(window.__trErrLog||[]).slice(-4);
             const st=[v?'接続準備OK':'接続準備なし',v?.uid?'本人ID OK':'本人IDなし',v?.profileId?'プロフィールOK':'プロフィールなし',v?.loaded?.personal?'個人データOK':'個人データ未読込',navigator.onLine?'オンライン':'オフライン'].join('／');
-            const pd=document.createElement('p');pd.style.cssText='font-size:11px;opacity:.85;white-space:pre-wrap;word-break:break-all';
+            const pd=document.createElement('p');pd.className='trGateDetail';pd.style.cssText='font-size:11px;opacity:.85;white-space:pre-wrap;word-break:break-all';
             pd.textContent='詳しい状態（運営用）：'+st+(errs.length?'\nエラー：'+errs.join('\n'):'');box.appendChild(pd);
           }catch(_){}
       if(report){ // v420: 運営に報告する（文を共有・コピーするだけ。Firebaseには書かない）
@@ -29079,7 +29080,7 @@ body.portalChatIsolated.portalFieldInputActive #screen-chat>main.chatMain{
       h += Math.ceil(tabs.getBoundingClientRect().height||tabs.offsetHeight||0);
     }
     if(h<166)h=166;
-    root.style.setProperty('--trChatBottomReserve', h+'px');
+    if(root.style.getPropertyValue('--trChatBottomReserve')!==h+'px')root.style.setProperty('--trChatBottomReserve', h+'px'); // v424: 変わったときだけ
   }
   let t=0;
   const later=()=>{clearTimeout(t);t=setTimeout(reserve,80);};
@@ -29090,7 +29091,7 @@ body.portalChatIsolated.portalFieldInputActive #screen-chat>main.chatMain{
   document.addEventListener('focusout',()=>setTimeout(reserve,120),true);
   document.addEventListener('input',e=>{if(e.target&&e.target.closest&&e.target.closest('#screen-chat .chatComposer'))later();},true);
   // v254: チャット画面・下のメニュー・body の変化のときだけ測り直す（ほかの画面の変化では動かさない）
-  new MutationObserver(rs=>{for(const r of rs){const t=r.target;if(t===body||(t.closest&&(t.closest('#screen-chat')||t.closest('nav.portalBottomTabs')))){if(t.id==='trRoomInput'||t.id==='portalChatInput')continue;later();return;}}}).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','hidden','style']});
+  new MutationObserver(rs=>{for(const r of rs){const t=r.target;if(t.closest&&t.closest('.trLPWrap,.trImg,.trReacts'))continue; /* v424: カード・写真の中の変化では測り直さない */if(t===body||(t.closest&&(t.closest('#screen-chat')||t.closest('nav.portalBottomTabs')))){if(t.id==='trRoomInput'||t.id==='portalChatInput')continue;later();return;}}}).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','hidden','style']});
   reserve();setTimeout(reserve,300);setTimeout(reserve,900);
 
   function keepLatestVisible(){
@@ -31108,6 +31109,7 @@ html.trAndroid nav.portalBottomTabs::before{content:"";position:absolute;inset:0
     return '';
   }
   const pendingMessages=new WeakSet();
+  const buildGuard=new Map(); // v424
   const messageIO=typeof IntersectionObserver==='function'?new IntersectionObserver(entries=>{
     for(const entry of entries)if(entry.isIntersecting){messageIO.unobserve(entry.target);pendingMessages.delete(entry.target);schedule();}
   },{root:chatMain()||null,rootMargin:'0px'}):null;
@@ -31120,6 +31122,11 @@ html.trAndroid nav.portalBottomTabs::before{content:"";position:absolute;inset:0
         if(messageIO){const r=msg.getBoundingClientRect(),v=chatMain()?.getBoundingClientRect();if(v&&(r.bottom<v.top||r.top>v.bottom)){if(!pendingMessages.has(msg)){pendingMessages.add(msg);messageIO.observe(msg);}continue;}}
         const p=msg.querySelector(':scope > p');if(!p)continue;
         const url=firstUrl(p);if(!url)continue;
+        // v424: 同じメッセージのカードが短い時間に何度も作り直されるときは止める（震えの防止）
+        const gk=(msg.dataset.mid||'')+'|'+url,gv=buildGuard.get(gk)||{n:0,t:now()};
+        if(now()-gv.t>5000){gv.n=0;gv.t=now();}
+        if(++gv.n>4){buildGuard.set(gk,gv);continue;}
+        buildGuard.set(gk,gv);
         const w=buildCard(url);p.insertAdjacentElement('afterend',w);
         attach(w.querySelector('a.trLPCard'));
       }
@@ -31845,6 +31852,129 @@ header.top .brandText{cursor:pointer}
 #trHoSection .trHoBox{margin-top:10px;padding:12px;border-radius:12px;border:1px solid color-mix(in srgb,currentColor 25%,transparent);display:grid;gap:8px;font-size:13px}
 #trHoSection .trHoBox code{display:block;font-size:17px;font-weight:800;letter-spacing:.04em;word-break:break-all;user-select:all;-webkit-user-select:all}
 #trHoSection .trHoBox button{min-height:40px;border-radius:12px}
+</style>
+
+<script id="v424-entry-simple">
+/* v424: 入口の画面を、状態ごとに出すものを1つに絞る（表示だけ。ログイン・登録の処理は今までのまま）。
+   A. ブラウザ（Safari・BAND・LINE の中）：ホーム画面に追加して、アイコンから開く案内だけ
+   B. アイコンから・登録がない：「はじめて登録する」「前に使っていた（入れなくなった）」の2つ
+   C. 登録があるのに入れない：今の案内（もう一度・運営に連絡する）だけ。運営用の詳しい状態は出さない */
+(function(){
+  'use strict';
+  const $=id=>document.getElementById(id);
+  const ua=navigator.userAgent||'';
+  const isPhone=/iPhone|iPad|iPod|Android/i.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  const isIOS=/iPhone|iPad|iPod/i.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  const inApp=/Line\/|NAVER|BAND\/|FBAN|FBAV|Instagram|; wv\)/i.test(ua);
+  const mq=m=>window.matchMedia?.('(display-mode: '+m+')')?.matches===true;
+  const fromIcon=()=>navigator.standalone===true||mq('standalone')||mq('fullscreen')||mq('minimal-ui');
+  let override=false;try{override=new URLSearchParams(location.search).get('browserok')==='1';}catch(_){}
+  const browserBlock=()=>isPhone&&!fromIcon()&&(isIOS||inApp)&&!override;
+  let returning=false;
+  const vis=el=>!!el&&!el.hidden;
+  const hide=(el,h)=>{if(el&&el.hidden!==h)el.hidden=h;};
+  const text=(el,s)=>{if(el&&el.textContent!==s)el.textContent=s;};
+  function reportText(){
+    const v=window.__TR_PORTAL_SYNC__||{};
+    const tail=String(v.uid||'').slice(-6)||String(v.authUidTail||'')||'なし';
+    const dev=/iPhone|iPad/.test(ua)?'iPhone':/Android/.test(ua)?'Android':'その他';
+    const st=[v?'接続準備OK':'接続準備なし',v?.uid?'本人IDあり':'本人IDなし',v?.profileId?'プロフィールあり':'プロフィールなし',navigator.onLine?'オンライン':'オフライン'].join('／');
+    return ['TOP RUN PORTAL に入れません（前に使っていました）','確認番号：'+tail,'状態：'+st+(v.error?'／'+String(v.error).replace(/Firebase/g,'').slice(0,80):''),'開き方：'+(fromIcon()?'ホーム画面アイコン':'ブラウザ')+'／'+dev,'版：v424','時刻：'+new Date().toLocaleString('ja-JP'),'','名前：（ここに名前を書いてください）'].join('\n');
+  }
+  async function sendReport(btn){
+    const txt=reportText();
+    try{if(navigator.share){await navigator.share({text:txt});return;}}catch(e){if(e&&e.name==='AbortError')return;}
+    let ok=false;try{await navigator.clipboard.writeText(txt);ok=true;}catch(_){}
+    btn.textContent=ok?'コピーしました。BANDに貼って送ってください':'この画面を撮って運営に送ってください';
+  }
+  function ensureUi(){
+    const newStart=$('portalNewParticipantStart');if(!newStart)return null;
+    let ret=$('trEntryReturning');
+    if(!ret){
+      ret=document.createElement('button');ret.type='button';ret.id='trEntryReturning';ret.className='trEntryChoice';
+      ret.textContent='前に使っていた方（入れなくなった）';
+      newStart.insertAdjacentElement('afterend',ret);
+      ret.addEventListener('click',()=>{returning=true;present();document.getElementById('trEntryReturnBox')?.scrollIntoView({block:'start',behavior:'smooth'});});
+      const box=document.createElement('div');box.id='trEntryReturnBox';box.hidden=true;
+      box.innerHTML='<p class="trEntryLead">登録はやり直さないでください（記録が別の人になってしまいます）。</p>'+
+        '<ol class="trEntrySteps"><li>「運営に連絡する」を押して、BAND（LINEでも可）で運営に送る。</li><li>運営から<b>引継ぎコード</b>が届いたら、下の欄に入れて「同じ本人でログイン」を押す。</li></ol>'+
+        '<button type="button" id="trEntryReport" class="trEntryChoice">運営に連絡する</button>'+
+        '<button type="button" id="trEntryBack" class="trEntryLink">← 戻る</button>';
+      ret.insertAdjacentElement('afterend',box);
+      box.querySelector('#trEntryReport').addEventListener('click',e=>sendReport(e.currentTarget));
+      box.querySelector('#trEntryBack').addEventListener('click',()=>{returning=false;present();});
+      // 引継ぎコードの欄は、この案内のすぐ下に移す
+      const cf=$('portalHandoffCodeForm');if(cf){box.insertAdjacentElement('afterend',cf);const hs=$('portalHandoffStatus');if(hs)cf.insertAdjacentElement('afterend',hs);}
+    }
+    return {newStart,ret,box:$('trEntryReturnBox')};
+  }
+  let busy=false;
+  function present(){
+    if(busy)return;busy=true;
+    try{
+      const panel=$('portalParticipantIdentityGate');if(!panel||panel.hidden){busy=false;return;}
+      const ui=ensureUi();if(!ui){busy=false;return;}
+      const heading=$('portalParticipantLoginTitle'),message=$('portalParticipantLoginMessage'),helper=$('portalParticipantLoginHelp');
+      const steps=$('portalGateSteps'),retry=$('portalParticipantLoginRetry'),newForm=$('portalNewParticipantForm');
+      const codeForm=$('portalHandoffCodeForm'),audit=$('portalExistingIdentityAudit'),notice=$('portalIconOnlyNotice'),existing=$('portalExistingParticipantStart');
+      const formOpen=vis(newForm)||vis($('portalParticipantRoleStep'));
+      const choice=!formOpen&&(vis(ui.newStart)||returning)&&!panel.classList.contains('trEntryFailed');
+      panel.classList.toggle('trEntryBrowser',browserBlock());
+      if(browserBlock()){
+        text(heading,'ホーム画面のアイコンから開いてください');
+        text(message,isIOS?'① 下の共有ボタン（□に↑）→「ホーム画面に追加」を押す。\n② ホーム画面の TOP RUN のアイコンから開く。':'右上のメニューから「ブラウザで開く」を選ぶか、ホーム画面のアイコンから開いてください。');
+        [helper,steps,retry,ui.newStart,ui.ret,ui.box,codeForm,audit,notice,existing].forEach(el=>hide(el,true));
+      }else if(choice){
+        hide(notice,true);hide(audit,true);hide(steps,true);hide(retry,true);hide(existing,true);
+        if(returning){
+          text(heading,'前に使っていた方');text(message,'運営に連絡して、届いた引継ぎコードを入れると、元の登録に戻ります。');
+          hide(helper,true);hide(ui.newStart,true);hide(ui.ret,true);hide(ui.box,false);hide(codeForm,false);
+        }else{
+          text(heading,'TOP RUN PORTAL');text(message,'あてはまる方を押してください。');
+          hide(helper,true);hide(ui.newStart,false);text(ui.newStart,'はじめて登録する');ui.newStart.classList.add('trEntryChoice');
+          hide(ui.ret,false);hide(ui.box,true);hide(codeForm,true);
+        }
+      }else{
+        // 登録の入力中、または登録があるのに入れないとき：選ぶボタンは出さない。運営用の詳しい状態は出さない
+        hide(ui.ret,true);hide(ui.box,true);hide(audit,true);
+        if(!formOpen&&!vis(ui.newStart))hide(codeForm,true);
+      }
+    }catch(_){}
+    busy=false;
+  }
+  // 「登録があるのに入れない」を見分ける：失敗の案内（もう一度確認する）が出ていて、登録のボタンが出ていないとき
+  function mark(){
+    const panel=$('portalParticipantIdentityGate');if(!panel)return;
+    const failed=vis($('portalParticipantLoginRetry'))&&vis($('portalGateSteps'))&&!vis($('portalNewParticipantStart'))&&!returning;
+    panel.classList.toggle('trEntryFailed',failed);
+  }
+  let queued=false;
+  const schedule=()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;mark();present();});};
+  function start(){
+    const panel=$('portalParticipantIdentityGate');if(!panel)return;
+    new MutationObserver(schedule).observe(panel,{subtree:true,childList:true,attributes:true,attributeFilter:['hidden']});
+    schedule();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+})();
+</script>
+<style id="v424-style">
+/* v424: 入口の画面 */
+#portalParticipantIdentityGate .trEntryChoice{display:block;width:100%;min-height:52px;margin:10px 0 0;border-radius:14px;font:inherit;font-size:16px;font-weight:900;cursor:pointer}
+#portalParticipantIdentityGate #portalNewParticipantStart.trEntryChoice{background:var(--gold,#e0c24a);color:#211b08;border:0}
+#portalParticipantIdentityGate #trEntryReturning,#portalParticipantIdentityGate #trEntryReport{background:transparent;color:inherit;border:1px solid rgba(255,255,255,.45)}
+#portalParticipantIdentityGate #trEntryReport{background:var(--gold,#e0c24a);color:#211b08;border:0}
+#portalParticipantIdentityGate #trEntryReturnBox{margin-top:6px;font-size:14px;line-height:1.75}
+#portalParticipantIdentityGate #trEntryReturnBox .trEntryLead{margin:0 0 6px;font-weight:800;color:#ffd76a}
+#portalParticipantIdentityGate #trEntryReturnBox .trEntrySteps{margin:0;padding-left:1.4em}
+#portalParticipantIdentityGate .trEntryLink{display:block;margin:12px auto 0;background:none;border:0;color:inherit;opacity:.8;font:inherit;font-size:14px;text-decoration:underline}
+#portalParticipantIdentityGate #portalParticipantLoginMessage{white-space:pre-line}
+#portalParticipantIdentityGate .trGateDetail{display:none!important}
+#portalParticipantIdentityGate #portalHandoffCodeForm{margin-top:16px}
+/* v424: リンクカードの震え対策：ふわっと表示をやめ、カードの描き直しをカードの中に閉じ込める */
+.trLPWrap{contain:layout paint}
+.trLPMedia .trLPImage{opacity:1!important;transition:none!important}
+.trLPCard:active{opacity:1}
 </style>
 
 </body>
