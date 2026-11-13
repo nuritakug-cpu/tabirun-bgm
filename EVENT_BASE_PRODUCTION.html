@@ -1,4 +1,4 @@
-<!-- 2026-11-14 EVENT BASE v181 | Parent: v180. 左上のロゴをタップすると PORTAL（TOP_RUN_PORTAL.html）に戻る（保存版モードでも同じ）。見た目・Firebase・保存版データの形は変更なし。 -->
+<!-- 2026-11-14 EVENT BASE v181 | Parent: v180. (1)左上のロゴをタップすると PORTAL（TOP_RUN_PORTAL.html）に戻る（保存版モードでも同じ）。(2)開発者：駅伝BASEと同じく、PORTALで開発者と確認済み（portalRoles の developer と ownerProof）なら認証コードなしで運営者として入る。戻る・入り直しでもコード不要。証明はRulesが毎回確認。(3)開発者でない人が ownerKey 付きのリンクで開いても、開発者認証の画面を出さず、ふつうの入口へ。見た目・Firebase・保存版データの形は変更なし。 -->
 <!-- 2026-11-10 EVENT BASE v180 | Parent: v179. (1) 保存版データを新しい形（eb-archive-v2）にする：GitHubで公開されるため、入れてよいものだけを選んで入れる（大会情報・お知らせ・資料は公式リンクだけ・選手は名前と記録だけ）。PDF・本人ID・運営者名・性別・学年・コメント・目標タイム・日時・組/レーンは入れない。(2) 結果一覧は男女別をやめ、出走順。保存版では「予定」タブを出さない（出走時刻などを入れないため）。(3)「保存版を作る」をHOMEから、歯車→設定・管理（大会結果一覧の下）へ移す。(4)「PORTALへ戻る」ボタンを削除。Firebaseの通信量は変わらない。 -->
 <!-- 2026-11-09 EVENT BASE v179 | Parent: EVENT_BASE_PRODUCTION (v177). 保存版モード：?archive=TOPRUNARCHIVE<日付>v<n> で開くと、Firebaseに接続せず、GitHubの保存版データ（同名.json）を読んでいつものEVENT BASEの画面で見るだけ表示（LIVE・CHAT・設定は非表示、右上に結果一覧＝男女別）。運営者はHOMEの一番下「この大会を保存版にする」で保存版データを作る（events/<id>からCHAT・LIVE・安全確認・本人ID類を除き、資料PDFと性別（PORTALプロフィール）を添える）。EVENT BASEを更新すれば保存版の見た目も自動で新しくなる。通常の大会運営の動き・Rulesは変更なし。 -->
 <!-- 2026-10-25 PRODUCTION CANDIDATE / SAME UID / PORTAL RETURN ONLY IN portal=1 / NO RULES OR DATA CHANGES -->
@@ -19931,6 +19931,26 @@ async function assertSession(){
     throw new Error("接続権限が変更されました");
   }
 }
+/* v181: 駅伝BASEと同じ考え。PORTAL で開発者と確認済み（portalRoles/<uid> が developer で、開発者の証明 ownerProof を持つ）なら、
+   その証明でこの大会の運営者として入る。認証コードは求めない。証明が正しいかは Firebase の Rules が毎回確かめる。 */
+async function portalDeveloperEnterV181(){
+  try{
+    if(!S.uid||!S.eventId)return false;
+    const role=(await get(ref(S.db,`portalRoles/${S.uid}`))).val();
+    const proof=String(role?.ownerProof||'');
+    if(role?.role!=='developer'||!/^[a-f0-9]{64}$/i.test(proof))return false;
+    entryStatus("開発者として接続しています…");
+    let b=await ownBinding();
+    if(!(b?.role==='owner'&&b.ownerProof===proof)){
+      const name=(b?.role==='owner'&&typeof b.displayName==='string'&&b.displayName.trim())?clean(b.displayName,24):'開発者';
+      b={role:"owner",displayName:name,ownerProof:proof,boundAt:Date.now()};
+      await set(ref(S.db,`bindings/${S.eventId}/${S.uid}`),b);
+    }
+    S.binding=b;S.role="owner";S.displayName=clean(b.displayName||'開発者',24)||'開発者';
+    await activate();
+    return true;
+  }catch(e){console.warn('v181 PORTAL developer entry',e);return false;}
+}
 async function ownBinding(){
   try{
     const snap=await get(ref(S.db,`bindings/${S.eventId}/${S.uid}`));
@@ -20446,12 +20466,20 @@ async function boot(){
 
     if(ownerKey){
       if(!developerRoute())return showEntry("開発者URLを確認してください。");
-      // Always require the separate credential; never trust a previous owner binding.
-      showEntry("開発者専用の認証コードを入力してください。");
-      return;
+      if(await portalDeveloperEnterV181())return;
+      // v181: 開発者でない人（管理者・参加者）が ownerKey 付きのリンクで開いたときは、開発者の画面を出さず、ふつうの入口へ進む
+      let devRole=false;try{devRole=(await get(ref(S.db,`portalRoles/${S.uid}`))).val()?.role==='developer';}catch(_){}
+      if(!devRole&&params.get("event")){
+        const u=new URL(location.href);u.searchParams.delete("ownerKey");history.replaceState(null,"",u);
+        try{params.delete("ownerKey");}catch(_){}
+      }else{
+        showEntry("開発者専用の認証コードを入力してください。");
+        return;
+      }
     }
 
     entryStatus("接続情報を確認しています…");
+    if(await portalDeveloperEnterV181())return; // v181: PORTALで開発者と確認済みなら、駅伝BASEと同じくコードなしで入る
     const b=await ownBinding();
     if(b?.role==="owner"){
       // Revoke the server binding as well, before showing the regular entry gate.
