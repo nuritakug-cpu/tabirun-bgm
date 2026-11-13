@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v421 | 2026-11-13 | Parent v420. (1)＋のメニューが出ない：チャットを開いている間は画面の外の部品を隠す決まり（portalChatIsolated）でメニューも隠れていた→メニューと画像保存の窓は隠さない。(2)画面を画像に：トップページ（HOME）でも使える・実際に見えている画面だけを対象・大きすぎて作れないときは解像度を下げて自動でやり直す。(3)リンクカード：ページの情報が読めないリンクはカードを出さない（文字のリンクだけ。コピーは長押し）、カードの見た目を整理。Firebase：通信量の増加なし、Rules変更なし。 -->
 <!-- TOP RUN PORTAL v420 | 2026-11-13 | Parent v418（v401の大会の紐付けは残す。v402〜v418のチャット入力欄・画面保存の付け足しは外して作り直し）。(1)ログインの確認：プロフィールが見つからないときは通信の文でなく正しい案内（再登録しない・運営に報告）、時間切れ・権限の読み込み失敗は自動で1回やり直し、止まった段階を表示、「運営に報告する」（確認番号・状態を共有／コピー。Firebaseに書かない）。ログイン・登録の処理そのものは変更なし。(2)チャット：入力欄の左に＋（カメラ・写真のメニュー）、送信は丸い↑。(3)画面のヘッダーの題名をタップ→この画面を画像で保存（html2canvasを使うときだけcdnjsから読む）。(4)リンクカード：古い覚えを捨てる（画像なしは1日で読み直し）、画像の枠を先に取る、見た目を整理、コピーは小さなアイコン。(5)v400の言い換えの監視をチャット画面では止める（カクつき対策）。Firebase：通信量の増加なし、Rules変更なし。 -->
 <!-- TOP RUN PORTAL v402 | 2026-11-11 | Parent v401. チャット（共通・ルーム）の写真／カメラのはみ出しを修正し、タップ領域を独立。入力欄と送信ボタンを少し縮小。その他の接続・保存・画面は不変更。 -->
 <!-- TOP RUN PORTAL v401 | 2026-11-11 | Parent v400. スプレッドシートから取り込む（イベント）：PORTALで先に作った大会と同じ日・似た名前なら「新規」にせず確認し、［同じ大会として紐付ける］でシートの「PORTAL ID」に既存の大会IDを書く（シート v11 が必要）。紐付けた大会はPORTAL側の大会名・日付・会場・種目・出走登録を変えず、資料リンクの追加だけ。Firebase：通信量の増加なし、Rules変更なし。 -->
@@ -7204,7 +7205,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v420</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v421</b></div>
   </div>
 </div>
 
@@ -7447,7 +7448,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v420</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v421</b></div>
   </div>
 </div>
 
@@ -31010,6 +31011,10 @@ html.trAndroid nav.portalBottomTabs::before{content:"";position:absolute;inset:0
     if(!card.isConnected||card.dataset.lpDone)return;
     const wrap=card.parentElement;
     card.dataset.lpDone='1';
+    if((!data||(!data.image&&!data.title))&&!archiveTitle(card.dataset.lpUrl)){ // v421: 読めないリンクはカードを出さない（文字のリンクは残る。コピーは長押し）
+      keepBottom(card,()=>{(wrap&&wrap.classList.contains('trLPWrap')?wrap:card).remove();});
+      return;
+    }
     if(!data){ // v395: page info not readable -> keep a small card (open + copy still work)
       keepBottom(card,()=>{
         card.classList.remove('trLPLoading');card.classList.add('trLPMini');card.replaceChildren();
@@ -31587,6 +31592,31 @@ html[data-portal-personal-color="matte"] .crTag.gold{background:var(--gold,#ff78
     el.innerHTML='<div class="trCapBox">'+html+'</div>';el.hidden=false;return el;
   }
   function say(msg){sheet('<p class="trCapMsg">'+msg+'</p><button type="button" data-cap-close>閉じる</button>');}
+  // v421: 今見えている画面を探す（開いている画面がなければトップページ全体）
+  function visibleScreen(){
+    for(const s of document.querySelectorAll('.portalScreen')){
+      if(s.classList.contains('hidden'))continue;const cs=getComputedStyle(s);
+      if(cs.display!=='none'&&cs.visibility!=='hidden'&&s.getBoundingClientRect().height>0)return s;
+    }
+    return null;
+  }
+  async function render(target,scale,w,est,isHome){
+    const bg=getComputedStyle(isHome?document.body:target).backgroundColor;
+    return window.html2canvas(target,{
+      backgroundColor:(bg&&bg!=='rgba(0, 0, 0, 0)')?bg:'#f3f2ee',
+      useCORS:true,allowTaint:false,logging:false,scale,windowWidth:w,windowHeight:Math.round(isHome?window.innerHeight:est),scrollX:0,scrollY:isHome?-window.scrollY:0,
+      ignoreElements:el=>el.id==='trCapSheet'||el.classList?.contains('portalBottomTabs')||el.classList?.contains('trAttachMenu')||el.classList?.contains('portalScreen')&&el.classList.contains('hidden'),
+      onclone:doc=>{
+        const set=(el,k,v)=>el.style.setProperty(k,v,'important');
+        doc.querySelectorAll('[data-trcap]').forEach(el=>{set(el,'height','auto');set(el,'max-height','none');set(el,'overflow','visible');});
+        if(isHome)return;
+        const s=doc.getElementById(target.id);if(!s)return;
+        set(s,'position','relative');set(s,'inset','auto');set(s,'height','auto');set(s,'max-height','none');set(s,'overflow','visible');set(s,'transform','none');
+        s.querySelectorAll('*').forEach(el=>{const p=doc.defaultView.getComputedStyle(el).position;if(p==='fixed'||p==='sticky')set(el,'position','static');});
+        doc.querySelectorAll('.chatComposer').forEach(el=>set(el,'display','none'));
+      }
+    });
+  }
   async function capture(screen){
     if(busy)return;busy=true;
     sheet('<p class="trCapMsg">画像を作っています…</p>');
@@ -31597,24 +31627,19 @@ html[data-portal-personal-color="matte"] .crTag.gold{background:var(--gold,#ff78
       [screen,...screen.querySelectorAll('*')].forEach(el=>{
         if(el.scrollHeight>el.clientHeight+4){const oy=getComputedStyle(el).overflowY;if(oy==='auto'||oy==='scroll'){el.setAttribute('data-trcap','1');marked.push(el);extra+=el.scrollHeight-el.clientHeight;}}
       });
-      const w=Math.max(320,Math.round(screen.getBoundingClientRect().width||window.innerWidth));
-      const est=Math.max(window.innerHeight,(screen.scrollHeight||0)+extra);
-      const scale=Math.max(0.5,Math.min(window.devicePixelRatio||2,2,15000/est,Math.sqrt(15e6/(w*est))));
-      const bg=getComputedStyle(screen).backgroundColor;
-      const canvas=await window.html2canvas(screen,{
-        backgroundColor:(bg&&bg!=='rgba(0, 0, 0, 0)')?bg:(getComputedStyle(document.body).backgroundColor||'#ffffff'),
-        useCORS:true,allowTaint:false,logging:false,scale,windowWidth:w,windowHeight:Math.round(est),scrollX:0,scrollY:0,
-        onclone:doc=>{
-          const s=doc.getElementById(screen.id);if(!s)return;
-          const set=(el,k,v)=>el.style.setProperty(k,v,'important');
-          set(s,'position','relative');set(s,'inset','auto');set(s,'height','auto');set(s,'max-height','none');set(s,'overflow','visible');set(s,'transform','none');
-          doc.querySelectorAll('[data-trcap]').forEach(el=>{set(el,'height','auto');set(el,'max-height','none');set(el,'overflow','visible');});
-          s.querySelectorAll('*').forEach(el=>{const p=doc.defaultView.getComputedStyle(el).position;if(p==='fixed'||p==='sticky')set(el,'position','static');});
-          doc.querySelectorAll('.chatComposer,.trAttachMenu,.portalBottomTabs,#trCapSheet').forEach(el=>set(el,'display','none'));
-        }
-      });
-      const blob=await new Promise(r=>canvas.toBlob(r,'image/jpeg',0.9));
-      if(!blob)throw Error('画像を作れませんでした');
+      const isHome=screen===document.body;
+      const w=Math.max(320,Math.round(isHome?window.innerWidth:(screen.getBoundingClientRect().width||window.innerWidth)));
+      const est=Math.max(window.innerHeight,(isHome?document.documentElement.scrollHeight:(screen.scrollHeight||0))+extra);
+      // v421: iPhone の上限（大きすぎると空の画像になる）を避けて小さめに作り、だめなら半分の解像度で自動でやり直す
+      let scale=Math.max(0.4,Math.min(window.devicePixelRatio||2,2,8000/est,Math.sqrt(6e6/(w*est))));
+      let blob=null;
+      for(let i=0;i<3&&!blob;i++){
+        let cv=null;
+        try{cv=await render(screen,scale,w,est,isHome);blob=await new Promise(r=>cv.toBlob(r,'image/jpeg',0.88));}catch(_){blob=null;}
+        if(cv){cv.width=0;cv.height=0;}
+        scale=Math.max(0.3,scale*0.55);
+      }
+      if(!blob)throw Error('この端末では大きすぎました');
       const url=URL.createObjectURL(blob);
       const d=new Date(),pad=n=>String(n).padStart(2,'0');
       const name='TOPRUN'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+pad(d.getHours())+pad(d.getMinutes())+'.jpg';
@@ -31631,10 +31656,13 @@ html[data-portal-personal-color="matte"] .crTag.gold{background:var(--gold,#ff78
     }
   }
   document.addEventListener('click',e=>{
-    const title=e.target.closest?.('.portalScreenHead > div');
-    if(!title||e.target.closest('button,a,input,select,label'))return;
-    const screen=title.closest('.portalScreen');
-    if(!screen||screen.classList.contains('hidden')||window.__TR_PORTAL_VIEW_ONLY__)return;
+    if(e.target.closest?.('button,a,input,select,label,#trCapSheet')||window.__TR_PORTAL_VIEW_ONLY__)return;
+    const title=e.target.closest?.('.portalScreenHead > div, header.top .brandText');
+    if(!title)return;
+    const vis=visibleScreen();
+    let screen;
+    if(title.matches('header.top .brandText')){if(vis)return;screen=document.body;} // トップページ（他の画面が開いていないときだけ）
+    else{screen=title.closest('.portalScreen');if(!screen||screen!==vis)return;}
     const el=sheet('<p class="trCapMsg"><b>この画面を画像で保存</b><br>スクロールで隠れている所も、1枚の画像にします。</p><div class="trCapBtns"><button type="button" class="trCapGo">画像にする</button><button type="button" data-cap-close>やめる</button></div>');
     el.querySelector('.trCapGo').addEventListener('click',()=>capture(screen));
   });
@@ -31655,5 +31683,20 @@ html[data-portal-personal-color="matte"] .crTag.gold{background:var(--gold,#ff78
 .trEntryReportV420{display:block;width:100%;min-height:40px;margin-top:10px;border-radius:12px;border:1px solid rgba(127,127,127,.45);background:transparent;color:inherit;font:inherit;font-size:14px;font-weight:800}
 </style>
 
+<style id="v421-fixes">
+/* v421: チャットを開いている間は画面の外の部品を隠す決まり（portalChatIsolated）があるため、＋のメニューと画像保存の窓は除外する */
+body.portalChatIsolated > .trAttachMenu:not([hidden]),body.portalChatIsolated > #trCapSheet:not([hidden]){visibility:visible!important;opacity:1!important;pointer-events:auto!important}
+header.top .brandText{cursor:pointer}
+/* v421: リンクカードの見た目（色はふきだしの文字色に合わせる：5つのテーマ・自分／相手で崩れない） */
+.trLPCard{background:color-mix(in srgb,currentColor 5%,transparent)!important;border-color:color-mix(in srgb,currentColor 16%,transparent)!important}
+.trLPBody{padding:9px 12px 9px!important}
+.trLPTitle{font-size:14px!important;font-weight:800!important;-webkit-line-clamp:2}
+.trLPDesc{-webkit-line-clamp:2;opacity:.72!important}
+.trLPDomain{margin-top:4px!important;font-size:11px!important;opacity:.55!important;padding-right:34px!important}
+.trLPCopy{width:28px!important;height:28px!important;min-height:28px!important;right:6px!important;bottom:5px!important;border:0!important;background:transparent!important;opacity:.6}
+.trLPCopy:active{opacity:1;background:rgba(127,127,127,.18)!important}
+.trLPCard.trLPLoading{min-height:0}
+.trLPCard.trLPLoading .trLPTitle{font-size:11.5px!important;font-weight:600!important;opacity:.55}
+</style>
 </body>
 </html>
