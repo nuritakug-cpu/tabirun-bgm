@@ -1,4 +1,4 @@
-<!-- TOP RUN PORTAL v415 | 2026-11-13 | チャット写真・カメラのネイティブ選択メニュー。実機未検証。 -->
+<!-- TOP RUN PORTAL v420 | 2026-11-13 | Parent v418（v401の大会の紐付けは残す。v402〜v418のチャット入力欄・画面保存の付け足しは外して作り直し）。(1)ログインの確認：プロフィールが見つからないときは通信の文でなく正しい案内（再登録しない・運営に報告）、時間切れ・権限の読み込み失敗は自動で1回やり直し、止まった段階を表示、「運営に報告する」（確認番号・状態を共有／コピー。Firebaseに書かない）。ログイン・登録の処理そのものは変更なし。(2)チャット：入力欄の左に＋（カメラ・写真のメニュー）、送信は丸い↑。(3)画面のヘッダーの題名をタップ→この画面を画像で保存（html2canvasを使うときだけcdnjsから読む）。(4)リンクカード：古い覚えを捨てる（画像なしは1日で読み直し）、画像の枠を先に取る、見た目を整理、コピーは小さなアイコン。(5)v400の言い換えの監視をチャット画面では止める（カクつき対策）。Firebase：通信量の増加なし、Rules変更なし。 -->
 <!-- TOP RUN PORTAL v402 | 2026-11-11 | Parent v401. チャット（共通・ルーム）の写真／カメラのはみ出しを修正し、タップ領域を独立。入力欄と送信ボタンを少し縮小。その他の接続・保存・画面は不変更。 -->
 <!-- TOP RUN PORTAL v401 | 2026-11-11 | Parent v400. スプレッドシートから取り込む（イベント）：PORTALで先に作った大会と同じ日・似た名前なら「新規」にせず確認し、［同じ大会として紐付ける］でシートの「PORTAL ID」に既存の大会IDを書く（シート v11 が必要）。紐付けた大会はPORTAL側の大会名・日付・会場・種目・出走登録を変えず、資料リンクの追加だけ。Firebase：通信量の増加なし、Rules変更なし。 -->
 <!-- TOP RUN PORTAL v400 | 2026-11-11 | Parent v399. (1)下のメニューが沈む：画面の切り替え・キーボードを閉じたとき、裏のHOMEのスクロール位置が範囲外なら戻す（メニューはJSで動かさない）。(2)名前の保存後はチャット名の欄へ移動。(3)参加者の画面に「Firebase」の文を出さない（管理画面以外は表示の直前に言い換え、カラー設定などは文を直接修正）。(4)マットでPB・公認大会の札が見えないのを修正。(5)写真：Rules v374にない枚数の記録（chatImageQuota）を書かない（参加者の写真が全部断られていた）、細長い画像は総画素数で縮小、縦長はチャットで上を切り出して表示。(6)チャットに撮影ボタン（写真の横、小さめ）。Firebase：通信量の増加なし、Rules変更なし。 -->
@@ -7204,7 +7204,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v415</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v420</b></div>
   </div>
 </div>
 
@@ -7447,7 +7447,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v415</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v420</b></div>
   </div>
 </div>
 
@@ -15925,6 +15925,7 @@ html[data-portal-personal-color="matte"] #screen-chat :is(#portalChatThread,#trR
 </style>
 
 
+
 </body></html>`;
     tab.document.open();tab.document.write(sheet);tab.document.close();
     $('portalAuditStatus').textContent='印刷用の一覧表を開きました。';
@@ -18893,22 +18894,44 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
     if(resolved)return;
     // v104: participant-friendly wording. Logic below is unchanged; only text/guidance differs.
     const raw=String(body||'ログイン状態を確認できませんでした。');
-    const uidTail=String(window.__TR_PORTAL_SYNC__?.uid||'').slice(-6);
-    let t1,m1,steps,btn;
-    if(/参加承認|承認が未完了|失効/.test(raw)){
+    const sync=window.__TR_PORTAL_SYNC__||{};
+    const uidTail=String(sync.uid||'').slice(-6)||String(sync.authUidTail||'');
+    // v420: 原因を区別する。プロフィールがない＝通信の問題ではない。通信・読み込みの失敗は自動で1回やり直す。
+    const stageText=String(sync.error||'');
+    const noProf=/profileId/.test(raw)||/profileIdが取得できません/.test(stageText);
+    const offline=navigator.onLine===false;
+    const isTimeout=/時間がかかっています|接続状況/.test(title+raw);
+    const canAuto=()=>{try{const k='trAutoRetryV420',last=+sessionStorage.getItem(k)||0;if(Date.now()-last<180000)return false;sessionStorage.setItem(k,String(Date.now()));return true;}catch(_){return false;}};
+    if(!offline&&!noProf&&!/参加承認|承認が未完了|失効/.test(raw)&&(isTimeout||/READ|読込|読み込み|確認できません/.test(raw))&&canAuto()){
+      heading.textContent='もう一度確認しています';message.textContent='自動でやり直しています。そのままお待ちください。';
+      setTimeout(()=>location.reload(),700);return;
+    }
+    const stageLabel=s=>/承認/.test(s)?'参加承認の確認':/権限/.test(s)?'権限の確認':/profile|プロフィール/.test(s)?'登録の確認':/認証|UID|ログイン/.test(s)?'ログイン情報の読み込み':/記録|個人/.test(s)?'個人データの読み込み':'ログイン情報の読み込み';
+    let t1,m1,steps,btn,report=true;
+    if(noProf){
+      t1='この端末で、あなたの登録が見つかりません';
+      m1='この端末のログイン情報に、TOP RUN の登録がつながっていません。ホーム画面のアイコンを入れ直したときや、端末の保存データが消えたときに起きます。通信の問題ではありません。';
+      steps=['登録をやり直さないでください（記録が別の人になってしまいます）。','下の「運営に報告する」を押して、BAND（LINEでも可）で運営に送ってください。','はじめて TOP RUN に登録する方だけ、「登録をはじめる」から進んでください。'];
+      btn='もう一度確認する';
+    }else if(isTimeout&&!offline){
+      t1='ログインの確認が終わりません';
+      m1='止まっている所：'+stageLabel(stageText)+'。自動で1回やり直しましたが終わりませんでした。';
+      steps=['下の黄色いボタンを押して、もう一度確認してください。','それでも入れない場合は、「運営に報告する」を押して、BAND（LINEでも可）で運営に送ってください。登録はやり直さないでください。'];
+      btn='もう一度確認する';
+    }else if(/参加承認|承認が未完了|失効/.test(raw)){
       t1='参加の承認を待っています';
       m1='あなたの登録は残っています。参加の承認がまだ完了していないか、確認できない状態です。';
       steps=['BAND（LINEでも可）で、運営に「申請しました」と確認番号を送ってください。','承認されたら、「承認を確認して入る」を押してください。'];
       btn='もう一度確認する';
-    }else if(/時間がかかっています|接続状況/.test(title+raw)){
-      t1='通信を確認してください';
+    }else if(isTimeout){
+      t1='通信を確認してください';report=false;
       m1='ログインの確認に時間がかかっています。';
       steps=['電波の良い場所か、Wi-Fiを確認してください。','下の黄色いボタンを押して、もう一度確認してください。'];
       btn='もう一度確認する';
     }else{
       t1='ログインを確認できませんでした';
-      m1=raw.slice(0,200);
-      steps=['下の黄色いボタンを押して、もう一度確認してください。','それでも入れない場合は、登録をやり直さず、BAND（LINEでも可）で運営に連絡してください。'];
+      m1=raw.replace(/Firebase(?:に|へ|で|から|の)?/g,'').replace(/READ/g,'読み込み').slice(0,200);
+      steps=['下の黄色いボタンを押して、もう一度確認してください。','それでも入れない場合は、登録をやり直さず、「運営に報告する」を押して BAND（LINEでも可）で運営に送ってください。'];
       btn='もう一度確認する';
     }
     heading.textContent=t1;
@@ -18928,6 +18951,19 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
             const pd=document.createElement('p');pd.style.cssText='font-size:11px;opacity:.85;white-space:pre-wrap;word-break:break-all';
             pd.textContent='詳しい状態（運営用）：'+st+(errs.length?'\nエラー：'+errs.join('\n'):'');box.appendChild(pd);
           }catch(_){}
+      if(report){ // v420: 運営に報告する（文を共有・コピーするだけ。Firebaseには書かない）
+        const rb=document.createElement('button');rb.type='button';rb.className='trEntryReportV420';rb.textContent='運営に報告する';
+        rb.addEventListener('click',async()=>{
+          const v=window.__TR_PORTAL_SYNC__||{};
+          const launch=window.matchMedia?.('(display-mode: standalone)')?.matches?'ホーム画面アイコン':'ブラウザ';
+          const ua=navigator.userAgent||'';const dev=/iPhone|iPad/.test(ua)?'iPhone':/Android/.test(ua)?'Android':'その他';
+          const txt=['TOP RUN PORTAL に入れません','確認番号：'+(uidTail||'なし'),'画面：'+t1,'状態：'+String(v.error||'').replace(/Firebase/g,'').slice(0,120),'開き方：'+launch+'／'+dev,'版：v420','時刻：'+new Date().toLocaleString('ja-JP')].join('\n');
+          try{if(navigator.share){await navigator.share({text:txt});return;}}catch(e){if(e&&e.name==='AbortError')return;}
+          let ok=false;try{await navigator.clipboard.writeText(txt);ok=true;}catch(_){}
+          rb.textContent=ok?'コピーしました。BANDに貼って送ってください':'この画面を撮って運営に送ってください';
+        });
+        box.appendChild(rb);
+      }
     }
     retry.textContent=btn;
     retry.hidden=false;
@@ -22792,6 +22828,7 @@ try{
       if(!user){status('この起動領域に既存の本人UIDはありません。ホーム画面PWAとSafariは別領域の場合があります。元の本人引継ぎを行うまで新UIDは生成しません');ui?.applyEntryError('本人引継ぎが必要です。既存UIDの再登録・新規発行をせず、残っている本人認証または正規の復旧経路を確認してください');window.__TR_PARTICIPANT_ENTRY__?.noSession();return;}
       try{
         const uid=user.uid;
+        gate.authUidTail=String(uid).slice(-6); // v420: 入れないときの確認番号（末尾6文字だけ）
         const profile=await dbMod.get(dbMod.ref(db,'profiles/'+uid));
         if(seq!==generation||auth.currentUser?.uid!==uid)return;
         const p=profile.val();
@@ -28201,50 +28238,54 @@ window.__trFilePickStart=function(input){
       const text=caption||('📷 写真'+(images.length>1?' '+images.length+'枚':''));
       if(ctx==='room')await gate.roomSend(roomId,text);else await gate.sendChat(text);
       pending=null;addUsed(images.length);
-      say('写真を送信しました',images.length+'枚の写真をチャットへ送信しました。');
       if(input&&caption){input.value='';input.dispatchEvent(new Event('input',{bubbles:true}));}
     }catch(e){
       pending=null;console.warn('[TOP RUN v237] image send',e);
-      say('写真を送信できませんでした','チャットへの送信は完了していません。再送する前にチャット一覧をご確認ください。'+(e?.code?'\n原因：'+String(e.code).slice(0,40):''));
+      say('写真を送れませんでした','通信状態を確認して、もう一度お試しください。'+(e?.code?'\n原因：'+String(e.code).slice(0,40):''));
     }finally{busy=false;btn.disabled=false;}
   }
   const ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg>';
   const CAM='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l1.6-2.2h6.8L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.4"/></svg>';
+  const PLUS='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
+  // v420: 入力欄の左に＋。押すと「カメラ」「写真」のメニュー（画面の一番上に出す。入力欄の中には何も重ねない）。
+  // ファイルの選択は label で開く（iPhone で確実に開く）。送信の流れ（縮小・確認・枚数）は今までと同じ onFiles。
   function addButtons(inputId,ctx){
     const input=document.getElementById(inputId);const box=input?.closest('.chatBox');
     if(!box||box.querySelector('.trAttach'))return;
     const wrap=document.createElement('span');wrap.className='trAttach';
-    wrap.innerHTML='<button type="button" class="trAttachPick" aria-label="写真を選んで送る">'+ICON+'</button><input type="file" class="trAttachPickIn" accept="image/*" multiple hidden><button type="button" class="trAttachCam" aria-label="撮影して送る">'+CAM+'</button><input type="file" class="trAttachCamIn" accept="image/*" capture="environment" hidden>';
-    // v403: 添付操作は＋に集約。文字入力中は添付操作を畳む。
-    const toggle=document.createElement('button');
-    toggle.type='button';toggle.className='trAttachToggle';
-    toggle.setAttribute('aria-label','写真・カメラのメニュー');toggle.setAttribute('aria-expanded','false');
-    toggle.textContent='＋';
-    wrap.insertBefore(toggle,wrap.firstChild);
-    toggle.addEventListener('click',e=>{
-      e.stopPropagation();
-      const open=!wrap.classList.contains('trAttachOpen');
-      document.querySelectorAll('#screen-chat .trAttachOpen').forEach(el=>{
-        el.classList.remove('trAttachOpen');el.querySelector('.trAttachToggle')?.setAttribute('aria-expanded','false');
-      });
-      wrap.classList.toggle('trAttachOpen',open);toggle.setAttribute('aria-expanded',String(open));
-    });
-    input.addEventListener('focus',()=>{wrap.classList.remove('trAttachOpen');toggle.setAttribute('aria-expanded','false');});
-    wrap.querySelectorAll('.trAttachPick,.trAttachCam').forEach(b=>b.addEventListener('click',()=>{
-      wrap.classList.remove('trAttachOpen');toggle.setAttribute('aria-expanded','false');
-    }));
+    wrap.innerHTML='<button type="button" class="trAttachPlus" aria-label="写真・カメラ" aria-expanded="false">'+PLUS+'</button>';
     box.insertBefore(wrap,box.firstChild);box.classList.add('trHasAttach');
     if(input.placeholder&&input.placeholder.length>10)input.placeholder='メッセージを入力';
-    // v400: 「写真を選ぶ」と「撮影する」の2つ。どちらも同じ送信の流れ（縮小・確認・1日の枚数）
-    [['.trAttachPick','.trAttachPickIn'],['.trAttachCam','.trAttachCamIn']].forEach(([bs,fs])=>{
-    const btn=wrap.querySelector(bs),f=wrap.querySelector(fs);
-    btn.addEventListener('click',e=>{e.stopPropagation();f.value='';window.__trFilePickStart?.(f);try{window.__trPickSet(JSON.stringify({ctx,roomId:ctx==='room'?(g()?.roomReactCtx?.().openId||''):'',at:Date.now()}));}catch(_){}f.click();});
-    f.addEventListener('change',async()=>{
-      // v249: 選んだあとの処理中に読み込み直されても戻れるよう、戻り先は処理が終わるまで残す
-      try{const r=JSON.parse(window.__trPickGet()||'null');if(r){r.stage='work';r.at=Date.now();window.__trPickSet(JSON.stringify(r));}}catch(_){}
-      const all=[...wrap.querySelectorAll('button')];all.forEach(b=>b.disabled=true);
-      try{await onFiles(ctx,f.files,btn);}finally{all.forEach(b=>b.disabled=false);try{window.__trPickDel();}catch(_){}}
-    });
+    const plus=wrap.querySelector('.trAttachPlus');
+    const mid='trAttachMenu-'+ctx;document.getElementById(mid)?.remove();
+    const menu=document.createElement('div');menu.id=mid;menu.className='trAttachMenu';menu.hidden=true;
+    menu.innerHTML='<label class="trAttachItem">'+CAM+'<span>カメラ</span><input type="file" accept="image/*" capture="environment"></label>'+
+      '<label class="trAttachItem">'+ICON+'<span>写真</span><input type="file" accept="image/*" multiple></label>';
+    document.body.appendChild(menu);
+    const close=()=>{menu.hidden=true;plus.setAttribute('aria-expanded','false');plus.classList.remove('on');};
+    const open=()=>{
+      const r=box.getBoundingClientRect();
+      menu.style.left=Math.max(10,Math.round(r.left))+'px';
+      menu.style.bottom=Math.max(10,Math.round(window.innerHeight-r.top+8))+'px';
+      menu.hidden=false;plus.setAttribute('aria-expanded','true');plus.classList.add('on');
+    };
+    plus.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();if(menu.hidden)open();else close();});
+    document.addEventListener('pointerdown',e=>{if(menu.hidden)return;if(menu.contains(e.target)||plus.contains(e.target))return;close();},true);
+    window.addEventListener('resize',()=>{if(!menu.hidden)close();});
+    menu.querySelectorAll('input[type="file"]').forEach(f=>{
+      const lab=f.closest('label');
+      lab.addEventListener('click',()=>{
+        f.value='';window.__trFilePickStart?.(f);
+        try{window.__trPickSet(JSON.stringify({ctx,roomId:ctx==='room'?(g()?.roomReactCtx?.().openId||''):'',at:Date.now()}));}catch(_){}
+        setTimeout(close,250);
+      });
+      f.addEventListener('change',async()=>{
+        close();if(!f.files||!f.files.length)return;
+        // v249: 選んだあとの処理中に読み込み直されても戻れるよう、戻り先は処理が終わるまで残す
+        try{const r=JSON.parse(window.__trPickGet()||'null');if(r){r.stage='work';r.at=Date.now();window.__trPickSet(JSON.stringify(r));}}catch(_){}
+        plus.disabled=true;
+        try{await onFiles(ctx,f.files,plus);}finally{plus.disabled=false;try{window.__trPickDel();}catch(_){}}
+      });
     });
   }
   async function cleanup(){
@@ -30779,7 +30820,8 @@ html.trAndroid nav.portalBottomTabs::before{content:"";position:absolute;inset:0
   'use strict';
   const ENDPOINT='https://top-run-linkpreview.nuritaku-g.workers.dev';
   const IMG=ENDPOINT+'/img?u='; // v395: preview images are loaded through the Worker (needs Worker v2)
-  const STORE='toprun.linkpreview.v394';
+  const STORE='toprun.linkpreview.v420'; // v420: 前の覚え（画像なしのまま14日残る）は使わない
+  try{localStorage.removeItem('toprun.linkpreview.v394');localStorage.removeItem('toprun.linkpreview.img.v396');}catch(_){}
   const SUCCESS_MS=14*24*60*60*1000,FAILED_MS=60*60*1000,MAX_CACHE=120;
   const caches=new Map(),jobs=new Map(),queue=[];
   // v396: per-image result on this phone. 'd' = Worker failed but direct load worked, 'x' = no image (do not draw the frame).
@@ -30879,7 +30921,7 @@ html.trAndroid nav.portalBottomTabs::before{content:"";position:absolute;inset:0
   }
   function cached(url){const c=caches.get(url);return c&&c.until>now()?c:null;}
   function remember(url,data){
-    caches.delete(url);caches.set(url,{until:now()+(data?SUCCESS_MS:FAILED_MS),data});
+    caches.delete(url);caches.set(url,{until:now()+(data?(data.image?SUCCESS_MS:24*60*60*1000):FAILED_MS),data}); // v420: 画像のないカードは1日で読み直す
     while(caches.size>MAX_CACHE)caches.delete(caches.keys().next().value);
     save();
   }
@@ -30985,19 +31027,16 @@ html.trAndroid nav.portalBottomTabs::before{content:"";position:absolute;inset:0
       if(data.image){
         // v399: load outside the DOM; never insert a broken image then remove it.
         // A transient failure must not suppress previews on this device for seven days.
+        // v420: 画像の枠（横1.91:縦1）を先に置き、読み込めたら表示。両方だめなら枠を外す（行が何度も動かない）
+        const media=document.createElement('span');media.className='trLPMedia';
         const im=document.createElement('img');im.className='trLPImage';im.alt='';
-        im.decoding='async';im.draggable=false;
+        im.decoding='async';im.draggable=false;media.appendChild(im);card.appendChild(media);
         const direct=/^https:/i.test(data.image)?smallGoogle(data.image):'';
         let triedDirect=false;
-        im.addEventListener('load',()=>{
-          if(triedDirect)setImgMode(data.image,'d');
-          if(card.isConnected&&card.dataset.lpDone==='1'&&!card.querySelector('.trLPImage')){
-            keepBottom(card,()=>card.insertBefore(im,card.firstChild));
-          }
-        });
+        im.addEventListener('load',()=>{if(triedDirect)setImgMode(data.image,'d');media.classList.add('on');});
         im.addEventListener('error',()=>{
-          if(!triedDirect&&direct){triedDirect=true;im.removeAttribute('referrerpolicy');im.src=direct;}
-          // Both failed: leave the text card intact. Retry on a future opening.
+          if(!triedDirect&&direct){triedDirect=true;im.removeAttribute('referrerpolicy');im.src=direct;return;}
+          if(media.isConnected)keepBottom(card,()=>media.remove());
         });
         if(mode==='d'&&direct){triedDirect=true;im.src=direct;}
         else{im.referrerPolicy='origin';im.src=IMG+encodeURIComponent(data.image);}
@@ -31481,249 +31520,140 @@ html[data-portal-personal-color="matte"] .crTag.gold{background:var(--gold,#ff78
   }
   const start=()=>{
     scan(document.body);
-    new MutationObserver(ms=>{for(const m of ms){if(m.type==='characterData')fixText(m.target);else m.addedNodes.forEach(scan);}})
+    const chatOpen=()=>{const c=document.getElementById('screen-chat');return !!(c&&!c.classList.contains('hidden'));};
+    new MutationObserver(ms=>{if(chatOpen())return; /* v420: チャット画面では動かさない（カクつき対策） */for(const m of ms){if(m.type==='characterData')fixText(m.target);else m.addedNodes.forEach(scan);}})
       .observe(document.body,{childList:true,characterData:true,subtree:true});
   };
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
 </script>
 
-<style id="v402-chat-composer-spacing">
-/* v402: 写真・カメラの2ボタンを独立した幅に収める。旧38px列に計64pxを詰め込んでいたはみ出しを解消。共通CHATとルームのみ。 */
-#screen-chat .chatBox.trHasAttach{
-  grid-template-columns:76px minmax(0,1fr) 56px!important;
-  column-gap:8px!important;
-  padding:6px 8px!important;
-}
-#screen-chat .chatBox.trHasAttach .trAttach{
-  box-sizing:border-box!important;
-  display:flex!important;
-  width:76px!important;
-  min-width:0!important;
-  gap:4px!important;
-  justify-content:space-between!important;
-  align-items:center!important;
-}
-#screen-chat .chatBox.trHasAttach .trAttach button{
-  box-sizing:border-box!important;
-  flex:0 0 36px!important;
-  width:36px!important;
-  min-width:36px!important;
-  max-width:36px!important;
-  height:44px!important;
-  min-height:44px!important;
-  padding:0!important;
-  margin:0!important;
-  touch-action:manipulation;
-}
-#screen-chat .chatBox.trHasAttach .trAttach button svg{width:22px!important;height:22px!important;pointer-events:none}
-#screen-chat .chatBox.trHasAttach textarea{min-width:0!important;width:100%!important}
-#screen-chat .chatBox.trHasAttach .primary{
-  box-sizing:border-box!important;
-  width:56px!important;
-  min-width:56px!important;
-  max-width:56px!important;
-  height:44px!important;
-  min-height:44px!important;
-  font-size:14px!important;
-}
-@media(max-width:360px){
-  #screen-chat .chatBox.trHasAttach{grid-template-columns:72px minmax(0,1fr) 52px!important;column-gap:6px!important;padding:6px!important}
-  #screen-chat .chatBox.trHasAttach .trAttach{width:72px!important;gap:4px!important}
-  #screen-chat .chatBox.trHasAttach .trAttach button{flex-basis:34px!important;width:34px!important;min-width:34px!important;max-width:34px!important}
-  #screen-chat .chatBox.trHasAttach .primary{width:52px!important;min-width:52px!important;max-width:52px!important}
-}
+<style id="v420-chat-composer">
+/* v420: チャットの入力欄。左に＋（36px）、真ん中に入力、右に丸い↑（40px）。共通チャット・ルームとも同じ。
+   ＋のメニューは画面の一番上に出す（入力欄・下のメニューに隠れない）。ぼかし（backdrop-filter）は使わない。 */
+#screen-chat .chatBox.trHasAttach{grid-template-columns:36px minmax(0,1fr) 40px!important;gap:6px!important;padding:6px 6px 6px 4px!important}
+.trAttach{display:flex!important;align-items:center;justify-content:center;width:36px;min-width:0;overflow:visible}
+.trAttach .trAttachPlus{width:34px!important;height:34px!important;min-width:34px!important;padding:0!important;margin:0!important;border-radius:50%!important;
+  border:1px solid rgba(127,127,127,.38)!important;background:transparent!important;color:inherit!important;opacity:1!important;
+  display:flex!important;align-items:center;justify-content:center;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:transform .15s}
+.trAttach .trAttachPlus svg{width:20px!important;height:20px!important}
+.trAttach .trAttachPlus.on{transform:rotate(45deg)}
+.trAttach .trAttachPlus:disabled{opacity:.4!important}
+#screen-chat .chatBox #portalChatSend,#screen-chat .chatBox #trRoomSend{
+  width:40px!important;min-width:40px!important;max-width:40px!important;height:40px!important;min-height:40px!important;padding:0!important;
+  border-radius:50%!important;font-size:0!important;line-height:0!important;color:#211b08;display:flex!important;align-items:center;justify-content:center;align-self:end;margin-bottom:3px}
+#screen-chat .chatBox #portalChatSend::before,#screen-chat .chatBox #trRoomSend::before{content:"";width:20px;height:20px;background:currentColor;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 19V5M5.5 11.5 12 5l6.5 6.5'/%3E%3C/svg%3E") center/contain no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 19V5M5.5 11.5 12 5l6.5 6.5'/%3E%3C/svg%3E") center/contain no-repeat}
+#screen-chat .chatBox.trHasAttach textarea{padding-left:10px!important;padding-right:8px!important}
+.trAttachMenu{position:fixed;z-index:10060;display:grid;gap:2px;min-width:168px;padding:6px;box-sizing:border-box;border-radius:16px;
+  background:var(--op-deep,#fff);color:var(--op-fg,#253434);border:1px solid var(--op-line,rgba(127,127,127,.3));box-shadow:0 10px 28px rgba(0,0,0,.22)}
+.trAttachMenu[hidden]{display:none!important}
+.trAttachItem{position:relative;display:flex;align-items:center;gap:12px;min-height:46px;padding:0 14px;border-radius:11px;font-size:15px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+.trAttachItem:active{background:rgba(127,127,127,.16)}
+.trAttachItem svg{width:22px;height:22px;flex:none}
+.trAttachItem input[type="file"]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;left:0;top:0}
 </style>
-
-
-<style id="v403-chat-attach-compact">
-/* v403: 共通CHAT／ルームの入力幅を確保。添付は＋から選択。 */
-#screen-chat .chatBox.trHasAttach{grid-template-columns:40px minmax(0,1fr) 56px!important;column-gap:6px!important}
-#screen-chat .chatBox.trHasAttach .trAttach{position:relative!important;width:40px!important;min-width:0!important;display:flex!important;overflow:visible!important}
-#screen-chat .chatBox.trHasAttach .trAttach .trAttachToggle{display:flex!important;flex:0 0 40px!important;width:40px!important;min-width:40px!important;max-width:40px!important;height:44px!important;font-size:29px!important;font-weight:400!important;align-items:center!important;justify-content:center!important}
-#screen-chat .chatBox.trHasAttach .trAttach .trAttachPick,#screen-chat .chatBox.trHasAttach .trAttach .trAttachCam{display:none!important}
-#screen-chat .chatBox.trHasAttach .trAttach.trAttachOpen .trAttachPick,#screen-chat .chatBox.trHasAttach .trAttach.trAttachOpen .trAttachCam{display:flex!important;position:absolute!important;bottom:51px!important;width:44px!important;min-width:44px!important;max-width:44px!important;height:44px!important;background:#fff!important;color:#293238!important;border:1px solid #bbb!important;border-radius:12px!important;box-shadow:0 3px 12px #0003!important;z-index:30!important}
-#screen-chat .chatBox.trHasAttach .trAttach.trAttachOpen .trAttachPick{left:0!important}
-#screen-chat .chatBox.trHasAttach .trAttach.trAttachOpen .trAttachCam{left:49px!important}
-#screen-chat .chatBox.trHasAttach:focus-within{grid-template-columns:minmax(0,1fr) 56px!important}
-#screen-chat .chatBox.trHasAttach:focus-within .trAttach{display:none!important}
-@media(max-width:360px){#screen-chat .chatBox.trHasAttach{grid-template-columns:40px minmax(0,1fr) 52px!important}#screen-chat .chatBox.trHasAttach:focus-within{grid-template-columns:minmax(0,1fr) 52px!important}}
+<style id="v420-link-card">
+/* v420: リンクカード（LINEなどと同じ形：上に大きな画像、題名2行、説明2行、下に小さくドメイン）。コピーは小さなアイコン。 */
+.trLPWrap{width:min(320px,100%)!important}
+.trLPCard{border-radius:14px!important}
+.trLPMedia{display:block;width:100%;aspect-ratio:1.91/1;overflow:hidden;background:rgba(127,127,127,.14)}
+.trLPMedia .trLPImage{width:100%!important;height:100%!important;aspect-ratio:auto!important;object-fit:cover;opacity:0;transition:opacity .2s}
+.trLPMedia.on .trLPImage{opacity:1}
+.trLPBody{padding:10px 12px 10px!important}
+.trLPTitle{font-size:14.5px!important;line-height:1.4!important}
+.trLPDesc{font-size:12.5px!important;margin-top:3px!important}
+.trLPDomain{padding-right:40px!important;min-height:24px!important;line-height:24px!important;margin-top:5px!important}
+.trLPCopy{width:30px;height:30px;min-height:30px!important;padding:0!important;justify-content:center;right:8px!important;bottom:8px!important;border-radius:50%!important}
+.trLPCopy span{display:none}
+.trLPCopy svg{width:14px!important;height:14px!important}
 </style>
-<!-- TOP RUN PORTAL v405 | 2026-11-11 | Parent v404. Full-page capture UI; visible version labels v405. Firebase/Rules unchanged. -->
-<style id="trFullCaptureStyle">
-#trCaptureLaunch{position:fixed;right:12px;bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:1800;border:1px solid #e4c44c;border-radius:25px;background:#15191e;color:#f7e16b;box-shadow:0 4px 14px #0005;font:700 12px/1.2 system-ui,-apple-system,sans-serif;padding:11px 13px;cursor:pointer}
-#trCaptureLaunch[hidden],#trCaptureModal[hidden]{display:none!important}
-#trCaptureModal{position:fixed;inset:0;z-index:99990;background:#000d;display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box}
-#trCapturePanel{background:#f9fafb;color:#171a1f;border-radius:15px;width:min(100%,540px);max-height:94dvh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 45px #0008;font:14px/1.5 system-ui,-apple-system,sans-serif}
-#trCaptureTop{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid #ddd}
-#trCaptureTop strong{flex:1}#trCaptureTop button,#trCaptureActions button{border:1px solid #bbb;border-radius:9px;padding:9px 12px;background:white;color:#111;font-weight:650}
-#trCapturePreview{overflow:auto;min-height:80px;max-height:62dvh;background:#dce0e4;padding:10px;text-align:center}
-#trCapturePreview img{max-width:100%;height:auto;box-shadow:0 2px 10px #0003}
-#trCaptureActions{display:flex;gap:8px;padding:10px 12px;flex-wrap:wrap}#trCaptureActions button{flex:1}#trCaptureActions button:first-child{background:#1d242a;color:white}
-#trCaptureNote{padding:0 12px 12px;color:#5c626b;font-size:11px}
-@media print{#trCaptureLaunch,#trCaptureModal{display:none!important}}
-</style>
-<button id="trCaptureLaunch" type="button" hidden aria-label="表示画面を縦長画像で保存">📷 画面保存</button>
-<div id="trCaptureModal" hidden role="dialog" aria-modal="true" aria-label="画面保存">
- <div id="trCapturePanel">
-  <div id="trCaptureTop"><strong>画面を縦長画像で保存</strong><button id="trCaptureClose" type="button">閉じる</button></div>
-  <div id="trCapturePreview" aria-live="polite">画像を準備しています…</div>
-  <div id="trCaptureActions"><button id="trCaptureShare" type="button" disabled>共有・写真に保存</button><button id="trCaptureDownload" type="button" disabled>画像を保存</button></div>
-  <div id="trCaptureNote">表示中のポータル画面を撮影します。外部地図・一部の画像・長いチャット履歴は完全に写らない場合があります。共有時は個人情報にご注意ください。</div>
- </div>
-</div>
-<script id="trFullCaptureScript">
+<script id="v420-screen-capture">
+/* v420: 画面のヘッダーの題名をタップ → 「この画面を画像で保存」。スクロールで隠れている所も1枚にする。
+   html2canvas は使うときだけ cdnjs から読む。Firebase は使わない。 */
 (function(){
- 'use strict';
- const launch=document.getElementById('trCaptureLaunch'),modal=document.getElementById('trCaptureModal'),preview=document.getElementById('trCapturePreview');
- const share=document.getElementById('trCaptureShare'),save=document.getElementById('trCaptureDownload');
- let captureBlob=null,captureUrl=null,busy=false,loading=null;
- const visible=el=>{if(!el)return false;const st=getComputedStyle(el);return st.display!=='none'&&st.visibility!=='hidden'&&el.getAttribute('aria-hidden')!=='true'&&el.getBoundingClientRect().width>0};
- function currentScreen(){return Array.from(document.querySelectorAll('.portalScreen')).find(visible)||null}
- function sync(){launch.hidden=!!modal.hidden? !currentScreen():true}
- function loadLibrary(){
-   if(window.html2canvas)return Promise.resolve(window.html2canvas);
-   if(loading)return loading;
-   loading=new Promise((resolve,reject)=>{
-     const script=document.createElement('script');script.src='https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';script.async=true;
-     script.onload=()=>window.html2canvas?resolve(window.html2canvas):reject(new Error('画像化ライブラリを読み込めません'));
-     script.onerror=()=>reject(new Error('画像化ライブラリの通信に失敗しました'));
-     document.head.appendChild(script);
-   }).catch(e=>{loading=null;throw e});return loading;
- }
- function reset(){captureBlob=null;share.disabled=true;save.disabled=true;if(captureUrl){URL.revokeObjectURL(captureUrl);captureUrl=null}}
- function expandClone(doc){
-   const root=doc.querySelector('[data-tr-capture-root="1"]');if(!root)return;
-   root.style.cssText+=';height:auto!important;max-height:none!important;min-height:0!important;overflow:visible!important;transform:none!important;';
-   root.querySelectorAll('*').forEach(el=>{
-     if(el.closest('.trAttach')||el.matches('button,input,textarea,select'))return;
-     const st=doc.defaultView.getComputedStyle(el);
-     if((st.overflowY==='auto'||st.overflowY==='scroll')&&el.scrollHeight>el.clientHeight+10){
-       el.style.setProperty('height','auto','important');el.style.setProperty('max-height','none','important');el.style.setProperty('overflow-y','visible','important');
-     }
-     if(st.position==='sticky'||st.position==='fixed')el.style.setProperty('position','relative','important');
-   });
-   doc.querySelectorAll('#trCaptureLaunch,#trCaptureModal,.portalBottomTabs').forEach(el=>el.style.setProperty('display','none','important'));
- }
- async function capture(){
-   if(busy)return;const root=currentScreen();if(!root){preview.textContent='保存する画面が見つかりません。';return}
-   busy=true;reset();modal.hidden=false;launch.hidden=true;preview.textContent='画面を画像に変換しています…';
-   try{
-     const h2c=await loadLibrary();
-     // Mark only the active screen for the cloned-document expansion.
-     root.dataset.trCaptureRoot='1';
-     let canvas;
-     try{
-       const rect=root.getBoundingClientRect();
-       const width=Math.max(1,Math.ceil(rect.width));
-       const maxHeight=16000;const height=Math.min(maxHeight,Math.max(Math.ceil(rect.height),root.scrollHeight));
-       // Never reduce the capture below native CSS resolution: this made text illegible on long pages.
-       // Prefer 2x on iPhone; use 1x only for pages that exceed the safe canvas dimension.
-       if(height>=16000)throw new Error('この画面は長すぎるため一枚に保存できません。表示範囲を短くしてください');
-       const scale=(height*2<=16000&&width*2<=8192)?2:1;
-       canvas=await h2c(root,{backgroundColor:'#ffffff',useCORS:true,allowTaint:false,logging:false,scale:scale,width:width,height:height,windowWidth:document.documentElement.clientWidth,scrollX:0,scrollY:0,onclone:expandClone});
-     }finally{delete root.dataset.trCaptureRoot}
-     if(!canvas.width||!canvas.height)throw new Error('画像を生成できませんでした');
-     captureBlob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('画像の保存に失敗しました')),'image/png'));
-     captureUrl=URL.createObjectURL(captureBlob);
-     preview.replaceChildren();const img=document.createElement('img');img.src=captureUrl;img.alt='撮影した画面のプレビュー';preview.appendChild(img);
-     share.disabled=false;save.disabled=false;
-   }catch(err){preview.textContent='画像化できませんでした。'+(err&&err.message?err.message:'')+'。通信環境や画像の表示状態をご確認ください。'}
-   finally{busy=false;sync()}
- }
- function filename(){return 'TOP_RUN_PORTAL_'+new Date().toISOString().replace(/[:.]/g,'-')+'.png'}
- launch.addEventListener('click',capture);
- document.getElementById('trCaptureClose').addEventListener('click',()=>{modal.hidden=true;reset();preview.textContent='';sync()});
- modal.addEventListener('click',e=>{if(e.target===modal)document.getElementById('trCaptureClose').click()});
- save.addEventListener('click',()=>{if(!captureUrl)return;const a=document.createElement('a');a.href=captureUrl;a.download=filename();document.body.appendChild(a);a.click();a.remove()});
- share.addEventListener('click',async()=>{
-   if(!captureBlob)return;
-   const file=new File([captureBlob],filename(),{type:'image/png'});
-   if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
-     try{await navigator.share({files:[file],title:'TOP RUN PORTAL 画面保存'});return}catch(e){if(e.name==='AbortError')return}
-   }
-   save.click();
- });
- const obs=new MutationObserver(()=>{if(modal.hidden)sync()});
- obs.observe(document.body,{subtree:true,attributes:true,attributeFilter:['class','aria-hidden','style']});
- document.addEventListener('visibilitychange',sync);sync();
+  'use strict';
+  const LIB='https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+  let busy=false;
+  function load(){
+    if(window.html2canvas)return Promise.resolve();
+    return new Promise((res,rej)=>{const s=document.createElement('script');s.src=LIB;s.async=true;s.onload=()=>res();s.onerror=()=>rej(Error('部品を読み込めませんでした'));document.head.appendChild(s);});
+  }
+  function sheet(html){
+    let el=document.getElementById('trCapSheet');
+    if(!el){el=document.createElement('div');el.id='trCapSheet';document.body.appendChild(el);
+      el.addEventListener('click',e=>{if(e.target===el||e.target.closest('[data-cap-close]'))el.hidden=true;});}
+    el.innerHTML='<div class="trCapBox">'+html+'</div>';el.hidden=false;return el;
+  }
+  function say(msg){sheet('<p class="trCapMsg">'+msg+'</p><button type="button" data-cap-close>閉じる</button>');}
+  async function capture(screen){
+    if(busy)return;busy=true;
+    sheet('<p class="trCapMsg">画像を作っています…</p>');
+    const marked=[];
+    try{
+      await load();
+      let extra=0;
+      [screen,...screen.querySelectorAll('*')].forEach(el=>{
+        if(el.scrollHeight>el.clientHeight+4){const oy=getComputedStyle(el).overflowY;if(oy==='auto'||oy==='scroll'){el.setAttribute('data-trcap','1');marked.push(el);extra+=el.scrollHeight-el.clientHeight;}}
+      });
+      const w=Math.max(320,Math.round(screen.getBoundingClientRect().width||window.innerWidth));
+      const est=Math.max(window.innerHeight,(screen.scrollHeight||0)+extra);
+      const scale=Math.max(0.5,Math.min(window.devicePixelRatio||2,2,15000/est,Math.sqrt(15e6/(w*est))));
+      const bg=getComputedStyle(screen).backgroundColor;
+      const canvas=await window.html2canvas(screen,{
+        backgroundColor:(bg&&bg!=='rgba(0, 0, 0, 0)')?bg:(getComputedStyle(document.body).backgroundColor||'#ffffff'),
+        useCORS:true,allowTaint:false,logging:false,scale,windowWidth:w,windowHeight:Math.round(est),scrollX:0,scrollY:0,
+        onclone:doc=>{
+          const s=doc.getElementById(screen.id);if(!s)return;
+          const set=(el,k,v)=>el.style.setProperty(k,v,'important');
+          set(s,'position','relative');set(s,'inset','auto');set(s,'height','auto');set(s,'max-height','none');set(s,'overflow','visible');set(s,'transform','none');
+          doc.querySelectorAll('[data-trcap]').forEach(el=>{set(el,'height','auto');set(el,'max-height','none');set(el,'overflow','visible');});
+          s.querySelectorAll('*').forEach(el=>{const p=doc.defaultView.getComputedStyle(el).position;if(p==='fixed'||p==='sticky')set(el,'position','static');});
+          doc.querySelectorAll('.chatComposer,.trAttachMenu,.portalBottomTabs,#trCapSheet').forEach(el=>set(el,'display','none'));
+        }
+      });
+      const blob=await new Promise(r=>canvas.toBlob(r,'image/jpeg',0.9));
+      if(!blob)throw Error('画像を作れませんでした');
+      const url=URL.createObjectURL(blob);
+      const d=new Date(),pad=n=>String(n).padStart(2,'0');
+      const name='TOPRUN'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+pad(d.getHours())+pad(d.getMinutes())+'.jpg';
+      const file=new File([blob],name,{type:'image/jpeg'});
+      const canShare=!!(navigator.canShare&&navigator.canShare({files:[file]}));
+      const el=sheet('<p class="trCapMsg">できました。'+(canShare?'「保存・送る」から写真に保存できます。':'画像を長押しして保存してください。')+'</p>'+
+        '<div class="trCapImg"><img alt="この画面の画像" src="'+url+'"></div>'+
+        '<div class="trCapBtns">'+(canShare?'<button type="button" class="trCapShare">保存・送る</button>':'')+'<button type="button" data-cap-close>閉じる</button></div>');
+      el.querySelector('.trCapShare')?.addEventListener('click',async()=>{try{await navigator.share({files:[file]});}catch(_){}});
+    }catch(e){
+      say('画像にできませんでした。'+String(e?.message||'').slice(0,60));
+    }finally{
+      marked.forEach(el=>el.removeAttribute('data-trcap'));busy=false;
+    }
+  }
+  document.addEventListener('click',e=>{
+    const title=e.target.closest?.('.portalScreenHead > div');
+    if(!title||e.target.closest('button,a,input,select,label'))return;
+    const screen=title.closest('.portalScreen');
+    if(!screen||screen.classList.contains('hidden')||window.__TR_PORTAL_VIEW_ONLY__)return;
+    const el=sheet('<p class="trCapMsg"><b>この画面を画像で保存</b><br>スクロールで隠れている所も、1枚の画像にします。</p><div class="trCapBtns"><button type="button" class="trCapGo">画像にする</button><button type="button" data-cap-close>やめる</button></div>');
+    el.querySelector('.trCapGo').addEventListener('click',()=>capture(screen));
+  });
 })();
 </script>
+<style id="v420-screen-capture-style">
+#trCapSheet{position:fixed;inset:0;z-index:10080;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;background:rgba(0,0,0,.45)}
+#trCapSheet[hidden]{display:none!important}
+#trCapSheet .trCapBox{width:min(420px,100%);max-height:calc(100vh - 40px);display:flex;flex-direction:column;gap:12px;padding:16px;box-sizing:border-box;border-radius:18px;
+  background:var(--op-deep,#fff);color:var(--op-fg,#253434);box-shadow:0 14px 40px rgba(0,0,0,.3)}
+#trCapSheet .trCapMsg{margin:0;font-size:14px;line-height:1.6}
+#trCapSheet .trCapImg{flex:1 1 auto;min-height:0;overflow:auto;border-radius:10px;border:1px solid var(--op-line,rgba(127,127,127,.3));-webkit-overflow-scrolling:touch}
+#trCapSheet .trCapImg img{display:block;width:100%;height:auto;-webkit-touch-callout:default}
+#trCapSheet .trCapBtns{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:8px}
+#trCapSheet button{min-height:40px;border-radius:12px;border:1px solid var(--op-line,rgba(127,127,127,.35));background:transparent;color:inherit;font:inherit;font-size:14px;font-weight:800}
+#trCapSheet .trCapGo,#trCapSheet .trCapShare{background:var(--gold,#d8b236);border-color:transparent;color:#211b08}
+.portalScreenHead > div{cursor:pointer}
+.trEntryReportV420{display:block;width:100%;min-height:40px;margin-top:10px;border-radius:12px;border:1px solid rgba(127,127,127,.45);background:transparent;color:inherit;font:inherit;font-size:14px;font-weight:800}
+</style>
 
-<!-- TOP RUN PORTAL v406 | v405を基にチャット添付操作の表示を修正。送信結果を明示。実機・Firebase未検証。 -->
-<style id="v406-chat-attach-fix">
-/* iPhone SE / Android: ＋メニューは入力欄の上に表示し、キーボード時も＋を消さない */
-#screen-chat .chatBox.trHasAttach, #screen-chat .chatBox.trHasAttach:focus-within{
- grid-template-columns:44px minmax(0,1fr) 56px!important;column-gap:6px!important;overflow:visible!important;isolation:isolate!important
-}
-#screen-chat .chatBox.trHasAttach .trAttach,
-#screen-chat .chatBox.trHasAttach:focus-within .trAttach{
- display:flex!important;position:relative!important;overflow:visible!important;width:44px!important;min-width:44px!important;z-index:80!important
-}
-#screen-chat .chatBox.trHasAttach .trAttach .trAttachToggle{width:44px!important;min-width:44px!important;max-width:44px!important;flex-basis:44px!important}
-#screen-chat .chatBox.trHasAttach .trAttach.trAttachOpen .trAttachPick,
-#screen-chat .chatBox.trHasAttach .trAttach.trAttachOpen .trAttachCam{
- display:flex!important;visibility:visible!important;opacity:1!important;z-index:100!important;bottom:58px!important;left:0!important;
- width:48px!important;min-width:48px!important;max-width:48px!important;height:48px!important;
- align-items:center!important;justify-content:center!important;box-shadow:0 4px 16px #0005!important
-}
-#screen-chat .chatBox.trHasAttach .trAttach.trAttachOpen .trAttachCam{left:54px!important}
-#screen-chat .chatBox.trHasAttach .trAttach.trAttachOpen{z-index:200!important}
-@media(max-width:360px){#screen-chat .chatBox.trHasAttach,#screen-chat .chatBox.trHasAttach:focus-within{grid-template-columns:44px minmax(0,1fr) 52px!important}}
-</style>
-<!-- TOP RUN PORTAL v408 | 添付は＋展開。画面保存は画面の空白を長押しして呼び出す。認証・Firebase・送信処理変更なし。 -->
-<style id="v408-attachment-capture">
-#screen-chat .chatBox.trHasAttach,#screen-chat .chatBox.trHasAttach:focus-within{grid-template-columns:44px minmax(0,1fr) 56px!important;column-gap:6px!important;overflow:visible!important;isolation:isolate!important}
-#screen-chat .chatBox.trHasAttach .trAttach,#screen-chat .chatBox.trHasAttach:focus-within .trAttach{display:flex!important;position:relative!important;width:44px!important;min-width:44px!important;overflow:visible!important;z-index:300!important}
-#screen-chat .chatBox.trHasAttach .trAttach .trAttachToggle{display:flex!important;width:44px!important;min-width:44px!important;max-width:44px!important;height:44px!important;align-items:center!important;justify-content:center!important}
-#screen-chat .chatBox.trHasAttach .trAttach .trAttachPick,#screen-chat .chatBox.trHasAttach .trAttach .trAttachCam{display:none!important}
-#screen-chat .chatBox.trHasAttach .trAttach.trAttachOpen .trAttachPick,#screen-chat .chatBox.trHasAttach .trAttach.trAttachOpen .trAttachCam{display:flex!important;position:absolute!important;bottom:58px!important;left:0!important;width:48px!important;min-width:48px!important;max-width:48px!important;height:48px!important;background:#fff!important;color:#293238!important;border:1px solid #b9b9b9!important;border-radius:12px!important;box-shadow:0 4px 15px #0004!important;opacity:1!important;visibility:visible!important;align-items:center!important;justify-content:center!important;z-index:310!important}
-#screen-chat .chatBox.trHasAttach .trAttach.trAttachOpen .trAttachCam{left:54px!important}
-#screen-chat .chatBox.trHasAttach .trAttach button svg{width:25px!important;height:25px!important}
-#trCaptureLaunch{display:none!important}
-@media(max-width:360px){#screen-chat .chatBox.trHasAttach,#screen-chat .chatBox.trHasAttach:focus-within{grid-template-columns:44px minmax(0,1fr) 52px!important}}
-</style>
-<script id="v408-capture-longpress">
-(function(){'use strict';
-const launch=document.getElementById('trCaptureLaunch');if(!launch)return;
-let timer=null,origin=null,triggered=false;
-function blank(target){
- if(!(target instanceof Element))return false;
- if(target.closest('button,a,input,textarea,select,label,[role="button"],[contenteditable],.chatBox,.chatBubble,.msgBubble,.message,.noticeCard,.eventCard,.card,.portalCard,.trCaptureModal,#trCaptureModal,nav,header,footer'))return false;
- const screen=target.closest('.portalScreen');if(!screen)return false;
- // Only empty background; do not intercept message text, cards, images, lists or interactive controls.
- const el=document.elementFromPoint(origin.x,origin.y);
- return !!el && (el===screen || el.classList.contains('portalScreen') || (el===target && !target.children.length && !target.textContent.trim()));
-}
-function clear(){if(timer!==null)clearTimeout(timer);timer=null;origin=null}
-document.addEventListener('touchstart',e=>{
- clear();if(e.touches.length!==1)return;const t=e.touches[0];origin={x:t.clientX,y:t.clientY,target:e.target};
- if(!blank(e.target)){origin=null;return}
- timer=setTimeout(()=>{timer=null;if(!origin)return;triggered=true;launch.click();origin=null},700);
-},{passive:true});
-document.addEventListener('touchmove',e=>{if(!origin)return;const t=e.touches[0];if(!t||Math.hypot(t.clientX-origin.x,t.clientY-origin.y)>12)clear()},{passive:true});
-document.addEventListener('touchend',clear,{passive:true});document.addEventListener('touchcancel',clear,{passive:true});
-document.addEventListener('contextmenu',e=>{if(triggered){e.preventDefault();triggered=false}},{capture:true});
-})();
-</script>
-<!-- TOP RUN PORTAL v415 | 写真・カメラを入力欄内に常時横並び表示。＋メニューを廃止。 -->
-<style id="v415-attach">
-#screen-chat .chatBox.trHasAttach .trAttach,
-#screen-chat .chatBox.trHasAttach:focus-within .trAttach{
- display:flex!important;position:relative!important;flex:0 0 auto!important;width:auto!important;min-width:0!important;
- gap:6px!important;align-items:center!important;overflow:visible!important;z-index:5!important;
-}
-#screen-chat .chatBox.trHasAttach .trAttach .trAttachToggle{display:none!important}
-#screen-chat .chatBox.trHasAttach .trAttach .trAttachPick,
-#screen-chat .chatBox.trHasAttach .trAttach .trAttachCam{
- display:flex!important;position:relative!important;left:auto!important;bottom:auto!important;
- flex:0 0 42px!important;width:42px!important;min-width:42px!important;max-width:42px!important;
- height:44px!important;background:transparent!important;color:#414b4c!important;
- border:0!important;border-radius:9px!important;box-shadow:none!important;
- opacity:1!important;visibility:visible!important;align-items:center!important;justify-content:center!important;
- padding:0!important;pointer-events:auto!important;z-index:6!important;
-}
-#screen-chat .chatBox.trHasAttach .trAttach button svg{width:26px!important;height:26px!important}
-#screen-chat .chatBox.trHasAttach .trAttach input[type=file]{display:none!important}
-</style>
-</body></html>
+</body>
+</html>
