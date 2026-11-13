@@ -11864,23 +11864,19 @@ window.p150ArchiveSheets=function(){
  function gapOf(html){try{var m=/TOPとの差[\s\S]{0,80}?([+＋−\-]\s*[0-9:]+|TOP)/.exec(String(html||'').replace(/<[^>]+>/g,' '));return m?m[1].replace(/\s/g,''):''}catch(_){return ''}}
  function results(){var h='<div class="rs">';
   if(A.format==='ek-archive-v1'){var rs=A.results||[],sh=A.sheets||[];if(!rs.length&&!sh.length)return h+'<div class="card">成績表がありません。</div></div>';
-   var list=rs.length?rs:sh;if(team>=list.length)team=0;
+   var list=sh.length?sh:rs;if(team>=list.length)team=0;
    if(list.length>1)h+='<div class="tsel" role="tablist">'+list.map(function(x,i){return '<button type="button" role="tab" aria-selected="'+(i===team)+'" data-team="'+i+'" class="'+(i===team?'on':'')+'"><b>'+esc(x.category||('チーム'+(i+1)))+'</b><small>'+esc(x.team||'')+'</small></button>'}).join('')+'</div>';
-   var x=list[team]||{},e=A.event||{},gap=gapOf(sh[team]&&sh[team].html);
-   if(!rs.length){h+='<div class="stage" id="ekArcStage"><div class="fit" id="ekArcFit">'+clean(x.html)+'</div></div></div>';return h;}
-   h+='<div class="rcard" id="ekArcResult"><div class="rmeet">'+esc(e.title||'')+(e.date?'｜'+esc(String(e.date).replace(/-/g,'.')):'')+'</div>'+
-    '<div class="rteam">'+esc((x.category?x.category+'　':'')+(x.team||''))+'</div>'+
-    '<div class="rsum">'+(x.rank?'<div class="rrank"><small>総合</small><b>'+esc(x.rank)+'</b><small>位</small></div>':'')+
-    '<div class="rtot"><small>TOTAL</small><b>'+esc(x.total||'—')+'</b>'+(gap?'<span>トップとの差 '+esc(gap)+'</span>':'')+'</div></div>'+
-    '<div class="rlegs">'+(x.legs||[]).map(function(l){return '<div class="rleg"><div class="no"><b>'+esc(l.no)+'区</b>'+(l.dist?'<small>'+esc(l.dist)+'</small>':'')+'</div><div class="nm">'+esc(l.name||'—')+'</div><div class="tm"><b>'+esc(l.time||'—')+'</b>'+(l.rank?'<small>区間'+esc(l.rank)+'位</small>':'')+'</div></div>'}).join('')+'</div></div>'+
+   /* P154: 成績表は運営画面と全く同じ作り（保存された成績表をそのまま表示） */
+   var src=sh[team]||sh[0];
+   h+='<div class="stage" id="ekArcStage"><div class="fit" id="ekArcFit">'+clean(src&&src.html)+'</div></div>'+
     '<button type="button" class="rsave" data-save>画像で保存</button></div>';
    return h;}
   var rows=(A.results||[]).slice().sort(function(a,b){return String(a.event).localeCompare(String(b.event))||(Number(a.leg)||0)-(Number(b.leg)||0)||String(a.name).localeCompare(String(b.name),'ja')});
   if(!rows.length)return h+'<div class="card">結果がありません。</div></div>';
   return h+'<div class="card" id="ekArcResult"><h2>結果</h2><table><tr><th>種目・区間</th><th>名前</th><th class="t">タイム</th></tr>'+rows.map(function(r){return '<tr><td>'+esc(r.event||'')+(r.leg?' 第'+esc(r.leg)+'区':'')+'</td><td>'+esc(r.name||'')+'</td><td class="t">'+esc(r.time||'')+'</td></tr>'}).join('')+'</table></div><button type="button" class="rsave" data-save>画像で保存</button></div>';}
- function saveImg(){var el=document.getElementById('ekArcResult');if(!el)return;var cap=document.getElementById('ekCap');if(!cap){cap=document.createElement('div');cap.id='ekCap';document.body.appendChild(cap);cap.addEventListener('click',function(ev){if(ev.target===cap||ev.target.closest('[data-x]'))cap.hidden=true;});}
+ function saveImg(){var el=document.getElementById('ekArcFit')||document.getElementById('ekArcResult');if(!el)return;var cap=document.getElementById('ekCap');if(!cap){cap=document.createElement('div');cap.id='ekCap';document.body.appendChild(cap);cap.addEventListener('click',function(ev){if(ev.target===cap||ev.target.closest('[data-x]'))cap.hidden=true;});}
   cap.hidden=false;cap.innerHTML='<div class="box"><p>画像を作っています…</p></div>';
-  var go=function(){window.html2canvas(el,{backgroundColor:'#0d0f11',scale:Math.min(2,window.devicePixelRatio||2),useCORS:true,logging:false}).then(function(cv){cv.toBlob(function(b){if(!b){cap.innerHTML='<div class="box"><p>画像にできませんでした。</p><div class="btns"><button type="button" data-x>閉じる</button></div></div>';return}
+  var go=function(){window.html2canvas(el,{backgroundColor:'#0d0f11',scale:Math.min(2,window.devicePixelRatio||2),useCORS:true,logging:false,width:el.id==='ekArcFit'?794:undefined,windowWidth:el.id==='ekArcFit'?794:undefined,onclone:function(d){var f=d.getElementById('ekArcFit');if(f){f.style.transform='none';var s=d.getElementById('ekArcStage');if(s){s.style.height='auto';s.style.overflow='visible';}}}}).then(function(cv){cv.toBlob(function(b){if(!b){cap.innerHTML='<div class="box"><p>画像にできませんでした。</p><div class="btns"><button type="button" data-x>閉じる</button></div></div>';return}
    var f=new File([b],(document.title||'成績表').replace(/[\\/:*?"<>|｜]/g,'')+'.png',{type:'image/png'}),u=URL.createObjectURL(b),share=!!(navigator.canShare&&navigator.canShare({files:[f]}));
    cap.innerHTML='<div class="box"><p>'+(share?'「保存・送る」から写真に保存できます。':'画像を長押しして保存してください。')+'</p><div class="img"><img alt="成績表" src="'+u+'"></div><div class="btns">'+(share?'<button type="button" class="go" data-share>保存・送る</button>':'')+'<button type="button" data-x>閉じる</button></div></div>';
    var sb=cap.querySelector('[data-share]');if(sb)sb.addEventListener('click',function(){navigator.share({files:[f]}).catch(function(){})});},'image/png')}).catch(function(){cap.innerHTML='<div class="box"><p>画像にできませんでした。</p><div class="btns"><button type="button" data-x>閉じる</button></div></div>'})};
