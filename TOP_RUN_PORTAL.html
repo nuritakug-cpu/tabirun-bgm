@@ -1,4 +1,4 @@
-<!-- TOP RUN PORTAL v413 | 2026-11-13 | v410ベース、添付ボタンの表示と直接起動を一本化。実機未検証。 -->
+<!-- TOP RUN PORTAL v414 | 2026-11-13 | チャット写真・カメラのネイティブ選択メニュー。実機未検証。 -->
 <!-- TOP RUN PORTAL v402 | 2026-11-11 | Parent v401. チャット（共通・ルーム）の写真／カメラのはみ出しを修正し、タップ領域を独立。入力欄と送信ボタンを少し縮小。その他の接続・保存・画面は不変更。 -->
 <!-- TOP RUN PORTAL v401 | 2026-11-11 | Parent v400. スプレッドシートから取り込む（イベント）：PORTALで先に作った大会と同じ日・似た名前なら「新規」にせず確認し、［同じ大会として紐付ける］でシートの「PORTAL ID」に既存の大会IDを書く（シート v11 が必要）。紐付けた大会はPORTAL側の大会名・日付・会場・種目・出走登録を変えず、資料リンクの追加だけ。Firebase：通信量の増加なし、Rules変更なし。 -->
 <!-- TOP RUN PORTAL v400 | 2026-11-11 | Parent v399. (1)下のメニューが沈む：画面の切り替え・キーボードを閉じたとき、裏のHOMEのスクロール位置が範囲外なら戻す（メニューはJSで動かさない）。(2)名前の保存後はチャット名の欄へ移動。(3)参加者の画面に「Firebase」の文を出さない（管理画面以外は表示の直前に言い換え、カラー設定などは文を直接修正）。(4)マットでPB・公認大会の札が見えないのを修正。(5)写真：Rules v374にない枚数の記録（chatImageQuota）を書かない（参加者の写真が全部断られていた）、細長い画像は総画素数で縮小、縦長はチャットで上を切り出して表示。(6)チャットに撮影ボタン（写真の横、小さめ）。Firebase：通信量の増加なし、Rules変更なし。 -->
@@ -7204,7 +7204,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v410</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v414</b></div>
   </div>
 </div>
 
@@ -7447,7 +7447,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v410</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v414</b></div>
   </div>
 </div>
 
@@ -31706,53 +31706,21 @@ document.addEventListener('touchend',clear,{passive:true});document.addEventList
 document.addEventListener('contextmenu',e=>{if(triggered){e.preventDefault();triggered=false}},{capture:true});
 })();
 </script>
-<!-- TOP RUN PORTAL v413 | v410を基準。チャット添付メニューは元の実ボタンを移動して直接操作。認証・送信・Firebase処理は不変更。実機未検証。 -->
-<style id="v413-attach-menu">
-#screen-chat .chatBox.trHasAttach .trAttach.trAttachOpen>.trAttachPick,
-#screen-chat .chatBox.trHasAttach .trAttach.trAttachOpen>.trAttachCam{display:none!important}
-#tr413AttachMenu{position:fixed;display:flex;gap:10px;padding:10px;box-sizing:border-box;border-radius:15px;background:#f5f5f3!important;border:1px solid #9b9b96;box-shadow:0 8px 28px #0006;z-index:2147483000;align-items:center;max-width:calc(100vw - 16px)}
-#tr413AttachMenu[hidden]{display:none!important}
-#tr413AttachMenu button.trAttachPick,#tr413AttachMenu button.trAttachCam{position:static!important;display:flex!important;visibility:visible!important;opacity:1!important;transform:none!important;align-items:center!important;justify-content:center!important;gap:8px!important;min-width:90px!important;width:auto!important;max-width:none!important;height:52px!important;min-height:52px!important;padding:8px 12px!important;border:2px solid #777!important;border-radius:12px!important;background:#fff!important;color:#16252b!important;box-shadow:none!important;pointer-events:auto!important;touch-action:manipulation!important;z-index:2147483001!important}
-#tr413AttachMenu button svg{width:26px!important;height:26px!important;stroke:#16252b!important;flex-shrink:0!important}
-#tr413AttachMenu button span{color:#16252b!important;font-size:15px!important;font-weight:800!important}
+<!-- TOP RUN PORTAL v414 | 添付メニューはネイティブfile inputを直接タップ。認証・保存処理不変更。 -->
+<style id="v414-attach">
+#tr414Menu{position:fixed;z-index:2147483640;display:flex;gap:10px;padding:10px;background:#f4f4f1;color:#17242a;border:1px solid #888;border-radius:14px;box-shadow:0 8px 25px #0007;box-sizing:border-box}
+#tr414Menu[hidden]{display:none!important}
+#tr414Menu label{position:relative;display:flex;align-items:center;justify-content:center;gap:7px;width:105px;height:54px;border-radius:10px;border:1px solid #777;background:white;color:#17242a;font-size:16px;font-weight:800;overflow:hidden;box-sizing:border-box;cursor:pointer}
+#tr414Menu label input[type=file]{display:block!important;position:absolute!important;inset:0!important;width:100%!important;height:100%!important;opacity:0!important;z-index:2!important;cursor:pointer!important;font-size:100px!important}
+#screen-chat .trAttach .trAttachPick,#screen-chat .trAttach .trAttachCam{display:none!important}
 </style>
-<script id="v413-attach-menu-js">
-(function(){'use strict';
-const menu=document.createElement('div');menu.id='tr413AttachMenu';menu.hidden=true;document.body.appendChild(menu);
-let current=null;
-function close(){
- menu.hidden=true;
- if(current){
-  for(const cls of ['trAttachPick','trAttachCam']){const b=menu.querySelector('.'+cls);if(b)current.appendChild(b);}
-  current.classList.remove('trAttachOpen');current.querySelector('.trAttachToggle')?.setAttribute('aria-expanded','false');
- }
- current=null;
-}
-function show(wrap){
- const photo=wrap.querySelector('.trAttachPick'),camera=wrap.querySelector('.trAttachCam'),toggle=wrap.querySelector('.trAttachToggle');
- if(!photo||!camera||!toggle)return;
- current=wrap;wrap.classList.add('trAttachOpen');toggle.setAttribute('aria-expanded','true');
- photo.setAttribute('aria-label','写真を選んで送る');camera.setAttribute('aria-label','カメラで撮影して送る');
- menu.appendChild(photo);menu.appendChild(camera);
- if(!photo.querySelector('.tr413Label'))photo.insertAdjacentHTML('beforeend','<span class="tr413Label">写真</span>');
- if(!camera.querySelector('.tr413Label'))camera.insertAdjacentHTML('beforeend','<span class="tr413Label">カメラ</span>');
- menu.hidden=false;
- const r=toggle.getBoundingClientRect(),mw=menu.offsetWidth,mh=menu.offsetHeight;
- menu.style.left=Math.max(8,Math.min(r.left,innerWidth-mw-8))+'px';
- menu.style.top=(r.top-mh-10>=8?r.top-mh-10:Math.min(innerHeight-mh-8,r.bottom+10))+'px';
-}
-document.addEventListener('click',function(e){
- const toggle=e.target.closest?.('#screen-chat .trAttachToggle');
- if(toggle){e.preventDefault();e.stopImmediatePropagation();const wrap=toggle.closest('.trAttach');if(current===wrap&&!menu.hidden)close();else{close();show(wrap);}return;}
- if(e.target.closest?.('#tr413AttachMenu button'))return;
- if(!menu.hidden)close();
-},true);
-// Original button's own click handler opens its file input directly in the same user gesture.
-menu.addEventListener('click',e=>{if(e.target.closest('button'))queueMicrotask(close);});
-document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});
-window.addEventListener('resize',close);
-window.addEventListener('scroll',()=>{if(!menu.hidden)close();},true);
+<script id="v414-attach-js">
+(()=>{'use strict';
+const menu=document.createElement('div');menu.id='tr414Menu';menu.hidden=true;document.body.append(menu);let wrap=null;
+function close(){menu.hidden=true;if(wrap){for(const cls of ['trAttachPickIn','trAttachCamIn']){const f=menu.querySelector('.'+cls);if(f)wrap.append(f)}wrap.classList.remove('trAttachOpen');wrap.querySelector('.trAttachToggle')?.setAttribute('aria-expanded','false')}menu.replaceChildren();wrap=null}
+function open(w){const p=w.querySelector('.trAttachPickIn'),c=w.querySelector('.trAttachCamIn'),t=w.querySelector('.trAttachToggle');if(!p||!c||!t)return;wrap=w;w.classList.add('trAttachOpen');t.setAttribute('aria-expanded','true');for(const [f,label] of [[p,'▧ 写真'],[c,'◎ カメラ']]){const l=document.createElement('label');l.textContent=label;l.append(f);menu.append(l);f.addEventListener('change',close,{once:true})}menu.hidden=false;const r=t.getBoundingClientRect(),mw=menu.offsetWidth,mh=menu.offsetHeight;menu.style.left=Math.max(8,Math.min(r.left,innerWidth-mw-8))+'px';menu.style.top=Math.max(8,r.top-mh-10)+'px'}
+document.addEventListener('click',e=>{const t=e.target.closest?.('#screen-chat .trAttachToggle');if(t){e.preventDefault();e.stopImmediatePropagation();const w=t.closest('.trAttach');if(w===wrap)close();else{close();open(w)}return}if(e.target.closest?.('#tr414Menu'))return;if(wrap)close()},true);
+document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
 })();
 </script>
-</body>
-</html>
+</body></html>
