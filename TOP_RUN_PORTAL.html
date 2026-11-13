@@ -1,4 +1,4 @@
-<!-- TOP RUN PORTAL v415 | 2026-11-13 | チャット写真・カメラのネイティブ選択メニュー。実機未検証。 -->
+<!-- TOP RUN PORTAL v416 | Parent v410. Chat attachment UI isolated, native inputs. Auth/Firebase unchanged. -->
 <!-- TOP RUN PORTAL v402 | 2026-11-11 | Parent v401. チャット（共通・ルーム）の写真／カメラのはみ出しを修正し、タップ領域を独立。入力欄と送信ボタンを少し縮小。その他の接続・保存・画面は不変更。 -->
 <!-- TOP RUN PORTAL v401 | 2026-11-11 | Parent v400. スプレッドシートから取り込む（イベント）：PORTALで先に作った大会と同じ日・似た名前なら「新規」にせず確認し、［同じ大会として紐付ける］でシートの「PORTAL ID」に既存の大会IDを書く（シート v11 が必要）。紐付けた大会はPORTAL側の大会名・日付・会場・種目・出走登録を変えず、資料リンクの追加だけ。Firebase：通信量の増加なし、Rules変更なし。 -->
 <!-- TOP RUN PORTAL v400 | 2026-11-11 | Parent v399. (1)下のメニューが沈む：画面の切り替え・キーボードを閉じたとき、裏のHOMEのスクロール位置が範囲外なら戻す（メニューはJSで動かさない）。(2)名前の保存後はチャット名の欄へ移動。(3)参加者の画面に「Firebase」の文を出さない（管理画面以外は表示の直前に言い換え、カラー設定などは文を直接修正）。(4)マットでPB・公認大会の札が見えないのを修正。(5)写真：Rules v374にない枚数の記録（chatImageQuota）を書かない（参加者の写真が全部断られていた）、細長い画像は総画素数で縮小、縦長はチャットで上を切り出して表示。(6)チャットに撮影ボタン（写真の横、小さめ）。Firebase：通信量の増加なし、Rules変更なし。 -->
@@ -7204,7 +7204,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v415</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v416</b></div>
   </div>
 </div>
 
@@ -7447,7 +7447,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v415</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v416</b></div>
   </div>
 </div>
 
@@ -15463,7 +15463,18 @@ function portalAuditRenderOfficialV222(e){
     const u=esc(new URL(location.pathname,location.origin).href);
     const doc='<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>活動履歴 '+esc(trHubPersonState.data.range.label)+'</title><style>'+
       'body{font:12px -apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif;color:#222;margin:16px}h1{font-size:18px}table{border-collapse:collapse;width:100%;font-size:10px}td,th{border:1px solid #bbb;padding:7px 5px;vertical-align:top;overflow-wrap:anywhere}th{background:#eee9dc}th:nth-child(2),td:nth-child(2){white-space:nowrap;word-break:keep-all}tr{break-inside:avoid}.tools{margin:0 0 16px;display:flex;gap:12px}.tools a,.tools button{padding:10px;border:1px solid #999;border-radius:7px;background:#fff;color:#222;text-decoration:none}@page{size:A4 landscape;margin:10mm}@media print{.tools{display:none}body{margin:0}table{font-size:8pt}}'+
-      '</style></head><body><div class="tools"><a href="'+u+'">← PORTALへ戻る</a><button onclick="print()">印刷・PDF保存</button></div><h1>活動履歴 '+esc(trHubPersonState.data.range.label)+'</h1><p>対象者：'+trHubPersonState.data.people.length+'名／保存済みの参加回答・大会出走・記録から表示（未回答を含む）</p><table><thead><tr>'+rows[0].map(v=>td(v,'th')).join('')+'</tr></thead><tbody>'+rows.slice(1).map(r=>'<tr>'+r.map(v=>td(v,'td')).join('')+'</tr>').join('')+'</tbody></table></body></html>';
+      '</style></head><body><div class="tools"><a href="'+u+'">← PORTALへ戻る</a><button onclick="print()">印刷・PDF保存</button></div><h1>活動履歴 '+esc(trHubPersonState.data.range.label)+'</h1><p>対象者：'+trHubPersonState.data.people.length+'名／保存済みの参加回答・大会出走・記録から表示（未回答を含む）</p><table><thead><tr>'+rows[0].map(v=>td(v,'th')).join('')+'</tr></thead><tbody>'+rows.slice(1).map(r=>'<tr>'+r.map(v=>td(v,'td')).join('')+'</tr>').join('')+'</tbody></table><style id="v416-chat-attachment-single-layout">
+/* One layout for both chat composers; 2 dedicated attachment cells. */
+#screen-chat .chatBox.trHasAttach,#screen-chat .chatBox.trHasAttach:focus-within{display:grid!important;grid-template-columns:76px minmax(0,1fr) 56px!important;gap:6px!important;align-items:center!important;box-sizing:border-box!important;padding:6px 8px!important}
+#screen-chat .chatBox.trHasAttach .trAttach,#screen-chat .chatBox.trHasAttach:focus-within .trAttach{position:relative!important;display:grid!important;grid-template-columns:36px 36px!important;gap:4px!important;width:76px!important;min-width:76px!important;max-width:76px!important;overflow:visible!important;z-index:auto!important}
+#screen-chat .chatBox.trHasAttach .trAttach label{position:relative!important;display:flex!important;align-items:center!important;justify-content:center!important;box-sizing:border-box!important;width:36px!important;height:44px!important;min-width:36px!important;max-width:36px!important;margin:0!important;padding:0!important;background:transparent!important;color:#455252!important;opacity:1!important;border:0!important;overflow:hidden!important;cursor:pointer}
+#screen-chat .chatBox.trHasAttach .trAttach label svg{width:25px!important;height:25px!important;pointer-events:none!important}
+#screen-chat .chatBox.trHasAttach .trAttach label input[type=file]{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;opacity:0!important;display:block!important;cursor:pointer!important;font-size:100px!important;z-index:1!important}
+#screen-chat .chatBox.trHasAttach textarea{width:100%!important;min-width:0!important;box-sizing:border-box!important;margin:0!important}
+#screen-chat .chatBox.trHasAttach .primary{width:56px!important;min-width:56px!important;max-width:56px!important;box-sizing:border-box!important}
+@media(max-width:360px){#screen-chat .chatBox.trHasAttach,#screen-chat .chatBox.trHasAttach:focus-within{grid-template-columns:68px minmax(0,1fr) 52px!important;gap:4px!important;padding:6px!important}#screen-chat .chatBox.trHasAttach .trAttach,#screen-chat .chatBox.trHasAttach:focus-within .trAttach{grid-template-columns:32px 32px!important;gap:4px!important;width:68px!important;min-width:68px!important;max-width:68px!important}#screen-chat .chatBox.trHasAttach .trAttach label{width:32px!important;min-width:32px!important;max-width:32px!important}#screen-chat .chatBox.trHasAttach .primary{width:52px!important;min-width:52px!important;max-width:52px!important}}
+</style>
+</body></html>';
     w.document.open();w.document.write(doc);w.document.close();$('trHubStatus').textContent='印刷・PDF用の活動履歴を開きました。';
   });
 
@@ -28214,35 +28225,19 @@ window.__trFilePickStart=function(input){
     const input=document.getElementById(inputId);const box=input?.closest('.chatBox');
     if(!box||box.querySelector('.trAttach'))return;
     const wrap=document.createElement('span');wrap.className='trAttach';
-    wrap.innerHTML='<button type="button" class="trAttachPick" aria-label="写真を選んで送る">'+ICON+'</button><input type="file" class="trAttachPickIn" accept="image/*" multiple hidden><button type="button" class="trAttachCam" aria-label="撮影して送る">'+CAM+'</button><input type="file" class="trAttachCamIn" accept="image/*" capture="environment" hidden>';
-    // v403: 添付操作は＋に集約。文字入力中は添付操作を畳む。
-    const toggle=document.createElement('button');
-    toggle.type='button';toggle.className='trAttachToggle';
-    toggle.setAttribute('aria-label','写真・カメラのメニュー');toggle.setAttribute('aria-expanded','false');
-    toggle.textContent='＋';
-    wrap.insertBefore(toggle,wrap.firstChild);
-    toggle.addEventListener('click',e=>{
-      e.stopPropagation();
-      const open=!wrap.classList.contains('trAttachOpen');
-      document.querySelectorAll('#screen-chat .trAttachOpen').forEach(el=>{
-        el.classList.remove('trAttachOpen');el.querySelector('.trAttachToggle')?.setAttribute('aria-expanded','false');
-      });
-      wrap.classList.toggle('trAttachOpen',open);toggle.setAttribute('aria-expanded',String(open));
-    });
-    input.addEventListener('focus',()=>{wrap.classList.remove('trAttachOpen');toggle.setAttribute('aria-expanded','false');});
-    wrap.querySelectorAll('.trAttachPick,.trAttachCam').forEach(b=>b.addEventListener('click',()=>{
-      wrap.classList.remove('trAttachOpen');toggle.setAttribute('aria-expanded','false');
-    }));
+    // v416: visible native file inputs sit directly over their own labels.
+    // No hidden file input, synthetic click, plus-menu, or delayed activation.
+    wrap.innerHTML='<label class="trAttachPick" aria-label="写真を選ぶ">'+ICON+'<input type="file" class="trAttachPickIn" accept="image/*" multiple aria-label="写真を選ぶ"></label><label class="trAttachCam" aria-label="カメラで撮影">'+CAM+'<input type="file" class="trAttachCamIn" accept="image/*" capture="environment" aria-label="カメラで撮影"></label>';
     box.insertBefore(wrap,box.firstChild);box.classList.add('trHasAttach');
     if(input.placeholder&&input.placeholder.length>10)input.placeholder='メッセージを入力';
     // v400: 「写真を選ぶ」と「撮影する」の2つ。どちらも同じ送信の流れ（縮小・確認・1日の枚数）
     [['.trAttachPick','.trAttachPickIn'],['.trAttachCam','.trAttachCamIn']].forEach(([bs,fs])=>{
     const btn=wrap.querySelector(bs),f=wrap.querySelector(fs);
-    btn.addEventListener('click',e=>{e.stopPropagation();f.value='';window.__trFilePickStart?.(f);try{window.__trPickSet(JSON.stringify({ctx,roomId:ctx==='room'?(g()?.roomReactCtx?.().openId||''):'',at:Date.now()}));}catch(_){}f.click();});
+    f.addEventListener('click',()=>{f.value='';window.__trFilePickStart?.(f);try{window.__trPickSet(JSON.stringify({ctx,roomId:ctx==='room'?(g()?.roomReactCtx?.().openId||''):'',at:Date.now()}));}catch(_){} });
     f.addEventListener('change',async()=>{
       // v249: 選んだあとの処理中に読み込み直されても戻れるよう、戻り先は処理が終わるまで残す
       try{const r=JSON.parse(window.__trPickGet()||'null');if(r){r.stage='work';r.at=Date.now();window.__trPickSet(JSON.stringify(r));}}catch(_){}
-      const all=[...wrap.querySelectorAll('button')];all.forEach(b=>b.disabled=true);
+      const all=[...wrap.querySelectorAll('input[type=file]')];all.forEach(b=>b.disabled=true);
       try{await onFiles(ctx,f.files,btn);}finally{all.forEach(b=>b.disabled=false);try{window.__trPickDel();}catch(_){}}
     });
     });
@@ -31536,19 +31531,7 @@ html[data-portal-personal-color="matte"] .crTag.gold{background:var(--gold,#ff78
 </style>
 
 
-<style id="v403-chat-attach-compact">
-/* v403: 共通CHAT／ルームの入力幅を確保。添付は＋から選択。 */
-#screen-chat .chatBox.trHasAttach{grid-template-columns:40px minmax(0,1fr) 56px!important;column-gap:6px!important}
-#screen-chat .chatBox.trHasAttach .trAttach{position:relative!important;width:40px!important;min-width:0!important;display:flex!important;overflow:visible!important}
-#screen-chat .chatBox.trHasAttach .trAttach .trAttachToggle{display:flex!important;flex:0 0 40px!important;width:40px!important;min-width:40px!important;max-width:40px!important;height:44px!important;font-size:29px!important;font-weight:400!important;align-items:center!important;justify-content:center!important}
-#screen-chat .chatBox.trHasAttach .trAttach .trAttachPick,#screen-chat .chatBox.trHasAttach .trAttach .trAttachCam{display:none!important}
-#screen-chat .chatBox.trHasAttach .trAttach.trAttachOpen .trAttachPick,#screen-chat .chatBox.trHasAttach .trAttach.trAttachOpen .trAttachCam{display:flex!important;position:absolute!important;bottom:51px!important;width:44px!important;min-width:44px!important;max-width:44px!important;height:44px!important;background:#fff!important;color:#293238!important;border:1px solid #bbb!important;border-radius:12px!important;box-shadow:0 3px 12px #0003!important;z-index:30!important}
-#screen-chat .chatBox.trHasAttach .trAttach.trAttachOpen .trAttachPick{left:0!important}
-#screen-chat .chatBox.trHasAttach .trAttach.trAttachOpen .trAttachCam{left:49px!important}
-#screen-chat .chatBox.trHasAttach:focus-within{grid-template-columns:minmax(0,1fr) 56px!important}
-#screen-chat .chatBox.trHasAttach:focus-within .trAttach{display:none!important}
-@media(max-width:360px){#screen-chat .chatBox.trHasAttach{grid-template-columns:40px minmax(0,1fr) 52px!important}#screen-chat .chatBox.trHasAttach:focus-within{grid-template-columns:minmax(0,1fr) 52px!important}}
-</style>
+
 <!-- TOP RUN PORTAL v405 | 2026-11-11 | Parent v404. Full-page capture UI; visible version labels v405. Firebase/Rules unchanged. -->
 <style id="trFullCaptureStyle">
 #trCaptureLaunch{position:fixed;right:12px;bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:1800;border:1px solid #e4c44c;border-radius:25px;background:#15191e;color:#f7e16b;box-shadow:0 4px 14px #0005;font:700 12px/1.2 system-ui,-apple-system,sans-serif;padding:11px 13px;cursor:pointer}
@@ -31651,79 +31634,12 @@ html[data-portal-personal-color="matte"] .crTag.gold{background:var(--gold,#ff78
 </script>
 
 <!-- TOP RUN PORTAL v406 | v405を基にチャット添付操作の表示を修正。送信結果を明示。実機・Firebase未検証。 -->
-<style id="v406-chat-attach-fix">
-/* iPhone SE / Android: ＋メニューは入力欄の上に表示し、キーボード時も＋を消さない */
-#screen-chat .chatBox.trHasAttach, #screen-chat .chatBox.trHasAttach:focus-within{
- grid-template-columns:44px minmax(0,1fr) 56px!important;column-gap:6px!important;overflow:visible!important;isolation:isolate!important
-}
-#screen-chat .chatBox.trHasAttach .trAttach,
-#screen-chat .chatBox.trHasAttach:focus-within .trAttach{
- display:flex!important;position:relative!important;overflow:visible!important;width:44px!important;min-width:44px!important;z-index:80!important
-}
-#screen-chat .chatBox.trHasAttach .trAttach .trAttachToggle{width:44px!important;min-width:44px!important;max-width:44px!important;flex-basis:44px!important}
-#screen-chat .chatBox.trHasAttach .trAttach.trAttachOpen .trAttachPick,
-#screen-chat .chatBox.trHasAttach .trAttach.trAttachOpen .trAttachCam{
- display:flex!important;visibility:visible!important;opacity:1!important;z-index:100!important;bottom:58px!important;left:0!important;
- width:48px!important;min-width:48px!important;max-width:48px!important;height:48px!important;
- align-items:center!important;justify-content:center!important;box-shadow:0 4px 16px #0005!important
-}
-#screen-chat .chatBox.trHasAttach .trAttach.trAttachOpen .trAttachCam{left:54px!important}
-#screen-chat .chatBox.trHasAttach .trAttach.trAttachOpen{z-index:200!important}
-@media(max-width:360px){#screen-chat .chatBox.trHasAttach,#screen-chat .chatBox.trHasAttach:focus-within{grid-template-columns:44px minmax(0,1fr) 52px!important}}
-</style>
+
 <!-- TOP RUN PORTAL v408 | 添付は＋展開。画面保存は画面の空白を長押しして呼び出す。認証・Firebase・送信処理変更なし。 -->
-<style id="v408-attachment-capture">
-#screen-chat .chatBox.trHasAttach,#screen-chat .chatBox.trHasAttach:focus-within{grid-template-columns:44px minmax(0,1fr) 56px!important;column-gap:6px!important;overflow:visible!important;isolation:isolate!important}
-#screen-chat .chatBox.trHasAttach .trAttach,#screen-chat .chatBox.trHasAttach:focus-within .trAttach{display:flex!important;position:relative!important;width:44px!important;min-width:44px!important;overflow:visible!important;z-index:300!important}
-#screen-chat .chatBox.trHasAttach .trAttach .trAttachToggle{display:flex!important;width:44px!important;min-width:44px!important;max-width:44px!important;height:44px!important;align-items:center!important;justify-content:center!important}
-#screen-chat .chatBox.trHasAttach .trAttach .trAttachPick,#screen-chat .chatBox.trHasAttach .trAttach .trAttachCam{display:none!important}
-#screen-chat .chatBox.trHasAttach .trAttach.trAttachOpen .trAttachPick,#screen-chat .chatBox.trHasAttach .trAttach.trAttachOpen .trAttachCam{display:flex!important;position:absolute!important;bottom:58px!important;left:0!important;width:48px!important;min-width:48px!important;max-width:48px!important;height:48px!important;background:#fff!important;color:#293238!important;border:1px solid #b9b9b9!important;border-radius:12px!important;box-shadow:0 4px 15px #0004!important;opacity:1!important;visibility:visible!important;align-items:center!important;justify-content:center!important;z-index:310!important}
-#screen-chat .chatBox.trHasAttach .trAttach.trAttachOpen .trAttachCam{left:54px!important}
-#screen-chat .chatBox.trHasAttach .trAttach button svg{width:25px!important;height:25px!important}
-#trCaptureLaunch{display:none!important}
-@media(max-width:360px){#screen-chat .chatBox.trHasAttach,#screen-chat .chatBox.trHasAttach:focus-within{grid-template-columns:44px minmax(0,1fr) 52px!important}}
-</style>
-<script id="v408-capture-longpress">
-(function(){'use strict';
-const launch=document.getElementById('trCaptureLaunch');if(!launch)return;
-let timer=null,origin=null,triggered=false;
-function blank(target){
- if(!(target instanceof Element))return false;
- if(target.closest('button,a,input,textarea,select,label,[role="button"],[contenteditable],.chatBox,.chatBubble,.msgBubble,.message,.noticeCard,.eventCard,.card,.portalCard,.trCaptureModal,#trCaptureModal,nav,header,footer'))return false;
- const screen=target.closest('.portalScreen');if(!screen)return false;
- // Only empty background; do not intercept message text, cards, images, lists or interactive controls.
- const el=document.elementFromPoint(origin.x,origin.y);
- return !!el && (el===screen || el.classList.contains('portalScreen') || (el===target && !target.children.length && !target.textContent.trim()));
-}
-function clear(){if(timer!==null)clearTimeout(timer);timer=null;origin=null}
-document.addEventListener('touchstart',e=>{
- clear();if(e.touches.length!==1)return;const t=e.touches[0];origin={x:t.clientX,y:t.clientY,target:e.target};
- if(!blank(e.target)){origin=null;return}
- timer=setTimeout(()=>{timer=null;if(!origin)return;triggered=true;launch.click();origin=null},700);
-},{passive:true});
-document.addEventListener('touchmove',e=>{if(!origin)return;const t=e.touches[0];if(!t||Math.hypot(t.clientX-origin.x,t.clientY-origin.y)>12)clear()},{passive:true});
-document.addEventListener('touchend',clear,{passive:true});document.addEventListener('touchcancel',clear,{passive:true});
-document.addEventListener('contextmenu',e=>{if(triggered){e.preventDefault();triggered=false}},{capture:true});
-})();
-</script>
-<!-- TOP RUN PORTAL v415 | 写真・カメラを入力欄内に常時横並び表示。＋メニューを廃止。 -->
-<style id="v415-attach">
-#screen-chat .chatBox.trHasAttach .trAttach,
-#screen-chat .chatBox.trHasAttach:focus-within .trAttach{
- display:flex!important;position:relative!important;flex:0 0 auto!important;width:auto!important;min-width:0!important;
- gap:6px!important;align-items:center!important;overflow:visible!important;z-index:5!important;
-}
-#screen-chat .chatBox.trHasAttach .trAttach .trAttachToggle{display:none!important}
-#screen-chat .chatBox.trHasAttach .trAttach .trAttachPick,
-#screen-chat .chatBox.trHasAttach .trAttach .trAttachCam{
- display:flex!important;position:relative!important;left:auto!important;bottom:auto!important;
- flex:0 0 42px!important;width:42px!important;min-width:42px!important;max-width:42px!important;
- height:44px!important;background:transparent!important;color:#414b4c!important;
- border:0!important;border-radius:9px!important;box-shadow:none!important;
- opacity:1!important;visibility:visible!important;align-items:center!important;justify-content:center!important;
- padding:0!important;pointer-events:auto!important;z-index:6!important;
-}
-#screen-chat .chatBox.trHasAttach .trAttach button svg{width:26px!important;height:26px!important}
-#screen-chat .chatBox.trHasAttach .trAttach input[type=file]{display:none!important}
-</style>
-</body></html>
+
+
+<!-- TOP RUN PORTAL v410 | ＋メニューをチャット領域の外側に独立表示。既存の写真・カメラ送信処理を再利用。 -->
+
+
+</body>
+</html>
