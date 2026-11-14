@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v431 | 2026-11-14 | Parent v430 (Rules v376). 今日入れた入口の画面の作り替え（v424の状態ごとの入口・v429の覆いの外し方）と、v430の画面の枠の合わせ直しを外し、入口は昨日までの動きに戻す（入れない人が増えたため、原因の切り分け）。EVENT BASEへの自動接続（v427・v428）・チャット・画像などはそのまま。 -->
 <!-- TOP RUN PORTAL v430 | 2026-11-14 | Parent v429 (Rules v375). 下のメニューが沈む（ホーム画面アイコンから開いたとき、キーボードを閉じたあとやチャットから戻ったあと）：iPhoneの見えている画面と画面の枠がずれたまま残るのが原因。ずれが残っているときだけ、スクロール位置を1px動かして戻し、iPhoneに枠を合わせ直させる。メニュー自体はJSで動かさない（bottom:0のまま）。Firebase変更なし。 -->
 <!-- TOP RUN PORTAL v429 | 2026-11-14 | Parent v428 (Rules v375). ブラウザ（Safari・BAND・LINE）で開くと「認証中」のまま止まっていた：v424 で入口の画面を絞ったとき、最初の「認証中」の覆いを外す条件（登録ボタンなどが見えていること）に当てはまらなくなっていた→入口の案内を出したら覆いを外す。 -->
 <!-- TOP RUN PORTAL v428 | 2026-11-14 | Parent v427. REQUIRES Rules v375. 管理者が「EVENT BASEを開く」を押したとき、運営者（manager）としての接続を自動で作る（portalLinkProof: verified-portal-admin-v1。駅伝BASEと同じ考え）。前に見る用（participant）の接続ができていたら、運営者の接続に作り直す。Rules v375 が未公開のときは今までどおり見る用。 -->
@@ -7214,7 +7215,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v430</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v431</b></div>
   </div>
 </div>
 
@@ -7457,7 +7458,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v430</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v431</b></div>
   </div>
 </div>
 
@@ -31891,125 +31892,7 @@ header.top .brandText{cursor:pointer}
 #trHoSection .trHoBox button{min-height:40px;border-radius:12px}
 </style>
 
-<script id="v424-entry-simple">
-/* v424: 入口の画面を、状態ごとに出すものを1つに絞る（表示だけ。ログイン・登録の処理は今までのまま）。
-   A. ブラウザ（Safari・BAND・LINE の中）：ホーム画面に追加して、アイコンから開く案内だけ
-   B. アイコンから・登録がない：「はじめて登録する」「前に使っていた（入れなくなった）」の2つ
-   C. 登録があるのに入れない：今の案内（もう一度・運営に連絡する）だけ。運営用の詳しい状態は出さない */
-(function(){
-  'use strict';
-  const $=id=>document.getElementById(id);
-  const ua=navigator.userAgent||'';
-  const isPhone=/iPhone|iPad|iPod|Android/i.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
-  const isIOS=/iPhone|iPad|iPod/i.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
-  const inApp=/Line\/|NAVER|BAND\/|FBAN|FBAV|Instagram|; wv\)/i.test(ua);
-  const mq=m=>window.matchMedia?.('(display-mode: '+m+')')?.matches===true;
-  const fromIcon=()=>navigator.standalone===true||mq('standalone')||mq('fullscreen')||mq('minimal-ui');
-  let override=false;try{override=new URLSearchParams(location.search).get('browserok')==='1';}catch(_){}
-  const browserBlock=()=>isPhone&&!fromIcon()&&(isIOS||inApp)&&!override;
-  let returning=false;
-  const vis=el=>!!el&&!el.hidden;
-  const hide=(el,h)=>{if(el&&el.hidden!==h)el.hidden=h;};
-  const text=(el,s)=>{if(el&&el.textContent!==s)el.textContent=s;};
-  function reportText(){
-    const v=window.__TR_PORTAL_SYNC__||{};
-    const tail=String(v.uid||'').slice(-6)||String(v.authUidTail||'')||'なし';
-    const dev=/iPhone|iPad/.test(ua)?'iPhone':/Android/.test(ua)?'Android':'その他';
-    const st=[v?'接続準備OK':'接続準備なし',v?.uid?'本人IDあり':'本人IDなし',v?.profileId?'プロフィールあり':'プロフィールなし',navigator.onLine?'オンライン':'オフライン'].join('／');
-    return ['TOP RUN PORTAL に入れません（前に使っていました）','確認番号：'+tail,'状態：'+st+(v.error?'／'+String(v.error).replace(/Firebase/g,'').slice(0,80):''),'開き方：'+(fromIcon()?'ホーム画面アイコン':'ブラウザ')+'／'+dev,'版：v424','時刻：'+new Date().toLocaleString('ja-JP'),'','名前：（ここに名前を書いてください）'].join('\n');
-  }
-  async function sendReport(btn){
-    const txt=reportText();
-    try{if(navigator.share){await navigator.share({text:txt});return;}}catch(e){if(e&&e.name==='AbortError')return;}
-    let ok=false;try{await navigator.clipboard.writeText(txt);ok=true;}catch(_){}
-    btn.textContent=ok?'コピーしました。BANDに貼って送ってください':'この画面を撮って運営に送ってください';
-  }
-  function ensureUi(){
-    const newStart=$('portalNewParticipantStart');if(!newStart)return null;
-    let ret=$('trEntryReturning');
-    if(!ret){
-      ret=document.createElement('button');ret.type='button';ret.id='trEntryReturning';ret.className='trEntryChoice';
-      ret.textContent='前に使っていた方（入れなくなった）';
-      newStart.insertAdjacentElement('afterend',ret);
-      ret.addEventListener('click',()=>{returning=true;present();document.getElementById('trEntryReturnBox')?.scrollIntoView({block:'start',behavior:'smooth'});});
-      const box=document.createElement('div');box.id='trEntryReturnBox';box.hidden=true;
-      box.innerHTML='<p class="trEntryLead">登録はやり直さないでください（記録が別の人になってしまいます）。</p>'+
-        '<ol class="trEntrySteps"><li>「運営に連絡する」を押して、BAND（LINEでも可）で運営に送る。</li><li>運営から<b>引継ぎコード</b>が届いたら、下の欄に入れて「同じ本人でログイン」を押す。</li></ol>'+
-        '<button type="button" id="trEntryReport" class="trEntryChoice">運営に連絡する</button>'+
-        '<button type="button" id="trEntryBack" class="trEntryLink">← 戻る</button>';
-      ret.insertAdjacentElement('afterend',box);
-      box.querySelector('#trEntryReport').addEventListener('click',e=>sendReport(e.currentTarget));
-      box.querySelector('#trEntryBack').addEventListener('click',()=>{returning=false;present();});
-      // 引継ぎコードの欄は、この案内のすぐ下に移す
-      const cf=$('portalHandoffCodeForm');if(cf){box.insertAdjacentElement('afterend',cf);const hs=$('portalHandoffStatus');if(hs)cf.insertAdjacentElement('afterend',hs);}
-    }
-    return {newStart,ret,box:$('trEntryReturnBox')};
-  }
-  let busy=false;
-  function present(){
-    if(busy)return;busy=true;
-    try{
-      const panel=$('portalParticipantIdentityGate');if(!panel||panel.hidden){busy=false;return;}
-      const ui=ensureUi();if(!ui){busy=false;return;}
-      const heading=$('portalParticipantLoginTitle'),message=$('portalParticipantLoginMessage'),helper=$('portalParticipantLoginHelp');
-      const steps=$('portalGateSteps'),retry=$('portalParticipantLoginRetry'),newForm=$('portalNewParticipantForm');
-      const codeForm=$('portalHandoffCodeForm'),audit=$('portalExistingIdentityAudit'),notice=$('portalIconOnlyNotice'),existing=$('portalExistingParticipantStart');
-      const formOpen=vis(newForm)||vis($('portalParticipantRoleStep'));
-      const choice=!formOpen&&(vis(ui.newStart)||returning)&&!panel.classList.contains('trEntryFailed');
-      panel.classList.toggle('trEntryBrowser',browserBlock());
-      document.documentElement.classList.toggle('trGateShownV429',browserBlock()||choice); // v429: 案内を出したら「認証中」の覆いを外す
-      if(browserBlock()){
-        text(heading,'ホーム画面のアイコンから開いてください');
-        text(message,isIOS?'① 下の共有ボタン（□に↑）→「ホーム画面に追加」を押す。\n② ホーム画面の TOP RUN のアイコンから開く。':'右上のメニューから「ブラウザで開く」を選ぶか、ホーム画面のアイコンから開いてください。');
-        [helper,steps,retry,ui.newStart,ui.ret,ui.box,codeForm,audit,notice,existing].forEach(el=>hide(el,true));
-      }else if(choice){
-        hide(notice,true);hide(audit,true);hide(steps,true);hide(retry,true);hide(existing,true);
-        if(returning){
-          text(heading,'前に使っていた方');text(message,'運営に連絡して、届いた引継ぎコードを入れると、元の登録に戻ります。');
-          hide(helper,true);hide(ui.newStart,true);hide(ui.ret,true);hide(ui.box,false);hide(codeForm,false);
-        }else{
-          text(heading,'TOP RUN PORTAL');text(message,'あてはまる方を押してください。');
-          hide(helper,true);hide(ui.newStart,false);text(ui.newStart,'はじめて登録する');ui.newStart.classList.add('trEntryChoice');
-          hide(ui.ret,false);hide(ui.box,true);hide(codeForm,true);
-        }
-      }else{
-        // 登録の入力中、または登録があるのに入れないとき：選ぶボタンは出さない。運営用の詳しい状態は出さない
-        hide(ui.ret,true);hide(ui.box,true);hide(audit,true);
-        if(!formOpen&&!vis(ui.newStart))hide(codeForm,true);
-      }
-    }catch(_){}
-    busy=false;
-  }
-  // 「登録があるのに入れない」を見分ける：失敗の案内（もう一度確認する）が出ていて、登録のボタンが出ていないとき
-  function mark(){
-    const panel=$('portalParticipantIdentityGate');if(!panel)return;
-    const failed=vis($('portalParticipantLoginRetry'))&&vis($('portalGateSteps'))&&!vis($('portalNewParticipantStart'))&&!returning;
-    panel.classList.toggle('trEntryFailed',failed);
-  }
-  let queued=false;
-  const schedule=()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;mark();present();});};
-  function start(){
-    const panel=$('portalParticipantIdentityGate');if(!panel)return;
-    new MutationObserver(schedule).observe(panel,{subtree:true,childList:true,attributes:true,attributeFilter:['hidden']});
-    schedule();
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
-})();
-</script>
 <style id="v424-style">
-/* v424: 入口の画面 */
-#portalParticipantIdentityGate .trEntryChoice{display:block;width:100%;min-height:52px;margin:10px 0 0;border-radius:14px;font:inherit;font-size:16px;font-weight:900;cursor:pointer}
-#portalParticipantIdentityGate #portalNewParticipantStart.trEntryChoice{background:var(--gold,#e0c24a);color:#211b08;border:0}
-#portalParticipantIdentityGate #trEntryReturning,#portalParticipantIdentityGate #trEntryReport{background:transparent;color:inherit;border:1px solid rgba(255,255,255,.45)}
-#portalParticipantIdentityGate #trEntryReport{background:var(--gold,#e0c24a);color:#211b08;border:0}
-#portalParticipantIdentityGate #trEntryReturnBox{margin-top:6px;font-size:14px;line-height:1.75}
-#portalParticipantIdentityGate #trEntryReturnBox .trEntryLead{margin:0 0 6px;font-weight:800;color:#ffd76a}
-#portalParticipantIdentityGate #trEntryReturnBox .trEntrySteps{margin:0;padding-left:1.4em}
-#portalParticipantIdentityGate .trEntryLink{display:block;margin:12px auto 0;background:none;border:0;color:inherit;opacity:.8;font:inherit;font-size:14px;text-decoration:underline}
-#portalParticipantIdentityGate #portalParticipantLoginMessage{white-space:pre-line}
-#portalParticipantIdentityGate .trGateDetail{display:none!important}
-html.trGateShownV429 #portalFirstPaintAuthOverlay{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}
-#portalParticipantIdentityGate #portalHandoffCodeForm{margin-top:16px}
 /* v424: リンクカードの震え対策：ふわっと表示をやめ、カードの描き直しをカードの中に閉じ込める */
 .trLPWrap{contain:layout paint}
 .trLPMedia .trLPImage{opacity:1!important;transition:none!important}
@@ -32042,39 +31925,5 @@ html.trGateShownV429 #portalFirstPaintAuthOverlay{display:none!important;visibil
 .trArchiveField button{min-height:40px;padding:0 12px;border-radius:10px;font:inherit;font-size:13px;font-weight:800;white-space:nowrap}
 </style>
 
-<script id="v430-viewport-heal">
-/* v430: 下のメニューが沈む対策。ホーム画面アイコンから開いたとき、キーボードを閉じた後などに、iPhoneの「見えている画面」と
-   「画面の枠（fixed の基準）」がずれたまま残ることがある。ずれが残っているときだけ、スクロール位置を1px動かして戻し、枠を合わせ直させる。
-   メニューは JS で動かさない（bottom:0 のまま）。Firebase は使わない。 */
-(function(){
-  'use strict';
-  const standalone=navigator.standalone===true||window.matchMedia?.('(display-mode: standalone)')?.matches===true;
-  if(!standalone)return;
-  const vv=window.visualViewport;if(!vv)return;
-  const isField=el=>!!(el&&el.matches&&el.matches('input:not([type="file"]):not([type="checkbox"]):not([type="radio"]),textarea,select,[contenteditable="true"]'));
-  let touching=false,timer=0;
-  document.addEventListener('touchstart',()=>{touching=true;},{passive:true,capture:true});
-  document.addEventListener('touchend',()=>{touching=false;later(350);},{passive:true,capture:true});
-  function drift(){return (vv.offsetTop>1)||(window.innerHeight-vv.height>2);}
-  function heal(){
-    if(touching||isField(document.activeElement)||(vv.scale||1)>1.01)return;
-    if(!drift())return;
-    const x=window.scrollX||0,y=window.scrollY||0;
-    window.scrollTo(x,y+1);
-    requestAnimationFrame(()=>{window.scrollTo(x,y);
-      // それでも残るときは、いちばん上に合わせ直す（ホーム画面のときだけ）
-      setTimeout(()=>{if(drift()&&!touching&&!isField(document.activeElement)){const cur=document.querySelector('.portalScreen:not(.hidden)');if(!cur)window.scrollTo(x,Math.max(0,y-vv.offsetTop));}},250);
-    });
-  }
-  function later(ms){clearTimeout(timer);timer=setTimeout(heal,ms||300);}
-  document.addEventListener('focusout',e=>{if(isField(e.target))later(450);},true);
-  vv.addEventListener('resize',()=>later(400));
-  vv.addEventListener('scroll',()=>later(500));
-  window.addEventListener('pageshow',()=>later(300));
-  document.addEventListener('visibilitychange',()=>{if(!document.hidden)later(300);});
-  const start=()=>{const mo=new MutationObserver(()=>later(350));document.querySelectorAll('.portalScreen').forEach(s=>mo.observe(s,{attributes:true,attributeFilter:['class']}));mo.observe(document.body,{attributes:true,attributeFilter:['class']});later(600);};
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
-})();
-</script>
 </body>
 </html>
