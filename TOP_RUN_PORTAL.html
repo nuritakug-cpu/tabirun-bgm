@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v437 | 2026-11-14 | Parent v436. (1)マイページ：v436 の保存ボタンを1つにまとめた変更を取り消し、元の3つの保存ボタンに戻す。(2)ホームの上の画像（背面）を左右に12pxずつ広げる（文字・日付の位置は変えない）。(3)チャット：開いたとき・ルームを切り替えたとき、画像やリンクカードがあとから読み込まれて高さが変わっても、4秒間は最後のメッセージ（未読があれば未読の線）に合わせ直す。指で動かしたらやめる。Firebaseの読み込み・Rulesの変更なし。iPhone・Android実機は未確認。 -->
 <!-- TOP RUN PORTAL v436 | 2026-11-14 | Parent v435. REQUIRES Worker top-run-identity v3. (1)マイページのプロフィール：保存ボタンを「プロフィールを保存」1つに（名前・ふりがな→チャット名（変えたとき）→性別・学年の順に今までの保存処理を動かす。必須が空ならその欄へ）。(2)練習の日付だけを変えたとき、参加回答を「そのまま残す／リセットして答え直してもらう／保存をやめる」から選ぶ（中止・変更のお知らせを付けたときは今までどおりリセット）。(3)管理画面「選手」：「既存選手を出走登録」に回答していない承認済みの人も出す（本人のIDで登録）。「新しい選手を登録」はクラブ外の人だけと明記。「出走登録を修正・取り消し」で、本人につながっていないカードに「選手につなぐ」（カードの本人欄だけを書く。つながっているカードは書き換えない）。(4)二重登録の整理：名前がちがう2つを選んで1つにまとめる。Firebase：一覧を開くときに承認済みの一覧を1回読む（開いたときだけ）。常時監視・Rulesの変更なし。iPhone実機は未確認。 -->
 <!-- TOP RUN PORTAL v435 | 2026-11-14 | Parent v434. REQUIRES Worker top-run-identity v3. (1)暗証番号：まだ決めていない人は開いたときに「暗証番号を決めてください」を出す（保存に失敗したときだけ「あとで」）。決めた人はマイページから歯車（設定）の中へ移す。(2)歯車の中をカードの並びに整理（画像・プロフィール／カラー／通知／暗証番号・予備／他の端末）。押したカードの中身だけを開く。(3)公認：EVENT BASEの大会の記録（紐付け local-flow-claim-・eventbase_ の記録）も、PORTALのイベント（正式大会URLの大会ID）の「公認記録の区分」で判定する（今までは第1回だけ固定で公認、ほかは非公認・公認未照合になっていた）。Firebaseの読み込み・常時監視・Rulesの変更なし。iPhone実機は未確認。 -->
 <!-- TOP RUN PORTAL v434 | 2026-11-14 | Parent v433. REQUIRES Worker top-run-identity v3. 入れなくなった人を戻す・防ぐ：(1)入れないとき、端末に残っている元のログインを自動で探して、見つかれば元の本人に戻す (2)「名前を入れて申請」→ 開発者が管理画面で「この人です」を1回押すと、本人の画面が自動で進んで戻る (3)名前＋暗証番号（6桁）で自分で戻る（マイページで暗証番号を決める）。Firebaseの通信量・Rules変更なし（Workerが確認）。 -->
@@ -7219,7 +7220,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v436</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v437</b></div>
   </div>
 </div>
 
@@ -7462,7 +7463,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v436</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v437</b></div>
   </div>
 </div>
 
@@ -32705,64 +32706,7 @@ window.trAsk3V436=function(text,choices){
   });
 };
 </script>
-<style id="v436-profile-one-save">
-#screen-mypage #portalSaveName,#screen-mypage #trChatNameSave,#screen-mypage #portalSaveBasicProfile{display:none!important}
-#screen-mypage .portalNameRow{grid-template-columns:1fr!important}
-#trProfileSaveAllV436{display:block;width:100%;min-height:50px;margin:14px 0 4px;border:0;border-radius:14px;font-size:16px;font-weight:900}
-#trProfileSaveAllStateV436{min-height:18px;font-size:13px;font-weight:800;margin:4px 0 0}
-</style>
-<script id="v436-profile-one-save-js">
-/* v436: プロフィールの保存ボタンを1つに。押すと、名前・ふりがな → チャット名（変えたときだけ）→ 性別・学年 の順に、
-   今までの3つの保存処理をそのまま順に動かす（保存の中身・Firebaseへの書き込み先は変えない）。必須が空ならその欄へ移動して止まる。 */
-(function(){
-  'use strict';
-  const $=id=>document.getElementById(id);
-  const BAD=/できません|未保存|入力してください|必須|確認できません|不可|ひらがなで/;
-  function mount(){
-    if($('trProfileSaveAllV436'))return;
-    const anchor=$('portalBasicProfileState');if(!anchor)return;
-    const b=document.createElement('button');b.type='button';b.id='trProfileSaveAllV436';b.className='portalPrimary';b.textContent='プロフィールを保存';
-    const st=document.createElement('p');st.id='trProfileSaveAllStateV436';st.className='portalInlineState';st.setAttribute('aria-live','polite');
-    anchor.insertAdjacentElement('afterend',st);st.insertAdjacentElement('beforebegin',b);
-    b.addEventListener('click',run);
-  }
-  function step(btnId,stateId){
-    return new Promise(res=>{
-      const btn=$(btnId),st=$(stateId);if(!btn){res('');return;}
-      const before=st?st.textContent:'';let seenBusy=false,t0=Date.now();
-      btn.click();
-      const iv=setInterval(()=>{
-        if(btn.disabled)seenBusy=true;
-        const txt=st?String(st.textContent||''):'';
-        const done=(seenBusy&&!btn.disabled&&!/保存しています|保存中/.test(txt))||(!seenBusy&&Date.now()-t0>1500&&txt!==before)||(!seenBusy&&Date.now()-t0>3000)||Date.now()-t0>30000;
-        if(done){clearInterval(iv);res(txt);}
-      },200);
-    });
-  }
-  let busy=false;
-  async function run(){
-    if(busy)return;busy=true;
-    const b=$('trProfileSaveAllV436'),st=$('trProfileSaveAllStateV436');b.disabled=true;st.textContent='保存しています…';
-    try{
-      const flow=window.__TR_PROFILE_FLOW__;
-      const need=[['portalDisplayName','name'],['trKanaFamily','kanaFamily'],['trKanaGiven','kanaGiven'],['portalProfileGender','gender'],['portalProfileGrade','grade']];
-      for(const [id,key] of need){if(!String($(id)?.value||'').trim()){st.textContent='必須の項目が未入力です。';flow?.markMissing?.(key);return;}}
-      let t=await step('portalSaveName','portalNameState');
-      if(BAD.test(t)){st.textContent='保存できませんでした：'+t;return;}
-      const g=window.__TR_PORTAL_SYNC__,chat=String($('trChatNameInput')?.value||'').trim();
-      if(chat!==String(g?.chatName||'').trim()){
-        t=await step('trChatNameSave','trChatNameState');
-        if(BAD.test(t)){st.textContent='チャット名を保存できませんでした：'+t;return;}
-      }
-      t=await step('portalSaveBasicProfile','portalBasicProfileState');
-      if(BAD.test(t)){st.textContent='保存できませんでした：'+t;return;}
-      st.textContent='✓ 保存しました';
-    }finally{busy=false;b.disabled=false;}
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();
-  setTimeout(mount,1500);
-})();
-</script>
+<!-- v437: v436 の「プロフィールを保存」1つにまとめる変更は取り消し（元の3つの保存ボタンに戻す） -->
 <script id="v436-pick-member">
 /* v436: 出走カードをつなぐ選手を選ぶ（承認済みの一覧から。名前が同じ人がいれば最初から選んだ状態） */
 window.trPickMemberV436=function(cardName,members,preUid){
@@ -32781,6 +32725,58 @@ window.trPickMemberV436=function(cardName,members,preUid){
     box.append(p,sel,ok,no);o.appendChild(box);document.body.appendChild(o);
   });
 };
+</script>
+<style id="v437-hero-bleed">
+/* v437: ホームの上の画像（背面）を左右に12pxずつ広げる。文字・日付の位置はそのまま（内側の余白を同じだけ足す）。 */
+main > .hero{margin-left:-12px!important;margin-right:-12px!important;padding-left:14px!important;padding-right:14px!important}
+</style>
+<script id="v437-chat-pin">
+/* v437: チャットを開いたとき・ルームを切り替えたとき、画像やリンクカードが後から読み込まれて高さが変わっても、
+   最後のメッセージ（未読があれば未読の線）の位置に合わせ直す。開いてから4秒間だけ。指で動かしたらやめる。
+   Firebaseの読み込みは増やさない（画面の位置だけ）。 */
+(function(){
+  'use strict';
+  const main=()=>document.querySelector('#screen-chat > main.chatMain');
+  let until=0,touched=false,lineDone=false,ro=null,lastH=0;
+  function arm(){until=Date.now()+4000;touched=false;lineDone=false;lastH=0;setTimeout(fix,60);setTimeout(fix,400);}
+  function fix(){
+    const m=main();if(!m||Date.now()>until||touched)return;
+    const scr=document.getElementById('screen-chat');if(!scr||scr.classList.contains('hidden'))return;
+    const line=m.querySelector('.chatUnreadLine');
+    if(line&&line.offsetParent!==null){
+      const d=line.getBoundingClientRect().top-m.getBoundingClientRect().top-14;
+      if(Math.abs(d)>2)m.scrollTop+=d;
+    }else{
+      m.scrollTop=m.scrollHeight;
+    }
+  }
+  function watch(){
+    const m=main();if(!m)return;
+    if(!m.__v437){
+      m.__v437=true;
+      const stop=()=>{touched=true;};
+      m.addEventListener('touchstart',stop,{passive:true});
+      m.addEventListener('wheel',stop,{passive:true});
+      m.addEventListener('load',e=>{if(e.target&&e.target.tagName==='IMG')fix();},true);
+      if(window.ResizeObserver){
+        ro=new ResizeObserver(()=>{const h=m.scrollHeight;if(h!==lastH){lastH=h;fix();}});
+        Array.from(m.children).forEach(c=>ro.observe(c));
+        new MutationObserver(()=>{Array.from(m.children).forEach(c=>{if(!c.__v437o){c.__v437o=true;ro.observe(c);}});}).observe(m,{childList:true});
+        Array.from(m.children).forEach(c=>c.__v437o=true);
+      }
+      // ルームの切り替え・スレッドの描き直し（中身が入れ替わったとき）
+      ['portalChatThread','trRoomThread'].forEach(id=>{const t=document.getElementById(id);if(t)new MutationObserver(muts=>{if(muts.some(x=>x.removedNodes.length>3))arm();else fix();}).observe(t,{childList:true});});
+    }
+  }
+  function start(){
+    const scr=document.getElementById('screen-chat');if(!scr)return;
+    watch();
+    let wasHidden=scr.classList.contains('hidden');
+    new MutationObserver(()=>{const h=scr.classList.contains('hidden');if(wasHidden&&!h){watch();arm();}wasHidden=h;}).observe(scr,{attributes:true,attributeFilter:['class']});
+    if(!wasHidden)arm();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+})();
 </script>
 </body>
 </html>
