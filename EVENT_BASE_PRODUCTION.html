@@ -1,4 +1,4 @@
-<!-- 2026-11-14 EVENT BASE v182 | Parent: v181. PORTALから開いたときは、接続確認の間は入力の画面を出さず、ロゴと「PORTALから接続しています…」だけ（駅伝BASEと同じ）。入力が必要なときだけ入力の画面。Firebase変更なし。 -->
+<!-- 2026-11-14 EVENT BASE v182 | Parent: v181. ホーム画像などの差し替えが他の端末に反映されなかった：開発者の判定が ownerKey 付きのURLに限られていたため、PORTALから開発者として入るとFirebaseへの共有保存が黙って止まっていた→運営者(owner)として接続していれば開発者として扱う。PORTALから開いたときは、接続確認の間は入力の画面を出さず、ロゴと「PORTALから接続しています…」だけ（駅伝BASEと同じ）。入力が必要なときだけ入力の画面。Firebase変更なし。 -->
 <!-- 2026-11-14 EVENT BASE v181 | Parent: v180. (1)左上のロゴをタップすると PORTAL（TOP_RUN_PORTAL.html）に戻る（保存版モードでも同じ）。(2)開発者：駅伝BASEと同じく、PORTALで開発者と確認済み（portalRoles の developer と ownerProof）なら認証コードなしで運営者として入る。戻る・入り直しでもコード不要。証明はRulesが毎回確認。(3)開発者でない人が ownerKey 付きのリンクで開いても、開発者認証の画面を出さず、PORTALからの接続へ。(4)接続・認証中の入口の画面に TOP RUN のロゴを表示。(6)PORTALから開いたときは、駅伝BASEと同じく接続確認の間は「PORTALから接続しています…」とロゴだけを出し、入力が必要なときだけ入力の画面を出す。(5)大会要項・スタートリスト・大会スケジュールを PDF かリンクで登録（どちらかを選ぶ）。HOMEには選んだ方を出す（リンクは extraResources/links/doc_<種類>。Rules変更なし）。見た目・Firebase・保存版データの形は変更なし。 -->
 <!-- 2026-11-10 EVENT BASE v180 | Parent: v179. (1) 保存版データを新しい形（eb-archive-v2）にする：GitHubで公開されるため、入れてよいものだけを選んで入れる（大会情報・お知らせ・資料は公式リンクだけ・選手は名前と記録だけ）。PDF・本人ID・運営者名・性別・学年・コメント・目標タイム・日時・組/レーンは入れない。(2) 結果一覧は男女別をやめ、出走順。保存版では「予定」タブを出さない（出走時刻などを入れないため）。(3)「保存版を作る」をHOMEから、歯車→設定・管理（大会結果一覧の下）へ移す。(4)「PORTALへ戻る」ボタンを削除。Firebaseの通信量は変わらない。 -->
 <!-- 2026-11-09 EVENT BASE v179 | Parent: EVENT_BASE_PRODUCTION (v177). 保存版モード：?archive=TOPRUNARCHIVE<日付>v<n> で開くと、Firebaseに接続せず、GitHubの保存版データ（同名.json）を読んでいつものEVENT BASEの画面で見るだけ表示（LIVE・CHAT・設定は非表示、右上に結果一覧＝男女別）。運営者はHOMEの一番下「この大会を保存版にする」で保存版データを作る（events/<id>からCHAT・LIVE・安全確認・本人ID類を除き、資料PDFと性別（PORTALプロフィール）を添える）。EVENT BASEを更新すれば保存版の見た目も自動で新しくなる。通常の大会運営の動き・Rulesは変更なし。 -->
@@ -9968,7 +9968,7 @@ function currentBindingRole102(){
 }
 function isUnbound102(){return !currentBindingRole102()}
 function currentUserIsDeveloper114(){
-  if(window.__EVENTBASE_REBUILD_CORE__)return !!window.EventBaseConnection?.ready && window.EventBaseConnection?.role==='owner' && isOrganizerLaunch106();
+  if(window.__EVENTBASE_REBUILD_CORE__)return !!window.EventBaseConnection?.ready && window.EventBaseConnection?.role==='owner'; // v182: PORTALから開発者として入ったとき（ownerKeyなし）も開発者として扱う。権限はRulesのownerProofで確認
   const role=currentBindingRole102();
   // The private developer URL is sufficient for developer UI before sharing starts,
   // and an owner binding remains developer after the URL is no longer inspected.
@@ -13044,7 +13044,7 @@ function syncEntryGate105(){
   if(window.__EVENTBASE_REBUILD_CORE__){
     const developer=isOrganizerLaunch106();
     const c=window.EventBaseConnection;
-    const allowed=!!c?.ready && (developer?c.role==='owner':['manager','participant'].includes(c.role));
+    const allowed=!!c?.ready && (developer?c.role==='owner':['owner','manager','participant'].includes(c.role));
     document.body.classList.toggle('accessLocked105',!allowed);
     $('entryGate105')?.setAttribute('aria-hidden',allowed?'true':'false');
     $('developerEntryV31')?.classList.toggle('hidden',!developer);
