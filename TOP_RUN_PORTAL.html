@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v435 | 2026-11-14 | Parent v434. REQUIRES Worker top-run-identity v3. (1)暗証番号：まだ決めていない人は開いたときに「暗証番号を決めてください」を出す（保存に失敗したときだけ「あとで」）。決めた人はマイページから歯車（設定）の中へ移す。(2)歯車の中をカードの並びに整理（画像・プロフィール／カラー／通知／暗証番号・予備／他の端末）。押したカードの中身だけを開く。(3)公認：EVENT BASEの大会の記録（紐付け local-flow-claim-・eventbase_ の記録）も、PORTALのイベント（正式大会URLの大会ID）の「公認記録の区分」で判定する（今までは第1回だけ固定で公認、ほかは非公認・公認未照合になっていた）。Firebaseの読み込み・常時監視・Rulesの変更なし。iPhone実機は未確認。 -->
 <!-- TOP RUN PORTAL v434 | 2026-11-14 | Parent v433. REQUIRES Worker top-run-identity v3. 入れなくなった人を戻す・防ぐ：(1)入れないとき、端末に残っている元のログインを自動で探して、見つかれば元の本人に戻す (2)「名前を入れて申請」→ 開発者が管理画面で「この人です」を1回押すと、本人の画面が自動で進んで戻る (3)名前＋暗証番号（6桁）で自分で戻る（マイページで暗証番号を決める）。Firebaseの通信量・Rules変更なし（Workerが確認）。 -->
 <!-- TOP RUN PORTAL v433 | 2026-11-14 | Parent v432. 入れなくなった人の戻り方を簡単に：入口に大きな「コピーしたコードで戻る」ボタン（BANDのメッセージをコピーしておけば、押すだけで戻る。コードの入力は不要）。開発者が送る文も中学生向けの短い文に。 -->
 <!-- TOP RUN PORTAL v432 | 2026-11-14 | Parent v430 (Rules v376, Worker top-run-identity v2). 入れなくなるのを防ぐ：(1)開いたときに端末へ保存データを消さないよう頼む（navigator.storage.persist）。(2)本人の「復元キー」：マイページで作って保存しておくと、端末のログイン情報が消えても、入口の「前に使っていた方」で入れて元の本人（同じID）に戻れる。まだ作っていない人にはマイページに案内。Firebaseの通信量・Rulesの変更なし（キーはWorkerが確認）。 -->
@@ -7217,7 +7218,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v434</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v435</b></div>
   </div>
 </div>
 
@@ -7460,7 +7461,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v434</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v435</b></div>
   </div>
 </div>
 
@@ -11737,7 +11738,24 @@ const gateway=window.__TR_PORTAL_SYNC__;
     // Check only the exact existing id; no fuzzy event title or athlete matching.
     const choices=eventItems.filter(e=>/^event-[A-Za-z0-9_-]{1,80}$/.test(String(e?.id||''))&&
       id.startsWith('local-flow-'+e.id+'__')&&/^[A-Za-z0-9_-]{8}$/.test(id.slice(('local-flow-'+e.id+'__').length)));
-    return choices.length===1?choices[0].id:'';
+    if(choices.length===1)return choices[0].id;
+    return portalEbCatalogIdV435(id); // v435
+  }
+  // v435: EVENT BASE の大会の記録（紐付け local-flow-claim-<大会ID>-… ・ local-flow-eventbase_…__…）も、
+  //   PORTAL のイベント（正式大会URLの ?event=<大会ID>）を見つけて、そのイベントの「公認記録の区分」を使う。
+  function portalEbOfItemV435(e){
+    try{const u=new URL(String(e?.url||''),location.href);const v=String(u.searchParams.get('event')||'');return /^[A-Za-z0-9_-]{8,80}$/.test(v)?v:'';}catch(_){return '';}
+  }
+  function portalEbCatalogIdV435(id){
+    id=String(id||'');if(!id.startsWith('local-flow-'))return '';
+    const hits=eventItems.filter(e=>{
+      if(!e?.id||e.enabled===false||portalEventDisplayCategory(e)==='event')return false;
+      const eb=portalEbOfItemV435(e);if(!eb)return false;
+      return id.startsWith('local-flow-claim-'+eb+'-')||id.startsWith('local-flow-'+eb+'__');
+    });
+    if(!hits.length)return '';
+    const off=hits.filter(e=>e.official===true);
+    return (off[0]||hits[0]).id;
   }
   function portalRecordCatalogId(row){return row?.catalogId||portalStaffCatalogId(row);}
   function portalRecordCatalog(row){
@@ -32434,5 +32452,144 @@ html.trGateShownV429 #portalFirstPaintAuthOverlay{display:none!important;visibil
 .trRqOther select{min-height:40px;min-width:0}
 .trRqNo{opacity:.8}
 </style>
+<style id="v435-settings-cards">
+#screen-notification-settings .trSettingsMy{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+#screen-notification-settings .trSettingsMy>.portalPanelButton{margin:0;min-height:92px;text-align:left}
+#screen-notification-settings .trSettingsMy>.portalPanelButton.trSetOpen{outline:2px solid currentColor;outline-offset:-2px}
+#screen-notification-settings .trSettingsMy>.portalPanelButton .portalPanelAction{font-size:12px}
+#screen-notification-settings #trPushSettings.trSetHide{display:none!important}
+#trSetPinPanelV435[hidden]{display:none!important}
+#trSetPinPanelV435{margin:0 0 14px}
+#trSetPinPanelV435 #trRkCard{margin-top:10px}
+#trPinMustV435{position:fixed;inset:0;z-index:2147483000;background:rgba(10,12,12,.72);display:flex;align-items:center;justify-content:center;padding:18px;box-sizing:border-box}
+#trPinMustV435[hidden]{display:none!important}
+#trPinMustV435 .trPmBox{width:100%;max-width:420px;background:#fff;color:#1f2321;border-radius:18px;padding:20px 18px;box-shadow:0 12px 40px rgba(0,0,0,.35);font-family:inherit}
+#trPinMustV435 h3{margin:0 0 8px;font-size:19px;font-weight:900;color:#1f2321}
+#trPinMustV435 p{margin:0 0 10px;font-size:14px;line-height:1.6;color:#3b403d}
+#trPinMustV435 input{display:block;width:100%;box-sizing:border-box;min-height:48px;margin:8px 0;border:1px solid #b9beb8;border-radius:12px;padding:0 12px;font-size:18px;letter-spacing:.2em;background:#fff;color:#1f2321}
+#trPinMustV435 .trPmGo{display:block;width:100%;min-height:48px;margin-top:6px;border:0;border-radius:14px;background:#2f3534;color:#fff;font-size:16px;font-weight:900}
+#trPinMustV435 .trPmGo:disabled{opacity:.6}
+#trPinMustV435 .trPmState{min-height:20px;margin:8px 0 0;font-size:13px;font-weight:800;color:#a3271f}
+#trPinMustV435 .trPmLater{display:block;margin:10px auto 0;background:none;border:0;color:#555;font-size:13px;text-decoration:underline}
+#trPinMustV435 .trPmLater[hidden]{display:none}
+#trPinMustV435 small{display:block;font-size:12px;color:#666;margin-top:6px}
+</style>
+<script id="v435-settings-cards-and-pin">
+/* v435: (1) 歯車（設定）の中をカードの並びに整理 (2) 暗証番号を決めていない人に決めてもらう (3) 決めた人の暗証番号は歯車の中へ
+   Firebase の読み込み・書き込みは増やさない（暗証番号の確認・保存は v434 の Worker の処理をそのまま使う）。 */
+(function(){
+  'use strict';
+  const $=id=>document.getElementById(id);
+  const g=()=>window.__TR_PORTAL_SYNC__;
+  let openKey='';
+  function cardHtml(small,title,action){
+    return '<div class="portalPanelHead"><small>'+small+'</small><b>'+title+'</b></div><span class="portalPanelAction">'+action+'</span>';
+  }
+  function setOpen(key){
+    openKey=(openKey===key)?'':key;
+    const push=$('trPushSettings'),pin=$('trSetPinPanelV435');
+    if(push){push.classList.toggle('trSetHide',openKey!=='notify');if(openKey==='notify')push.open=true;}
+    if(pin)pin.hidden=openKey!=='pin';
+    const nc=$('trSetNotifyCardV435'),pc=$('trSetPinCardV435');
+    if(nc){nc.classList.toggle('trSetOpen',openKey==='notify');nc.querySelector('.portalPanelAction').textContent=openKey==='notify'?'閉じる ∧':'通知の設定 ›';}
+    if(pc){pc.classList.toggle('trSetOpen',openKey==='pin');pc.querySelector('.portalPanelAction').textContent=openKey==='pin'?'閉じる ∧':'暗証番号・予備 ›';}
+    const target=openKey==='notify'?push:openKey==='pin'?pin:null;
+    if(target)setTimeout(()=>{try{target.scrollIntoView({block:'start',behavior:'smooth'});}catch(_){}},60);
+  }
+  function buildSettings(){
+    const scr=$('screen-notification-settings');if(!scr)return;
+    const grid=scr.querySelector('.trSettingsMy');if(!grid)return;
+    if(!$('trSetNotifyCardV435')){
+      const b=document.createElement('button');b.type='button';b.id='trSetNotifyCardV435';b.className='portalPanel portalPanelButton';
+      b.innerHTML=cardHtml('NOTICE','通知','通知の設定 ›');b.addEventListener('click',()=>setOpen('notify'));grid.appendChild(b);
+    }
+    if(!$('trSetPinCardV435')){
+      const b=document.createElement('button');b.type='button';b.id='trSetPinCardV435';b.className='portalPanel portalPanelButton';
+      b.innerHTML=cardHtml('LOGIN','暗証番号','暗証番号・予備 ›');b.addEventListener('click',()=>setOpen('pin'));grid.appendChild(b);
+    }
+    const ho=$('portalHandoffOpen');
+    if(ho&&ho.parentElement!==grid){
+      grid.appendChild(ho);
+      const a=ho.querySelector('.portalPanelAction');if(a)a.textContent='引継ぎコード ›';
+      const t=ho.querySelector('.portalPanelHead b');if(t)t.textContent='他の端末で使う';
+    }
+    if(!$('trSetPinPanelV435')){
+      const p=document.createElement('div');p.id='trSetPinPanelV435';p.hidden=true;
+      grid.insertAdjacentElement('afterend',p);
+    }
+    const push=$('trPushSettings');
+    if(push&&openKey!=='notify'&&!push.classList.contains('trSetHide'))push.classList.add('trSetHide');
+  }
+  // ---- 暗証番号カードの置き場所（v434 のカードをそのまま使い、場所だけ変える）
+  function pinState(){const b=$('trPinBadge');if(!b)return null;return b.classList.contains('ok')?true:b.classList.contains('need')?false:null;}
+  function placePin(){
+    const card=$('trPinCard');if(!card)return;
+    const rk=$('trRkCard');
+    const st=pinState();
+    if(st===false){
+      const body=document.querySelector('#screen-mypage .portalScreenBody');if(!body)return;
+      const hero=body.querySelector('.portalProfileHero');
+      if(card.parentElement!==body){(hero?hero:body.firstChild).insertAdjacentElement(hero?'afterend':'beforebegin',card);}
+      if(rk&&rk.previousElementSibling!==card)card.insertAdjacentElement('afterend',rk);
+    }else{
+      const panel=$('trSetPinPanelV435');if(!panel)return;
+      if(card.parentElement!==panel)panel.appendChild(card);
+      if(rk&&rk.parentElement!==panel)panel.appendChild(rk);
+    }
+  }
+  // ---- まだ決めていない人に、決めてもらう
+  let mustBusy=false,failedOnce=false,later=false;
+  function gateVisible(){const p=$('portalParticipantIdentityGate');return !!(p&&!p.hidden&&p.offsetParent!==null);}
+  function devPreview(){const d=$('portalDevPreviewActor');return !!(d&&!d.hidden);}
+  function mustBox(){
+    let m=$('trPinMustV435');
+    if(m)return m;
+    m=document.createElement('div');m.id='trPinMustV435';m.hidden=true;m.setAttribute('role','dialog');m.setAttribute('aria-modal','true');
+    m.innerHTML='<div class="trPmBox"><h3>暗証番号を決めてください</h3>'+
+      '<p>スマホのデータが消えて入れなくなったとき、<b>名前と暗証番号</b>で元の自分に戻れます。6桁の数字を決めてね。</p>'+
+      '<input id="trPmPin1" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="new-password" placeholder="暗証番号（6桁）">'+
+      '<input id="trPmPin2" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="new-password" placeholder="もう一度">'+
+      '<button type="button" id="trPmGo" class="trPmGo">決める</button>'+
+      '<p id="trPmState" class="trPmState" role="status"></p>'+
+      '<small>人に教えないでください。同じ数字の並びや 123456 は使えません。あとからマイページの歯車で変えられます。</small>'+
+      '<button type="button" id="trPmLater" class="trPmLater" hidden>あとで（次に開いたときにもう一度出ます）</button></div>';
+    document.body.appendChild(m);
+    $('trPmGo').addEventListener('click',save);
+    $('trPmLater').addEventListener('click',()=>{later=true;m.hidden=true;});
+    return m;
+  }
+  function save(){
+    if(mustBusy)return;
+    const a=$('trPmPin1').value.trim(),b=$('trPmPin2').value.trim(),st=$('trPmState');
+    if(!/^[0-9]{6}$/.test(a)){st.textContent='6桁の数字を入れてください。';return;}
+    if(a!==b){st.textContent='2回の暗証番号がちがいます。';return;}
+    const p1=$('trPin1'),p2=$('trPin2'),go=$('trPinSave'),out=$('trPinState');
+    if(!p1||!p2||!go||!out){st.textContent='少し待ってから、もう一度押してください。';return;}
+    mustBusy=true;$('trPmGo').disabled=true;st.style.color='#1f2321';st.textContent='保存しています…';
+    out.textContent='';p1.value=a;p2.value=b;go.click();
+    let n=0;const iv=setInterval(()=>{
+      const t=String(out.textContent||'');
+      if(/✓/.test(t)){clearInterval(iv);mustBusy=false;$('trPmGo').disabled=false;$('trPmPin1').value='';$('trPmPin2').value='';
+        st.style.color='#1d6b35';st.textContent='✓ 保存しました';setTimeout(()=>{$('trPinMustV435').hidden=true;placePin();},700);return;}
+      if(/できません|ちがい|入れて|使えません/.test(t)||++n>40){clearInterval(iv);mustBusy=false;$('trPmGo').disabled=false;
+        st.style.color='#a3271f';st.textContent=t&&!/保存しています/.test(t)?t:'保存できませんでした。通信を確かめて、もう一度押してください。';
+        failedOnce=true;$('trPmLater').hidden=false;}
+    },500);
+  }
+  function mustCheck(){
+    const G=g();
+    const need=pinState()===false&&!later&&G?.roleVerified===true&&!!G?.profileId&&!gateVisible()&&!devPreview();
+    const m=mustBox();
+    if(need&&m.hidden){m.hidden=false;setTimeout(()=>{try{$('trPmPin1').focus();}catch(_){}},200);}
+    if(!need&&!m.hidden&&!mustBusy&&pinState()!==false)m.hidden=true;
+  }
+  function tick(){buildSettings();placePin();mustCheck();}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',tick);else tick();
+  window.addEventListener('tr-portal-authorized',()=>setTimeout(tick,900));
+  let n=0;const iv=setInterval(()=>{tick();if(++n>80&&pinState()!==null)clearInterval(iv);},2500);
+  const watch=()=>{const b=$('trPinBadge');if(b&&!b.__v435){b.__v435=true;new MutationObserver(tick).observe(b,{attributes:true,childList:true,characterData:true,subtree:true});}};
+  setInterval(watch,3000);
+})();
+</script>
 </body>
 </html>
