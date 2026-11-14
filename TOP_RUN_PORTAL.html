@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v430 | 2026-11-14 | Parent v429 (Rules v375). 下のメニューが沈む（ホーム画面アイコンから開いたとき、キーボードを閉じたあとやチャットから戻ったあと）：iPhoneの見えている画面と画面の枠がずれたまま残るのが原因。ずれが残っているときだけ、スクロール位置を1px動かして戻し、iPhoneに枠を合わせ直させる。メニュー自体はJSで動かさない（bottom:0のまま）。Firebase変更なし。 -->
 <!-- TOP RUN PORTAL v429 | 2026-11-14 | Parent v428 (Rules v375). ブラウザ（Safari・BAND・LINE）で開くと「認証中」のまま止まっていた：v424 で入口の画面を絞ったとき、最初の「認証中」の覆いを外す条件（登録ボタンなどが見えていること）に当てはまらなくなっていた→入口の案内を出したら覆いを外す。 -->
 <!-- TOP RUN PORTAL v428 | 2026-11-14 | Parent v427. REQUIRES Rules v375. 管理者が「EVENT BASEを開く」を押したとき、運営者（manager）としての接続を自動で作る（portalLinkProof: verified-portal-admin-v1。駅伝BASEと同じ考え）。前に見る用（participant）の接続ができていたら、運営者の接続に作り直す。Rules v375 が未公開のときは今までどおり見る用。 -->
 <!-- TOP RUN PORTAL v427 | 2026-11-14 | Parent v426. 参加者がPORTALのイベントから「EVENT BASEを開く」を押したとき、EVENT BASEへの接続（bindings/<大会ID>/<uid>：approved-member-link-v1）がなければ、その場で作ってから開く（今までは本人が出走登録したときだけ作っていたため、運営が代わりに登録した人は入れなかった）。条件・書き込みは本人の出走登録と同じ（Rules v374 のまま）。管理者も同じ条件で閲覧用の接続を作る（運営の操作はEVENT BASEの管理番号）。駅伝BASEは変更なし。 -->
@@ -7213,7 +7214,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v429</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v430</b></div>
   </div>
 </div>
 
@@ -7456,7 +7457,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v429</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v430</b></div>
   </div>
 </div>
 
@@ -32041,5 +32042,39 @@ html.trGateShownV429 #portalFirstPaintAuthOverlay{display:none!important;visibil
 .trArchiveField button{min-height:40px;padding:0 12px;border-radius:10px;font:inherit;font-size:13px;font-weight:800;white-space:nowrap}
 </style>
 
+<script id="v430-viewport-heal">
+/* v430: 下のメニューが沈む対策。ホーム画面アイコンから開いたとき、キーボードを閉じた後などに、iPhoneの「見えている画面」と
+   「画面の枠（fixed の基準）」がずれたまま残ることがある。ずれが残っているときだけ、スクロール位置を1px動かして戻し、枠を合わせ直させる。
+   メニューは JS で動かさない（bottom:0 のまま）。Firebase は使わない。 */
+(function(){
+  'use strict';
+  const standalone=navigator.standalone===true||window.matchMedia?.('(display-mode: standalone)')?.matches===true;
+  if(!standalone)return;
+  const vv=window.visualViewport;if(!vv)return;
+  const isField=el=>!!(el&&el.matches&&el.matches('input:not([type="file"]):not([type="checkbox"]):not([type="radio"]),textarea,select,[contenteditable="true"]'));
+  let touching=false,timer=0;
+  document.addEventListener('touchstart',()=>{touching=true;},{passive:true,capture:true});
+  document.addEventListener('touchend',()=>{touching=false;later(350);},{passive:true,capture:true});
+  function drift(){return (vv.offsetTop>1)||(window.innerHeight-vv.height>2);}
+  function heal(){
+    if(touching||isField(document.activeElement)||(vv.scale||1)>1.01)return;
+    if(!drift())return;
+    const x=window.scrollX||0,y=window.scrollY||0;
+    window.scrollTo(x,y+1);
+    requestAnimationFrame(()=>{window.scrollTo(x,y);
+      // それでも残るときは、いちばん上に合わせ直す（ホーム画面のときだけ）
+      setTimeout(()=>{if(drift()&&!touching&&!isField(document.activeElement)){const cur=document.querySelector('.portalScreen:not(.hidden)');if(!cur)window.scrollTo(x,Math.max(0,y-vv.offsetTop));}},250);
+    });
+  }
+  function later(ms){clearTimeout(timer);timer=setTimeout(heal,ms||300);}
+  document.addEventListener('focusout',e=>{if(isField(e.target))later(450);},true);
+  vv.addEventListener('resize',()=>later(400));
+  vv.addEventListener('scroll',()=>later(500));
+  window.addEventListener('pageshow',()=>later(300));
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)later(300);});
+  const start=()=>{const mo=new MutationObserver(()=>later(350));document.querySelectorAll('.portalScreen').forEach(s=>mo.observe(s,{attributes:true,attributeFilter:['class']}));mo.observe(document.body,{attributes:true,attributeFilter:['class']});later(600);};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+})();
+</script>
 </body>
 </html>
