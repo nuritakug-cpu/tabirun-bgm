@@ -1,3 +1,5 @@
+<!-- TOP RUN PORTAL v441 | 2026-11-15 | Parent v440. 決まり（スマホの登録はホーム画面のアイコンからだけ）どおり、AndroidのChromeで開いたときも「まず、ホーム画面にアイコンを作ってください」と手順（⋮→ホーム画面に追加→インストール→アイコンから開く）を出し、ブラウザのままでは登録・申請させない（v316で入れていた「AndroidのChromeは止めない」例外をやめる）。すでに登録済みでChromeから入っている人は今までどおり入れる。運営の ?browserok=1 の例外は残す。Firebaseの変更なし。実機未確認。 -->
+<!-- TOP RUN PORTAL v440 | 2026-11-15 | Parent v439. (1)ブラウザで開いたときの入口：見出しを「まず、ホーム画面にアイコンを作ってください」にし、使っているブラウザ（iPhoneのSafari 26以降は「…」→「共有」→「表示を増やす」→「ホーム画面に追加」→「追加」、それより前のSafari、iPhoneのChrome、BAND・LINEの中）に合わせて、押す順に1つずつ手順を出す。(2)「↓ 下にも続きがあります」：本当に下に続きがあるときだけ出し、押すと下へ進む（今までは続きがなくても出て、押しても何も起きなかった）。Firebaseの変更なし。実機未確認。 -->
 <!-- TOP RUN PORTAL v439 | 2026-11-14 | Parent v438. マイページの歯車（設定）：カードの並べ方を2列から元の1列に戻し、「通知」を一番上に。押したカードの中身はそのカードのすぐ下に開く。Firebaseの変更なし。 -->
 <!-- TOP RUN PORTAL v438 | 2026-11-14 | Parent v437. チャットの写真の拡大：2本の指でつまんだ場所を中心に拡大・縮小する（今までは写真の真ん中を中心にしていたため、拡大したい場所が左右にずれていた）。2回タップで拡大もタップした場所を中心に。写真の端が画面の内側に入りすぎないように移動を止め、縮小して戻すときに位置がずれないようにする。拡大の上限は今までどおり。Firebaseの変更なし。実機未確認。 -->
 <!-- TOP RUN PORTAL v437 | 2026-11-14 | Parent v436. (1)マイページ：v436 の保存ボタンを1つにまとめた変更を取り消し、元の3つの保存ボタンに戻す。(2)ホームの上の画像（背面）を左右に12pxずつ広げる（文字・日付の位置は変えない）。(3)チャット：開いたとき・ルームを切り替えたとき、画像やリンクカードがあとから読み込まれて高さが変わっても、4秒間は最後のメッセージ（未読があれば未読の線）に合わせ直す。指で動かしたらやめる。Firebaseの読み込み・Rulesの変更なし。iPhone・Android実機は未確認。 -->
@@ -7222,7 +7224,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v439</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v441</b></div>
   </div>
 </div>
 
@@ -7465,7 +7467,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v439</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v441</b></div>
   </div>
 </div>
 
@@ -24696,11 +24698,12 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
   const isIOS=/iPhone|iPad|iPod/i.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
   const inApp=/Line\/|NAVER|BAND\/|FBAN|FBAV|Instagram|; wv\)/i.test(ua);
   let override=false;try{override=new URLSearchParams(location.search).get('browserok')==='1';}catch(_){}
-  const block=(isIOS||inApp)&&!override;
+  const block=!override; // v441: 決まりどおり、スマホはホーム画面のアイコンからだけ登録・申請できる（AndroidのChromeも止める）
   const TEXT=block
     ?(isIOS
       ?'<b>ここでは登録・申請できません</b><br>ここ（Safari・BAND・LINEの中）で登録すると、ホーム画面のアイコンとは別の登録になり、二重登録になります。<br>① 共有ボタン →「ホーム画面に追加」<br>② ホーム画面のTOP RUNアイコンから開いて、登録・申請してください。<br>アイコンから開いてもこの表示が出る場合は、アイコンを消して、追加するときに「Webアプリとして開く」をオンにして追加し直してください。'
-      :'<b>ここでは登録・申請できません</b><br>BAND・LINEの中で開いています。右上のメニューから「ブラウザで開く」（Chrome）を選ぶか、ホーム画面のアイコンから開いて、登録・申請してください。')
+      :(inApp?'<b>ここでは登録・申請できません</b><br>BAND・LINEの中で開いています。右上のメニューから「ブラウザで開く」（Chrome）を選ぶか、ホーム画面のアイコンから開いて、登録・申請してください。'
+        :'<b>ここでは登録・申請できません</b><br>先にホーム画面にアイコンを作り、アイコンから開いて登録・申請してください。<br>① 右上の「⋮」を押す ②「ホーム画面に追加」を押す ③「インストール」を押す ④ ホーム画面の TOP RUN のアイコンから開く'))
     :'<b>できればホーム画面のアイコンから開いてください</b><br>アイコンから開いてもこの表示が出る場合は、このまま進んでください。';
   const put=(id,anchor,where)=>{if($(id)||!anchor)return;const n=document.createElement('div');n.id=id;n.className='portalRegistrationRoleMessage';n.setAttribute('role','status');n.style.cssText='margin:12px 0;line-height:1.75;font-size:14px'+(block?';border:2px solid #c8102e;border-radius:12px;padding:10px 12px':'');n.innerHTML=TEXT;anchor.insertAdjacentElement(where,n);};
   const show=()=>{
@@ -24713,7 +24716,7 @@ html:not([data-portal-personal-color="winter"]):not([data-portal-personal-color=
     if(!b)return;show();
     if(block){ev.preventDefault();ev.stopImmediatePropagation();
       try{(document.getElementById('portalIconOnlyNotice')||document.getElementById('portalIconOnlyApprovalNotice'))?.scrollIntoView({block:'center',behavior:'smooth'});}catch(_){}
-      window.alert(isIOS?'ここ（ブラウザ）では登録・申請できません。\nホーム画面のTOP RUNアイコンから開いてください。':'BAND・LINEの中では登録・申請できません。\nChromeかホーム画面のアイコンから開いてください。');}
+      window.alert(isIOS||!inApp?'ここ（ブラウザ）では登録・申請できません。\nホーム画面のTOP RUNアイコンから開いてください。':'BAND・LINEの中では登録・申請できません。\nホーム画面のアイコンから開いてください。');}
   },true);
   let queued=false;
   const schedule=()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;show();});};
@@ -32053,7 +32056,26 @@ header.top .brandText{cursor:pointer}
   const mq=m=>window.matchMedia?.('(display-mode: '+m+')')?.matches===true;
   const fromIcon=()=>navigator.standalone===true||mq('standalone')||mq('fullscreen')||mq('minimal-ui');
   let override=false;try{override=new URLSearchParams(location.search).get('browserok')==='1';}catch(_){}
-  const browserBlock=()=>isPhone&&!fromIcon()&&(isIOS||inApp)&&!override;
+  const browserBlock=()=>isPhone&&!fromIcon()&&!override; // v441: Android の Chrome も、アイコンから開くまで登録させない（決まりどおり）
+  // v440: ホーム画面にアイコンを作る手順を、使っているブラウザに合わせて、押す順に1つずつ出す。
+  function addHomeSteps(){
+    if(inApp){
+      return isIOS
+        ?'今は BAND・LINE の中で開いています。\n① 画面の右上か右下のメニュー（…）を押す\n② 「Safariで開く」を押す\n③ Safariで開いたら、もう一度このページの手順でアイコンを作る'
+        :'今は BAND・LINE の中で開いています。\n① 画面の右上のメニュー（⋮ や …）を押す\n② 「ブラウザで開く」（Chrome）を押す\n③ Chromeで開いたら、ホーム画面にアイコンを作る';
+    }
+    if(!isIOS){
+      return '① 右上の「⋮」を押す\n② 「ホーム画面に追加」を押す\n③ 「インストール」を押す（「ショートカットを作成」ではなく「インストール」）\n④ ホーム画面にできた TOP RUN のアイコンを押して開く';
+    }
+    if(/CriOS/i.test(ua)){
+      return '① 上のアドレスの右にある共有ボタン（□に↑）を押す\n② 下にスクロールして「ホーム画面に追加」を押す\n③ 右上の「追加」を押す\n④ ホーム画面にできた TOP RUN のアイコンを押して開く';
+    }
+    const ver=+((/Version\/(\d+)/.exec(ua)||[])[1]||0);
+    if(ver>=26){
+      return '① 右下の「…」を押す\n② 「共有」を押す\n③ 下の「表示を増やす（∨）」を押す（または下にスクロール）\n④ 「ホーム画面に追加」を押す\n⑤ 右上の「追加」を押す（「Webアプリとして開く」はオンのまま）\n⑥ ホーム画面にできた TOP RUN のアイコンを押して開く';
+    }
+    return '① 画面の下の共有ボタン（□に↑）を押す\n② 下にスクロールして「ホーム画面に追加」を押す\n③ 右上の「追加」を押す\n④ ホーム画面にできた TOP RUN のアイコンを押して開く';
+  }
   let returning=false;
   const vis=el=>!!el&&!el.hidden;
   const hide=(el,h)=>{if(el&&el.hidden!==h)el.hidden=h;};
@@ -32119,8 +32141,8 @@ header.top .brandText{cursor:pointer}
       panel.classList.toggle('trEntryBrowser',browserBlock());
       document.documentElement.classList.toggle('trGateShownV429',browserBlock()||choice); // v429: 案内を出したら「認証中」の覆いを外す
       if(browserBlock()){
-        text(heading,'ホーム画面のアイコンから開いてください');
-        text(message,isIOS?'① 下の共有ボタン（□に↑）→「ホーム画面に追加」を押す。\n② ホーム画面の TOP RUN のアイコンから開く。':'右上のメニューから「ブラウザで開く」を選ぶか、ホーム画面のアイコンから開いてください。');
+        text(heading,'まず、ホーム画面にアイコンを作ってください');
+        text(message,addHomeSteps());
         [helper,steps,retry,ui.newStart,ui.ret,ui.box,codeForm,audit,notice,existing].forEach(el=>hide(el,true));
       }else if(choice){
         hide(notice,true);hide(audit,true);hide(steps,true);hide(retry,true);hide(existing,true);
@@ -32791,6 +32813,38 @@ main > .hero{margin-left:-12px!important;margin-right:-12px!important;padding-le
     if(!wasHidden)arm();
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+})();
+</script>
+<style id="v440-scroll-hint">
+/* v440: 「↓ 下にも続きがあります」は、本当に下に続きがあるときだけ出し、押すと下へ進む */
+#portalParticipantScrollHint{pointer-events:auto!important;cursor:pointer}
+#portalParticipantIdentityGate.trEntryBrowser #portalParticipantLoginMessage{white-space:pre-line;line-height:1.9;text-align:left}
+</style>
+<script id="v440-scroll-hint-js">
+(function(){
+  'use strict';
+  const $=id=>document.getElementById(id);
+  function card(){return document.querySelector('#portalParticipantIdentityGate .portalParticipantGateCard');}
+  function update(){
+    const h=$('portalParticipantScrollHint'),c=card(),p=$('portalParticipantIdentityGate');
+    if(!h||!c)return;
+    const more=!!p&&!p.hidden&&c.scrollHeight-c.scrollTop-c.clientHeight>=40;
+    if(h.hidden===more)h.hidden=!more;
+  }
+  function start(){
+    const h=$('portalParticipantScrollHint'),c=card();if(!h||!c)return false;
+    h.removeAttribute('aria-hidden');h.setAttribute('role','button');
+    h.addEventListener('click',()=>{const k=card();if(!k)return;try{k.scrollBy({top:Math.round(k.clientHeight*0.7),behavior:'smooth'});}catch(_){k.scrollTop+=Math.round(k.clientHeight*0.7);}});
+    c.addEventListener('scroll',update,{passive:true});
+    window.addEventListener('resize',update);
+    c.addEventListener('toggle',()=>setTimeout(update,30),true);
+    new MutationObserver(()=>requestAnimationFrame(update)).observe(c,{subtree:true,childList:true,attributes:true,attributeFilter:['hidden','open','class','style']});
+    // 元の処理が出したままにしても、ここで正しい状態に戻す
+    new MutationObserver(()=>{const ok=c.scrollHeight-c.scrollTop-c.clientHeight>=40;if(!h.hidden&&!ok)h.hidden=true;}).observe(h,{attributes:true,attributeFilter:['hidden']});
+    update();setTimeout(update,500);setTimeout(update,1500);
+    return true;
+  }
+  let n=0;(function tryStart(){if(start())return;if(++n<40)setTimeout(tryStart,500);})();
 })();
 </script>
 </body>
