@@ -1,4 +1,6 @@
-<!-- TOP RUN PORTAL v431 | 2026-11-14 | Parent v430 (Rules v376). 今日入れた入口の画面の作り替え（v424の状態ごとの入口・v429の覆いの外し方）と、v430の画面の枠の合わせ直しを外し、入口は昨日までの動きに戻す（入れない人が増えたため、原因の切り分け）。EVENT BASEへの自動接続（v427・v428）・チャット・画像などはそのまま。 -->
+<!-- TOP RUN PORTAL v434 | 2026-11-14 | Parent v433. REQUIRES Worker top-run-identity v3. 入れなくなった人を戻す・防ぐ：(1)入れないとき、端末に残っている元のログインを自動で探して、見つかれば元の本人に戻す (2)「名前を入れて申請」→ 開発者が管理画面で「この人です」を1回押すと、本人の画面が自動で進んで戻る (3)名前＋暗証番号（6桁）で自分で戻る（マイページで暗証番号を決める）。Firebaseの通信量・Rules変更なし（Workerが確認）。 -->
+<!-- TOP RUN PORTAL v433 | 2026-11-14 | Parent v432. 入れなくなった人の戻り方を簡単に：入口に大きな「コピーしたコードで戻る」ボタン（BANDのメッセージをコピーしておけば、押すだけで戻る。コードの入力は不要）。開発者が送る文も中学生向けの短い文に。 -->
+<!-- TOP RUN PORTAL v432 | 2026-11-14 | Parent v430 (Rules v376, Worker top-run-identity v2). 入れなくなるのを防ぐ：(1)開いたときに端末へ保存データを消さないよう頼む（navigator.storage.persist）。(2)本人の「復元キー」：マイページで作って保存しておくと、端末のログイン情報が消えても、入口の「前に使っていた方」で入れて元の本人（同じID）に戻れる。まだ作っていない人にはマイページに案内。Firebaseの通信量・Rulesの変更なし（キーはWorkerが確認）。 -->
 <!-- TOP RUN PORTAL v430 | 2026-11-14 | Parent v429 (Rules v375). 下のメニューが沈む（ホーム画面アイコンから開いたとき、キーボードを閉じたあとやチャットから戻ったあと）：iPhoneの見えている画面と画面の枠がずれたまま残るのが原因。ずれが残っているときだけ、スクロール位置を1px動かして戻し、iPhoneに枠を合わせ直させる。メニュー自体はJSで動かさない（bottom:0のまま）。Firebase変更なし。 -->
 <!-- TOP RUN PORTAL v429 | 2026-11-14 | Parent v428 (Rules v375). ブラウザ（Safari・BAND・LINE）で開くと「認証中」のまま止まっていた：v424 で入口の画面を絞ったとき、最初の「認証中」の覆いを外す条件（登録ボタンなどが見えていること）に当てはまらなくなっていた→入口の案内を出したら覆いを外す。 -->
 <!-- TOP RUN PORTAL v428 | 2026-11-14 | Parent v427. REQUIRES Rules v375. 管理者が「EVENT BASEを開く」を押したとき、運営者（manager）としての接続を自動で作る（portalLinkProof: verified-portal-admin-v1。駅伝BASEと同じ考え）。前に見る用（participant）の接続ができていたら、運営者の接続に作り直す。Rules v375 が未公開のときは今までどおり見る用。 -->
@@ -7215,7 +7217,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v431</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v434</b></div>
   </div>
 </div>
 
@@ -7458,7 +7460,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v431</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v434</b></div>
   </div>
 </div>
 
@@ -18659,7 +18661,7 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
     <div id="portalHandoffIssued" hidden><strong id="portalHandoffIssuedCode"></strong><small>使い切り・期限付き。引継ぎ先の端末で入力してください。</small></div>
     <button id="portalHandoffIssueButton" type="button" hidden>この本人の引継ぎコードを発行</button>
     <form id="portalHandoffCodeForm" autocomplete="off" hidden>
-      <label for="portalHandoffCodeInput">運営から届いた引継ぎコード（32文字）</label>
+      <label for="portalHandoffCodeInput">復元キー、または運営から届いた引継ぎコード（32文字）</label>
       <input id="portalHandoffCodeInput" maxlength="39" inputmode="text" spellcheck="false" autocapitalize="characters" autocomplete="one-time-code" placeholder="32桁のコードを入力" aria-label="引継ぎコード">
       <button id="portalHandoffRedeemButton" type="submit">同じ本人でログイン</button>
     </form>
@@ -23231,7 +23233,12 @@ try{
         TEMPORARILY_UNAVAILABLE:'本人引継ぎサービスに接続できません。しばらくして再試行してください。',
         NOT_DEVELOPER:'開発者だけが使えます。',
         TARGET_NOT_FOUND:'この人の登録が見つかりません。',
-        TARGET_NOT_ACTIVE:'この人は参加の承認がありません（退会など）。'
+        TARGET_NOT_ACTIVE:'この人は参加の承認がありません（退会など）。',
+        PIN_WEAK:'その暗証番号は使えません（同じ数字の並び・123456などは不可）。',
+        PIN_NOT_MATCHED:'名前か暗証番号がちがいます。',
+        PIN_AMBIGUOUS:'同じ名前・同じ暗証番号の人がいます。「名前で申請する」を使ってください。',
+        NAME_REQUIRED:'名前を入れてください。',
+        BAD_REQUEST:'申請を確認できません。もう一度申請してください。'
       };
       if(!response.ok||result?.ok!==true){
         const code=String(result?.code||'');
@@ -23246,6 +23253,22 @@ try{
       return handoffFetch('/v1/identity-handoff/create',{},idToken);
     };
     // v423: 開発者が、ログイン情報が消えた人のための引継ぎコードを出す（Worker が開発者かどうかを Firebase で確かめる）
+    // v432: 本人の復元キー（Worker v2）
+    // v434: Worker v3 の窓口（暗証番号・申請）
+    gate.idFetchV434=async(path,payload,withAuth)=>{
+      let tk;if(withAuth){if(!auth.currentUser)throw Error('本人の確認ができてから使えます');tk=await auth.currentUser.getIdToken();}
+      return handoffFetch(path,payload||{},tk);
+    };
+    gate.createRecoveryKey=async()=>{
+      if(!auth.currentUser||!gate.profileId)throw Error('本人の確認ができてから作れます');
+      const idToken=await auth.currentUser.getIdToken();
+      return handoffFetch('/v1/recovery-key/create',{},idToken);
+    };
+    gate.recoveryKeyStatus=async()=>{
+      if(!auth.currentUser||!gate.profileId)return null;
+      const idToken=await auth.currentUser.getIdToken();
+      return handoffFetch('/v1/recovery-key/status',{},idToken);
+    };
     gate.adminIssueHandoff=async(targetUid)=>{
       if(!auth.currentUser||gate.role!=='developer'||gate.roleVerified!==true)throw Error('開発者だけが使えます');
       const idToken=await auth.currentUser.getIdToken();
@@ -23261,7 +23284,7 @@ try{
       try{const claims=JSON.parse(atob(result.token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));tokenUid=String(claims.uid||'');}catch(_){throw Error('サーバーの本人認証情報が不正です');}
       const incomingUid=String(result.uid);
       if(!/^[A-Za-z0-9_-]{6,128}$/.test(incomingUid)||tokenUid!==incomingUid)throw Error('引継ぎ元の本人UIDとログイン情報が一致しません');
-      if(auth.currentUser&&auth.currentUser.uid!==incomingUid){
+      if(auth.currentUser&&auth.currentUser.uid!==incomingUid&&!window.__trSkipSwitchConfirmV434){
         const accepted=window.confirm('この端末には別のログイン情報があります。現在のログインを解除して、引継ぎ元の本人へ切り替えますか？\n端末の保存領域を消去することはありません。');
         if(!accepted)throw Error('ログイン切替を中止しました');
       }
@@ -31832,7 +31855,7 @@ header.top .brandText{cursor:pointer}
     }
     const c=e.target.closest('[data-ho-copy]');
     if(c){
-      const txt='TOP RUN PORTAL の引継ぎコードです（24時間・1回だけ）\n'+c.dataset.hoCopy+'\n\nPORTAL を開き、入れない画面のいちばん下の「運営から届いた引継ぎコード」に入れて、「同じ本人でログイン」を押してください。元の登録に戻ります。登録はやり直さないでください。';
+      const txt='【TOP RUN】このメッセージを長押しして「コピー」してね\n↓\nTOP RUN のアプリを開いて「前に使っていた方」→「コピーしたコードで戻る」を押すだけ！\n（今日中・1回だけ使えます）\n\n'+c.dataset.hoCopy;
       let ok=false;try{await navigator.clipboard.writeText(txt);ok=true;}catch(_){}
       c.textContent=ok?'✓ コピーしました':'コードを長押ししてコピーしてください';
     }
@@ -31892,7 +31915,139 @@ header.top .brandText{cursor:pointer}
 #trHoSection .trHoBox button{min-height:40px;border-radius:12px}
 </style>
 
+<script id="v424-entry-simple">
+/* v424: 入口の画面を、状態ごとに出すものを1つに絞る（表示だけ。ログイン・登録の処理は今までのまま）。
+   A. ブラウザ（Safari・BAND・LINE の中）：ホーム画面に追加して、アイコンから開く案内だけ
+   B. アイコンから・登録がない：「はじめて登録する」「前に使っていた（入れなくなった）」の2つ
+   C. 登録があるのに入れない：今の案内（もう一度・運営に連絡する）だけ。運営用の詳しい状態は出さない */
+(function(){
+  'use strict';
+  const $=id=>document.getElementById(id);
+  const ua=navigator.userAgent||'';
+  const isPhone=/iPhone|iPad|iPod|Android/i.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  const isIOS=/iPhone|iPad|iPod/i.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  const inApp=/Line\/|NAVER|BAND\/|FBAN|FBAV|Instagram|; wv\)/i.test(ua);
+  const mq=m=>window.matchMedia?.('(display-mode: '+m+')')?.matches===true;
+  const fromIcon=()=>navigator.standalone===true||mq('standalone')||mq('fullscreen')||mq('minimal-ui');
+  let override=false;try{override=new URLSearchParams(location.search).get('browserok')==='1';}catch(_){}
+  const browserBlock=()=>isPhone&&!fromIcon()&&(isIOS||inApp)&&!override;
+  let returning=false;
+  const vis=el=>!!el&&!el.hidden;
+  const hide=(el,h)=>{if(el&&el.hidden!==h)el.hidden=h;};
+  const text=(el,s)=>{if(el&&el.textContent!==s)el.textContent=s;};
+  function reportText(){
+    const v=window.__TR_PORTAL_SYNC__||{};
+    const tail=String(v.uid||'').slice(-6)||String(v.authUidTail||'')||'なし';
+    const dev=/iPhone|iPad/.test(ua)?'iPhone':/Android/.test(ua)?'Android':'その他';
+    const st=[v?'接続準備OK':'接続準備なし',v?.uid?'本人IDあり':'本人IDなし',v?.profileId?'プロフィールあり':'プロフィールなし',navigator.onLine?'オンライン':'オフライン'].join('／');
+    return ['TOP RUN PORTAL に入れません（前に使っていました）','確認番号：'+tail,'状態：'+st+(v.error?'／'+String(v.error).replace(/Firebase/g,'').slice(0,80):''),'開き方：'+(fromIcon()?'ホーム画面アイコン':'ブラウザ')+'／'+dev,'版：v424','時刻：'+new Date().toLocaleString('ja-JP'),'','名前：（ここに名前を書いてください）'].join('\n');
+  }
+  async function sendReport(btn){
+    const txt=reportText();
+    try{if(navigator.share){await navigator.share({text:txt});return;}}catch(e){if(e&&e.name==='AbortError')return;}
+    let ok=false;try{await navigator.clipboard.writeText(txt);ok=true;}catch(_){}
+    btn.textContent=ok?'コピーしました。BANDに貼って送ってください':'この画面を撮って運営に送ってください';
+  }
+  function ensureUi(){
+    const newStart=$('portalNewParticipantStart');if(!newStart)return null;
+    let ret=$('trEntryReturning');
+    if(!ret){
+      ret=document.createElement('button');ret.type='button';ret.id='trEntryReturning';ret.className='trEntryChoice';
+      ret.textContent='前に使っていた方（入れなくなった）';
+      newStart.insertAdjacentElement('afterend',ret);
+      ret.addEventListener('click',()=>{returning=true;present();document.getElementById('trEntryReturnBox')?.scrollIntoView({block:'start',behavior:'smooth'});});
+      const box=document.createElement('div');box.id='trEntryReturnBox';box.hidden=true;
+      box.innerHTML='<p class="trEntryLead">登録はやり直さないでください（記録が別の人になってしまいます）。</p>'+
+        '<div class="trRbV434"><b>暗証番号を決めている人</b><input id="trRbName" autocomplete="off" placeholder="名前（PORTALに登録した名前）"><input id="trRbPin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off" placeholder="暗証番号（6桁）"><button type="button" id="trRbPinGo" class="trEntryChoice">名前と暗証番号で戻る</button><p id="trRbPinState" role="status"></p></div>'+
+        '<div class="trRbV434"><b>暗証番号がない・忘れた人</b><p>上に名前を入れて「申請する」を押してね。運営が確認すると、この画面が自動で進んで元の自分に戻ります（開いたまま待ってね）。</p><button type="button" id="trRbReq" class="trEntryChoice">名前で申請する</button><p id="trRbReqState" role="status"></p></div>'+
+        '<details class="trRbMore"><summary>運営からコードが届いた人・ほかの方法</summary>'+
+        '<button type="button" id="trEntryClip" class="trEntryChoice">コピーしたコードで戻る</button><p id="trEntryClipState" class="trEntryLead" style="color:inherit;font-weight:600" role="status"></p>'+'<button type="button" id="trEntryReport" class="trEntryChoice">運営に連絡する</button></details>'+
+        '<button type="button" id="trEntryBack" class="trEntryLink">← 戻る</button>';
+      ret.insertAdjacentElement('afterend',box);
+      box.querySelector('#trEntryReport').addEventListener('click',e=>sendReport(e.currentTarget));
+      // v433: コピーしたメッセージからコードを取り出して、そのまま戻る（入力は不要）
+      box.querySelector('#trEntryClip').addEventListener('click',async()=>{
+        const st=$('trEntryClipState'),inp=$('portalHandoffCodeInput'),go=$('portalHandoffRedeemButton');
+        let text='';try{text=await navigator.clipboard.readText();}catch(_){}
+        const m=/([0-9A-Fa-f]{4}[-\s]?){7}[0-9A-Fa-f]{4}/.exec(String(text||''));
+        if(!m){st.textContent='コードが見つかりません。BANDのメッセージを長押しして「コピー」してから、もう一度押してね。';return;}
+        const code=m[0].replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
+        if(inp){inp.value=code;inp.dispatchEvent(new Event('input',{bubbles:true}));}
+        st.textContent='確認しています…';
+        if(go&&!go.disabled)go.click();else st.textContent='下の欄にコードを入れました。「同じ本人でログイン」を押してね。';
+      });
+      box.querySelector('#trEntryBack').addEventListener('click',()=>{returning=false;present();});
+      // 引継ぎコードの欄は、この案内のすぐ下に移す
+      const cf=$('portalHandoffCodeForm');if(cf){box.insertAdjacentElement('afterend',cf);const hs=$('portalHandoffStatus');if(hs)cf.insertAdjacentElement('afterend',hs);}
+    }
+    return {newStart,ret,box:$('trEntryReturnBox')};
+  }
+  let busy=false;
+  function present(){
+    if(busy)return;busy=true;
+    try{
+      const panel=$('portalParticipantIdentityGate');if(!panel||panel.hidden){busy=false;return;}
+      const ui=ensureUi();if(!ui){busy=false;return;}
+      const heading=$('portalParticipantLoginTitle'),message=$('portalParticipantLoginMessage'),helper=$('portalParticipantLoginHelp');
+      const steps=$('portalGateSteps'),retry=$('portalParticipantLoginRetry'),newForm=$('portalNewParticipantForm');
+      const codeForm=$('portalHandoffCodeForm'),audit=$('portalExistingIdentityAudit'),notice=$('portalIconOnlyNotice'),existing=$('portalExistingParticipantStart');
+      const formOpen=vis(newForm)||vis($('portalParticipantRoleStep'));
+      const choice=!formOpen&&(vis(ui.newStart)||returning)&&!panel.classList.contains('trEntryFailed');
+      panel.classList.toggle('trEntryBrowser',browserBlock());
+      document.documentElement.classList.toggle('trGateShownV429',browserBlock()||choice); // v429: 案内を出したら「認証中」の覆いを外す
+      if(browserBlock()){
+        text(heading,'ホーム画面のアイコンから開いてください');
+        text(message,isIOS?'① 下の共有ボタン（□に↑）→「ホーム画面に追加」を押す。\n② ホーム画面の TOP RUN のアイコンから開く。':'右上のメニューから「ブラウザで開く」を選ぶか、ホーム画面のアイコンから開いてください。');
+        [helper,steps,retry,ui.newStart,ui.ret,ui.box,codeForm,audit,notice,existing].forEach(el=>hide(el,true));
+      }else if(choice){
+        hide(notice,true);hide(audit,true);hide(steps,true);hide(retry,true);hide(existing,true);
+        if(returning){
+          text(heading,'前に使っていた方');text(message,'運営に連絡して、届いた引継ぎコードを入れると、元の登録に戻ります。');
+          hide(helper,true);hide(ui.newStart,true);hide(ui.ret,true);hide(ui.box,false);hide(codeForm,true);
+        }else{
+          text(heading,'TOP RUN PORTAL');text(message,'あてはまる方を押してください。');
+          hide(helper,true);hide(ui.newStart,false);text(ui.newStart,'はじめて登録する');ui.newStart.classList.add('trEntryChoice');
+          hide(ui.ret,false);hide(ui.box,true);hide(codeForm,true);
+        }
+      }else{
+        // 登録の入力中、または登録があるのに入れないとき：選ぶボタンは出さない。運営用の詳しい状態は出さない
+        hide(ui.ret,true);hide(ui.box,true);hide(audit,true);
+        if(!formOpen&&!vis(ui.newStart))hide(codeForm,true);
+      }
+    }catch(_){}
+    busy=false;
+  }
+  // 「登録があるのに入れない」を見分ける：失敗の案内（もう一度確認する）が出ていて、登録のボタンが出ていないとき
+  function mark(){
+    const panel=$('portalParticipantIdentityGate');if(!panel)return;
+    const failed=vis($('portalParticipantLoginRetry'))&&vis($('portalGateSteps'))&&!vis($('portalNewParticipantStart'))&&!returning;
+    panel.classList.toggle('trEntryFailed',failed);
+  }
+  let queued=false;
+  const schedule=()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;mark();present();});};
+  function start(){
+    const panel=$('portalParticipantIdentityGate');if(!panel)return;
+    new MutationObserver(schedule).observe(panel,{subtree:true,childList:true,attributes:true,attributeFilter:['hidden']});
+    schedule();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+})();
+</script>
 <style id="v424-style">
+/* v424: 入口の画面 */
+#portalParticipantIdentityGate .trEntryChoice{display:block;width:100%;min-height:52px;margin:10px 0 0;border-radius:14px;font:inherit;font-size:16px;font-weight:900;cursor:pointer}
+#portalParticipantIdentityGate #portalNewParticipantStart.trEntryChoice{background:var(--gold,#e0c24a);color:#211b08;border:0}
+#portalParticipantIdentityGate #trEntryReturning,#portalParticipantIdentityGate #trEntryReport{background:transparent;color:inherit;border:1px solid rgba(255,255,255,.45)}
+#portalParticipantIdentityGate #trEntryReport{background:transparent;color:inherit;border:1px solid rgba(255,255,255,.45)}
+#portalParticipantIdentityGate #trEntryClip{background:var(--gold,#e0c24a);color:#211b08;border:0;min-height:58px;font-size:17px}
+#portalParticipantIdentityGate #trEntryReturnBox{margin-top:6px;font-size:14px;line-height:1.75}
+#portalParticipantIdentityGate #trEntryReturnBox .trEntryLead{margin:0 0 6px;font-weight:800;color:#ffd76a}
+#portalParticipantIdentityGate #trEntryReturnBox .trEntrySteps{margin:0;padding-left:1.4em}
+#portalParticipantIdentityGate .trEntryLink{display:block;margin:12px auto 0;background:none;border:0;color:inherit;opacity:.8;font:inherit;font-size:14px;text-decoration:underline}
+#portalParticipantIdentityGate #portalParticipantLoginMessage{white-space:pre-line}
+#portalParticipantIdentityGate .trGateDetail{display:none!important}
+html.trGateShownV429 #portalFirstPaintAuthOverlay{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}
+#portalParticipantIdentityGate #portalHandoffCodeForm{margin-top:16px}
 /* v424: リンクカードの震え対策：ふわっと表示をやめ、カードの描き直しをカードの中に閉じ込める */
 .trLPWrap{contain:layout paint}
 .trLPMedia .trLPImage{opacity:1!important;transition:none!important}
@@ -31925,5 +32080,359 @@ header.top .brandText{cursor:pointer}
 .trArchiveField button{min-height:40px;padding:0 12px;border-radius:10px;font:inherit;font-size:13px;font-weight:800;white-space:nowrap}
 </style>
 
+<script id="v430-viewport-heal">
+/* v430: 下のメニューが沈む対策。ホーム画面アイコンから開いたとき、キーボードを閉じた後などに、iPhoneの「見えている画面」と
+   「画面の枠（fixed の基準）」がずれたまま残ることがある。ずれが残っているときだけ、スクロール位置を1px動かして戻し、枠を合わせ直させる。
+   メニューは JS で動かさない（bottom:0 のまま）。Firebase は使わない。 */
+(function(){
+  'use strict';
+  const standalone=navigator.standalone===true||window.matchMedia?.('(display-mode: standalone)')?.matches===true;
+  if(!standalone)return;
+  const vv=window.visualViewport;if(!vv)return;
+  const isField=el=>!!(el&&el.matches&&el.matches('input:not([type="file"]):not([type="checkbox"]):not([type="radio"]),textarea,select,[contenteditable="true"]'));
+  let touching=false,timer=0;
+  document.addEventListener('touchstart',()=>{touching=true;},{passive:true,capture:true});
+  document.addEventListener('touchend',()=>{touching=false;later(350);},{passive:true,capture:true});
+  function drift(){return (vv.offsetTop>1)||(window.innerHeight-vv.height>2);}
+  function heal(){
+    if(touching||isField(document.activeElement)||(vv.scale||1)>1.01)return;
+    if(!drift())return;
+    const x=window.scrollX||0,y=window.scrollY||0;
+    window.scrollTo(x,y+1);
+    requestAnimationFrame(()=>{window.scrollTo(x,y);
+      // それでも残るときは、いちばん上に合わせ直す（ホーム画面のときだけ）
+      setTimeout(()=>{if(drift()&&!touching&&!isField(document.activeElement)){const cur=document.querySelector('.portalScreen:not(.hidden)');if(!cur)window.scrollTo(x,Math.max(0,y-vv.offsetTop));}},250);
+    });
+  }
+  function later(ms){clearTimeout(timer);timer=setTimeout(heal,ms||300);}
+  document.addEventListener('focusout',e=>{if(isField(e.target))later(450);},true);
+  vv.addEventListener('resize',()=>later(400));
+  vv.addEventListener('scroll',()=>later(500));
+  window.addEventListener('pageshow',()=>later(300));
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)later(300);});
+  const start=()=>{const mo=new MutationObserver(()=>later(350));document.querySelectorAll('.portalScreen').forEach(s=>mo.observe(s,{attributes:true,attributeFilter:['class']}));mo.observe(document.body,{attributes:true,attributeFilter:['class']});later(600);};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+})();
+</script>
+<script id="v432-recovery">
+/* v432: 入れなくなるのを防ぐ。(1) 保存データを消さないよう端末に頼む (2) 本人の復元キー */
+(function(){
+  'use strict';
+  // (1) Android の Chrome などで、空き容量が少ないときの自動削除の対象から外してもらう（画面の変化なし・通信なし）
+  try{if(navigator.storage&&navigator.storage.persist){navigator.storage.persisted().then(p=>{if(!p)navigator.storage.persist().catch(()=>{});}).catch(()=>{});}}catch(_){}
+  const $=id=>document.getElementById(id);
+  const g=()=>window.__TR_PORTAL_SYNC__;
+  const fmt=c=>String(c||'').toUpperCase().replace(/(.{4})(?=.)/g,'$1-');
+  let checked=false,hasKey=null;
+  function card(){
+    const body=document.querySelector('#screen-mypage .portalScreenBody');if(!body)return null;
+    let c=$('trRkCard');
+    if(!c){
+      c=document.createElement('section');c.id='trRkCard';c.className='trRkCard';
+      c.innerHTML='<div class="trRkHead"><b>本人の復元キー</b><span id="trRkBadge"></span></div>'+
+        '<p>スマホの保存データが消えたり、機種を変えたりして PORTAL に入れなくなったとき、このキーを入れると<b>元の自分のまま</b>戻れます（記録・チャットもそのまま）。</p>'+
+        '<div id="trRkShow" hidden><code id="trRkCode"></code><div class="trRkBtns"><button type="button" id="trRkCopy">コピー</button><button type="button" id="trRkShare">保存・送る</button></div>'+
+        '<p class="trRkWarn">パスワードと同じです。人に見せないでください。スクショを撮るか、メモ・BANDの自分あてに保存してください。</p></div>'+
+        '<button type="button" id="trRkMake" class="trRkMake">復元キーを作る</button><p id="trRkState" role="status"></p>';
+      body.insertBefore(c,body.firstChild.nextSibling);
+      $('trRkMake').addEventListener('click',make);
+      $('trRkCopy').addEventListener('click',async()=>{const v=$('trRkCode').textContent;let ok=false;try{await navigator.clipboard.writeText(v);ok=true;}catch(_){}$('trRkState').textContent=ok?'✓ コピーしました。メモなどに貼って保存してください':'キーを長押ししてコピーしてください';});
+      $('trRkShare').addEventListener('click',async()=>{const v=$('trRkCode').textContent;const txt='TOP RUN PORTAL 復元キー（人に見せない）\n'+v+'\n\n入れなくなったら、PORTALの入口で「前に使っていた方」→ この32文字を入れて「同じ本人でログイン」';try{if(navigator.share){await navigator.share({text:txt});return;}}catch(e){if(e&&e.name==='AbortError')return;}try{await navigator.clipboard.writeText(txt);$('trRkState').textContent='✓ コピーしました';}catch(_){}});
+    }
+    return c;
+  }
+  function paint(){
+    const c=card();if(!c)return;
+    const b=$('trRkBadge');
+    if(hasKey===true){b.textContent='保存済み';b.className='ok';$('trRkMake').textContent='復元キーを作り直す（前のキーは使えなくなります）';c.classList.remove('need');}
+    else if(hasKey===false){b.textContent='まだ作っていません';b.className='need';$('trRkMake').textContent='復元キーを作る';c.classList.add('need');}
+    else{b.textContent='';}
+  }
+  async function make(){
+    if(hasKey===true&&!confirm('復元キーを作り直します。前に保存したキーは使えなくなります。よろしいですか？'))return;
+    const btn=$('trRkMake');btn.disabled=true;$('trRkState').textContent='作っています…';
+    try{
+      const r=await g().createRecoveryKey();
+      $('trRkCode').textContent=fmt(r.code);$('trRkShow').hidden=false;hasKey=true;paint();
+      $('trRkState').textContent='✓ 作りました。この画面を閉じる前に、必ず保存してください（あとから表示はできません）';
+    }catch(e){$('trRkState').textContent='作れませんでした：'+String(e?.message||e).slice(0,120);}
+    finally{btn.disabled=false;}
+  }
+  async function check(){
+    const G=g();if(checked||!G?.profileId||G.roleVerified!==true||typeof G.recoveryKeyStatus!=='function')return;
+    checked=true;
+    try{const r=await G.recoveryKeyStatus();hasKey=!!(r&&r.hasKey);}catch(_){hasKey=null;checked=false;}
+    paint();
+  }
+  const tick=()=>{card();paint();check();};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',tick);else tick();
+  window.addEventListener('tr-portal-authorized',()=>setTimeout(tick,500));
+  let n=0;const iv=setInterval(()=>{tick();if(checked||++n>40)clearInterval(iv);},3000);
+  document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('[data-screen="mypage"],[data-open-mypage]'))setTimeout(tick,200);},true);
+})();
+</script>
+<style id="v432-recovery-style">
+.trRkCard{margin:12px 0;padding:14px;border-radius:16px;border:1px solid color-mix(in srgb,currentColor 18%,transparent);background:color-mix(in srgb,currentColor 4%,transparent);font-size:13.5px;line-height:1.7}
+.trRkCard.need{border-color:#d8b236;background:color-mix(in srgb,#d8b236 12%,transparent)}
+.trRkHead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
+.trRkHead b{font-size:15px}
+.trRkHead span{font-size:11.5px;font-weight:800;padding:2px 9px;border-radius:999px}
+.trRkHead span.ok{background:color-mix(in srgb,currentColor 12%,transparent)}
+.trRkHead span.need{background:#d8b236;color:#211b08}
+.trRkCard p{margin:6px 0}
+.trRkCard code{display:block;margin:8px 0;padding:10px;border-radius:10px;background:color-mix(in srgb,currentColor 8%,transparent);font-size:16px;font-weight:800;letter-spacing:.03em;word-break:break-all;user-select:all;-webkit-user-select:all}
+.trRkBtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.trRkBtns button,.trRkMake{min-height:42px;border-radius:12px;font:inherit;font-weight:800;font-size:14px}
+.trRkMake{display:block;width:100%;margin-top:8px}
+.trRkCard.need .trRkMake{background:#d8b236;color:#211b08;border:0}
+.trRkWarn{font-size:12px;opacity:.85}
+</style>
+<script id="v434-recover">
+/* v434: 入れなくなった人を戻す。(1)端末に残る元のログインを自動で探す (2)名前で申請→開発者が確かめる (3)名前＋暗証番号 */
+(function(){
+  'use strict';
+  const $=id=>document.getElementById(id);
+  const g=()=>window.__TR_PORTAL_SYNC__;
+  const V='https://www.gstatic.com/firebasejs/12.19.0/';
+  const CFG={apiKey:'AIzaSyDthNBZk7aMzCM0kpZ5QIV39gXztVqM4L0',authDomain:'event-base-rebuild.firebaseapp.com',databaseURL:'https://event-base-rebuild-default-rtdb.asia-southeast1.firebasedatabase.app/',projectId:'event-base-rebuild',storageBucket:'event-base-rebuild.firebasestorage.app',messagingSenderId:'1071631357620',appId:'1:1071631357620:web:2cb535d173a9d434f569e1'};
+  const PREFIX='firebase:authUser:'+CFG.apiKey+':';
+  const nk=s=>{let v=String(s||'');try{v=v.normalize('NFKC');}catch(_){}return v.replace(/[\s　]/g,'').toLowerCase();};
+  async function redeem(code,stateEl){
+    try{
+      window.__trSkipSwitchConfirmV434=true;
+      if(stateEl)stateEl.textContent='元の自分に戻しています…';
+      await g().redeemHandoff(code);
+      try{localStorage.removeItem('trRecoverReqV434');}catch(_){}
+      if(stateEl)stateEl.textContent='✓ 戻りました。開き直します…';
+      setTimeout(()=>location.reload(),900);
+    }catch(e){if(stateEl)stateEl.textContent='戻せませんでした：'+String(e?.message||e).slice(0,120);}
+    finally{setTimeout(()=>{window.__trSkipSwitchConfirmV434=false;},3000);}
+  }
+  // ---- (1) 端末に残る元のログインを自動で探す
+  function idbStored(){
+    return new Promise(res=>{
+      try{
+        const rq=indexedDB.open('firebaseLocalStorageDb');
+        rq.onerror=()=>res([]);
+        rq.onsuccess=()=>{try{const db=rq.result;if(!db.objectStoreNames.contains('firebaseLocalStorage')){db.close();res([]);return;}
+          const all=db.transaction('firebaseLocalStorage','readonly').objectStore('firebaseLocalStorage').getAll();
+          all.onsuccess=()=>{db.close();res((all.result||[]).filter(x=>String(x?.fbase_key||'').startsWith(PREFIX)).map(x=>x.value).filter(v=>v&&v.uid));};
+          all.onerror=()=>{db.close();res([]);};}catch(_){res([]);}};
+        rq.onupgradeneeded=()=>{try{rq.transaction.abort();}catch(_){}res([]);};
+      }catch(_){res([]);}
+    });
+  }
+  let scanning=false;
+  async function scan(){
+    if(scanning)return;scanning=true;
+    try{if(sessionStorage.getItem('trScanV434'))return;sessionStorage.setItem('trScanV434','1');}catch(_){}
+    try{
+      const [appMod,authMod,dbMod]=await Promise.all([import(V+'firebase-app.js'),import(V+'firebase-auth.js'),import(V+'firebase-database.js')]);
+      const stored=[];
+      for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(PREFIX)&&!k.includes(':trscan')){try{const v=JSON.parse(localStorage.getItem(k));if(v&&v.uid)stored.push(v);}catch(_){}}}
+      (await idbStored()).forEach(v=>stored.push(v));
+      const appA=appMod.getApps().find(a=>a.name==='eventbase-rebuild');if(!appA)return;
+      const mainAuth=authMod.getAuth(appA);
+      const current=new Set(appMod.getApps().filter(a=>/^eventbase-rebuild/.test(a.name)).map(a=>authMod.getAuth(a).currentUser?.uid).filter(Boolean));
+      const seen=new Set(),cands=[];
+      for(const v of stored){if(!v.uid||current.has(v.uid)||seen.has(v.uid))continue;seen.add(v.uid);cands.push(v);}
+      let n=0;
+      for(const v of cands.slice(0,4)){
+        const name='trscan'+(n++)+'_'+Date.now().toString(36);const key=PREFIX+name;
+        let app=null;
+        try{
+          localStorage.setItem(key,JSON.stringify(v));
+          app=appMod.initializeApp(CFG,name);
+          const a=authMod.initializeAuth(app,{persistence:authMod.browserLocalPersistence});
+          await a.authStateReady();
+          if(a.currentUser?.uid!==v.uid)continue;
+          const pid=(await dbMod.get(dbMod.ref(dbMod.getDatabase(app),'profiles/'+v.uid+'/profileId'))).val();
+          if(typeof pid==='string'&&pid){
+            await authMod.updateCurrentUser(mainAuth,a.currentUser);
+            const st=$('portalParticipantLoginMessage');if(st)st.textContent='元のログインが見つかりました。元の自分に戻します…';
+            setTimeout(()=>location.reload(),800);
+            return;
+          }
+        }catch(e){console.warn('v434 scan',e);}
+        finally{try{localStorage.removeItem(key);}catch(_){}try{if(app)await appMod.deleteApp(app);}catch(_){}}
+      }
+    }catch(e){console.warn('v434 scan',e);}
+    finally{scanning=false;}
+  }
+  function gateState(){
+    const p=$('portalParticipantIdentityGate');if(!p||p.hidden)return;
+    const h=String($('portalParticipantLoginTitle')?.textContent||'');
+    if(/登録が見つかりません|あてはまる|TOP RUN PORTAL|前に使っていた方/.test(h)||/あてはまる/.test(String($('portalParticipantLoginMessage')?.textContent||'')))scan();
+    resumeReq();
+  }
+  // ---- (2) 名前で申請 → 開発者が確かめる
+  let polling=false;
+  function reqSaved(){try{const r=JSON.parse(localStorage.getItem('trRecoverReqV434')||'null');if(r&&r.reqId&&Date.now()-r.at<48*3600*1000)return r;}catch(_){}return null;}
+  async function poll(){
+    if(polling)return;polling=true;
+    const st=()=>$('trRbReqState');
+    try{
+      for(let i=0;i<400;i++){
+        const r=reqSaved();if(!r)break;
+        try{
+          const res=await g().idFetchV434('/v1/recover-request/status',{reqId:r.reqId,secret:r.secret},false);
+          if(res.status==='approved'&&res.code){await redeem(res.code,st());break;}
+          if(res.status==='rejected'){if(st())st().textContent='運営が確認できませんでした。運営に連絡してね。';localStorage.removeItem('trRecoverReqV434');break;}
+          if(st())st().textContent='申請しました（'+r.name+'）。運営の確認を待っています…この画面を開いたまま待ってね。';
+        }catch(e){if(st())st().textContent='確認しています…（'+String(e?.message||e).slice(0,40)+'）';}
+        await new Promise(res=>setTimeout(res,document.hidden?15000:5000));
+      }
+    }finally{polling=false;}
+  }
+  function resumeReq(){if(reqSaved()&&g()?.idFetchV434)poll();}
+  document.addEventListener('click',async e=>{
+    const t=e.target;
+    if(t.closest?.('#trRbReq')){
+      const name=String($('trRbName')?.value||'').trim(),st=$('trRbReqState');
+      if(!nk(name)){st.textContent='上の欄に名前を入れてね。';$('trRbName')?.focus();return;}
+      t.disabled=true;st.textContent='申請しています…';
+      try{
+        const ua=navigator.userAgent||'';const dev=/iPhone|iPad/.test(ua)?'iPhone':/Android/.test(ua)?'Android':'その他';
+        const r=await g().idFetchV434('/v1/recover-request/create',{name,device:dev},false);
+        localStorage.setItem('trRecoverReqV434',JSON.stringify({reqId:r.reqId,secret:r.secret,name,at:Date.now()}));
+        st.textContent='申請しました。運営の確認を待っています…';poll();
+      }catch(err){st.textContent='申請できませんでした：'+String(err?.message||err).slice(0,100);}
+      finally{t.disabled=false;}
+      return;
+    }
+    if(t.closest?.('#trRbPinGo')){
+      const name=String($('trRbName')?.value||'').trim(),pin=String($('trRbPin')?.value||'').trim(),st=$('trRbPinState');
+      if(!nk(name)||!/^[0-9]{6}$/.test(pin)){st.textContent='名前と、6桁の暗証番号を入れてね。';return;}
+      t.disabled=true;st.textContent='確認しています…';
+      try{const r=await g().idFetchV434('/v1/pin/recover',{name,pin},false);await redeem(r.code,st);}
+      catch(err){st.textContent=String(err?.message||err).slice(0,120);}
+      finally{t.disabled=false;}
+    }
+  },true);
+  // ---- (3) マイページで暗証番号を決める
+  let pinChecked=false,hasPin=null;
+  function pinCard(){
+    const body=document.querySelector('#screen-mypage .portalScreenBody');if(!body)return null;
+    let c=$('trPinCard');
+    if(!c){
+      c=document.createElement('section');c.id='trPinCard';c.className='trRkCard';
+      c.innerHTML='<div class="trRkHead"><b>暗証番号（6桁）</b><span id="trPinBadge"></span></div>'+
+        '<p>スマホのデータが消えて PORTAL に入れなくなったとき、<b>名前と暗証番号</b>で元の自分に戻れます。</p>'+
+        '<div id="trPinForm" hidden><input id="trPin1" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="new-password" placeholder="暗証番号（6桁の数字）"><input id="trPin2" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="new-password" placeholder="もう一度"><button type="button" id="trPinSave" class="trRkMake">保存</button></div>'+
+        '<button type="button" id="trPinOpen" class="trRkMake">暗証番号を決める</button><p id="trPinState" role="status"></p>'+
+        '<p class="trRkWarn">人に教えないでください。同じ数字の並びや 123456 は使えません。</p>'+
+        '<button type="button" id="trRkToggle" class="trRkLink">予備：復元キー（32文字）を作る</button>';
+      const rk=$('trRkCard');body.insertBefore(c,rk||body.firstChild.nextSibling);
+      $('trPinOpen').addEventListener('click',()=>{$('trPinForm').hidden=false;$('trPinOpen').hidden=true;$('trPin1').focus();});
+      $('trRkToggle').addEventListener('click',()=>{const r=$('trRkCard');if(r)r.classList.toggle('trRkShown');});
+      $('trPinSave').addEventListener('click',async()=>{
+        const a=$('trPin1').value.trim(),b=$('trPin2').value.trim(),st=$('trPinState');
+        if(!/^[0-9]{6}$/.test(a)){st.textContent='6桁の数字を入れてください。';return;}
+        if(a!==b){st.textContent='2回の暗証番号がちがいます。';return;}
+        $('trPinSave').disabled=true;st.textContent='保存しています…';
+        try{await g().idFetchV434('/v1/pin/set',{pin:a},true);hasPin=true;st.textContent='✓ 保存しました';$('trPin1').value='';$('trPin2').value='';$('trPinForm').hidden=true;$('trPinOpen').hidden=false;paint();try{window.showActionFeedback?.('✓ 保存しました','');}catch(_){}}
+        catch(e){st.textContent='保存できませんでした：'+String(e?.message||e).slice(0,100);}
+        finally{$('trPinSave').disabled=false;}
+      });
+    }
+    return c;
+  }
+  function paint(){
+    const c=pinCard();if(!c)return;const b=$('trPinBadge');
+    if(hasPin===true){b.textContent='設定済み';b.className='ok';$('trPinOpen').textContent='暗証番号を変える';c.classList.remove('need');}
+    else if(hasPin===false){b.textContent='まだ決めていません';b.className='need';$('trPinOpen').textContent='暗証番号を決める';c.classList.add('need');}
+  }
+  async function pinCheck(){
+    const G=g();if(pinChecked||!G?.profileId||G.roleVerified!==true||typeof G.idFetchV434!=='function')return;
+    pinChecked=true;
+    try{const r=await G.idFetchV434('/v1/pin/status',{},true);hasPin=!!(r&&r.hasPin);}catch(_){pinChecked=false;}
+    paint();
+  }
+  const tick=()=>{pinCard();paint();pinCheck();gateState();};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',tick);else tick();
+  window.addEventListener('tr-portal-authorized',()=>setTimeout(tick,500));
+  let n=0;const iv=setInterval(()=>{tick();if((pinChecked&&!reqSaved())||++n>60)clearInterval(iv);},3000);
+  const start=()=>{const p=$('portalParticipantIdentityGate');if(p)new MutationObserver(()=>setTimeout(gateState,300)).observe(p,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['hidden']});};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+})();
+
+/* v434: 開発者：「戻したい人（申請）」の一覧。名前を見比べて「この人です」を押すと、その人の画面が自動で進んで戻る */
+(function(){
+  'use strict';
+  const $=id=>document.getElementById(id);
+  const g=()=>window.__TR_PORTAL_SYNC__;
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const nk=s=>{let v=String(s||'');try{v=v.normalize('NFKC');}catch(_){}return v.replace(/[\s　]/g,'').toLowerCase();};
+  let members=null,busy=false;
+  function mount(){
+    const sec=$('trHoSection');if(!sec||sec.hidden)return;
+    let box=$('trRqBox');
+    if(!box){
+      box=document.createElement('div');box.id='trRqBox';box.className='trRqBox';
+      box.innerHTML='<div class="trRqHead"><b>戻したい人（申請）</b><button type="button" id="trRqReload">更新</button></div><div id="trRqList"><p style="font-size:13px;opacity:.75">「更新」を押すと、申請が出ます。</p></div>';
+      const det=$('trHoDetails');(det||sec).insertAdjacentElement(det?'beforebegin':'beforeend',box);
+      box.addEventListener('click',onClick);
+    }
+  }
+  async function load(){
+    const L=$('trRqList');if(!L)return;L.innerHTML='<p style="font-size:13px">読み込んでいます…</p>';
+    try{
+      if(!members)members=(await g().listApprovedMembers()).filter(m=>m.uid!==g().uid);
+      const r=await g().idFetchV434('/v1/recover-request/list',{},true);
+      const items=r.items||[];
+      if(!items.length){L.innerHTML='<p style="font-size:13px">申請はありません。</p>';return;}
+      const opts=members.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name),'ja')).map(m=>'<option value="'+esc(m.uid)+'">'+esc(m.name)+'（末尾'+esc(m.uid.slice(-6))+'）</option>').join('');
+      L.innerHTML=items.map(it=>{
+        const k=nk(it.name);const cands=members.filter(m=>{const a=nk(m.name),b=nk(m.reg);return k&&((a&&(a.includes(k)||k.includes(a)))||(b&&(b.includes(k)||k.includes(b))));}).slice(0,4);
+        const t=new Date(it.at).toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
+        return '<div class="trRqItem" data-rq="'+esc(it.id)+'"><div><b>'+esc(it.name)+'</b><small>'+esc(t)+(it.device?'・'+esc(it.device):'')+'</small></div>'+
+          (cands.length?cands.map(c=>'<button type="button" class="trRqPick" data-rq-approve="'+esc(it.id)+'" data-uid="'+esc(c.uid)+'">この人です：'+esc(c.name)+'（末尾'+esc(c.uid.slice(-6))+'）</button>').join(''):'<p style="font-size:12px;opacity:.8">同じ名前の登録が見つかりません。下から選んでください。</p>')+
+          '<div class="trRqOther"><select data-rq-sel="'+esc(it.id)+'"><option value="">ほかの人から選ぶ</option>'+opts+'</select><button type="button" data-rq-approve-sel="'+esc(it.id)+'">この人にする</button></div>'+
+          '<button type="button" class="trRqNo" data-rq-reject="'+esc(it.id)+'">違う（断る）</button></div>';
+      }).join('');
+    }catch(e){L.innerHTML='<p style="font-size:13px">読み込めませんでした：'+esc(String(e?.message||e).slice(0,120))+'</p>';}
+  }
+  async function onClick(e){
+    if(e.target.closest('#trRqReload')){load();return;}
+    if(busy)return;
+    const a=e.target.closest('[data-rq-approve]'),s=e.target.closest('[data-rq-approve-sel]'),r=e.target.closest('[data-rq-reject]');
+    let rid='',uid='';
+    if(a){rid=a.dataset.rqApprove;uid=a.dataset.uid;}
+    else if(s){rid=s.dataset.rqApproveSel;uid=document.querySelector('[data-rq-sel="'+rid+'"]')?.value||'';if(!uid){alert('選んでください');return;}}
+    if(rid&&uid){
+      const who=(members||[]).find(m=>m.uid===uid);
+      if(!confirm((who?who.name:'この人')+' として戻します。本人で間違いありませんか？'))return;
+      busy=true;try{await g().idFetchV434('/v1/recover-request/approve',{reqId:rid,targetUid:uid},true);try{window.showActionFeedback?.('✓ 戻しました','本人の画面が自動で進みます');}catch(_){}await load();}
+      catch(err){alert('できませんでした：'+String(err?.message||err).slice(0,120));}finally{busy=false;}
+      return;
+    }
+    if(r){if(!confirm('この申請を断りますか？'))return;busy=true;try{await g().idFetchV434('/v1/recover-request/reject',{reqId:r.dataset.rqReject},true);await load();}catch(err){alert(String(err?.message||err));}finally{busy=false;}}
+  }
+  let n=0;const iv=setInterval(()=>{mount();if($('trRqBox')||++n>60)clearInterval(iv);},1000);
+})();
+</script>
+<style id="v434-style">
+#portalParticipantIdentityGate .trRbV434{margin:12px 0;padding:12px;border-radius:14px;border:1px solid rgba(255,255,255,.25);display:grid;gap:8px}
+#portalParticipantIdentityGate .trRbV434 b{font-size:15px}
+#portalParticipantIdentityGate .trRbV434 p{margin:0;font-size:13px;line-height:1.6}
+#portalParticipantIdentityGate .trRbV434 input{min-height:48px;border-radius:12px;padding:0 12px;font-size:16px;box-sizing:border-box;width:100%}
+#portalParticipantIdentityGate #trRbPinGo,#portalParticipantIdentityGate #trRbReq{background:var(--gold,#e0c24a);color:#211b08;border:0;margin:0}
+#portalParticipantIdentityGate .trRbMore{margin-top:8px;font-size:14px}
+#portalParticipantIdentityGate .trRbMore summary{cursor:pointer;padding:8px 0;opacity:.85}
+#trRkCard{display:none}
+#trRkCard.trRkShown{display:block}
+.trRkLink{display:block;margin-top:8px;background:none;border:0;padding:0;color:inherit;font:inherit;font-size:12.5px;text-decoration:underline;opacity:.75}
+#trPinCard input{display:block;width:100%;box-sizing:border-box;min-height:46px;margin:6px 0;border-radius:12px;padding:0 12px;font-size:16px}
+.trRqBox{margin:10px 0 14px;padding:12px;border-radius:14px;border:1px solid color-mix(in srgb,currentColor 22%,transparent)}
+.trRqHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.trRqHead button{min-height:36px;padding:0 14px;border-radius:10px}
+.trRqItem{display:grid;gap:6px;padding:10px 0;border-top:1px solid color-mix(in srgb,currentColor 15%,transparent)}
+.trRqItem small{display:block;font-size:11.5px;opacity:.75}
+.trRqItem button{min-height:40px;border-radius:10px;font:inherit;font-size:13.5px;font-weight:800;text-align:left;padding:0 12px}
+.trRqPick{background:#d8b236;color:#211b08;border:0}
+.trRqOther{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px}
+.trRqOther select{min-height:40px;min-width:0}
+.trRqNo{opacity:.8}
+</style>
 </body>
 </html>
