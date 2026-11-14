@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v439 | 2026-11-14 | Parent v438. マイページの歯車（設定）：カードの並べ方を2列から元の1列に戻し、「通知」を一番上に。押したカードの中身はそのカードのすぐ下に開く。Firebaseの変更なし。 -->
 <!-- TOP RUN PORTAL v438 | 2026-11-14 | Parent v437. チャットの写真の拡大：2本の指でつまんだ場所を中心に拡大・縮小する（今までは写真の真ん中を中心にしていたため、拡大したい場所が左右にずれていた）。2回タップで拡大もタップした場所を中心に。写真の端が画面の内側に入りすぎないように移動を止め、縮小して戻すときに位置がずれないようにする。拡大の上限は今までどおり。Firebaseの変更なし。実機未確認。 -->
 <!-- TOP RUN PORTAL v437 | 2026-11-14 | Parent v436. (1)マイページ：v436 の保存ボタンを1つにまとめた変更を取り消し、元の3つの保存ボタンに戻す。(2)ホームの上の画像（背面）を左右に12pxずつ広げる（文字・日付の位置は変えない）。(3)チャット：開いたとき・ルームを切り替えたとき、画像やリンクカードがあとから読み込まれて高さが変わっても、4秒間は最後のメッセージ（未読があれば未読の線）に合わせ直す。指で動かしたらやめる。Firebaseの読み込み・Rulesの変更なし。iPhone・Android実機は未確認。 -->
 <!-- TOP RUN PORTAL v436 | 2026-11-14 | Parent v435. REQUIRES Worker top-run-identity v3. (1)マイページのプロフィール：保存ボタンを「プロフィールを保存」1つに（名前・ふりがな→チャット名（変えたとき）→性別・学年の順に今までの保存処理を動かす。必須が空ならその欄へ）。(2)練習の日付だけを変えたとき、参加回答を「そのまま残す／リセットして答え直してもらう／保存をやめる」から選ぶ（中止・変更のお知らせを付けたときは今までどおりリセット）。(3)管理画面「選手」：「既存選手を出走登録」に回答していない承認済みの人も出す（本人のIDで登録）。「新しい選手を登録」はクラブ外の人だけと明記。「出走登録を修正・取り消し」で、本人につながっていないカードに「選手につなぐ」（カードの本人欄だけを書く。つながっているカードは書き換えない）。(4)二重登録の整理：名前がちがう2つを選んで1つにまとめる。Firebase：一覧を開くときに承認済みの一覧を1回読む（開いたときだけ）。常時監視・Rulesの変更なし。iPhone実機は未確認。 -->
@@ -7221,7 +7222,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v438</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v439</b></div>
   </div>
 </div>
 
@@ -7464,7 +7465,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v438</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v439</b></div>
   </div>
 </div>
 
@@ -32557,8 +32558,9 @@ html.trGateShownV429 #portalFirstPaintAuthOverlay{display:none!important;visibil
 .trRqNo{opacity:.8}
 </style>
 <style id="v435-settings-cards">
-#screen-notification-settings .trSettingsMy{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
-#screen-notification-settings .trSettingsMy>.portalPanelButton{margin:0;min-height:92px;text-align:left}
+#screen-notification-settings .trSettingsMy{display:grid;grid-template-columns:1fr;gap:10px;margin:14px 0}
+#screen-notification-settings .trSettingsMy>.portalPanelButton{margin:0;text-align:left}
+#screen-notification-settings .trSettingsMy>#trPushSettings,#screen-notification-settings .trSettingsMy>#trSetPinPanelV435{margin:0}
 #screen-notification-settings .trSettingsMy>.portalPanelButton.trSetOpen{outline:2px solid currentColor;outline-offset:-2px}
 #screen-notification-settings .trSettingsMy>.portalPanelButton .portalPanelAction{font-size:12px}
 #screen-notification-settings #trPushSettings.trSetHide{display:none!important}
@@ -32597,6 +32599,9 @@ html.trGateShownV429 #portalFirstPaintAuthOverlay{display:none!important;visibil
     const nc=$('trSetNotifyCardV435'),pc=$('trSetPinCardV435');
     if(nc){nc.classList.toggle('trSetOpen',openKey==='notify');nc.querySelector('.portalPanelAction').textContent=openKey==='notify'?'閉じる ∧':'通知の設定 ›';}
     if(pc){pc.classList.toggle('trSetOpen',openKey==='pin');pc.querySelector('.portalPanelAction').textContent=openKey==='pin'?'閉じる ∧':'暗証番号・予備 ›';}
+    // v439: 開いた中身は、押したカードのすぐ下に出す（1列の並びなので）
+    if(push&&nc&&push.previousElementSibling!==nc)nc.insertAdjacentElement('afterend',push);
+    if(pin&&pc&&pin.previousElementSibling!==pc)pc.insertAdjacentElement('afterend',pin);
     const target=openKey==='notify'?push:openKey==='pin'?pin:null;
     if(target)setTimeout(()=>{try{target.scrollIntoView({block:'start',behavior:'smooth'});}catch(_){}},60);
   }
@@ -32623,6 +32628,9 @@ html.trGateShownV429 #portalFirstPaintAuthOverlay{display:none!important;visibil
     }
     const push=$('trPushSettings');
     if(push&&openKey!=='notify'&&!push.classList.contains('trSetHide'))push.classList.add('trSetHide');
+    // v439: 並び順：通知 → 画像・プロフィール → カラー → 暗証番号 → 他の端末で使う（1列）
+    const nc=$('trSetNotifyCardV435');
+    if(nc&&grid.firstElementChild!==nc)grid.insertBefore(nc,grid.firstElementChild);
   }
   // ---- 暗証番号カードの置き場所（v434 のカードをそのまま使い、場所だけ変える）
   function pinState(){const b=$('trPinBadge');if(!b)return null;return b.classList.contains('ok')?true:b.classList.contains('need')?false:null;}
