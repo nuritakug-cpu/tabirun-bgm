@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v438 | 2026-11-14 | Parent v437. チャットの写真の拡大：2本の指でつまんだ場所を中心に拡大・縮小する（今までは写真の真ん中を中心にしていたため、拡大したい場所が左右にずれていた）。2回タップで拡大もタップした場所を中心に。写真の端が画面の内側に入りすぎないように移動を止め、縮小して戻すときに位置がずれないようにする。拡大の上限は今までどおり。Firebaseの変更なし。実機未確認。 -->
 <!-- TOP RUN PORTAL v437 | 2026-11-14 | Parent v436. (1)マイページ：v436 の保存ボタンを1つにまとめた変更を取り消し、元の3つの保存ボタンに戻す。(2)ホームの上の画像（背面）を左右に12pxずつ広げる（文字・日付の位置は変えない）。(3)チャット：開いたとき・ルームを切り替えたとき、画像やリンクカードがあとから読み込まれて高さが変わっても、4秒間は最後のメッセージ（未読があれば未読の線）に合わせ直す。指で動かしたらやめる。Firebaseの読み込み・Rulesの変更なし。iPhone・Android実機は未確認。 -->
 <!-- TOP RUN PORTAL v436 | 2026-11-14 | Parent v435. REQUIRES Worker top-run-identity v3. (1)マイページのプロフィール：保存ボタンを「プロフィールを保存」1つに（名前・ふりがな→チャット名（変えたとき）→性別・学年の順に今までの保存処理を動かす。必須が空ならその欄へ）。(2)練習の日付だけを変えたとき、参加回答を「そのまま残す／リセットして答え直してもらう／保存をやめる」から選ぶ（中止・変更のお知らせを付けたときは今までどおりリセット）。(3)管理画面「選手」：「既存選手を出走登録」に回答していない承認済みの人も出す（本人のIDで登録）。「新しい選手を登録」はクラブ外の人だけと明記。「出走登録を修正・取り消し」で、本人につながっていないカードに「選手につなぐ」（カードの本人欄だけを書く。つながっているカードは書き換えない）。(4)二重登録の整理：名前がちがう2つを選んで1つにまとめる。Firebase：一覧を開くときに承認済みの一覧を1回読む（開いたときだけ）。常時監視・Rulesの変更なし。iPhone実機は未確認。 -->
 <!-- TOP RUN PORTAL v435 | 2026-11-14 | Parent v434. REQUIRES Worker top-run-identity v3. (1)暗証番号：まだ決めていない人は開いたときに「暗証番号を決めてください」を出す（保存に失敗したときだけ「あとで」）。決めた人はマイページから歯車（設定）の中へ移す。(2)歯車の中をカードの並びに整理（画像・プロフィール／カラー／通知／暗証番号・予備／他の端末）。押したカードの中身だけを開く。(3)公認：EVENT BASEの大会の記録（紐付け local-flow-claim-・eventbase_ の記録）も、PORTALのイベント（正式大会URLの大会ID）の「公認記録の区分」で判定する（今までは第1回だけ固定で公認、ほかは非公認・公認未照合になっていた）。Firebaseの読み込み・常時監視・Rulesの変更なし。iPhone実機は未確認。 -->
@@ -7220,7 +7221,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v437</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v438</b></div>
   </div>
 </div>
 
@@ -7463,7 +7464,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v437</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v438</b></div>
   </div>
 </div>
 
@@ -28275,8 +28276,14 @@ window.__trFilePickStart=function(input){
       if(e.target.closest('.trImgClose')||(e.target===v&&sc===1)||(e.target.classList.contains('trImgStage')&&sc===1))v.remove();
     });
     // 拡大・移動
-    let p0=0,s0=1,mx=0,my=0,tx0=0,ty0=0,sx=0,sy=0,lastTap=0,moved=false;
+    let p0=0,s0=1,mx=0,my=0,tx0=0,ty0=0,sx=0,sy=0,lastTap=0,moved=false,ox=0,oy=0,lx=0,ly=0,bw=0,bh=0;
     const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
+    // v438: 指でつまんだ場所を中心に拡大・縮小する（今までは写真の真ん中を中心に拡大していたため、つまんだ場所が左右にずれていた）。
+    //   写真の端が画面の内側に入りすぎないように移動を止める（縮小して戻すときに位置がずれない）。
+    const base=()=>{const r=img.getBoundingClientRect(),k=sc>0?sc:1;bw=r.width/k;bh=r.height/k;ox=r.left+r.width/2-tx;oy=r.top+r.height/2-ty;};
+    const clampT=()=>{const st=stage.getBoundingClientRect();const mxX=Math.max(0,(bw*sc-st.width)/2),mxY=Math.max(0,(bh*sc-st.height)/2);
+      const cx=st.left+st.width/2-ox,cy=st.top+st.height/2-oy;
+      tx=Math.min(cx+mxX,Math.max(cx-mxX,tx));ty=Math.min(cy+mxY,Math.max(cy-mxY,ty));if(sc<=1.001){tx=0;ty=0;}};
     const stage=v.querySelector('.trImgStage');
     // v344: 写真が2枚以上のときは、左右に指で払って前後の写真へ（拡大中は移動のまま）
     let swX=0,swY=0,swOn=false;
@@ -28284,14 +28291,14 @@ window.__trFilePickStart=function(input){
     stage.addEventListener('touchend',e=>{if(!swOn||sc>1||ids.length<2)return;swOn=false;const t=e.changedTouches&&e.changedTouches[0];if(!t)return;const dx=t.clientX-swX,dy=t.clientY-swY;if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.5)go(dx<0?1:-1);},{passive:true});
     stage.addEventListener('touchstart',e=>{
       moved=false;
-      if(e.touches.length===2){p0=dist(e.touches);s0=sc;mx=(e.touches[0].clientX+e.touches[1].clientX)/2;my=(e.touches[0].clientY+e.touches[1].clientY)/2;tx0=tx;ty0=ty;}
-      else if(e.touches.length===1){sx=e.touches[0].clientX;sy=e.touches[0].clientY;tx0=tx;ty0=ty;}
+      if(e.touches.length===2){p0=dist(e.touches);s0=sc;mx=(e.touches[0].clientX+e.touches[1].clientX)/2;my=(e.touches[0].clientY+e.touches[1].clientY)/2;tx0=tx;ty0=ty;base();lx=(mx-ox-tx)/sc;ly=(my-oy-ty)/sc;}
+      else if(e.touches.length===1){sx=e.touches[0].clientX;sy=e.touches[0].clientY;tx0=tx;ty0=ty;if(sc>1)base();}
     },{passive:true});
     stage.addEventListener('touchmove',e=>{
       if(e.touches.length===2){e.preventDefault();moved=true;
         const cx=(e.touches[0].clientX+e.touches[1].clientX)/2,cy=(e.touches[0].clientY+e.touches[1].clientY)/2;
-        sc=Math.min(5,Math.max(1,s0*dist(e.touches)/p0));tx=tx0+(cx-mx);ty=ty0+(cy-my);if(sc===1){tx=0;ty=0;}apply();}
-      else if(e.touches.length===1&&sc>1){e.preventDefault();moved=true;tx=tx0+(e.touches[0].clientX-sx);ty=ty0+(e.touches[0].clientY-sy);apply();}
+        sc=Math.min(5,Math.max(1,s0*dist(e.touches)/p0));const m=maxSc();if(sc>m)sc=m;tx=cx-ox-lx*sc;ty=cy-oy-ly*sc;clampT();apply();}
+      else if(e.touches.length===1&&sc>1){e.preventDefault();moved=true;if(!bw)base();tx=tx0+(e.touches[0].clientX-sx);ty=ty0+(e.touches[0].clientY-sy);clampT();apply();}
     },{passive:false});
     stage.addEventListener('touchend',e=>{
       if(e.touches.length)return;
@@ -28299,7 +28306,7 @@ window.__trFilePickStart=function(input){
       if(sc===1&&!moved&&ids.length>1){const dx=c.clientX-sx;if(Math.abs(dx)>60){go(dx<0?1:-1);return;}}
       if(!moved&&Math.abs(c.clientX-sx)<10&&Math.abs(c.clientY-sy)<10){
         const now=Date.now();
-        if(now-lastTap<320){if(sc>1)reset();else{sc=2.5;tx=(window.innerWidth/2-c.clientX)*1.5;ty=(window.innerHeight/2-c.clientY)*1.5;apply();}lastTap=0;}
+        if(now-lastTap<320){if(sc>1)reset();else{base();const ns=Math.min(2.5,maxSc());tx=(c.clientX-ox)*(1-ns);ty=(c.clientY-oy)*(1-ns);sc=ns;clampT();apply();}lastTap=0;}
         else lastTap=now;
       }
     },{passive:true});
