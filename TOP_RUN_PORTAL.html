@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v442 | 2026-11-15 | Parent v441. 「PORTAL内」で作った大会を、作り直さずに「EVENT BASEを使用」へ切り替えられるようにする（これまでは出走登録があると「大会種別を変更できません」で止まっていた）。切り替えてEVENT BASEの大会URLを接続（またはURLを入れて保存）すると、PORTAL内の出走登録を自動でEVENT BASEの出走カードへ引き継ぐ（本人が自分で登録したときと同じカードID・すでにあるカードは上書きしない・何度でもやり直せる・元の出走登録は消さない・記録が入っている行は移さない）。参加回答・イベントのIDはそのまま。Rules変更なし。 -->
 <!-- TOP RUN PORTAL v441 | 2026-11-15 | Parent v440. 決まり（スマホの登録はホーム画面のアイコンからだけ）どおり、AndroidのChromeで開いたときも「まず、ホーム画面にアイコンを作ってください」と手順（⋮→ホーム画面に追加→インストール→アイコンから開く）を出し、ブラウザのままでは登録・申請させない（v316で入れていた「AndroidのChromeは止めない」例外をやめる）。すでに登録済みでChromeから入っている人は今までどおり入れる。運営の ?browserok=1 の例外は残す。Firebaseの変更なし。実機未確認。 -->
 <!-- TOP RUN PORTAL v440 | 2026-11-15 | Parent v439. (1)ブラウザで開いたときの入口：見出しを「まず、ホーム画面にアイコンを作ってください」にし、使っているブラウザ（iPhoneのSafari 26以降は「…」→「共有」→「表示を増やす」→「ホーム画面に追加」→「追加」、それより前のSafari、iPhoneのChrome、BAND・LINEの中）に合わせて、押す順に1つずつ手順を出す。(2)「↓ 下にも続きがあります」：本当に下に続きがあるときだけ出し、押すと下へ進む（今までは続きがなくても出て、押しても何も起きなかった）。Firebaseの変更なし。実機未確認。 -->
 <!-- TOP RUN PORTAL v439 | 2026-11-14 | Parent v438. マイページの歯車（設定）：カードの並べ方を2列から元の1列に戻し、「通知」を一番上に。押したカードの中身はそのカードのすぐ下に開く。Firebaseの変更なし。 -->
@@ -7224,7 +7225,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v441</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v442</b></div>
   </div>
 </div>
 
@@ -7467,7 +7468,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v441</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v442</b></div>
   </div>
 </div>
 
@@ -11326,6 +11327,8 @@ if(view==='list')portalApplyManageSearch(kind);
     if(['EVENT BASE','RELAY EVENT BASE'].includes(item.type)&&!item.url){
       showActionFeedback('PORTALイベントを保存しました','次の操作はEVENT BASE／駅伝BASEの接続です。');
       portalShowEventConnection(item);
+    }else if(formerItem?.type==='OTHER'&&item.type==='EVENT BASE'&&item.url){
+      await portalCarryNativeEntriesV442(item); // v442
     }else{
       if($('portalEventCreatedConnection'))$('portalEventCreatedConnection').hidden=true;
       showActionFeedback('PORTALイベントを保存しました','Firebaseの保存応答を確認しました。');
@@ -14477,6 +14480,26 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
     }
     await portalSaveOfficialConnection(e,$('portalOfficialHandoffLinkInput').value,$('portalOfficialHandoffStatus'),$('portalOfficialHandoffExecute')); 
   }
+  // v442: 「PORTAL内」から「EVENT BASEを使用」に切り替えて接続URLがそろったら、PORTAL内の出走登録をEVENT BASEへ引き継ぐ。
+  async function portalCarryNativeEntriesV442(item){
+    const gate=window.__TR_PORTAL_SYNC__;
+    if(!gate?.carryNativeToEventBaseV442||item?.type!=='EVENT BASE'||item.displayCategory!=='competition')return;
+    const target=portalOfficialPublicLink(item.url||'');
+    if(!target?.id||target.ekidenNext)return;
+    try{
+      const r=await gate.carryNativeToEventBaseV442(item.id,target.id);
+      if(!r.total)return;
+      const parts=[];
+      if(r.created)parts.push(r.created+'件をEVENT BASEへ移しました');
+      if(r.skipped)parts.push(r.skipped+'件はEVENT BASEにすでにありました');
+      if(r.withResult)parts.push(r.withResult+'件は記録が入っているため移していません');
+      if(r.failed)parts.push(r.failed+'件は移せませんでした（'+r.errors.join('／')+'）');
+      showActionFeedback(r.failed?'出走登録の引継ぎ（一部できませんでした）':'出走登録を引き継ぎました','PORTAL内の出走登録 '+r.total+'件のうち、'+parts.join('、')+'。');
+      flowRefreshAll?.();
+    }catch(error){
+      showActionFeedback('出走登録を引き継げませんでした',String(error?.message||error).slice(0,120)+' もう一度保存すると、まだの分だけ引き継ぎます。');
+    }
+  }
   async function portalSaveOfficialConnection(e,raw,status,btn){
     const gate=window.__TR_PORTAL_SYNC__;
     if(!canManage||portalParticipantPreviewMode||!gate||
@@ -14518,6 +14541,7 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
       showActionFeedback('EVENT BASE接続先を保存しました','管理画面のイベント一覧、またはカレンダーの日付詳細から「駅伝BASE／EVENT BASEを開く」で進めます。');
       renderManageEvents();
       flowRefreshAll();
+      await portalCarryNativeEntriesV442(e); // v442
     }catch(error){status.textContent='大会リンクを保存できませんでした：'+String(error?.message||error).slice(0,180);}
     finally{portalOfficialHandoffBusy=false;portalOfficialHandoffRefresh();}
   }
@@ -20058,6 +20082,34 @@ if(new URLSearchParams(location.search).get('commonPilot')!=='1'){
         return true;
       }finally{officialRaceWriteBusy=false;}
     };
+    // v442: PORTAL内の大会（nativeRaceEntries）の出走登録を、切り替え先のEVENT BASE大会（events/<大会ID>/players）へ引き継ぐ。
+    //   本人が自分で登録したときと同じカードID（trp_…）で作る。すでにあるカードは上書きしない（何度押しても二重にならない）。
+    //   元のPORTAL内の出走登録は消さずに残す。記録が入っている行は移さず、件数で知らせる。
+    gate.carryNativeToEventBaseV442=async(catalogId,eventId)=>{
+      if(!gate.roleVerified||!['developer','admin'].includes(gate.role)||auth.currentUser?.uid!==gate.uid)throw Error('開発者・管理者の権限が必要です');
+      if(!/^event-[A-Za-z0-9_-]{1,80}$/.test(String(catalogId||''))||!/^[A-Za-z0-9_-]{3,100}$/.test(String(eventId||'')))throw Error('大会を確認できません');
+      const rows=(await dbMod.get(ref(nativeRoot+catalogId))).val()||{};
+      const res={total:0,created:0,skipped:0,withResult:0,failed:0,errors:[]};
+      for(const [uid,byMetric] of Object.entries(rows)){
+        for(const [metric,row] of Object.entries(byMetric||{})){
+          if(!row||typeof row!=='object')continue;
+          res.total++;
+          if(officialAnyResult(row)){res.withResult++;continue;}
+          try{
+            const made=await gate.staffCreateEntry(eventId,{subject:{uid,profileId:String(row.profileId||'')},name:String(row.displayName||'').trim()||'選手',
+              metric:row.metric||metric,targetTime:String(row.targetTime||''),date:String(row.dayDate||'')});
+            res.created++;
+            if(String(row.declaredTime||'').trim()&&made?.playerId){
+              try{await gate.staffEditEntry(eventId,made.playerId,{targetTime:String(row.targetTime||''),declaredTime:String(row.declaredTime)})}catch(_){}
+            }
+          }catch(e){
+            const m=String(e?.message||e);
+            if(/すでに/.test(m))res.skipped++;else{res.failed++;if(res.errors.length<3)res.errors.push((row.displayName||'')+'：'+m.slice(0,60));}
+          }
+        }
+      }
+      return res;
+    };
     gate.loadNativeRaceStaff=async catalogId=>{
       if(gate.nativeRaceStaffStatus[catalogId]==='loading')return;
       gate.nativeRaceStaffStatus[catalogId]='loading';
@@ -21416,7 +21468,8 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       return {displayCategory:v.displayCategory==='event'?'event':'competition',date:String(v.date||''),dates,metricDates,startTime:String(v.startTime||''),title:String(v.title||'').slice(0,180),place:String(v.place||'未定').slice(0,160),type:String(v.type||''),url:String(v.url||''),...((['EVENT BASE','RELAY EVENT BASE'].includes(String(v.type||''))&&/^TOPRUNARCHIVE[0-9A-Za-z]{4,60}$/.test(String(v.archive||'')))?{archive:String(v.archive)}:{}),...((String(v.type||'')==='OTHER'&&Array.isArray(v.links)&&v.links.length)?{links:v.links.slice(0,20).map(l=>({type:['guide','schedule','startlist','live','other'].includes(l?.type)?l.type:'other',label:String(l?.label||'').slice(0,40),url:String(l?.url||'').slice(0,2048)})).filter(l=>/^https:\/\/\S+$/.test(l.url))}:{}),state:String(v.state||''),relay:v.relay===true,registration:String(v.registration||((v.attendanceOpen===false)?'受付前':'受付中')).slice(0,40),enabled:v.enabled!==false,previewOnly:v.previewOnly===true,managedOverride:v.managedOverride===true,pendingId:String(v.pendingId||''),copiedFrom:String(v.copiedFrom||''),official:v.official===true,requiresDeclaredTime:v.requiresDeclaredTime===true,entryDeadline:String(v.entryDeadline||''),goalDefaultFromMyPage:v.goalDefaultFromMyPage===true,hiddenDefault:v.hiddenDefault===true,raceMetrics:metrics,raceMetricCodes,raceDeadlineAt,raceEntryEnabled:v.raceEntryEnabled!==false,eligibility:{enabled:eligibility.enabled===true,note:String(eligibility.note||'').slice(0,1000),rules},createdAt:old?.createdAt||Date.now(),createdByUid:old?.createdByUid||uid,updatedAt:Date.now(),updatedByUid:uid};
     };
     gate.saveEvent=async(item,previous)=>{
-      if(previous?.type==='OTHER'&&previous.displayCategory==='competition'){
+      // v442: PORTAL内の大会を「EVENT BASEを使用」へ切り替えるときは止めない（出走登録はEVENT BASEへ引き継ぐ：carryNativeToEventBaseV442）。
+      if(previous?.type==='OTHER'&&previous.displayCategory==='competition'&&!(item.type==='EVENT BASE'&&item.displayCategory==='competition')){
         const before=Array.isArray(previous.raceMetrics)?previous.raceMetrics:[];
         if(item.date!==previous.date||item.type!==previous.type||item.displayCategory!==previous.displayCategory||
            JSON.stringify(item.raceMetrics||[])!==JSON.stringify(before)){
