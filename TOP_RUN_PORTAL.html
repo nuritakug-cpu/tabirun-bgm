@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v445 | 2026-11-15 | Parent v444. (1) 記録推移が横にスクロールするとき（10件以上）、最初（左端）から線が伸びるのに合わせて最新（右端）まで一緒に進む（指で触ると止まる）。横に長いときは線の伸びを少しゆっくり。(2) 下のメニューのめり込み：メニューの下端と実際に見えている画面の下端を実測し、はみ出した分だけ上げる（はみ出しがなければ0に戻る。文字入力中・指で触っている間・拡大中は何もしない）。通信なし。 -->
 <!-- TOP RUN PORTAL v444 | 2026-11-15 | Parent v443. (1) 個人記録に「記録の期間」のプルダウン（全期間・年度・年（1〜12月）・学年、記録のある期間だけ）。基本は全期間で今までどおり。期間を選ぶと、自己ベスト・公認ベスト・記録推移・出場大会がその期間の記録だけになる（画面の作りは変えない）。期間を選んでいるときは、自己ベストに小さく SB・PB と前の期間との差（前年度比・前年比・前学年比）。記録一覧の PB は全期間、SB はその期間のベスト。記録推移の下のSB・PBの1行は今までどおり。(2) 記録推移は10件以上で横にスクロール（開くと最新＝右端）。(3) 学年の自動切り替え：新年度（4月）に1つ上げて表示（3年の次は「その他」）、本人のプロフィールにも1回保存。記録の学年は最初に分かっている学年と年度から数える（分からない人は学年の選択を出さない）。記録データは書き換えない。通信の増加なし。 -->
 <!-- TOP RUN PORTAL v443 | 2026-11-15 | Parent v442. (1) 記録推移のグラフ：実際のタイムどおりに描く（v362の「遅くなった分を45%に縮める」をやめた。ベスト後の遅い大会が、より速い過去の大会より上に描かれていたため）。最後の2回以上が続けて遅くなっているときだけ、縦の目盛りを広げて落ち方をゆるやかに見せる。(2) チャット：上へ戻って読んでいるとき、既読・リアクションの描き直しで最新へ戻されていた（v437の合わせ直しが描き直しのたびに4秒間働いていた）のを、ルームの切り替えのときだけにした。新しいメッセージが来ても、自分が送ったとき・一番下付近のときだけ最新へ動かす。描き直し・画像の読み込みの後は、いちばん上に見えていたメッセージを目印に同じ位置へ戻す。通信は増えない。 -->
 <!-- TOP RUN PORTAL v442 | 2026-11-15 | Parent v441. 「PORTAL内」で作った大会を、作り直さずに「EVENT BASEを使用」へ切り替えられるようにする（これまでは出走登録があると「大会種別を変更できません」で止まっていた）。切り替えてEVENT BASEの大会URLを接続（またはURLを入れて保存）すると、PORTAL内の出走登録を自動でEVENT BASEの出走カードへ引き継ぐ（本人が自分で登録したときと同じカードID・すでにあるカードは上書きしない・何度でもやり直せる・元の出走登録は消さない・記録が入っている行は移さない）。参加回答・イベントのIDはそのまま。Rules変更なし。 -->
@@ -7271,7 +7272,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v444</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v445</b></div>
   </div>
 </div>
 
@@ -7514,7 +7515,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v444</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v445</b></div>
   </div>
 </div>
 
@@ -11942,7 +11943,16 @@ const gateway=window.__TR_PORTAL_SYNC__;
     if(info.W>info.baseW){
       if(!wrap){wrap=document.createElement('div');wrap.className='trChartScrollV444';svg.parentNode.insertBefore(wrap,svg);wrap.appendChild(svg);}
       svg.style.width=(info.W/info.baseW*100).toFixed(2)+'%';svg.style.maxWidth='none';
-      requestAnimationFrame(()=>{wrap.scrollLeft=wrap.scrollWidth;});
+      // v445: 線が伸びるアニメーションに合わせて、最初（左端）から最新（右端）へ一緒に進む。指で触ったらそこで止める
+      const line=svg.querySelector('.trLineGrow'),reduce=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      if(wrap.__trFollow)cancelAnimationFrame(wrap.__trFollow);
+      if(line&&!reduce){
+        const d=parseFloat(line.style.getPropertyValue('--d'))||0.35,dur=parseFloat(line.style.getPropertyValue('--dur'))||2;
+        wrap.scrollLeft=0;let stop=false;const t0=performance.now();
+        const halt=()=>{stop=true;};wrap.addEventListener('touchstart',halt,{once:true,passive:true});wrap.addEventListener('wheel',halt,{once:true,passive:true});
+        const step=now=>{if(stop)return;const p=Math.min(1,Math.max(0,((now-t0)/1000-d)/dur));const max=wrap.scrollWidth-wrap.clientWidth;wrap.scrollLeft=max*p;if(p<1)wrap.__trFollow=requestAnimationFrame(step);};
+        wrap.__trFollow=requestAnimationFrame(step);
+      }else requestAnimationFrame(()=>{wrap.scrollLeft=wrap.scrollWidth;});
     }else{svg.style.width='';svg.style.maxWidth='';if(wrap)wrap.scrollLeft=0;}
   }
   function portalRecordChart(metric,detail=false){
@@ -11984,7 +11994,7 @@ const gateway=window.__TR_PORTAL_SYNC__;
     P.forEach((p,i)=>{if(i%every&&i!==n-1)return;svg+=`<text class="crChartDate" x="${p.x.toFixed(1)}" y="${H-12}" text-anchor="middle" font-size="${detail?12:11}" font-weight="800">${esc(String(p.v.r.date||'').slice(5).replace('-','/'))}</text>`;});
     // 一本の線を一定の速さで伸ばし、線が届いた瞬間にその点とタイムを出す
     const cum=[0];for(let i=1;i<n;i++)cum.push(cum[i-1]+Math.hypot(P[i].x-P[i-1].x,P[i].y-P[i-1].y));
-    const total=cum[n-1]||1,start=0.35,dur=Math.min(3.2,Math.max(1.1,(n-1)*(detail?0.5:0.45)));
+    const total=cum[n-1]||1,start=0.35,dur=Math.min(W>baseW?Math.min(7,(n-1)*0.32):3.2,Math.max(1.1,(n-1)*(detail?0.5:0.45))); // v445: 横に長いときは少しゆっくり
     const at=i=>start+cum[i]/total*dur;
     const sw=detail?3:2.6,pts=P.map(p=>p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ');
     svg+=`<polyline class="crChartLine${anim?' trLineGrow':''}" style="--len:${Math.ceil(total)+2};--d:${start}s;--dur:${dur.toFixed(2)}s" points="${pts}" fill="none" stroke-width="${sw}" stroke-linejoin="round" stroke-linecap="round"/>`;
@@ -12249,7 +12259,7 @@ const gateway=window.__TR_PORTAL_SYNC__;
       if(p&&!reduce){const h=document.createElementNS('http://www.w3.org/2000/svg','circle');h.setAttribute('class','trSbHalo'+(info.cls==='mega'?' mega':''));h.setAttribute('cx',p.getAttribute('cx'));h.setAttribute('cy',p.getAttribute('cy'));h.setAttribute('r','6');svg.appendChild(h);}
     };
     if(!wait){show();return;}
-    const dur=Math.min(3.2,Math.max(1.1,(info.n-1)*0.5));
+    const lineV445=svg.querySelector('.trLineGrow'),dur=parseFloat(lineV445?.style.getPropertyValue('--dur'))||Math.min(3.2,Math.max(1.1,(info.n-1)*0.5)); // v445: 線の実際の長さに合わせる
     trSbTimerV372=setTimeout(show,Math.round((0.35+dur+0.3)*1000));
   }
   const trGraphDetailOrigV372=renderPortalPersonalGraphDetail;
@@ -32456,6 +32466,50 @@ html.trGateShownV429 #portalFirstPaintAuthOverlay{display:none!important;visibil
   window.addEventListener('pageshow',()=>later(300));
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)later(300);});
   const start=()=>{const mo=new MutationObserver(()=>later(350));document.querySelectorAll('.portalScreen').forEach(s=>mo.observe(s,{attributes:true,attributeFilter:['class']}));mo.observe(document.body,{attributes:true,attributeFilter:['class']});later(600);};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+})();
+</script>
+<style id="v445-tabs-guard">
+/* v445: 下のメニューが沈んだときだけ、沈んだ分（実測）を持ち上げる。沈んでいなければ 0。transform とは別の translate を使う */
+html body nav.portalBottomTabs{translate:0 var(--trTabsFixV445,0px)}
+</style>
+<script id="v445-tabs-guard-js">
+/* v445: 下のメニューのめり込み対策（根本）。
+   これまでは「ずれを起こさないよう画面の位置を戻す」対策（v400・v430）だったため、iPhoneがずれを残したときに直り切らなかった。
+   今回は、メニューの下端と「実際に見えている画面の下端」を実測し、はみ出している分だけメニューを上げる。
+   はみ出しがなくなれば自動で 0 に戻すので、浮きっぱなしにはならない。文字入力中（キーボード表示中）・指で触っている間・拡大中は何もしない。通信なし。 */
+(function(){
+  'use strict';
+  const vv=window.visualViewport;if(!vv)return;
+  const body=document.body||document.documentElement;
+  const isField=el=>!!(el&&el.matches&&el.matches('input:not([type="file"]):not([type="checkbox"]):not([type="radio"]),textarea,select,[contenteditable="true"]'));
+  let applied=0,touching=false,timer=0;
+  function nav(){return document.querySelector('nav.portalBottomTabs');}
+  function measure(){
+    const n=nav();if(!n)return;
+    if(touching||isField(document.activeElement)||document.body.classList.contains('portalFieldInputActive')||(vv.scale||1)>1.01)return;
+    const cs=getComputedStyle(n);if(cs.display==='none'||cs.visibility==='hidden'||Number(cs.opacity)<0.5)return;
+    const r=n.getBoundingClientRect();if(!r.height)return;
+    const visibleBottom=vv.offsetTop+vv.height;
+    let gap=Math.round((r.bottom+applied)-visibleBottom);
+    if(gap<=2)gap=0;
+    if(gap>Math.min(160,r.height*1.6))return; // キーボードなど、ありえない大きさは触らない
+    if(gap!==applied){applied=gap;document.documentElement.style.setProperty('--trTabsFixV445',gap?(-gap)+'px':'0px');}
+  }
+  function later(ms){clearTimeout(timer);timer=setTimeout(measure,ms==null?250:ms);}
+  document.addEventListener('touchstart',()=>{touching=true;},{passive:true,capture:true});
+  document.addEventListener('touchend',()=>{touching=false;later(300);},{passive:true,capture:true});
+  document.addEventListener('touchcancel',()=>{touching=false;later(300);},{passive:true,capture:true});
+  vv.addEventListener('resize',()=>later(300));
+  vv.addEventListener('scroll',()=>later(300));
+  window.addEventListener('scroll',()=>later(300),{passive:true});
+  window.addEventListener('resize',()=>later(300));
+  window.addEventListener('pageshow',()=>{later(200);setTimeout(measure,900);});
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden){later(200);setTimeout(measure,900);}});
+  document.addEventListener('focusout',e=>{if(isField(e.target)){later(450);setTimeout(measure,1000);}},true);
+  // 念のため、画面を表示している間は1.5秒ごとに確かめる（測るだけ。通信なし）
+  setInterval(()=>{if(!document.hidden)measure();},1500);
+  const start=()=>{const mo=new MutationObserver(()=>later(350));document.querySelectorAll('.portalScreen').forEach(s=>mo.observe(s,{attributes:true,attributeFilter:['class']}));mo.observe(document.body,{attributes:true,attributeFilter:['class']});later(500);};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
 </script>
