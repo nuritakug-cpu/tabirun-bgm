@@ -1,3 +1,5 @@
+<!-- TOP RUN PORTAL v444 | 2026-11-15 | Parent v443. (1) 個人記録に「記録の期間」のプルダウン（全期間・年度・年（1〜12月）・学年、記録のある期間だけ）。基本は全期間で今までどおり。期間を選ぶと、自己ベスト・公認ベスト・記録推移・出場大会がその期間の記録だけになる（画面の作りは変えない）。期間を選んでいるときは、自己ベストに小さく SB・PB と前の期間との差（前年度比・前年比・前学年比）。記録一覧の PB は全期間、SB はその期間のベスト。記録推移の下のSB・PBの1行は今までどおり。(2) 記録推移は10件以上で横にスクロール（開くと最新＝右端）。(3) 学年の自動切り替え：新年度（4月）に1つ上げて表示（3年の次は「その他」）、本人のプロフィールにも1回保存。記録の学年は最初に分かっている学年と年度から数える（分からない人は学年の選択を出さない）。記録データは書き換えない。通信の増加なし。 -->
+<!-- TOP RUN PORTAL v443 | 2026-11-15 | Parent v442. (1) 記録推移のグラフ：実際のタイムどおりに描く（v362の「遅くなった分を45%に縮める」をやめた。ベスト後の遅い大会が、より速い過去の大会より上に描かれていたため）。最後の2回以上が続けて遅くなっているときだけ、縦の目盛りを広げて落ち方をゆるやかに見せる。(2) チャット：上へ戻って読んでいるとき、既読・リアクションの描き直しで最新へ戻されていた（v437の合わせ直しが描き直しのたびに4秒間働いていた）のを、ルームの切り替えのときだけにした。新しいメッセージが来ても、自分が送ったとき・一番下付近のときだけ最新へ動かす。描き直し・画像の読み込みの後は、いちばん上に見えていたメッセージを目印に同じ位置へ戻す。通信は増えない。 -->
 <!-- TOP RUN PORTAL v442 | 2026-11-15 | Parent v441. 「PORTAL内」で作った大会を、作り直さずに「EVENT BASEを使用」へ切り替えられるようにする（これまでは出走登録があると「大会種別を変更できません」で止まっていた）。切り替えてEVENT BASEの大会URLを接続（またはURLを入れて保存）すると、PORTAL内の出走登録を自動でEVENT BASEの出走カードへ引き継ぐ（本人が自分で登録したときと同じカードID・すでにあるカードは上書きしない・何度でもやり直せる・元の出走登録は消さない・記録が入っている行は移さない）。参加回答・イベントのIDはそのまま。Rules変更なし。 -->
 <!-- TOP RUN PORTAL v441 | 2026-11-15 | Parent v440. 決まり（スマホの登録はホーム画面のアイコンからだけ）どおり、AndroidのChromeで開いたときも「まず、ホーム画面にアイコンを作ってください」と手順（⋮→ホーム画面に追加→インストール→アイコンから開く）を出し、ブラウザのままでは登録・申請させない（v316で入れていた「AndroidのChromeは止めない」例外をやめる）。すでに登録済みでChromeから入っている人は今までどおり入れる。運営の ?browserok=1 の例外は残す。Firebaseの変更なし。実機未確認。 -->
 <!-- TOP RUN PORTAL v440 | 2026-11-15 | Parent v439. (1)ブラウザで開いたときの入口：見出しを「まず、ホーム画面にアイコンを作ってください」にし、使っているブラウザ（iPhoneのSafari 26以降は「…」→「共有」→「表示を増やす」→「ホーム画面に追加」→「追加」、それより前のSafari、iPhoneのChrome、BAND・LINEの中）に合わせて、押す順に1つずつ手順を出す。(2)「↓ 下にも続きがあります」：本当に下に続きがあるときだけ出し、押すと下へ進む（今までは続きがなくても出て、押しても何も起きなかった）。Firebaseの変更なし。実機未確認。 -->
@@ -489,6 +491,50 @@ NO FIREBASE / NO RULES / NO AUTH CHANGE / NO profileId CHANGE / NO binding CHANG
 -->
 <html lang="ja">
 <head>
+<script id="v444-grade">
+/* v444: 学年の自動切り替え。学年は「何年度の学年か（gradeYear）」と合わせて扱い、4月（新年度）になると1つ上げて表示する。
+   3年の次は「その他」。記録の学年は、最初に分かっている学年と年度（gradeStartV444）から数える。分からない人は推測しない。 */
+(function(){
+  const fy=t=>{const d=t instanceof Date?t:new Date(t);if(!Number.isFinite(d.getTime()))return null;return d.getMonth()>=3?d.getFullYear():d.getFullYear()-1;};
+  const fyOfDate=s=>{const m=/^(\d{4})-(\d{2})/.exec(String(s||''));if(!m)return null;return +m[2]>=4?+m[1]:+m[1]-1;};
+  const curFy=()=>fy(new Date());
+  const num=g=>{const n=Number(g);return [1,2,3].includes(n)&&String(g).trim()!==''?n:null;};
+  // 学年の起点（数字の学年と、その年度）。分からなければ null
+  function start(bp){
+    if(!bp||typeof bp!=='object')return null;
+    const st=bp.gradeStartV444;
+    if(st&&num(st.grade)&&Number.isFinite(Number(st.year)))return {grade:num(st.grade),year:Number(st.year)};
+    const g=num(bp.grade);if(!g)return null;
+    const y=Number.isFinite(Number(bp.gradeYear))?Number(bp.gradeYear):(Number(bp.savedAt)>0?fy(Number(bp.savedAt)):null);
+    return y===null?null:{grade:g,year:y};
+  }
+  // 今年度の学年（表示用）。数字でなければそのまま
+  function effective(bp){
+    if(!bp||typeof bp!=='object')return bp;
+    const g=num(bp.grade);if(!g)return bp;
+    const y=Number.isFinite(Number(bp.gradeYear))?Number(bp.gradeYear):(Number(bp.savedAt)>0?fy(Number(bp.savedAt)):null);
+    if(y===null)return bp;
+    const now=curFy();if(now<=y)return bp;
+    const st=start(bp);
+    const next=g+(now-y);
+    return {...bp,grade:next>3?'other':next,gradeYear:now,gradeStartV444:st||bp.gradeStartV444};
+  }
+  // 記録の日付の学年（1〜3）。分からない・中学の範囲外は null
+  function gradeAt(bp,date){
+    const st=start(bp),y=fyOfDate(date);if(!st||y===null)return null;
+    const g=st.grade+(y-st.year);return g>=1&&g<=3?g:null;
+  }
+  // 保存するときに年度を付ける（フォームで学年を選んで保存したとき）
+  function stampOnSave(value,oldBp){
+    const v={...value},now=curFy(),g=num(v.grade);
+    v.gradeYear=now;
+    if(g)v.gradeStartV444={grade:g,year:now};
+    else if(oldBp){const st=start(oldBp);if(st)v.gradeStartV444=st;}
+    return v;
+  }
+  window.trGradeV444={fy,fyOfDate,curFy,start,effective,gradeAt,stampOnSave,needsAdvance:bp=>{const e=effective(bp);return !!bp&&e!==bp;}};
+})();
+</script>
 <script id="v242-error-log">
 /* v242: 入れないときの原因確認用。画面のエラーを最大6件だけ覚え、「通信を確認してください」の画面に表示する（送信はしない）。 */
 window.__trErrLog=[];
@@ -7107,7 +7153,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
     <p id="v88DeveloperMyPageNote" class="v88DeveloperNote" hidden></p>
     <details id="v207RecDiag" class="v207RecDiag" hidden><summary>開発者：記録が表示されない原因を確認</summary><div id="v207RecDiagBody"></div><button type="button" id="v207RecDiagReload">この人の記録を再読込</button><p class="v207RecDiagHint">この画面をスクリーンショットで送ってください。</p></details>
     <div id="rpPersonBanner" hidden style="margin:12px 0;padding:14px;border-radius:16px;border:2px solid #d8b52a;background:rgba(216,181,42,.12);line-height:1.7"></div>
-    <section class="crSection" data-cr-section="pb"><div class="crSectionHead"><div><small>PERSONAL BEST</small><h3>自己ベスト</h3></div><div class="crHeadActions"><span>タップで詳細</span><button type="button" data-cr-collapse>非表示</button></div></div><div class="crSectionBody"><div class="crPbGrid" id="crPbGrid"></div><div class="v88SecondaryPb"><small>その他の種目（大会記録）</small><div class="crPbGrid" id="crSecondaryPbGrid"></div></div></div></section>
+    <div class="trPeriodRowV444"><label for="trPeriodSelV444">記録の期間</label><select id="trPeriodSelV444" aria-label="記録の期間"><option value="all">全期間</option></select></div><section class="crSection" data-cr-section="pb"><div class="crSectionHead"><div><small>PERSONAL BEST</small><h3>自己ベスト</h3></div><div class="crHeadActions"><span>タップで詳細</span><button type="button" data-cr-collapse>非表示</button></div></div><div class="crSectionBody"><div class="crPbGrid" id="crPbGrid"></div><div class="v88SecondaryPb"><small>その他の種目（大会記録）</small><div class="crPbGrid" id="crSecondaryPbGrid"></div></div></div></section>
     <section class="crSection" data-cr-section="progress"><div class="crSectionHead"><div><small>PROGRESS / TARGET</small><h3 id="crProgressHeading">3000m 記録推移</h3></div><div class="crHeadActions"><span>種目切替</span><button type="button" data-cr-collapse>非表示</button></div></div><div class="crSectionBody"><div class="crMetricTabs" id="crMetricTabs"></div><div class="portalGraphModeSwitch" role="group" aria-label="グラフに表示する記録"><button type="button" data-portal-graph-mode="race" aria-pressed="true">大会記録</button><button type="button" data-portal-graph-mode="all" aria-pressed="false">大会＋練習</button></div><div class="portalGraphLegend" data-portal-graph-legend aria-label="グラフの凡例"></div><div class="crProgressGrid">
       <button type="button" class="crGraphCard" id="crGraphOverview" aria-label="記録推移詳細を開く"><div class="crChartTitle"><b id="crChartMetric">3000m</b><span id="crChartTarget">目標 未設定</span></div><svg id="crOverviewSvg" class="crChartSvg" viewBox="0 0 360 204" role="img" aria-label="記録推移グラフ"></svg><div class="crGraphHint">グラフをタップして詳細 ›</div></button>
       <div class="crTargetCard"><small>TARGET / NEXT RACE</small><h4>次の大会</h4><b class="crNextEvent" id="crNextEvent">次の大会 未登録</b><span id="crNextEventMeta"></span><strong id="crTargetTime">—</strong><div class="crTargetDiff"><small>最新PBとの差</small><b id="crTargetDiff">—</b></div><button type="button" class="crTargetEdit" id="crOpenGoalSettings">目標設定 ›</button></div>
@@ -7225,7 +7271,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v442</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v444</b></div>
   </div>
 </div>
 
@@ -7468,7 +7514,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v442</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v444</b></div>
   </div>
 </div>
 
@@ -8902,7 +8948,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         // Name and sorting-only readings have separate pre-existing canonical paths.
         // Never overwrite a not-yet-confirmed gender/grade or invent a second person ID.
         if(kanaChanged&&!kanaPending){
-          const updated={...oldBasic,kanaFamily,kanaGiven,savedAt:Date.now()};
+          const updated={...oldBasic,kanaFamily,kanaGiven,savedAt:Date.now()};try{const st=window.trGradeV444?.start(oldBasic);if(st&&!Number.isFinite(Number(oldBasic.gradeYear))){updated.gradeYear=st.year;updated.gradeStartV444=st;}}catch(_){} // v444
           await gateway.saveOwnBasicProfile(updated);
           flowState.basicProfiles[flowBaseSelfId]=updated;
           flowPersist();
@@ -10220,7 +10266,10 @@ if(prefix==='home'){
         });
       }else if(!portalChatUnreadScrollPending && portalChatNewest!==portalChatLastScrolledId){
         portalChatLastScrolledId=portalChatNewest;
-        if(!portalChatFiltered)requestAnimationFrame(scrollPortalChatToLatest);
+        // v443: 上へ戻って読んでいるときは、新しいメッセージが来ても下へ動かさない（自分が送ったとき・一番下付近にいるときだけ）
+        const mainV443=chatScreen.querySelector('main.chatMain'),lastV443=rows[rows.length-1];
+        const nearV443=!mainV443||mainV443.scrollHeight-mainV443.scrollTop-mainV443.clientHeight<160;
+        if(!portalChatFiltered&&(nearV443||isMyPortalChat(lastV443)))requestAnimationFrame(scrollPortalChatToLatest);
       }
     }
   }
@@ -11806,10 +11855,35 @@ const gateway=window.__TR_PORTAL_SYNC__;
     return na-nb||String(a).localeCompare(String(b),'ja');
   }
   function portalUpdateRecordMetricOptions(){
-    portalGraphMetrics=[...new Set(['800','1000','1500','3000',...portalRecFor().map(r=>r.metric).filter(m=>m!=='other'&&m!=='relay')])].sort(portalMetricSort);
+    portalGraphMetrics=[...new Set(['800','1000','1500','3000',...portalRecForAllV444().map(r=>r.metric).filter(m=>m!=='other'&&m!=='relay')])].sort(portalMetricSort);
     if(!portalGraphMetrics.includes(portalPersonalMetric))portalPersonalMetric=portalGraphMetrics.includes('3000')?'3000':portalGraphMetrics[0]||'3000';
   }
+  // v444: 個人記録の期間（全期間・年度・年・学年）。見る人の端末の中だけで切り替える（Firebaseには保存しない・通信なし）。
+  var trPeriodV444='all',trPeriodTargetV444='';
+  function trPeriodBpV444(){
+    const gate=window.__TR_PORTAL_SYNC__;
+    if(portalPersonalTargetId===portalSelfProfileId)return flowBasicProfile();
+    const uid=portalAthletes.find(x=>x.profileId===portalPersonalTargetId)?.uid;
+    return (uid&&gate?.clubProfileCache?.[uid])||null;
+  }
+  function trInPeriodV444(r,period=trPeriodV444){
+    if(!period||period==='all')return true;
+    const [k,v]=String(period).split(':');const d=String(r?.date||'');
+    if(k==='fy')return window.trGradeV444?.fyOfDate(d)===Number(v);
+    if(k==='cal')return d.slice(0,4)===v;
+    if(k==='grade')return window.trGradeV444?.gradeAt(trPeriodBpV444(),d)===Number(v);
+    return true;
+  }
+  function trPrevPeriodV444(period=trPeriodV444){
+    const [k,v]=String(period).split(':');if(!v)return null;
+    const n=Number(v)-1;return k==='grade'?(n>=1?'grade:'+n:null):k+':'+n;
+  }
+  function trWithAllV444(fn){const keep=trPeriodV444;trPeriodV444='all';try{return fn();}finally{trPeriodV444=keep;}}
   function portalRecFor(metric=null){
+    const rows=portalRecForAllV444(metric);
+    return trPeriodV444==='all'?rows:rows.filter(r=>trInPeriodV444(r));
+  }
+  function portalRecForAllV444(metric=null){
     const gate=window.__TR_PORTAL_SYNC__;
     const sameSelf=portalPersonalTargetId===portalSelfProfileId;
     const verifiedTarget=sameSelf?gate?.uid:portalAthletes.find(p=>p.profileId===portalPersonalTargetId)?.uid;
@@ -11827,8 +11901,9 @@ const gateway=window.__TR_PORTAL_SYNC__;
       gate?.roleVerified===true&&gate.role==='developer'&&gate.uid===verifiedPortalUid;
   }
   function portalRecordRow(r){
-    const d=r.date.split('-'),practice=portalIsPracticeRecord(r),best=practice?portalPracticeBest(r.metric):portalRecBest(r.metric);
-    const tag=(best?.id===r.id)?(practice?'<span class="crTag">練習参考最速</span>':'<span class="crTag gold">PB</span>'):r.metric==='relay'?'<span class="crTag">区間記録</span>':'';
+    const d=r.date.split('-'),practice=portalIsPracticeRecord(r),best=practice?portalPracticeBest(r.metric):trWithAllV444(()=>portalRecBest(r.metric));
+    let tag=(best?.id===r.id)?(practice?'<span class="crTag">練習参考最速</span>':'<span class="crTag gold">PB</span>'):r.metric==='relay'?'<span class="crTag">区間記録</span>':'';
+    if(!practice&&trPeriodV444!=='all'&&r.metric!=='relay'&&portalRecBest(r.metric)?.id===r.id)tag='<span class="crTag">SB</span>'+tag; // v444: 選んだ期間のベスト
     const certification=!practice&&portalIsCertifiedRecord(r)?'<span class="crTag gold">公認大会</span>':'';
     const display=`<button type="button" class="crRecordRow" data-pr-record="${esc(r.id)}"><div class="crDate"><small>${esc(d[0])}</small><b>${esc(d[1]+'.'+d[2])}</b></div><div class="crRecordInfo"><b>${esc(portalRecordEventName(r))}</b><span>${esc((r.practiceDate?String(r.recordDistanceMeters)+'m ／ ':'')+(r.venue||''))}</span></div><div class="crRecordTime"><small>${esc(r.label)}</small><b>${esc(r.status==='DNF'?'DNF（途中棄権）':r.status==='DNS'?'DNS（欠場）':r.status==='RESERVE_ACCOMPANY'?'補欠（帯同）':r.status==='ELIMINATED'?'予選敗退':r.time)}</b>${tag}${certification}</div></button>`;
     // The participant sees their personal record, never the management action.
@@ -11860,9 +11935,22 @@ const gateway=window.__TR_PORTAL_SYNC__;
   // v360: 推移グラフ（個人記録・詳細とも）。点は等間隔。点とタイムが出る→線が斜めに次の点へ伸びる→次の点とタイム…の順に表示。
   // 角を曲がる線（ベストの階段線）はやめ、各大会を直線でつなぐ。描画は端末内だけで通信なし。
   var trChartSigO='',trChartSigD='';
+  function trChartFitV444(svg,k){
+    const info=window.__trChartWV444?.[k];if(!svg||!info)return;
+    svg.setAttribute('viewBox',`0 0 ${info.W} ${info.H}`);
+    let wrap=svg.parentElement?.classList.contains('trChartScrollV444')?svg.parentElement:null;
+    if(info.W>info.baseW){
+      if(!wrap){wrap=document.createElement('div');wrap.className='trChartScrollV444';svg.parentNode.insertBefore(wrap,svg);wrap.appendChild(svg);}
+      svg.style.width=(info.W/info.baseW*100).toFixed(2)+'%';svg.style.maxWidth='none';
+      requestAnimationFrame(()=>{wrap.scrollLeft=wrap.scrollWidth;});
+    }else{svg.style.width='';svg.style.maxWidth='';if(wrap)wrap.scrollLeft=0;}
+  }
   function portalRecordChart(metric,detail=false){
     const values=portalGraphRecords(metric).map(r=>({r,s:portalRecSeconds(r.time)}));
-    const W=detail?380:360,H=detail?236:204,L=detail?16:14,R=detail?16:14,T=detail?36:32,B=detail?36:32;
+    let W=detail?380:360;const H=detail?236:204,L=detail?16:14,R=detail?16:14,T=detail?36:32,B=detail?36:32;
+    // v444: 10件以上は横に広げて、左右にスクロールできるようにする（間隔を保つ）
+    const baseW=W;if(values.length>=10)W=Math.max(W,L+R+36+(values.length-1)*(detail?54:50));
+    window.__trChartWV444=window.__trChartWV444||{};window.__trChartWV444[detail?'d':'o']={W,H,baseW};
     let svg=`<rect class="crChartSurface" width="${W}" height="${H}" rx="14"/>`;
     if(!values.length)return svg+`<text class="crChartEmptyLabel" x="${W/2}" y="${H/2}" text-anchor="middle" font-size="15" font-weight="850">記録がありません</text>`;
     if(values.length===1){
@@ -11878,9 +11966,15 @@ const gateway=window.__TR_PORTAL_SYNC__;
     const force=window.__trChartForce===true;window.__trChartForce=false;
     if(detail){anim=force||sig!==trChartSigD;trChartSigD=sig;}else{anim=force||sig!==trChartSigO;trChartSigO=sig;}
     // v362: 遅くなった大会は落差を小さく見せる（その時点のベストからの差を45%に縮めて描く）。タイムは各点に実際の値を表示。
-    let rb=Infinity;const disp=values.map(v=>{if(v.s<rb)rb=v.s;return v.s<=rb?v.s:rb+(v.s-rb)*0.45;});
+    // v443: 実際のタイムどおりに描く（遅いタイムが上に来ることはない）。v362の「遅くなった分を45%に縮める」はやめた
+    //   （ベストより後の遅い大会が、それより速い過去の大会より上に描かれてしまうため）。
+    //   最後の2回以上が続けて遅くなっているときだけ、縦の目盛りを広げて落ち方をゆるやかに見せる（点の間隔の比率は実際どおり）。
+    const disp=values.map(v=>v.s);
     const lo=Math.min(...disp),hi=Math.max(...disp);
-    const pad=Math.max(1.2,(hi-lo)*0.22),ymin=lo-pad,ymax=hi+pad;
+    const pad=Math.max(1.2,(hi-lo)*0.22);let ymin=lo-pad,ymax=hi+pad;
+    {let k=disp.length-1;while(k>0&&disp[k]>disp[k-1])k--;
+     const drop=disp.length-1-k>=2?disp[disp.length-1]-disp[k]:0;
+     if(drop>0&&drop/(ymax-ymin)>0.4){const rg=Math.max(drop,hi-lo)/0.4;ymin=lo-rg*0.22;ymax=ymin+rg;}}
     const fy=v=>T+(v-ymin)/(ymax-ymin)*(H-T-B);
     for(let k=0;k<4;k++){const y=T+k*(H-T-B)/3;svg+=`<line class="crChartGrid" x1="${L}" y1="${y.toFixed(1)}" x2="${W-R}" y2="${y.toFixed(1)}"/>`;}
     svg+=`<text class="crChartAxis" x="${L}" y="${T-12}" text-anchor="start" font-size="${detail?11:10}" font-weight="800">↑ 速い</text>`;
@@ -11912,7 +12006,44 @@ const gateway=window.__TR_PORTAL_SYNC__;
     });
     return svg;
   }
+  // v444: 期間を選んでいるとき、自己ベストの欄に SB（その期間のベスト）・PB（全期間のベスト）を小さく付け、前の期間との差を出す
+  function trPbMarksV444(m,r){
+    if(trPeriodV444==='all'||!r)return '';
+    const pb=trWithAllV444(()=>portalRecBest(m));
+    return '<span class="trPbCertTxt trSbTxtV444">SB</span>'+(pb&&pb.id===r.id?'<span class="trPbCertTxt">PB</span>':'');
+  }
+  function trPrevCmpV444(m,r){
+    if(trPeriodV444==='all'||!r)return '';
+    const prevP=trPrevPeriodV444();if(!prevP)return '';
+    const prev=trWithAllV444(()=>portalRecFor(m).filter(x=>portalIsRaceRecord(x)&&x.time&&Number.isFinite(portalRecSeconds(x.time))&&trInPeriodV444(x,prevP)).sort((a,b)=>portalRecSeconds(a.time)-portalRecSeconds(b.time))[0]);
+    if(!prev)return '';
+    const d=portalRecSeconds(r.time)-portalRecSeconds(prev.time);if(!Number.isFinite(d))return '';
+    const k=String(trPeriodV444).split(':')[0],lbl=k==='fy'?'前年度比':k==='cal'?'前年比':'前学年比';
+    const a=Math.abs(d),t=a>=60?Math.floor(a/60)+':'+String((a%60).toFixed(2)).padStart(5,'0'):a.toFixed(2);
+    return `<span class="trPrevCmpV444 ${d<0?'up':d>0?'down':''}">${lbl} ${d<0?'−':d>0?'+':'±'}${t}</span>`;
+  }
+  function trPeriodOptionsV444(){
+    const rows=portalRecForAllV444().filter(r=>/^\d{4}-\d{2}-\d{2}$/.test(String(r.date||'')));
+    const G=window.trGradeV444,bp=trPeriodBpV444();
+    const fys=[...new Set(rows.map(r=>G?.fyOfDate(r.date)).filter(v=>Number.isFinite(v)))].sort((a,b)=>b-a);
+    const cals=[...new Set(rows.map(r=>String(r.date).slice(0,4)))].sort((a,b)=>b.localeCompare(a));
+    const grades=[...new Set(rows.map(r=>G?.gradeAt(bp,r.date)).filter(v=>v))].sort();
+    const o=[['all','全期間']];
+    fys.forEach(y=>o.push(['fy:'+y,y+'年度']));
+    cals.forEach(y=>o.push(['cal:'+y,y+'年（1〜12月）']));
+    grades.forEach(g=>o.push(['grade:'+g,'中学'+g+'年']));
+    return o;
+  }
+  function trRenderPeriodSelV444(){
+    const sel=$('trPeriodSelV444');if(!sel)return;
+    if(trPeriodTargetV444!==portalPersonalTargetId){trPeriodTargetV444=portalPersonalTargetId;trPeriodV444='all';}
+    const opts=trPeriodOptionsV444();
+    if(!opts.some(o=>o[0]===trPeriodV444))trPeriodV444='all';
+    sel.innerHTML=opts.map(([v,l])=>`<option value="${esc(v)}"${v===trPeriodV444?' selected':''}>${esc(l)}</option>`).join('');
+    sel.closest('.trPeriodRowV444')?.classList.toggle('on',trPeriodV444!=='all');
+  }
   function renderPortalPersonalRecord(){
+    try{trRenderPeriodSelV444();}catch(e){console.warn('v444 period',e);}
     // Non-staff never get to select another person's page.
     if((!canManage || portalParticipantPreviewMode)&&!(window.__trFamilyPids?.().has(portalPersonalTargetId)))portalPersonalTargetId=portalSelfProfileId; // v263: 家族の記録
     const isSelf=portalPersonalTargetId===portalSelfProfileId;
@@ -11923,11 +12054,11 @@ const gateway=window.__TR_PORTAL_SYNC__;
     const devInfo=$('v88DeveloperMyPageNote');if(devInfo){devInfo.hidden=!portalV88DeveloperRecordAdmin();devInfo.textContent=portalV88DeveloperRecordAdmin()?'開発者確認：'+(isSelf?'自分':person?.name||'選手')+'の個人記録です。管理登録記録のみここから修正・削除できます。参加者には管理操作を表示しません。':'';}
     try{rpPersonBanner(isSelf?null:person);}catch(_){}
     try{portalRenderRecDiag();}catch(_){}
-    const latestPbMetric=trCrHeroV358(isSelf,person); // v358: 名前・学年/ゼッケン・画像・最新のベスト更新
+    const latestPbMetric=trWithAllV444(()=>trCrHeroV358(isSelf,person)); // v444: 最新のベスト更新は全期間のまま // v358: 名前・学年/ゼッケン・画像・最新のベスト更新
     const personal=portalRecFor();portalUpdateRecordMetricOptions();const raceRows=personal.filter(portalIsRaceRecord);$('crRecordCount').innerHTML=raceRows.length+'<em>件</em>';$('crRelayCount').innerHTML=raceRows.filter(r=>r.metric==='relay').length+'<em>大会</em>';
     // v358: 種目は小さな金のラベル、記録は大きな数字、日付を添える（タップの動きは今までどおり）
-    $('crPbGrid').innerHTML=['800','1500','3000'].map(m=>{const r=portalRecBest(m);return `<button type="button" class="crPbCard trPb${m===latestPbMetric?' trPbLatest':''}${r?'':' trPbNone'}" data-cr-open-metric="${m}"><span class="trPbHead"><small>${portalMetricNames[m]}</small><i aria-hidden="true"></i></span><b>${esc(r?.time||'—')}</b><em>${r?esc(String(r.date||'').replace(/-/g,'.')):'記録なし'}${r&&portalIsCertifiedRecord(r)?'<span class="trPbCertTxt">公認</span>':''}</em></button>`}).join('');
-    $('crSecondaryPbGrid').innerHTML=['relay','1000'].map(m=>{const r=portalRecBest(m);return `<button type="button" class="crPbCard trPb trPbWide${r?'':' trPbEmpty'}" data-cr-open-metric="${m}"><span class="trPbHead"><small>${portalMetricNames[m]}</small>${m==='relay'?'<em>区間記録</em>':''}</span><b>${r?esc(r.time||'—'):'記録なし'}</b></button>`}).join('');
+    $('crPbGrid').innerHTML=['800','1500','3000'].map(m=>{const r=portalRecBest(m);return `<button type="button" class="crPbCard trPb${m===latestPbMetric?' trPbLatest':''}${r?'':' trPbNone'}" data-cr-open-metric="${m}"><span class="trPbHead"><small>${portalMetricNames[m]}</small><i aria-hidden="true"></i></span><b>${esc(r?.time||'—')}</b><em>${r?esc(String(r.date||'').replace(/-/g,'.')):'記録なし'}${r&&portalIsCertifiedRecord(r)?'<span class="trPbCertTxt">公認</span>':''}${trPbMarksV444(m,r)}</em>${trPrevCmpV444(m,r)}</button>`}).join('');
+    $('crSecondaryPbGrid').innerHTML=['relay','1000'].map(m=>{const r=portalRecBest(m);return `<button type="button" class="crPbCard trPb trPbWide${r?'':' trPbEmpty'}" data-cr-open-metric="${m}"><span class="trPbHead"><small>${portalMetricNames[m]}</small>${m==='relay'?'<em>区間記録</em>':''}</span><b>${r?esc(r.time||'—'):'記録なし'}</b>${m==='relay'?'':trPrevCmpV444(m,r)}</button>`}).join('');
     const practiceMetrics=[...new Set(personal.filter(portalIsPracticeRecord).map(r=>r.metric))].sort(portalMetricSort);
     $('crOtherGrid').innerHTML=practiceMetrics.map(m=>{const r=portalPracticeBest(m);return `<button type="button" class="crOtherItem" data-cr-practice-metric="${esc(m)}"><small>${esc(portalRecordMetricLabel(m))}</small><b>${esc(r?.time||'—')}</b><em>${esc(r?(r.recordKind==='TT'?'TT':r.recordKind==='selection'?'選考':r.recordKind==='trial'?'試走':'練習計測')+' 参考最速':'記録なし')}</em></button>`}).join('')||'<span class="portalHelp">練習計測記録はありません。</span>';
     $('crOfficialGrid').innerHTML=['800','1000','1500','3000'].map(m=>{const r=portalRecBest(m,true);const t=r?(window.trPastTitle?window.trPastTitle(r.id,r.event):r.event)||'':'';return `<button type="button" class="crPbCard trCertPb${r?'':' trCertNone'}" data-cr-official-metric="${m}"><span class="trCertHead"><small>${portalMetricNames[m]}</small><i class="trCertMark" aria-hidden="true">★ OFFICIAL</i></span><b>${esc(r?.time||'—')}</b><em>${r?esc(String(r.date||'').replace(/-/g,'.')):'公認記録なし'}</em>${r&&t?`<span class="trCertEvent">${esc(t)}</span>`:''}</button>`}).join('');
@@ -11940,6 +12071,7 @@ const gateway=window.__TR_PORTAL_SYNC__;
     if(raceToggle){raceToggle.hidden=races.length<=1;raceToggle.setAttribute('aria-expanded',String(trRaceOpen));raceToggle.innerHTML=trRaceOpen?'閉じる<span aria-hidden="true">↑</span>':'詳細　'+races.length+'大会<span aria-hidden="true">↓</span>';}
   }
   var trRaceOpen=false,trRaceAnim=false;
+  $('trPeriodSelV444')?.addEventListener('change',e=>{trPeriodV444=String(e.target.value||'all');window.__trChartForce=true;renderPortalPersonalRecord();}); // v444
   $('trRaceToggle')?.addEventListener('click',()=>{trRaceOpen=!trRaceOpen;trRaceAnim=trRaceOpen;renderPortalPersonalRecord();});
   // v358: 個人記録の上部（濃い帯）。プロフィール画像がなければロゴ。学年・ゼッケンNoは基本プロフィールから。
   var trCrHeroSeq=0;
@@ -12052,11 +12184,11 @@ const gateway=window.__TR_PORTAL_SYNC__;
     const nextEntry=upcoming[0]||null,nextEvent=nextEntry?flowEvent(nextEntry.eventId):null;
     const chartGoal=upcoming.find(r=>r.metric===portalPersonalMetric&&r.goal)||null;
     $('crChartTarget').textContent=chartGoal?'目標 '+chartGoal.goal:'目標 未設定';
-    $('crOverviewSvg').innerHTML=portalRecordChart(portalPersonalMetric);
+    $('crOverviewSvg').innerHTML=portalRecordChart(portalPersonalMetric);trChartFitV444($('crOverviewSvg'),'o');
     $('crNextEvent').textContent=nextEvent?.title||'出走なし';
     $('crNextEventMeta').textContent=nextEvent?`${nextEvent.date.replace(/-/g,'/')} ／ ${portalMetricNames[nextEntry.metric]||'その他'}`:'';
     $('crTargetTime').textContent=nextEntry?.goal||'目標未設定';
-    const nextBest=nextEntry?.metric?portalRecBest(nextEntry.metric):null;
+    const nextBest=nextEntry?.metric?trWithAllV444(()=>portalRecBest(nextEntry.metric)):null; // v444: 目標との差は全期間のPB
     const bestValue=nextBest?portalRecSeconds(nextBest.time):NaN;
     const goalValue=nextEntry?.goal?portalRecSeconds(nextEntry.goal):NaN;
     const goalGap=goalValue-bestValue;
@@ -12075,7 +12207,7 @@ const gateway=window.__TR_PORTAL_SYNC__;
     portalRecordTabs('crDetailMetricTabs',portalGraphMetrics,portalPersonalMetric);
     portalRenderGraphModeControls();$('crGraphDetailTitle').textContent=portalRecordMetricLabel(portalPersonalMetric)+' 記録推移';
     $('crDetailMetric').textContent=portalRecordMetricLabel(portalPersonalMetric);$('crDetailTarget').textContent='目標 未設定';
-    $('crDetailSvg').innerHTML=portalRecordChart(portalPersonalMetric,true);
+    $('crDetailSvg').innerHTML=portalRecordChart(portalPersonalMetric,true);trChartFitV444($('crDetailSvg'),'d');
     $('crDetailRecordList').innerHTML=portalGraphRecords(portalPersonalMetric).slice().reverse().map(portalRecordRow).join('')||'<div class="portalEmpty">記録はありません。</div>';
   }
   // ===== v372: 記録推移の詳細 ― シーズンベスト（SB）と直近の差を、グラフの下に小さく1行で表示 =====
@@ -12121,7 +12253,12 @@ const gateway=window.__TR_PORTAL_SYNC__;
     trSbTimerV372=setTimeout(show,Math.round((0.35+dur+0.3)*1000));
   }
   const trGraphDetailOrigV372=renderPortalPersonalGraphDetail;
-  renderPortalPersonalGraphDetail=function(){const o=trGraphDetailOrigV372.apply(this,arguments);try{trRenderSbStripV372();}catch(e){console.warn('v372 SB strip',e);}return o;};
+  renderPortalPersonalGraphDetail=function(){const o=trGraphDetailOrigV372.apply(this,arguments);try{
+    // v444: SB・PBの1行は今までどおり（全期間の記録で計算）。選んだ期間に最新の記録が入っていないときは出さない
+    const allRows=trWithAllV444(()=>portalGraphRecords(portalPersonalMetric)),lastR=allRows[allRows.length-1];
+    if(trPeriodV444!=='all'&&(!lastR||!trInPeriodV444(lastR))){const b=$('trSbStrip');if(b)b.innerHTML='';}
+    else trWithAllV444(()=>trRenderSbStripV372());
+  }catch(e){console.warn('v372 SB strip',e);}return o;};
   function portalCompetitionAthletes(){
     // A matching displayName or profileId alone cannot merge two people.
     // Preserve existing published profile keys ONLY for a profile with exactly
@@ -12400,7 +12537,7 @@ const gateway=window.__TR_PORTAL_SYNC__;
     e.preventDefault();e.stopPropagation();
     if(!portalV88DeveloperRecordAdmin()){showActionFeedback('変更できません','開発者本人の権限が必要です');return;}
     const id=(edit||del).dataset[edit?'v88DevRecordEdit':'v88DevRecordDelete'];
-    const visible=portalRecFor().find(x=>x.id===id&&x.source==='PORTAL_STAFF_PAST');
+    const visible=portalRecForAllV444().find(x=>x.id===id&&x.source==='PORTAL_STAFF_PAST');
     const stored=flowState.external.find(x=>x.id===id&&x.actorId===portalPersonalTargetId&&x.firebaseSource==='portalStaff');
     const gate=window.__TR_PORTAL_SYNC__,choice=portalPastChoice(portalPersonalTargetId);
     // This read-only projected record came from an existing verified RTDB read.
@@ -13007,7 +13144,8 @@ const chosen=new Set(eventSelectableMetrics(event));
     if((!!kanaFamily)!=(!!kanaGiven) || (kanaFamily&&!/^[ぁ-ゖー]{1,20}$/.test(kanaFamily)) || (kanaGiven&&!/^[ぁ-ゖー]{1,20}$/.test(kanaGiven))){
       $('portalBasicProfileState').textContent='ふりがなは「姓」「名」の両方をひらがなで入力してください。間に空白は入れないでください。';return;
     }
-    const value={gender,grade,bib,kanaFamily,kanaGiven,savedAt:Date.now()};
+    let value={gender,grade,bib,kanaFamily,kanaGiven,savedAt:Date.now()};
+    try{if(window.trGradeV444)value=window.trGradeV444.stampOnSave(value,flowBasicProfile(actor));}catch(_){} // v444: 学年の年度
     const button=$('portalSaveBasicProfile');button.disabled=true;
     $('portalBasicProfileState').textContent='保存しています…';
     trProfileFlow.begin();
@@ -16681,7 +16819,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
     const ds=String(r.date||'').split('-');const displayDate=ds.length===3?`<small>${esc(ds[0])}年</small><strong>${esc(Number(ds[1]))}/${esc(String(Number(ds[2])).padStart(2,'0'))}</strong>`:esc(r.date||'日付未設定');
     if(mode==='mgr')return `<div class="portalFlowEntryRow portalHistoryRecordRow"><div class="portalHistoryRecordMain"><time class="portalHistoryRecordDate" datetime="${esc(r.date)}">${displayDate}</time><div class="portalHistoryRecordInfo"><b>${esc(window.trPastTitle?window.trPastTitle(r.id,r.name):r.name)}</b><span>${esc(metricText)} <strong>${esc(r.status==='DNF'?'DNF（途中棄権）':r.status==='DNS'?'DNS（欠場・記録なし）':r.status==='RESERVE_ACCOMPANY'?'補欠（帯同）':r.time||'未設定')}</strong></span>${portalIsCertifiedRecord({ ...r,source:'PORTAL_STAFF_PAST',catalogId:portalStaffCatalogId(r) })?'<small class="isOfficial">公認大会</small>':''}</div></div>${actions}</div>`;
     const projected={...r,source:r.firebaseSource==='portalStaff'?'PORTAL_STAFF_PAST':'PORTAL_LOCAL_PREVIEW',catalogId:portalStaffCatalogId(r)};
-    const certified=portalIsCertifiedRecord(projected),pb=r.status==='time'&&r.time&&portalRecBest(r.metric)?.id===r.id;
+    const certified=portalIsCertifiedRecord(projected),pb=r.status==='time'&&r.time&&trWithAllV444(()=>portalRecBest(r.metric))?.id===r.id;
     const result=r.status==='DNF'?'DNF（途中棄権）':r.status==='DNS'?'DNS（欠場・記録なし）':r.status==='RESERVE_ACCOMPANY'?'補欠（帯同）':r.time||'未設定';
     return `<div class="portalFlowEntryRow portalHistoryRecordRow"><div class="portalHistoryRecordMain"><time class="portalHistoryRecordDate" datetime="${esc(r.date)}">${displayDate}</time><div class="portalHistoryRecordInfo"><b>${esc(window.trPastTitle?window.trPastTitle(r.id,r.name):r.name)}</b><span class="portalHistoryRecordResult">${esc(metricText)} <strong>${esc(result)}</strong></span><div class="portalHistoryRecordTags"><small class="${certified?'isOfficial':'isUnofficial'}">${certified?'公認大会':'非公認・公認未照合'}</small>${pb?'<small class="isPB">PB・自己ベスト</small>':''}</div>${r.venue?`<small>会場：${esc(r.venue)}</small>`:''}</div></div>${actions}</div>`;
   }
@@ -17934,8 +18072,13 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
     applyPersonal(value){
       // Only the authenticated person's personal fields; do not import manager-created records.
       if(!flowBaseSelfId||flowBaseSelfId==='unconnected-local-viewer')return;
-      if(value?.basicProfile&&typeof value.basicProfile==='object')
-        flowState.basicProfiles[flowBaseSelfId]={...value.basicProfile};
+      if(value?.basicProfile&&typeof value.basicProfile==='object'){
+        // v444: 新年度になっていたら学年を1つ上げる（表示）。本人のプロフィールにも1回だけ保存する
+        const rawBp={...value.basicProfile},G=window.trGradeV444,effBp=G?G.effective(rawBp):rawBp;
+        flowState.basicProfiles[flowBaseSelfId]=effBp;
+        if(G&&effBp!==rawBp&&!window.__trGradeAdvV444){window.__trGradeAdvV444=true;
+          setTimeout(()=>{try{const gw=window.__TR_PORTAL_SYNC__;if(gw?.canSavePersonal?.())gw.saveOwnBasicProfile({...effBp}).catch(()=>{});}catch(_){}} ,1500);}
+      }
       if(value?.defaultGoals&&typeof value.defaultGoals==='object'&&!Array.isArray(value.defaultGoals)){
         const restored={...value.defaultGoals};
         // Firebase keys cannot contain '.': deserialize half-marathon goal only at this UI boundary.
@@ -20444,7 +20587,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
     gate.childBasicProfile=async(childUid)=>{
       if(!proxyChildOk(childUid))return null;
       const v=(await dbMod.get(dbMod.ref(db,'profiles/'+childUid+'/portalSelf/basicProfile'))).val();
-      return v&&typeof v==='object'&&!Array.isArray(v)?v:null;
+      return v&&typeof v==='object'&&!Array.isArray(v)?(window.trGradeV444?window.trGradeV444.effective(v):v):null; // v444
     };
     // v308: 保護者による出欠の代理回答（練習・イベント）。お子さんのUIDの場所に、保存者を proxyByUid・proxyByName として残す。
     const proxyNameCache={};
@@ -20515,7 +20658,8 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       if(auth.currentUser?.uid!==gate.uid)throw Error('本人UIDが一致しません');
       const gender=value?.gender,grade=value?.grade,bib=String(value?.bib||'').trim();
       if(!['male','female'].includes(gender)||!(grade==='other'||[1,2,3].includes(grade))||bib.length>16)throw Error('性別・学年・ゼッケンNoを確認してください');
-      const v={gender,grade,bib,savedAt:Date.now(),proxyByUid:gate.uid};
+      let v={gender,grade,bib,savedAt:Date.now(),proxyByUid:gate.uid};
+      try{if(window.trGradeV444){const old=(await dbMod.get(dbMod.ref(db,'profiles/'+childUid+'/portalSelf/basicProfile'))).val();v=window.trGradeV444.stampOnSave(v,old);}}catch(_){} // v444
       await dbMod.set(dbMod.ref(db,'profiles/'+childUid+'/portalSelf/basicProfile'),v);
       const back=await gate.childBasicProfile(childUid);
       if(!back||back.gender!==gender||String(back.grade)!==String(grade))throw Error('保存を確認できませんでした（Rules v319 が未適用の可能性があります）');
@@ -20920,7 +21064,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
           try{
             if(!p.profileId)p.profileId=String((await dbMod.get(dbMod.ref(db,'profiles/'+p.uid+'/profileId'))).val()||'');
             const v=(await dbMod.get(dbMod.ref(db,'profiles/'+p.uid+'/portalSelf/basicProfile'))).val();
-            gate.clubProfileCache[p.uid]=v&&typeof v==='object'?v:{};
+            gate.clubProfileCache[p.uid]=v&&typeof v==='object'?(window.trGradeV444?window.trGradeV444.effective(v):v):{}; // v444
           }catch(e){gate.clubProfileCache[p.uid]={};p.readError=String(e?.code||e?.message||e).slice(0,75);}
         }
       }));
@@ -20937,7 +21081,7 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
           if(Object.prototype.hasOwnProperty.call(gate.clubProfileCache,uid))continue;
           try{
             const v=(await dbMod.get(dbMod.ref(db,'profiles/'+uid+'/portalSelf/basicProfile'))).val();
-            gate.clubProfileCache[uid]=v&&typeof v==='object'?v:{};
+            gate.clubProfileCache[uid]=v&&typeof v==='object'?(window.trGradeV444?window.trGradeV444.effective(v):v):{}; // v444
           }catch(e){errors++;}
         }
       }));
@@ -25158,7 +25302,10 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
       });
     }else if(newest!==lastScrolledId){
       lastScrolledId=newest;
-      requestAnimationFrame(()=>{if(!rfActive){const main=chatMain();if(main)main.scrollTop=main.scrollHeight;}});
+      // v443: 上へ戻って読んでいるときは動かさない（自分が送ったとき・一番下付近にいるときだけ最新へ）
+      const mainV443=chatMain(),mineV443=String(s.msgs[s.msgs.length-1]?.senderUid||'')===String(s.uid||'');
+      const nearV443=!mainV443||mainV443.scrollHeight-mainV443.scrollTop-mainV443.clientHeight<160;
+      if(nearV443||mineV443)requestAnimationFrame(()=>{if(!rfActive){const main=chatMain();if(main)main.scrollTop=main.scrollHeight;}});
     }
   }
 
@@ -29299,7 +29446,7 @@ body.portalChatIsolated.portalFieldInputActive #screen-chat>main.chatMain{
     const main=q('#screen-chat > main.chatMain');
     if(!main||!body.classList.contains('portalChatIsolated'))return;
     const dist=main.scrollHeight-main.scrollTop-main.clientHeight;
-    if(dist<220){main.scrollTop=main.scrollHeight;}
+    if(dist<60){main.scrollTop=main.scrollHeight;} // v443: 220→60（少し上を読んでいる人を下へ引っぱらない）
   }
   document.addEventListener('load',e=>{
     const el=e.target;
@@ -32855,7 +33002,17 @@ main > .hero{margin-left:-12px!important;margin-right:-12px!important;padding-le
         Array.from(m.children).forEach(c=>c.__v437o=true);
       }
       // ルームの切り替え・スレッドの描き直し（中身が入れ替わったとき）
-      ['portalChatThread','trRoomThread'].forEach(id=>{const t=document.getElementById(id);if(t)new MutationObserver(muts=>{if(muts.some(x=>x.removedNodes.length>3))arm();else fix();}).observe(t,{childList:true});});
+      // v443: 既読・リアクションなどの描き直しでは合わせ直さない（読んでいる位置が最新へ戻ってしまっていた）。
+      //   メッセージの顔ぶれが大きく変わったとき（ルームの切り替え）だけ合わせ直す。
+      ['portalChatThread','trRoomThread'].forEach(id=>{const t=document.getElementById(id);if(!t)return;
+        const idsOf=()=>new Set(Array.from(t.querySelectorAll('.msg[data-mid]')).map(e=>e.dataset.mid).filter(Boolean));
+        let prev=idsOf();
+        new MutationObserver(muts=>{
+          const now=idsOf();let same=0;now.forEach(x=>{if(prev.has(x))same++;});
+          const switched=muts.some(x=>x.removedNodes.length>3)&&(prev.size===0||same<Math.min(prev.size,now.size)*0.5);
+          prev=now;
+          if(switched)arm();else fix();
+        }).observe(t,{childList:true});});
     }
   }
   function start(){
@@ -32868,6 +33025,56 @@ main > .hero{margin-left:-12px!important;margin-right:-12px!important;padding-le
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
 </script>
+<script id="v443-chat-hold">
+/* v443: チャットで上へ戻って読んでいるとき、既読・リアクション・画像の読み込みで描き直されても、読んでいる位置にとどまる。
+   いちばん上に見えているメッセージを目印にして、描き直しの後に同じ位置へ戻す。一番下にいるときは今までどおり最新に合わせる。
+   画面の位置だけで、Firebaseの読み込みは増やさない。 */
+(function(){
+  'use strict';
+  const main=()=>document.querySelector('#screen-chat > main.chatMain');
+  let anchor=null,off=0,atBottom=true,moving=false,timer=0;
+  function thread(m){return m.querySelector('#trRoomThread:not(.hidden)')&&m.querySelector('#trRoomThread').offsetParent!==null?m.querySelector('#trRoomThread'):m.querySelector('#portalChatThread');}
+  function record(){
+    const m=main();if(!m)return;
+    atBottom=m.scrollHeight-m.scrollTop-m.clientHeight<60;
+    const top=m.getBoundingClientRect().top;anchor=null;
+    for(const el of m.querySelectorAll('.msg[data-mid]')){if(el.offsetParent===null)continue;const r=el.getBoundingClientRect();if(r.bottom>top+4){anchor=el.dataset.mid;off=r.top-top;break;}}
+  }
+  function restore(){
+    const m=main();if(!m||atBottom||!anchor||moving)return;
+    const scr=document.getElementById('screen-chat');if(!scr||scr.classList.contains('hidden'))return;
+    const el=m.querySelector('.msg[data-mid="'+CSS.escape(anchor)+'"]');if(!el||el.offsetParent===null)return;
+    const d=el.getBoundingClientRect().top-m.getBoundingClientRect().top-off;
+    if(Math.abs(d)>1)m.scrollTop+=d;
+  }
+  function start(){
+    const m=main();if(!m)return;
+    m.addEventListener('scroll',()=>{clearTimeout(timer);timer=setTimeout(record,80);},{passive:true});
+    m.addEventListener('touchstart',()=>{moving=true;},{passive:true});
+    m.addEventListener('touchend',()=>{moving=false;setTimeout(record,120);},{passive:true});
+    ['portalChatThread','trRoomThread'].forEach(id=>{const t=document.getElementById(id);if(t)new MutationObserver(()=>requestAnimationFrame(restore)).observe(t,{childList:true,subtree:true});});
+    m.addEventListener('load',e=>{if(e.target&&e.target.tagName==='IMG')requestAnimationFrame(restore);},true);
+    if(window.ResizeObserver){const ro=new ResizeObserver(()=>requestAnimationFrame(restore));['portalChatThread','trRoomThread'].forEach(id=>{const t=document.getElementById(id);if(t)ro.observe(t);});}
+    // 画面を開き直したとき・ルームを切り替えたときは、目印を取り直す（入ったときの位置は今までどおり）
+    const scr=document.getElementById('screen-chat');
+    if(scr)new MutationObserver(()=>{atBottom=true;anchor=null;setTimeout(record,4200);}).observe(scr,{attributes:true,attributeFilter:['class']});
+    setTimeout(record,500);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+})();
+</script>
+<style id="v444-period">
+/* v444: 記録の期間（小さく控えめに。色は文字色を薄めて使い、5つのテーマで崩れないように） */
+.trPeriodRowV444{display:flex;justify-content:flex-end;align-items:center;gap:6px;margin:2px 2px 8px}
+.trPeriodRowV444 label{font-size:11px;font-weight:800;opacity:.62}
+.trPeriodRowV444 select{appearance:none;-webkit-appearance:none;height:28px;max-width:62%;padding:0 26px 0 11px;border-radius:999px;border:1px solid rgba(128,128,128,.38);background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23888' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 10px center;color:inherit;font:inherit;font-size:12px;font-weight:850}
+.trPeriodRowV444.on select{border-color:var(--gold,#c9a227);font-weight:900}
+.trSbTxtV444{margin-left:4px}
+.trPrevCmpV444{display:block;margin-top:2px;font-size:10px;font-weight:850;opacity:.85;white-space:nowrap;font-variant-numeric:tabular-nums}
+.trPrevCmpV444.up{color:var(--gold-deep,#3d716c)}
+.trChartScrollV444{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;border-radius:14px}
+.trChartScrollV444::-webkit-scrollbar{display:none}
+</style>
 <style id="v440-scroll-hint">
 /* v440: 「↓ 下にも続きがあります」は、本当に下に続きがあるときだけ出し、押すと下へ進む */
 #portalParticipantScrollHint{pointer-events:auto!important;cursor:pointer}
