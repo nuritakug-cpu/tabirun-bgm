@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v448 | 2026-11-16 | Parent v447. 軽量化の続き：(1) 開くときの「認証中」の幕を、役目が終わったら画面から取り除く（残っていたため、ひもづく約20個の見た目の指定が画面が変わるたびに計算され続けていた）。(2) トップの画像を、ページを読み込み始めた直後に端末の控えから表示（変換は端末の高速な仕組み）。調整値も前回の値で先に当て、あとで同じ画像なら変換し直さない。(3) 通知設定（この端末の通知）に「アイコンの点（バッジ）を消す」ボタン。この端末の通知（すべての登録）を消してバッジを0にし、件数を表示（Androidで点が消えない原因の切り分け用）。 -->
 <!-- TOP RUN PORTAL v447 | 2026-11-16 | Parent v446. 軽量化 第1段階（性能の低いAndroid（moto g24）で全体が遅い）：(0) 見た目の指定のうち、今使っていないテーマ専用のもの（全体の約4割）を端末の中で外す（テーマを変えたら戻して外し直す。今のテーマの見た目は5テーマ×8画面で変化なしを確認）。(1) トップの画像を開いたらすぐ端末の控えで出す（確認は今までどおり後で、更新があれば差し替え）。(2) 下のメニューの高さの値を、変わったときだけ書く（毎回書くと画面全体の見た目の計算がやり直しになっていた）。1.5秒ごとの確認をやめた（v373以降メニューは動かさないため不要）。(3) 保存ボタンの印付け・「保存しました」の検知・仕組みの言葉の置き換えを、変化のたびではなく1回の描画ごとにまとめて行う。選択肢（option）は調べない。一度調べたボタンは調べ直さない。画面・機能・通信は変えない。 -->
 <!-- TOP RUN PORTAL v446 | 2026-11-16 | Parent v445. (1) Androidでアイコンのバッジ（点）が消えない：既読になった通知を消すとき、1つの登録の通知しか消していなかった。以前の版の登録を含め、すべての登録の通知を対象にする。(2) 目標を立てる → 駅伝・その他の大会別目標の「種別」「大会・種目名」の枠がはみ出す：見出しを上・入力欄を下にして枠の幅に収める。通信なし。 -->
 <!-- TOP RUN PORTAL v445 | 2026-11-15 | Parent v444. (1) 記録推移が横にスクロールするとき（10件以上）、最初（左端）から線が伸びるのに合わせて最新（右端）まで一緒に進む（指で触ると止まる）。横に長いときは線の伸びを少しゆっくり。(2) 下のメニューのめり込み：メニューの下端と実際に見えている画面の下端を実測し、はみ出した分だけ上げる（はみ出しがなければ0に戻る。文字入力中・指で触っている間・拡大中は何もしない）。通信なし。 -->
@@ -6683,6 +6684,29 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
 /* v388: お知らせの本文のリンク */
 .trNoticeLinkV388{color:inherit;text-decoration:underline;overflow-wrap:anywhere}
 </style>
+<script id="v448-hero-early">
+/* v448: トップの画像を、ページを読み込み始めた直後に端末の控えから表示する（画像の変換は端末の高速な仕組みを使う）。
+   位置・大きさの調整値も前回の値で先に当てておく。あとで本来の処理が同じ画像なら変換をやり直さない。通信なし。 */
+(function(){
+  'use strict';
+  try{
+    const root=document.documentElement;
+    try{const v=JSON.parse(localStorage.getItem('tr.v448.heroVars')||'{}');Object.keys(v).forEach(k=>{if(/^--portal-home-hero-/.test(k)&&k!=='--portal-home-hero-image')root.style.setProperty(k,String(v[k]));});}catch(_){}
+    const r=indexedDB.open('tr-portal-cache-p103',1);
+    r.onupgradeneeded=()=>{try{r.result.createObjectStore('kv');}catch(_){}};
+    r.onsuccess=()=>{const d=r.result;let q;try{q=d.transaction('kv','readonly').objectStore('kv').get('homeImage:v1');}catch(_){try{d.close();}catch(__){}return;}
+      q.onsuccess=()=>{d.close();const c=q.result,img=c&&c.value&&c.value.image;
+        if(typeof img!=='string'||!/^data:image\/(jpeg|png|webp);base64,/i.test(img))return;
+        if((root.style.getPropertyValue('--portal-home-hero-image')||'').trim())return;
+        fetch(img).then(x=>x.blob()).then(b=>{
+          if((root.style.getPropertyValue('--portal-home-hero-image')||'').trim())return;
+          const url=URL.createObjectURL(b);window.__trEarlyHeroV448={image:img,url};
+          root.style.setProperty('--portal-home-hero-image','url("'+url+'")');
+        }).catch(()=>{});};
+      q.onerror=()=>{try{d.close();}catch(_){}};};
+  }catch(_){}
+})();
+</script>
 </head>
 <body>
 <div id="portalFirstPaintAuthOverlay" role="status" aria-live="polite" aria-label="TOP RUN PORTAL 認証中">
@@ -7254,6 +7278,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         </div>
         <p id="trStage3Message" role="status" aria-live="polite">既存の本人認証と通知サーバーを確認してから登録できます。</p>
         <p id="trStage3PrefsApplied" role="status" aria-live="polite" class="trDeviceWorkerNote">端末通知の到達は、保存後に実機で確認してください。</p>
+        <div class="trBadgeClearV448"><button type="button" id="trBadgeClearV448">アイコンの点（バッジ）を消す</button><p id="trBadgeClearMsgV448" role="status" aria-live="polite"></p></div>
       </div>
       <details id="trPushStage2Diagnostics" style="margin-top:10px"><summary>開発者用：通知の接続診断</summary><p>開発者向けの通信診断です。通常の通知登録には不要です。</p>
 
@@ -7274,7 +7299,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v447</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v448</b></div>
   </div>
 </div>
 
@@ -7517,7 +7542,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v447</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v448</b></div>
   </div>
 </div>
 
@@ -11561,7 +11586,11 @@ if(view==='list')portalApplyManageSearch(kind);
     const calendarTop=calendar.getBoundingClientRect().top+window.scrollY;
     return Math.max(hero.offsetHeight+28,calendarTop-heroTop-8);
   }
+  function trSaveHeroVarsV448(){try{const st=document.documentElement.style,o={};for(let i=0;i<st.length;i++){const k=st[i];if(/^--portal-home-hero-/.test(k)&&k!=='--portal-home-hero-image')o[k]=st.getPropertyValue(k);}localStorage.setItem('tr.v448.heroVars',JSON.stringify(o));}catch(_){}}
   function applyDeveloperHomeImageAdjustments(){
+    try{return applyDeveloperHomeImageAdjustmentsV448.apply(this,arguments);}finally{trSaveHeroVarsV448();}
+  }
+  function applyDeveloperHomeImageAdjustmentsV448(){
     const root=document.documentElement,backdrop=$('homeHeroBackdrop');
     root.style.setProperty('--portal-home-hero-opacity',String(developerHomeImageAdjust.opacity/100));
     root.style.setProperty('--portal-home-hero-mask-x',developerHomeImageHorizontalMask());
@@ -18236,7 +18265,10 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
       }
       let nextUrl='';
       try{
-        nextUrl=portalHomeImageLocalUrl(value.image);
+        const earlyV448=window.__trEarlyHeroV448;
+        if(earlyV448&&earlyV448.image===value.image&&earlyV448.url){nextUrl=earlyV448.url;window.__trEarlyHeroV448=null;} // v448: 先に表示した画像と同じなら変換し直さない
+        else if(value.image===developerHomeImagePending&&portalHomeImageObjectUrl){nextUrl=portalHomeImageObjectUrl;}
+        else nextUrl=portalHomeImageLocalUrl(value.image);
         if(!nextUrl)nextUrl=value.image;
       }catch(error){
         // iOS or other browsers can fall back to the original received data URL.
@@ -18254,7 +18286,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
       root.style.setProperty('--portal-home-hero-image',`url("${nextUrl}")`);
       developerHomeImageApplied=true;
       const preview=$('developerHomeImagePreview');if(preview){preview.style.backgroundImage=`url("${nextUrl}")`;preview.classList.add('hasImage');}
-      if(oldUrl&&oldUrl!==portalHomeImageObjectUrl){try{URL.revokeObjectURL(oldUrl);}catch(_){}}
+      if(oldUrl&&oldUrl!==portalHomeImageObjectUrl&&oldUrl!==nextUrl){try{URL.revokeObjectURL(oldUrl);}catch(_){}}
       portalHomeImageIssue('');
       updateDeveloperHomeImageControlLabels();renderDeveloperHomeImagePreview();applyDeveloperHomeImageAdjustments();
       return true;
@@ -33254,5 +33286,54 @@ main > .hero{margin-left:-12px!important;margin-right:-12px!important;padding-le
   new MutationObserver(()=>apply()).observe(root,{attributes:true,attributeFilter:[ATTR]});
 })();
 </script>
+<script id="v448-overlay-done">
+/* v448: 軽量化。開くときの「認証中」の幕は、役目が終わったあとも画面に残っていて、ひもづく見た目の指定（約20個）が
+   画面が変わるたびに計算され続けていた。役目が終わったら（入口の画面が閉じた・入口の画面を表示した）取り除く。認証の仕組みは変えない。 */
+(function(){
+  'use strict';
+  function done(){
+    const ov=document.getElementById('portalFirstPaintAuthOverlay');if(!ov)return true;
+    const gate=document.getElementById('portalParticipantIdentityGate');
+    if((gate&&gate.hasAttribute('hidden'))||document.documentElement.classList.contains('trGateShownV429')){ov.remove();return true;}
+    return false;
+  }
+  function start(){
+    if(done())return;
+    const mo=new MutationObserver(()=>{if(done())mo.disconnect();});
+    const gate=document.getElementById('portalParticipantIdentityGate');
+    if(gate)mo.observe(gate,{attributes:true,attributeFilter:['hidden']});
+    mo.observe(document.documentElement,{attributes:true,attributeFilter:['class']});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+})();
+</script>
+<script id="v448-badge-clear">
+/* v448: Androidでアイコンの点（バッジ）が消えないときの手動の消し方と、原因の確認。
+   この端末の通知（すべての登録）を調べて消し、端末のバッジも0にする。件数を表示する（原因の切り分け用）。 */
+(function(){
+  'use strict';
+  async function run(){
+    const msg=document.getElementById('trBadgeClearMsgV448'),btn=document.getElementById('trBadgeClearV448');
+    if(!msg||!btn)return;btn.disabled=true;msg.textContent='確認中…';
+    let regs=0,found=0,closed=0;
+    try{
+      const list=navigator.serviceWorker?.getRegistrations?await navigator.serviceWorker.getRegistrations():[];
+      regs=list.length;
+      for(const reg of list){try{const ns=await reg.getNotifications();found+=ns.length;ns.forEach(n=>{try{n.close();closed++;}catch(_){}});}catch(_){}}
+    }catch(_){}
+    let api='なし';
+    try{if(navigator.clearAppBadge){await navigator.clearAppBadge();api='あり';}}catch(_){api='エラー';}
+    try{window.__TR_PORTAL_CHAT_BADGE__?.();}catch(_){}
+    msg.textContent=`消した通知：${closed}件（見つかった通知 ${found}件・登録 ${regs}件・バッジ機能 ${api}）`+(found?'':'。点が残る場合は、スマホの通知の一覧（画面の上から下へスワイプ）に PORTAL の通知が残っていないか確認してください。');
+    btn.disabled=false;
+  }
+  document.addEventListener('click',e=>{if(e.target&&e.target.id==='trBadgeClearV448')run();});
+})();
+</script>
+<style id="v448-badge-clear-style">
+.trBadgeClearV448{margin-top:12px;padding-top:10px;border-top:1px dashed rgba(128,128,128,.35)}
+.trBadgeClearV448 button{min-height:36px;padding:0 12px;border-radius:10px;font-size:13px;font-weight:850}
+.trBadgeClearV448 p{margin:6px 0 0;font-size:12px;line-height:1.55;opacity:.85}
+</style>
 </body>
 </html>
