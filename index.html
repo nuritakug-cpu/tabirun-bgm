@@ -83,6 +83,37 @@ main{width:100%;height:100dvh;max-width:none;margin:0;padding:0!important;overfl
 @media(max-height:430px) and (orientation:landscape){.reader-top{min-height:35px;padding-top:3px;padding-bottom:3px}.reader-title{font-size:11px}.controlbar{min-height:39px;padding:3px 6px}.controlbar button{height:31px;min-height:31px}.animation-toolbar{min-height:33px}.animation-toolbar button{min-height:27px;padding:2px 8px}}
 @media(prefers-reduced-motion:reduce){.stage-nav{transition:none}}
 
+
+/* v2: presentation-first viewing, controls are an overlay rather than a frame */
+#reader{position:relative;height:100dvh!important}
+.reader-top{position:absolute!important;top:0;left:0;right:0;z-index:20;background:#0e2238e8;transition:transform .2s}
+.controlbar{position:absolute!important;bottom:0;left:0;right:0;z-index:20;background:#10263de8;transition:transform .2s}
+#reader>.progress{position:absolute;bottom:0;left:0;right:0;z-index:21;height:3px}
+.stage{width:100%;height:100%;flex:1 1 100%;padding:0!important;background:#080e18}
+.stage-inner{box-shadow:none}
+#reader.controls-hidden .reader-top{transform:translateY(-110%)}
+#reader.controls-hidden .controlbar{transform:translateY(110%)}
+#reader.controls-hidden .stage-nav{opacity:0;pointer-events:none}
+#reader.controls-hidden .animation-toolbar{opacity:0;pointer-events:none}
+#reader.controls-hidden>.progress{opacity:0}
+.animation-toolbar{position:absolute!important;bottom:54px;left:0;right:0;z-index:19}
+#reader.controls-hidden .animation-toolbar{display:none}
+.reader-top .fullscreen-btn{background:#243c55;color:white;border:1px solid #456078;border-radius:9px;padding:6px 10px;min-height:34px;font-size:12px;font-weight:750;white-space:nowrap}
+.stage-nav{opacity:.14}
+.stage-nav:disabled{display:none}
+@media(max-height:430px) and (orientation:landscape){.animation-toolbar{bottom:40px}.reader-top{min-height:34px}.controlbar{min-height:38px}}
+
+/* v3: edge-to-edge presentation with an always-available compact control */
+html,body,main,#reader{height:100%!important;height:100dvh!important;width:100%!important;overflow:hidden!important}
+#reader{position:fixed!important;inset:0!important;margin:0!important;padding:0!important}
+.stage{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;max-height:none!important;display:flex!important;align-items:center!important;justify-content:center!important;overflow:hidden!important}
+.stage-inner{margin:auto!important;flex:none!important;max-width:none!important;max-height:none!important}
+#slide{object-fit:fill!important}
+#reader.controls-hidden .reader-top,#reader.controls-hidden .controlbar{visibility:hidden;pointer-events:none}
+#reader:not(.controls-hidden) .reader-top,#reader:not(.controls-hidden) .controlbar{visibility:visible}
+#quickMenu{position:fixed;z-index:65;top:max(6px,env(safe-area-inset-top));left:max(7px,env(safe-area-inset-left));width:39px;height:35px;border:1px solid #ffffff80;border-radius:9px;background:#10263dc9;color:white;font-size:19px;font-weight:800;display:grid;place-items:center;opacity:.72}
+#reader:not(.controls-hidden) #quickMenu{opacity:0;pointer-events:none}
+@media (orientation:landscape) and (max-height:500px){#quickMenu{top:3px;left:max(4px,env(safe-area-inset-left));width:34px;height:30px}}
 </style>
 </head>
 <body>
@@ -307,6 +338,21 @@ const deep=location.hash.match(/^#page-(\d+)$/);if(deep)showSlide(Number(deep[1]
   menuBtn.textContent='☰ 目次';oldBack.replaceWith(menuBtn);
   const brand=document.createElement('div');brand.className='slide-brand';brand.textContent='TOP RUN LAB';
   head.insertBefore(brand,head.querySelector('.reader-title'));
+  const fullBtn=document.createElement('button');fullBtn.type='button';fullBtn.className='fullscreen-btn';fullBtn.textContent='⛶ 全画面';fullBtn.setAttribute('aria-label','全画面表示');
+  head.appendChild(fullBtn);
+  const quickMenu=document.createElement('button');quickMenu.id='quickMenu';quickMenu.type='button';quickMenu.textContent='☰';quickMenu.setAttribute('aria-label','操作メニューを表示');reader.appendChild(quickMenu);
+  quickMenu.addEventListener('click',()=>setControls(false));
+  let controlsHidden=true;
+  function setControls(hidden){controlsHidden=hidden;reader.classList.toggle('controls-hidden',hidden);}
+  fullBtn.addEventListener('click',async()=>{
+    try{
+      if(document.fullscreenElement && document.exitFullscreen){await document.exitFullscreen();}
+      else if(reader.requestFullscreen){await reader.requestFullscreen({navigationUI:'hide'});}
+      else {setControls(true);}
+    }catch(e){setControls(true);}
+    requestAnimationFrame(recompute);
+  });
+  document.addEventListener('fullscreenchange',()=>{fullBtn.textContent=document.fullscreenElement?'⤢ 戻す':'⛶ 全画面';requestAnimationFrame(recompute);});
   const infoBtn=document.createElement('button');infoBtn.className='utility';infoBtn.type='button';infoBtn.textContent='用語';head.appendChild(infoBtn);
   const left=document.createElement('button');left.type='button';left.className='stage-nav prev';left.setAttribute('aria-label','前のスライド');left.textContent='‹';
   const right=document.createElement('button');right.type='button';right.className='stage-nav next';right.setAttribute('aria-label','次のスライド');right.textContent='›';
@@ -323,6 +369,7 @@ const deep=location.hash.match(/^#page-(\d+)$/);if(deep)showSlide(Number(deep[1]
   document.getElementById('slideToc').addEventListener('click',e=>{
     if(e.target.closest('.chapterlist button'))closeAll();
   });
+  inner.addEventListener('click',e=>{if(e.target.closest('button'))return;setControls(!controlsHidden);});
   left.addEventListener('click',()=>showSlide(index-1));
   right.addEventListener('click',()=>showSlide(index+1));
   const original=showSlide;
@@ -349,6 +396,7 @@ const deep=location.hash.match(/^#page-(\d+)$/);if(deep)showSlide(Number(deep[1]
   const initial=location.hash.match(/^#page-(\d+)$/);
   showSlide(initial?Number(initial[1])-1:0);
   requestAnimationFrame(recompute);
+  setControls(true);
   // Reduce accidental taps and long-press selection while presenting.
   stage.addEventListener('contextmenu',e=>e.preventDefault());
 })();
