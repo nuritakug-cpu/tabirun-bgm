@@ -1,3 +1,5 @@
+<!-- TOP RUN PORTAL v447 | 2026-11-16 | Parent v446. 軽量化 第1段階（性能の低いAndroid（moto g24）で全体が遅い）：(0) 見た目の指定のうち、今使っていないテーマ専用のもの（全体の約4割）を端末の中で外す（テーマを変えたら戻して外し直す。今のテーマの見た目は5テーマ×8画面で変化なしを確認）。(1) トップの画像を開いたらすぐ端末の控えで出す（確認は今までどおり後で、更新があれば差し替え）。(2) 下のメニューの高さの値を、変わったときだけ書く（毎回書くと画面全体の見た目の計算がやり直しになっていた）。1.5秒ごとの確認をやめた（v373以降メニューは動かさないため不要）。(3) 保存ボタンの印付け・「保存しました」の検知・仕組みの言葉の置き換えを、変化のたびではなく1回の描画ごとにまとめて行う。選択肢（option）は調べない。一度調べたボタンは調べ直さない。画面・機能・通信は変えない。 -->
+<!-- TOP RUN PORTAL v446 | 2026-11-16 | Parent v445. (1) Androidでアイコンのバッジ（点）が消えない：既読になった通知を消すとき、1つの登録の通知しか消していなかった。以前の版の登録を含め、すべての登録の通知を対象にする。(2) 目標を立てる → 駅伝・その他の大会別目標の「種別」「大会・種目名」の枠がはみ出す：見出しを上・入力欄を下にして枠の幅に収める。通信なし。 -->
 <!-- TOP RUN PORTAL v445 | 2026-11-15 | Parent v444. (1) 記録推移が横にスクロールするとき（10件以上）、最初（左端）から線が伸びるのに合わせて最新（右端）まで一緒に進む（指で触ると止まる）。横に長いときは線の伸びを少しゆっくり。(2) 下のメニューのめり込み：メニューの下端と実際に見えている画面の下端を実測し、はみ出した分だけ上げる（はみ出しがなければ0に戻る。文字入力中・指で触っている間・拡大中は何もしない）。通信なし。 -->
 <!-- TOP RUN PORTAL v444 | 2026-11-15 | Parent v443. (1) 個人記録に「記録の期間」のプルダウン（全期間・年度・年（1〜12月）・学年、記録のある期間だけ）。基本は全期間で今までどおり。期間を選ぶと、自己ベスト・公認ベスト・記録推移・出場大会がその期間の記録だけになる（画面の作りは変えない）。期間を選んでいるときは、自己ベストに小さく SB・PB と前の期間との差（前年度比・前年比・前学年比）。記録一覧の PB は全期間、SB はその期間のベスト。記録推移の下のSB・PBの1行は今までどおり。(2) 記録推移は10件以上で横にスクロール（開くと最新＝右端）。(3) 学年の自動切り替え：新年度（4月）に1つ上げて表示（3年の次は「その他」）、本人のプロフィールにも1回保存。記録の学年は最初に分かっている学年と年度から数える（分からない人は学年の選択を出さない）。記録データは書き換えない。通信の増加なし。 -->
 <!-- TOP RUN PORTAL v443 | 2026-11-15 | Parent v442. (1) 記録推移のグラフ：実際のタイムどおりに描く（v362の「遅くなった分を45%に縮める」をやめた。ベスト後の遅い大会が、より速い過去の大会より上に描かれていたため）。最後の2回以上が続けて遅くなっているときだけ、縦の目盛りを広げて落ち方をゆるやかに見せる。(2) チャット：上へ戻って読んでいるとき、既読・リアクションの描き直しで最新へ戻されていた（v437の合わせ直しが描き直しのたびに4秒間働いていた）のを、ルームの切り替えのときだけにした。新しいメッセージが来ても、自分が送ったとき・一番下付近のときだけ最新へ動かす。描き直し・画像の読み込みの後は、いちばん上に見えていたメッセージを目印に同じ位置へ戻す。通信は増えない。 -->
@@ -7272,7 +7274,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v445</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v447</b></div>
   </div>
 </div>
 
@@ -7515,7 +7517,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v445</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v447</b></div>
   </div>
 </div>
 
@@ -27314,11 +27316,18 @@ html[data-portal-personal-color="matte"] .trSheetRow.active .trSheetMain{border-
   const isChat=n=>/chat|room|チャット|ルーム/.test(text(n));
   const isNotice=n=>!isChat(n);
   async function closeTray(filter){
+    // v446: Androidでアイコンのバッジ（点）が消えない対策。通知を出した登録（以前の版の登録を含む）すべての通知を対象にする。
+    //   以前は1つの登録の通知しか消しておらず、別の登録が出した通知が残ってバッジが消えなかった。
     try{
-      if(!navigator.serviceWorker?.getRegistration)return;
-      const reg=await navigator.serviceWorker.getRegistration(SCOPE)||await navigator.serviceWorker.getRegistration();
-      if(!reg?.getNotifications)return;
-      (await reg.getNotifications()).forEach(n=>{try{if(filter(n))n.close();}catch(_){}});
+      if(!navigator.serviceWorker)return;
+      const regs=new Set();
+      try{(await navigator.serviceWorker.getRegistrations?.()||[]).forEach(r=>regs.add(r));}catch(_){}
+      try{const r=await navigator.serviceWorker.getRegistration(SCOPE);if(r)regs.add(r);}catch(_){}
+      try{const r=await navigator.serviceWorker.getRegistration();if(r)regs.add(r);}catch(_){}
+      for(const reg of regs){
+        if(!reg?.getNotifications)continue;
+        try{(await reg.getNotifications()).forEach(n=>{try{if(filter(n))n.close();}catch(_){}});}catch(_){}
+      }
     }catch(_){}
   }
   async function run(){
@@ -28119,14 +28128,16 @@ body.portalChatIsolated:not(.portalFieldInputActive) #screen-chat>main.chatMain{
   //   画面のスクロールの仕組み（overflowなど）は一切変えない（Androidでスクロールできなくなる事故を避ける）。
   let curLift=0;
   let liftTimer=0,lastMove=0,liftCand=null,liftCandAt=0;const liftLater=()=>{lastMove=Date.now();clearTimeout(liftTimer);liftTimer=setTimeout(lift,300);};
+  let lastTabsHV447='',lastLiftV447='';
   function lift(){
-    root.style.setProperty('--trTabsH',(tabs.offsetHeight||72)+'px');
+    // v447: 値が変わったときだけ書く（毎回書くと、画面全体の見た目の計算がやり直しになり、性能の低い機種で重かった）
+    const hV447=(tabs.offsetHeight||72)+'px';if(hV447!==lastTabsHV447){lastTabsHV447=hV447;root.style.setProperty('--trTabsH',hV447);}
     // v373: 下のメニューを「測って動かす」のをやめる（根本の対策）。
     //   スクロール中やページ端のはね返り中は、iPhoneが返す位置そのものが一時的にずれる。
     //   それを正しいと思って動かすため、潜る・浮く（隙間）が何度直しても再発していた。
     //   下のメニューは画面の下端に固定（bottom:0）し、ホームバーの分は余白（safe-area）で確保する。JSでは一切動かさない。
     if(curLift!==0){curLift=0;}
-    root.style.setProperty('--trTabsLift','0px');
+    if(lastLiftV447!=='0px'){lastLiftV447='0px';root.style.setProperty('--trTabsLift','0px');}
     return;
     const vv=window.visualViewport;
     if(!vv||body.classList.contains('portalFieldInputActive')||(vv.scale||1)>1.01||tabs.offsetParent===null&&getComputedStyle(tabs).position!=='fixed')return;
@@ -28162,7 +28173,7 @@ body.portalChatIsolated:not(.portalFieldInputActive) #screen-chat>main.chatMain{
   document.addEventListener('touchend',()=>setTimeout(()=>{if(body.classList.contains('portalFieldInputActive')&&!isField(document.activeElement))sync();},350),{passive:true});
   new MutationObserver(lift).observe(body,{attributes:true,attributeFilter:['class']});
   // v314: iPhoneは高さの値が何の知らせもなく変わることがあるため、表示中は1.5秒ごとに位置だけ確かめる（通信なし）
-  setInterval(()=>{if(!document.hidden&&Date.now()-lastMove>400)lift();},1500);
+  // v447: 1.5秒ごとの確認はやめた（v373以降メニューは動かさないため不要。測るたびに画面全体の計算が走っていた）
   sync();
 })();
 </script>
@@ -30908,7 +30919,7 @@ html[data-portal-personal-color="matte"] #screen-management-settings :is(#portal
   function mark(root){
     (root||document).querySelectorAll(SOLO.join(',')).forEach(b=>{b.classList.add('portalPrimary','trSave','trSaveSolo');b.style.removeProperty('width');});
     (root||document).querySelectorAll(PAIR.join(',')).forEach(b=>b.classList.add('trSave'));
-    (root||document).querySelectorAll('.portalPrimary').forEach(b=>{if(b.closest('#trImgView'))return;b.classList.add('trSave');const p=b.parentElement;const cs=p?getComputedStyle(p):null;if(!cs||(cs.display!=='grid'&&cs.display!=='flex'))b.classList.add('trSaveSolo');});
+    (root||document).querySelectorAll('.portalPrimary:not([data-tr-save-v447])').forEach(b=>{if(b.closest('#trImgView'))return;b.setAttribute('data-tr-save-v447','');b.classList.add('trSave');const p=b.parentElement;const cs=p?getComputedStyle(p):null;if(!cs||(cs.display!=='grid'&&cs.display!=='flex'))b.classList.add('trSaveSolo');}); // v447: 一度調べたボタンは調べ直さない
   }
   let el=null,timer=0,last=0;
   window.__trSavedToast=function(msg){
@@ -30928,7 +30939,13 @@ html[data-portal-personal-color="matte"] #screen-management-settings :is(#portal
     const m=t.match(/[^。\n]*保存しました/);window.__trSavedToast(m?m[0].trim().slice(-24):'保存しました');
   }
   // v375: 見張る範囲を、チャット以外の画面と、画面の一番上に出る確認画面だけに絞る（チャットが流れるたびに動いて重くなっていた）
-  const onMut=ms=>{for(const m of ms){if(m.type==='characterData')check(m.target);else for(const n of m.addedNodes){if(n.nodeType===1){mark(n);check(n);}else if(n.nodeType===3)check(n);} if(m.type==='childList'&&m.target&&m.target.nodeType===1&&m.addedNodes.length)check(m.target);}};
+  // v447: 変化のたびにその場で調べていたのを、1回の描画ごとにまとめて調べる（選択肢などは調べない）。性能の低い機種で、プルダウンを選んだあとの表示が遅れていた
+  const pendM=new Set(),pendC=new Set();let qV447=false;
+  const flushV447=()=>{qV447=false;const ms=[...pendM],cs=[...pendC];pendM.clear();pendC.clear();
+    ms.forEach(n=>{if(n.isConnected)mark(n);});cs.forEach(n=>{if(n.isConnected!==false)check(n);});};
+  const skipV447=n=>n.nodeType===1&&/^(OPTION|OPTGROUP|BR|svg|path|circle|line|polyline|text|g|rect)$/i.test(n.tagName);
+  const onMut=ms=>{for(const m of ms){if(m.type==='characterData')pendC.add(m.target);else for(const n of m.addedNodes){if(n.nodeType===1){if(skipV447(n))continue;pendM.add(n);pendC.add(n);}else if(n.nodeType===3)pendC.add(n);} if(m.type==='childList'&&m.target&&m.target.nodeType===1&&m.addedNodes.length&&!/^(SELECT|OPTGROUP)$/.test(m.target.tagName))pendC.add(m.target);}
+    if((pendM.size||pendC.size)&&!qV447){qV447=true;requestAnimationFrame(flushV447);}};
   const obs=new MutationObserver(onMut),seenScreens=new WeakSet();
   const watchScreens=()=>document.querySelectorAll('.portalScreen').forEach(sc=>{if(sc.id==='screen-chat'||seenScreens.has(sc))return;seenScreens.add(sc);obs.observe(sc,{childList:true,subtree:true,characterData:true});});
   new MutationObserver(ms=>{for(const m of ms)for(const n of m.addedNodes){if(n.nodeType!==1)continue;if(n.classList?.contains('portalScreen'))watchScreens();else if(n.id!=='trSavedToast'){mark(n);check(n);}}}).observe(document.body||document.documentElement,{childList:true});
@@ -31953,7 +31970,12 @@ html[data-portal-personal-color="matte"] .crTag.gold{background:var(--gold,#ff78
   const start=()=>{
     scan(document.body);
     const chatOpen=()=>{const c=document.getElementById('screen-chat');return !!(c&&!c.classList.contains('hidden'));};
-    new MutationObserver(ms=>{if(chatOpen())return; /* v420: チャット画面では動かさない（カクつき対策） */for(const m of ms){if(m.type==='characterData')fixText(m.target);else m.addedNodes.forEach(scan);}})
+    const pendV447=new Set();let qV447=false;
+    const flushV447=()=>{qV447=false;const a=[...pendV447];pendV447.clear();a.forEach(n=>{if(n.nodeType===3)fixText(n);else if(n.isConnected)scan(n);});};
+    new MutationObserver(ms=>{if(chatOpen())return; /* v420: チャット画面では動かさない（カクつき対策） */
+      /* v447: 1回の描画ごとにまとめて調べる。選択肢（option）は調べない */
+      for(const m of ms){if(m.type==='characterData')pendV447.add(m.target);else m.addedNodes.forEach(n=>{if(n.nodeType===1&&/^(OPTION|OPTGROUP)$/.test(n.tagName))return;pendV447.add(n);});}
+      if(pendV447.size&&!qV447){qV447=true;requestAnimationFrame(flushV447);}})
       .observe(document.body,{childList:true,characterData:true,subtree:true});
   };
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
@@ -32469,6 +32491,42 @@ html.trGateShownV429 #portalFirstPaintAuthOverlay{display:none!important;visibil
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
 </script>
+<script id="v447-home-cache">
+/* v447: トップの画像を、開いたらすぐ端末の控え（以前に表示した画像）で出す。
+   これまではFirebaseにつながって更新日を確かめるまで待っていたため、性能の低い機種では数秒かかっていた。
+   確認は今までどおり後で行い、更新があれば差し替える（クラブ共通の画像。通信は増えない）。 */
+(function(){
+  'use strict';
+  let done=false;
+  function paint(){
+    if(done)return;
+    const root=document.documentElement;
+    if((root.style.getPropertyValue('--portal-home-hero-image')||'').trim()){done=true;return;}
+    const ui=window.__TR_COMMON_PILOT_UI__;if(!ui?.applyHomeImage)return;
+    done=true;
+    try{
+      const r=indexedDB.open('tr-portal-cache-p103',1);
+      r.onupgradeneeded=()=>{try{r.result.createObjectStore('kv');}catch(_){}};
+      r.onsuccess=()=>{const d=r.result;try{const q=d.transaction('kv','readonly').objectStore('kv').get('homeImage:v1');
+        q.onsuccess=()=>{d.close();const c=q.result;
+          if(c&&c.value&&typeof c.value.image==='string'&&!(root.style.getPropertyValue('--portal-home-hero-image')||'').trim()){try{ui.applyHomeImage(c.value);}catch(_){}}};
+        q.onerror=()=>d.close();}catch(_){try{d.close();}catch(__){}}};
+    }catch(_){}
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',paint);else paint();
+  setTimeout(paint,0);
+})();
+</script>
+<style id="v446-named-goal">
+/* v446: 目標を立てる → 駅伝・その他の大会別目標：「種別」「大会・種目名」の枠が右にはみ出していた（Android）。
+   見出しを上、入力欄を下にして、枠の幅いっぱいに収める。 */
+#portalNamedGoalsList .portalRuleLine{box-sizing:border-box;max-width:100%;overflow:hidden}
+#portalNamedGoalsList .portalRuleGrid{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:10px!important;width:100%}
+#portalNamedGoalsList .portalRuleGrid>label{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:5px!important;min-width:0!important;width:100%!important}
+#portalNamedGoalsList .portalRuleGrid>label>:is(select,input){box-sizing:border-box!important;width:100%!important;max-width:100%!important;min-width:0!important;margin:0!important}
+#portalNamedGoalsList .portalRuleGrid>label>select{max-width:180px!important}
+#portalNamedGoalsList :is(select,input){min-width:0;max-width:100%;box-sizing:border-box}
+</style>
 <style id="v445-tabs-guard">
 /* v445: 下のメニューが沈んだときだけ、沈んだ分（実測）を持ち上げる。沈んでいなければ 0。transform とは別の translate を使う */
 html body nav.portalBottomTabs{translate:0 var(--trTabsFixV445,0px)}
@@ -33159,6 +33217,41 @@ main > .hero{margin-left:-12px!important;margin-right:-12px!important;padding-le
     return true;
   }
   let n=0;(function tryStart(){if(start())return;if(++n<40)setTimeout(tryStart,500);})();
+})();
+</script>
+<script id="v447-theme-prune">
+/* v447: 軽量化。見た目の指定のうち「今使っていないテーマ（色）専用」のものを、端末の中で外す（約4割がテーマ専用）。
+   画面の見た目の計算がそのぶん軽くなる。テーマを切り替えたときは元に戻してから、新しいテーマに合わせて外し直す。
+   今のテーマで効く指定と、その並び順は変えない（外すのは今のテーマでは絶対に当たらない指定だけ）。通信なし。 */
+(function(){
+  'use strict';
+  const ATTR='data-portal-personal-color',root=document.documentElement;
+  const orig=new Map();
+  function splitSel(t){const out=[];let d=0,cur='';for(const ch of t){if(ch==='('||ch==='[')d++;else if(ch===')'||ch===']')d--;if(ch===','&&d===0){out.push(cur);cur='';}else cur+=ch;}out.push(cur);return out;}
+  function stripNot(s){let out='',i=0;while(i<s.length){if(s.startsWith(':not(',i)){let d=0,j=i+4;for(;j<s.length;j++){if(s[j]==='(')d++;else if(s[j]===')'){d--;if(d===0)break;}}i=j+1;continue;}out+=s[i++];}return out;}
+  // その指定が当たりうるテーマの一覧（:is(…) で複数書かれていることもある）。テーマの指定がなければ空
+  function needs(sel){const out=new Set();for(const m of stripNot(sel).matchAll(/\[data-portal-personal-color\s*=\s*["']?([a-z]+)["']?\s*\]/ig))out.add(m[1].toLowerCase());return out;}
+  function prune(list,active){let n=0;
+    for(let i=list.cssRules.length-1;i>=0;i--){const r=list.cssRules[i];
+      if(r.selectorText!==undefined&&r.style){const keep=splitSel(r.selectorText).some(x=>{const t=needs(x);return !t.size||t.has(active);});if(!keep){list.deleteRule(i);n++;}}
+      else if(r.cssRules&&(r.media||r.conditionText!==undefined))n+=prune(r,active);}
+    return n;}
+  let last=null;
+  function apply(){
+    const active=(root.getAttribute(ATTR)||'').toLowerCase();
+    if(active===last)return;last=active;
+    document.querySelectorAll('style').forEach(el=>{
+      if(el.id==='v447-theme-prune')return;
+      try{
+        if(orig.has(el))el.textContent=orig.get(el);
+        else if(!/data-portal-personal-color\s*=/.test(el.textContent||''))return;
+        else orig.set(el,el.textContent);
+        if(el.sheet)prune(el.sheet,active);
+      }catch(_){}
+    });
+  }
+  apply();
+  new MutationObserver(()=>apply()).observe(root,{attributes:true,attributeFilter:[ATTR]});
 })();
 </script>
 </body>
