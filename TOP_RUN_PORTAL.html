@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v456 | 2026-11-18 | Parent v455. Androidのアイコンの点（バッジ）が消えない原因を確かめるため、歯車の中「アイコンの点（バッジ）を消す」に、受け口（top-run-push-sw.js v456対応版）がスマホの中に残した受信の記録（直近20件：時刻・題名・本文の有無・表示できたか・直後と3秒後の通知の数・サーバーの数）を表示。通信なし。Rules変更なし。受け口の差し替えが必要。 -->
 <!-- TOP RUN PORTAL v455 | 2026-11-17 | Parent v454. チャットで一番下にいるのに、上の長い投稿の位置へ突然戻る不具合を修正（v443の位置を保つ仕組み）：目印を動くたびに取り直す、指やはずみで動いている間（最後に動いてから0.4秒）は戻さない、一番下にいるときは戻さない。Firebaseの通信なし。Rules変更なし。 -->
 <!-- TOP RUN PORTAL v454 | 2026-11-17 | Parent v453. スプレッドシートからの練習の一括取り込みでも、「変更」・日付の変更がある練習は、保存のときに参加回答を「そのまま残す／リセットして答え直してもらう／保存をやめる」から選べるようにした（選んだ内容は該当する練習すべてに同じく適用）。「中止」は今までどおりリセット（確認あり）。Rules変更なし。 -->
 <!-- TOP RUN PORTAL v453 | 2026-11-17 | Parent v452. 練習の「中止・変更」欄を「変更」にして保存するときも、参加回答を「そのまま残す／リセットして答え直してもらう／保存をやめる」から選べるようにした（v436は日付だけの変更のときしか選べず、「変更」は必ずリセットしていた）。「中止」は今までどおりリセット。スプレッドシートからの一括取り込みは変更なし。Rules変更なし。 -->
@@ -7306,7 +7307,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v455</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v456</b></div>
   </div>
 </div>
 
@@ -7549,7 +7550,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v455</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v456</b></div>
   </div>
 </div>
 
@@ -33548,7 +33549,29 @@ main > .hero{margin-left:-12px!important;margin-right:-12px!important;padding-le
     try{if(navigator.clearAppBadge){await navigator.clearAppBadge();api='あり';}}catch(_){api='エラー';}
     try{await window.__TR_SW_CLEAR_V452__?.('all');}catch(_){}
     try{window.__TR_PORTAL_CHAT_BADGE__?.();}catch(_){}
-    msg.textContent=`消した通知：${closed}件（見つかった通知 ${found}件・登録 ${regs}件・バッジ機能 ${api}）`+(found?'':'。点が残る場合は、スマホの通知の一覧（画面の上から下へスワイプ）に PORTAL の通知が残っていないか確認してください。');
+    let text=`消した通知：${closed}件（見つかった通知 ${found}件・登録 ${regs}件・バッジ機能 ${api}）`+(found?'':'。点が残る場合は、スマホの通知の一覧（画面の上から下へスワイプ）に PORTAL の通知が残っていないか確認してください。');
+    // v456: 受け口（top-run-push-sw.js）がスマホの中に残した記録（直近20件）を表示する。通信なし。
+    try{
+      let list=null;
+      if(window.caches){const c=await caches.open('tr-push-log-v456');const r=await c.match(new URL('./__tr_push_log_v456__',location.href).href);if(r)list=await r.json();}
+      const pad=n=>String(n).padStart(2,'0');
+      const when=t=>{const d=new Date(t);return `${d.getMonth()+1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;};
+      if(Array.isArray(list)&&list.length){
+        const rows=list.slice().reverse().map(e=>{
+          const p=[when(e.at),e.ev];
+          if(e.ev==='受信')p.push(`「${e.title||''}」`,`本文${e.hasBody?e.bodyLen+'字':'なし'}`,`表示:${e.shown}`,`直後の通知:${e.after}件`,`数:${e.badge}`,`中身:${e.parsed}`,e.silent?'音なし':'');
+          else if(e.ev==='3秒後')p.push(`通知:${e.after}件`);
+          else if(e.ev==='PORTALから消す')p.push(`${e.kind}・見つかった${e.found}件・消した${e.closed}件`);
+          else if(e.tag)p.push(e.tag);
+          return p.filter(Boolean).join(' ');
+        });
+        text+='\n\n受信の記録（新しい順）\n'+rows.join('\n');
+      }else{
+        text+='\n\n受信の記録：まだありません（新しい受け口に入れ替わったあとに届いた通知から記録します）';
+      }
+    }catch(_){text+='\n\n受信の記録：読めませんでした';}
+    msg.style.whiteSpace='pre-line';
+    msg.textContent=text;
     btn.disabled=false;
   }
   document.addEventListener('click',e=>{if(e.target&&e.target.id==='trBadgeClearV448')run();});
