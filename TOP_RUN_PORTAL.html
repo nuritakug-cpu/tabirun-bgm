@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v455 | 2026-11-17 | Parent v454. チャットで一番下にいるのに、上の長い投稿の位置へ突然戻る不具合を修正（v443の位置を保つ仕組み）：目印を動くたびに取り直す、指やはずみで動いている間（最後に動いてから0.4秒）は戻さない、一番下にいるときは戻さない。Firebaseの通信なし。Rules変更なし。 -->
 <!-- TOP RUN PORTAL v454 | 2026-11-17 | Parent v453. スプレッドシートからの練習の一括取り込みでも、「変更」・日付の変更がある練習は、保存のときに参加回答を「そのまま残す／リセットして答え直してもらう／保存をやめる」から選べるようにした（選んだ内容は該当する練習すべてに同じく適用）。「中止」は今までどおりリセット（確認あり）。Rules変更なし。 -->
 <!-- TOP RUN PORTAL v453 | 2026-11-17 | Parent v452. 練習の「中止・変更」欄を「変更」にして保存するときも、参加回答を「そのまま残す／リセットして答え直してもらう／保存をやめる」から選べるようにした（v436は日付だけの変更のときしか選べず、「変更」は必ずリセットしていた）。「中止」は今までどおりリセット。スプレッドシートからの一括取り込みは変更なし。Rules変更なし。 -->
 <!-- TOP RUN PORTAL v451 | 2026-11-16 | Parent v450. (1) 本人が出走登録を取り消せない（「登録者・記録の状態が変わったため取消を停止しました」）：取消の処理が、端末に控えがないとき最初に「空」として呼ばれ、そこで止まっていた（v340で保護者の目標修正だけ直していた同じ原因）。本人・保護者・管理者の取消と、管理者の目標修正の5か所を直した。(2) 本人が自分の出走の目標タイムを修正できるように（「目標タイムを修正」→プルダウン→保存。記録の入っていない出走だけ。締切後は出さない）。Rules変更なし。 -->
@@ -7305,7 +7306,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v454</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v455</b></div>
   </div>
 </div>
 
@@ -7548,7 +7549,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v454</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v455</b></div>
   </div>
 </div>
 
@@ -33393,7 +33394,7 @@ main > .hero{margin-left:-12px!important;margin-right:-12px!important;padding-le
 (function(){
   'use strict';
   const main=()=>document.querySelector('#screen-chat > main.chatMain');
-  let anchor=null,off=0,atBottom=true,moving=false,timer=0;
+  let anchor=null,off=0,atBottom=true,moving=false,timer=0,lastMove=0,selfAt=0;
   function thread(m){return m.querySelector('#trRoomThread:not(.hidden)')&&m.querySelector('#trRoomThread').offsetParent!==null?m.querySelector('#trRoomThread'):m.querySelector('#portalChatThread');}
   function record(){
     const m=main();if(!m)return;
@@ -33403,14 +33404,19 @@ main > .hero{margin-left:-12px!important;margin-right:-12px!important;padding-le
   }
   function restore(){
     const m=main();if(!m||atBottom||!anchor||moving)return;
+    // v455: 指やはずみで動いている間は合わせない（古い目印へ跳ね戻る原因）
+    if(Date.now()-lastMove<400)return;
+    // v455: 一番下にいるなら戻さない
+    if(m.scrollHeight-m.scrollTop-m.clientHeight<60){atBottom=true;return;}
     const scr=document.getElementById('screen-chat');if(!scr||scr.classList.contains('hidden'))return;
     const el=m.querySelector('.msg[data-mid="'+CSS.escape(anchor)+'"]');if(!el||el.offsetParent===null)return;
     const d=el.getBoundingClientRect().top-m.getBoundingClientRect().top-off;
-    if(Math.abs(d)>1)m.scrollTop+=d;
+    if(Math.abs(d)>1){selfAt=Date.now();m.scrollTop+=d;}
   }
   function start(){
     const m=main();if(!m)return;
-    m.addEventListener('scroll',()=>{clearTimeout(timer);timer=setTimeout(record,80);},{passive:true});
+    // v455: 動くたびにその場で目印を取り直す（止まってから取ると、はずみの途中の古い位置が残ることがあった）
+    m.addEventListener('scroll',()=>{if(Date.now()-selfAt>60)lastMove=Date.now();if(!timer)timer=requestAnimationFrame(()=>{timer=0;record();});},{passive:true});
     m.addEventListener('touchstart',()=>{moving=true;},{passive:true});
     m.addEventListener('touchend',()=>{moving=false;setTimeout(record,120);},{passive:true});
     ['portalChatThread','trRoomThread'].forEach(id=>{const t=document.getElementById(id);if(t)new MutationObserver(()=>requestAnimationFrame(restore)).observe(t,{childList:true,subtree:true});});
