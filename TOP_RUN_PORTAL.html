@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v460 | 2026-11-18 | Parent v459. リンク（LEARNINGなど）のうち、同じサイト（tabirun-bgm）のページ（TOP RUN LAB など）は同じ画面で開く（Androidで別の画面＝ブラウザで開き、PORTALへ戻れなかったため）。ほかは今までどおり別の画面。通信の変更なし。 -->
 <!-- TOP RUN PORTAL v459 | 2026-11-18 | Parent v458. Rules v381 が必要。チャットの写真：細長い画像（縦横の比2.2倍以上）は幅を細く縮めず、約600KBまでで保存（ふつうの写真は今までどおり約250KB）。拡大表示で上限の近くで震える不具合を修正。細長い画像は「横幅で読む」（幅いっぱいで上下にスクロール）と「全体を見る」を切り替え。一覧の見本の画像は変えない。 -->
 <!-- TOP RUN PORTAL v458 | 2026-11-18 | Parent v457. Rules v380 が必要。練習に「名称」（陸上教室・合同練習・記録会など。空なら今までどおり）と「資料・リンク」（要項・タイムスケジュール・その他、複数可）を追加。練習のまま扱う（重要度・参加ボタン・記録練習・帳票・検索は練習と同じ）。一覧・予定・日付の詳細・帳票に名称、日付の詳細にリンク。名称・リンクを渡さない保存（スプレッドシートの取り込み）は今の値を残す。通信は増えない。 -->
 <!-- TOP RUN PORTAL v457 | 2026-11-18 | Parent v456. Rules v379 が必要。(1) 練習の登録・一括登録に「時間未定で登録する」（時間を空で保存、一覧・カレンダー・帳票は「時間未定」と表示、決まったら修正）。(2) 管理画面の練習・イベントの一覧は開いたとき今月を表示し、「‹ 月 ›」と「今月・来月・すべて」をワンタップで切り替え（日付・期間の絞り込みは今までどおり）。(3) 帳票に「参加者だけの一覧を表示」：期間の練習日・大会の日付・時間・場所と「参加する」の人の名前・人数（帯同・応援は別に小さく）、CSV・印刷。読み込み済みのデータから作り通信は増えない。 -->
@@ -7310,7 +7311,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v459</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v460</b></div>
   </div>
 </div>
 
@@ -7554,7 +7555,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v459</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v460</b></div>
   </div>
 </div>
 
@@ -9798,7 +9799,12 @@ if(prefix==='home'){
         .catch(error=>{if(win)win.close();showActionFeedback('PDFを開けません',String(error?.message||error).slice(0,130));});
     }
     else if(item.kind==='pdf')openModal(kindLabel,'PDFがまだFirebaseへ登録されていません');
-    else if(item.url) window.open(item.url,'_blank','noopener');
+    else if(item.url){
+      // v460: 同じサイト（tabirun-bgm）のページ（TOP RUN LAB など）は、同じ画面で開く。
+      //   別の画面で開くと、Androidではアプリの外（ブラウザ）で開き、「PORTALへ戻る」でアプリに戻れなかった。
+      let same=false;try{const u=new URL(item.url,location.href);same=u.origin===location.origin&&/^\/tabirun-bgm\/[^/]+\.html$/i.test(u.pathname)&&!/TOP_?RUN_?PORTAL/i.test(u.pathname);}catch(_){}
+      if(same)window.location.assign(item.url);else window.open(item.url,'_blank','noopener');
+    }
     else openModal(kindLabel,item.kind==='pdf'?'資料がまだ登録されていません。管理者による設定後に利用できます。':'リンク先がまだ登録されていません。管理者による設定後に利用できます。');
   }
   function linkCard(item){
