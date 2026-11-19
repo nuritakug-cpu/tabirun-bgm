@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v468 | 2026-11-19 | Parent v467. チャット：送信したあと、自分のメッセージ（一番下）が見えない位置に止まる不具合を修正。原因は、送信で入力欄から指が離れると下のメニューが戻り、下の余白が広がるのにスクロールの位置がそのままだったため（キーボードが閉じるときも同じ）。(1) 一番下にいるときに下の余白・画面の高さが変わったら、一番下に合わせ直す。(2) 送信（文字・写真）してから3秒間は、自分のメッセージが一番下に見えるように合わせ続ける（指で動かしたらやめる）。共通チャット・ルームとも。通信の変更なし。Rules変更なし。 -->
 <!-- TOP RUN PORTAL v466 | 2026-11-18 | Parent v465. Rules v385 が必要（v465と同じ）。イベントの一覧（トップのEVENTS・イベント画面・過去大会）に「2026.11月」の年月の見出しを付けた。月をまたぐ一覧で月を見誤らないように。並び順・カードの形は変えない。通信の変更なし。 -->
 <!-- TOP RUN PORTAL v465 | 2026-11-18 | Parent v464. Rules v385 が必要（集合時間・集合場所の保存）。(1) 練習（単日・一括）とイベントに「集合時間」「集合場所」を追加。どちらも未入力で登録でき、未入力なら日付の詳細に出さない。スプレッドシートの取り込みは今の値を残す。(2) 画面を画像で保存：閉じている「過去大会」などの中身が画像に写り込む不具合を修正（閉じている所は閉じたまま写す）。(3) イベントの日付の詳細で「その他」が2回出ることがあったのを1回に。通信の変更なし。 -->
 <!-- TOP RUN PORTAL v464 | 2026-11-18 | Parent v463. Rules v384 が必要。イベントの資料・リンクと、PORTAL内イベントのリンク先にも http:// のURLを登録できるようにした（今までは https:// だけ）。http/https 以外（javascript: など）は今までどおり止める。EVENT BASE／駅伝BASE・保存版の接続先は今までどおり https:// の自サイトだけ。 -->
@@ -7317,7 +7318,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v467</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v468</b></div>
   </div>
 </div>
 
@@ -7561,7 +7562,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v467</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v468</b></div>
   </div>
 </div>
 
@@ -29861,7 +29862,13 @@ body.portalChatIsolated.portalFieldInputActive #screen-chat>main.chatMain{
       h += Math.ceil(tabs.getBoundingClientRect().height||tabs.offsetHeight||0);
     }
     if(h<166)h=166;
-    if(root.style.getPropertyValue('--trChatBottomReserve')!==h+'px')root.style.setProperty('--trChatBottomReserve', h+'px'); // v424: 変わったときだけ
+    if(root.style.getPropertyValue('--trChatBottomReserve')!==h+'px'){ // v424: 変わったときだけ
+      // v468: 一番下にいたなら、余白が変わったあとも一番下に（下のメニューが戻ると、送った自分のメッセージが隠れていた）
+      const mainV468=q('#screen-chat > main.chatMain');
+      const bottomV468=!!mainV468&&mainV468.scrollHeight-mainV468.scrollTop-mainV468.clientHeight<60;
+      root.style.setProperty('--trChatBottomReserve', h+'px');
+      if(bottomV468||window.__trChatStickV468?.())mainV468.scrollTop=mainV468.scrollHeight;
+    }
   }
   let t=0;
   const later=()=>{clearTimeout(t);t=setTimeout(reserve,80);};
@@ -33519,6 +33526,7 @@ main > .hero{margin-left:-12px!important;margin-right:-12px!important;padding-le
   function arm(){until=Date.now()+4000;touched=false;lineDone=false;lastH=0;setTimeout(fix,60);setTimeout(fix,400);}
   function fix(){
     const m=main();if(!m||Date.now()>until||touched)return;
+    if(window.__trChatStickV468?.()){m.scrollTop=m.scrollHeight;return;} // v468: 送信直後は未読の線ではなく一番下（自分のメッセージ）
     const scr=document.getElementById('screen-chat');if(!scr||scr.classList.contains('hidden'))return;
     const line=m.querySelector('.chatUnreadLine');
     if(line&&line.offsetParent!==null){
@@ -33583,6 +33591,7 @@ main > .hero{margin-left:-12px!important;margin-right:-12px!important;padding-le
   }
   function restore(){
     const m=main();if(!m||atBottom||!anchor||moving)return;
+    if(window.__trChatStickV468?.())return; // v468: 送信直後は一番下に合わせる側を優先
     // v455: 指やはずみで動いている間は合わせない（古い目印へ跳ね戻る原因）
     if(Date.now()-lastMove<400)return;
     // v455: 一番下にいるなら戻さない
@@ -33989,5 +33998,85 @@ main > .hero{margin-left:-12px!important;margin-right:-12px!important;padding-le
   .shell,.portalScreenBody,.portalBottomTabs,#screen-goal-tools .portalGoalNav{width:min(430px,100%)!important;max-width:430px!important}
 }
 </style>
+<script id="v468-chat-stick">
+/* v468: 送信（文字・写真）したら、自分のメッセージが一番下に見える位置にとどめる。
+   送信のあと3秒間は、画面の高さ・下の余白・メッセージの描き直し・画像の読み込みで位置が変わっても一番下に合わせ直す。
+   指で動かしたらやめる。画面の高さが変わる前に一番下にいたら、変わったあとも一番下に（キーボードが閉じるときなど）。
+   画面の位置だけで、Firebaseの通信は増やさない。 */
+(function(){
+  'use strict';
+  const main=()=>document.querySelector('#screen-chat > main.chatMain');
+  const shown=()=>{const s=document.getElementById('screen-chat');return !!s&&!s.classList.contains('hidden');};
+  let stickUntil=0,touched=false,sentAt=0,lastMine='',wasBottom=true,raf=0;
+  const sticking=()=>!touched&&Date.now()<stickUntil;
+  window.__trChatStickV468=sticking;
+  function pin(){
+    const m=main();if(!m||!shown())return;
+    m.scrollTop=m.scrollHeight;
+  }
+  function soon(){if(raf)return;raf=requestAnimationFrame(()=>{raf=0;if(sticking())pin();});}
+  function arm(ms){
+    stickUntil=Date.now()+(ms||3000);touched=false;
+    pin();soon();
+    [40,120,250,450,700,1000,1500,2200,3000].forEach(t=>setTimeout(()=>{if(sticking())pin();},t));
+  }
+  function lastMineId(){
+    const r=document.getElementById('trRoomThread');
+    const t=r&&r.offsetParent!==null?r:document.getElementById('portalChatThread');
+    if(!t)return '';
+    const list=t.querySelectorAll('.msg[data-mid]');const last=list[list.length-1];
+    return last&&last.classList.contains('mine')?String(last.dataset.mid||''):'';
+  }
+  function start(){
+    const m=main();if(!m)return;
+    // 送信ボタン（共通チャット・ルーム）と、写真の「送る」
+    document.addEventListener('click',e=>{
+      const b=e.target.closest?.('#portalChatSend,#trRoomSend,#trImgSend [data-a="ok"]');if(!b)return;
+      const box=b.closest('.chatBox');const input=box&&box.querySelector('textarea');
+      if(b.id&&input&&!String(input.value||'').trim())return; // 空のときは何もしない
+      sentAt=Date.now();lastMine=lastMineId();arm(3000);
+    },true);
+    // 自分のメッセージが新しく一番下に入ったら（写真の保存に時間がかかったときも）、そこから3秒合わせる
+    const onThread=()=>{
+      if(sentAt&&Date.now()-sentAt<30000){const id=lastMineId();if(id&&id!==lastMine){lastMine=id;arm(3000);return;}}
+      if(sticking())soon();
+    };
+    ['portalChatThread','trRoomThread'].forEach(id=>{const t=document.getElementById(id);if(t)new MutationObserver(onThread).observe(t,{childList:true,subtree:true});});
+    // ルームのスレッドは後から作られることがあるので、見つけたら見張る
+    const late=new MutationObserver(()=>{const t=document.getElementById('trRoomThread');if(t&&!t.__v468){t.__v468=true;new MutationObserver(onThread).observe(t,{childList:true,subtree:true});}});
+    late.observe(document.getElementById('screen-chat')||document.body,{childList:true,subtree:true});
+    const rt=document.getElementById('trRoomThread');if(rt)rt.__v468=true;
+    // 指で動かしたら合わせるのをやめる
+    m.addEventListener('touchstart',()=>{touched=true;},{passive:true});
+    m.addEventListener('wheel',()=>{touched=true;},{passive:true});
+    // 一番下にいるかを覚えておき、画面の高さが変わったら（キーボード・下のメニュー）一番下に合わせ直す
+    m.addEventListener('scroll',()=>{wasBottom=m.scrollHeight-m.scrollTop-m.clientHeight<60;},{passive:true});
+    // 開いた直後・ルームの切り替え直後の4.5秒は、今までの合わせ方（v437：未読の線・最後のメッセージ）に任せる
+    let openedAt=Date.now();
+    const scr=document.getElementById('screen-chat');
+    if(scr){let was=scr.classList.contains('hidden');new MutationObserver(()=>{const h=scr.classList.contains('hidden');if(was&&!h){openedAt=Date.now();wasBottom=true;}was=h;}).observe(scr,{attributes:true,attributeFilter:['class']});}
+    ['portalChatThread','trRoomThread'].forEach(id=>{const t=document.getElementById(id);if(t)new MutationObserver(ms=>{if(ms.some(x=>x.removedNodes.length>3)&&!sticking()){const keep=Date.now()-openedAt<4500;if(keep)openedAt=Date.now();}}).observe(t,{childList:true});});
+    // 一番下にいるときに中身が増えた・伸びた（リンクのカード・写真・既読・リアクション）ら、一番下のままにする
+    const onGrow=()=>{
+      if(!shown())return;
+      if(sticking()){soon();return;}
+      if(wasBottom&&Date.now()-openedAt>4500)pin();
+    };
+    if(window.ResizeObserver){const ro=new ResizeObserver(()=>requestAnimationFrame(onGrow));['portalChatThread','trRoomThread'].forEach(id=>{const t=document.getElementById(id);if(t)ro.observe(t);});
+      const lateRo=new MutationObserver(()=>{const t=document.getElementById('trRoomThread');if(t&&!t.__v468ro){t.__v468ro=true;ro.observe(t);}});lateRo.observe(scr||document.body,{childList:true,subtree:true});}
+    let lastH=m.clientHeight;
+    const onResize=()=>{
+      const h=m.clientHeight;
+      if(sticking()){pin();lastH=h;return;}
+      if(h!==lastH){const keep=wasBottom;lastH=h;if(keep&&shown())pin();}
+    };
+    if(window.ResizeObserver)new ResizeObserver(onResize).observe(m);
+    window.visualViewport?.addEventListener('resize',()=>requestAnimationFrame(onResize),{passive:true});
+    m.addEventListener('load',e=>{if(e.target&&e.target.tagName==='IMG'&&sticking())soon();},true);
+    new MutationObserver(()=>{if(sticking())soon();}).observe(document.body,{attributes:true,attributeFilter:['class']});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+})();
+</script>
 </body>
 </html>
