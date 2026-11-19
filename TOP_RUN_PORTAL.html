@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v469 | 2026-11-19 | Parent v468. チャット：送信してしばらくすると上の方（前の日のメッセージ）へ動いてしまう不具合を修正。v468は送信後3秒だけ一番下に合わせていたため、そのあとの描き直し（既読の更新・写真やカードの読み込み）で位置がずれていた。v469では「一番下を見ている状態」を指の操作だけで決める：指で上へ動かすまでは、何が描き直されても一番下（最新）にとどまる（0.3秒ごとにも確認）。上へ戻って読んでいるときは今までどおりその位置にとどまる。開いた直後4.5秒は未読の線の合わせ方（v437）を優先。日付で絞り込み中は動かさない。共通チャット・ルームとも。通信の変更なし。Rules変更なし。 -->
 <!-- TOP RUN PORTAL v468 | 2026-11-19 | Parent v467. チャット：送信したあと、自分のメッセージ（一番下）が見えない位置に止まる不具合を修正。原因は、送信で入力欄から指が離れると下のメニューが戻り、下の余白が広がるのにスクロールの位置がそのままだったため（キーボードが閉じるときも同じ）。(1) 一番下にいるときに下の余白・画面の高さが変わったら、一番下に合わせ直す。(2) 送信（文字・写真）してから3秒間は、自分のメッセージが一番下に見えるように合わせ続ける（指で動かしたらやめる）。共通チャット・ルームとも。通信の変更なし。Rules変更なし。 -->
 <!-- TOP RUN PORTAL v466 | 2026-11-18 | Parent v465. Rules v385 が必要（v465と同じ）。イベントの一覧（トップのEVENTS・イベント画面・過去大会）に「2026.11月」の年月の見出しを付けた。月をまたぐ一覧で月を見誤らないように。並び順・カードの形は変えない。通信の変更なし。 -->
 <!-- TOP RUN PORTAL v465 | 2026-11-18 | Parent v464. Rules v385 が必要（集合時間・集合場所の保存）。(1) 練習（単日・一括）とイベントに「集合時間」「集合場所」を追加。どちらも未入力で登録でき、未入力なら日付の詳細に出さない。スプレッドシートの取り込みは今の値を残す。(2) 画面を画像で保存：閉じている「過去大会」などの中身が画像に写り込む不具合を修正（閉じている所は閉じたまま写す）。(3) イベントの日付の詳細で「その他」が2回出ることがあったのを1回に。通信の変更なし。 -->
@@ -7318,7 +7319,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v468</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v469</b></div>
   </div>
 </div>
 
@@ -7562,7 +7563,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v468</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v469</b></div>
   </div>
 </div>
 
@@ -10356,6 +10357,7 @@ if(prefix==='home'){
     }).join('');
     const pcf=portalListFilterState.chat;
     const portalChatFiltered=!!pcf&&((pcf.mode==='day'&&!!pcf.day)||(pcf.mode==='month'&&!!pcf.month)||(pcf.mode==='range'&&!!(pcf.start||pcf.end)));
+    window.__trCommonFilteredV469=portalChatFiltered; // v469
     if(!rows.length&&portalChatFiltered)box.innerHTML='<div class="portalEmpty" role="status">この日付・期間のメッセージはありません。</div>';
     const portalChatNewest=rows.length?rows[rows.length-1].id:'';
     // v195: changing to 日付/月/期間 must show the filter/results at the top,
@@ -25986,6 +25988,7 @@ html[data-portal-personal-color="matte"] .trRoomMsg,html[data-portal-personal-co
     void run($('trRoomSend'),async()=>{await gate().roomSend(id,text);if(view===id){input.value='';roomFit();if(rfActive){resetFilter();showLive();}}});
   }
 
+  window.__trRoomFilteredV469=()=>rfActive; // v469
   window.__TR_ROOMS_UNREAD__=()=>{try{return preview()?0:Number(gate()?.roomsUnread?.()||0);}catch(_){return 0;}};
   window.addEventListener('tr-portal-rooms',render);
   const watch=()=>{
@@ -33998,85 +34001,118 @@ main > .hero{margin-left:-12px!important;margin-right:-12px!important;padding-le
   .shell,.portalScreenBody,.portalBottomTabs,#screen-goal-tools .portalGoalNav{width:min(430px,100%)!important;max-width:430px!important}
 }
 </style>
-<script id="v468-chat-stick">
-/* v468: 送信（文字・写真）したら、自分のメッセージが一番下に見える位置にとどめる。
-   送信のあと3秒間は、画面の高さ・下の余白・メッセージの描き直し・画像の読み込みで位置が変わっても一番下に合わせ直す。
-   指で動かしたらやめる。画面の高さが変わる前に一番下にいたら、変わったあとも一番下に（キーボードが閉じるときなど）。
+<script id="v469-chat-follow">
+/* v469: チャットの「一番下（最新）を見ている状態」を、指の操作だけで決める。
+   ・指で上へ動かして止めた位置が一番下から離れていたら「読んでいる」状態（v443：その位置にとどまる）。
+   ・それ以外（一番下にいる・送信した・入力欄を押した）は「最新を見る」状態で、既読の更新・写真やカードの読み込み・
+     画面の高さの変化など、何が起きても一番下に合わせ直す（0.3秒ごとにも確認）。
+   ・開いた直後・ルームを切り替えた直後の4.5秒は v437（未読の線）に任せる。送信したときだけは一番下を優先。
+   ・日付で絞り込んでいるときは動かさない。
    画面の位置だけで、Firebaseの通信は増やさない。 */
 (function(){
   'use strict';
+  const $=id=>document.getElementById(id);
   const main=()=>document.querySelector('#screen-chat > main.chatMain');
-  const shown=()=>{const s=document.getElementById('screen-chat');return !!s&&!s.classList.contains('hidden');};
-  let stickUntil=0,touched=false,sentAt=0,lastMine='',wasBottom=true,raf=0;
-  const sticking=()=>!touched&&Date.now()<stickUntil;
-  window.__trChatStickV468=sticking;
-  function pin(){
-    const m=main();if(!m||!shown())return;
-    m.scrollTop=m.scrollHeight;
+  const shown=()=>{const s=$('screen-chat');return !!s&&!s.classList.contains('hidden');};
+  const roomOpen=()=>{const r=$('trRoomThread');return !!r&&r.offsetParent!==null;};
+  const filtered=()=>{try{return roomOpen()?!!window.__trRoomFilteredV469?.():!!window.__trCommonFilteredV469;}catch(_){return false;}};
+  const dist=m=>m.scrollHeight-m.scrollTop-m.clientHeight;
+  let follow=true,settling=false,touching=false,gestureUntil=0,openUntil=0,sendUntil=0,sentAt=0,lastMine='',settleT=0,wasFiltered=false;
+  const inGesture=()=>touching||settling||Date.now()<gestureUntil;
+  function active(){
+    if(!shown()||inGesture())return false;
+    const f=filtered();
+    if(wasFiltered&&!f)follow=true; // 絞り込みをやめたら最新へ
+    wasFiltered=f;
+    if(f)return false;
+    const now=Date.now();
+    if(now<sendUntil)return true;
+    return follow&&now>openUntil;
   }
-  function soon(){if(raf)return;raf=requestAnimationFrame(()=>{raf=0;if(sticking())pin();});}
-  function arm(ms){
-    stickUntil=Date.now()+(ms||3000);touched=false;
-    pin();soon();
-    [40,120,250,450,700,1000,1500,2200,3000].forEach(t=>setTimeout(()=>{if(sticking())pin();},t));
+  window.__trChatStickV468=active; // v443・v437・下の余白の処理が参照（この間は一番下を優先）
+  window.__trChatFollowV469=active;
+  function pin(){const m=main();if(!m)return;if(dist(m)>1)m.scrollTop=m.scrollHeight;}
+  let raf=0;
+  function enforce(){if(raf)return;raf=requestAnimationFrame(()=>{raf=0;if(active())pin();});}
+  function settle(){
+    clearTimeout(settleT);settling=true;
+    settleT=setTimeout(()=>{
+      if(touching||Date.now()<gestureUntil){settle();return;}
+      settling=false;
+      const m=main();if(!m||!shown())return;
+      follow=dist(m)<60;
+    },120);
   }
   function lastMineId(){
-    const r=document.getElementById('trRoomThread');
-    const t=r&&r.offsetParent!==null?r:document.getElementById('portalChatThread');
-    if(!t)return '';
+    const t=roomOpen()?$('trRoomThread'):$('portalChatThread');if(!t)return '';
     const list=t.querySelectorAll('.msg[data-mid]');const last=list[list.length-1];
     return last&&last.classList.contains('mine')?String(last.dataset.mid||''):'';
   }
+  function sent(){
+    sentAt=Date.now();sendUntil=sentAt+3000;follow=true;gestureUntil=0;touching=false;settling=false;clearTimeout(settleT);lastMine=lastMineId();
+    pin();enforce();[60,200,450,800,1300,2000,3000].forEach(t=>setTimeout(enforce,t));
+  }
+  function opened(){openUntil=Date.now()+4500;follow=true;setTimeout(()=>{if(Date.now()>=openUntil&&!inGesture()){const m=main();if(m&&shown())follow=dist(m)<60;}},4600);}
+  const watched=new WeakSet();let ro=null;
+  function onThread(muts){
+    const t=muts[0]&&muts[0].target;
+    // ルームの切り替え（中身がほぼ入れ替わった）
+    if(t&&muts.some(x=>x.target===t&&x.removedNodes.length>3)){
+      const ids=new Set(Array.from(t.querySelectorAll('.msg[data-mid]')).map(e=>e.dataset.mid));
+      const prev=t.__v469ids||new Set();let same=0;ids.forEach(x=>{if(prev.has(x))same++;});
+      if(prev.size&&same<Math.min(prev.size,ids.size)*0.5&&Date.now()>sendUntil)opened();
+    }
+    if(t&&!(t.__v469ids&&t.__v469ids.size)&&t.querySelector('.msg[data-mid]')&&Date.now()>sendUntil)opened(); // 空から中身が入った（開いた直後の受信）
+    if(t)t.__v469ids=new Set(Array.from(t.querySelectorAll('.msg[data-mid]')).map(e=>e.dataset.mid));
+    if(sentAt&&Date.now()-sentAt<30000){const id=lastMineId();if(id&&id!==lastMine){lastMine=id;sendUntil=Date.now()+3000;follow=true;}}
+    enforce();
+  }
+  function watchThreads(){
+    ['portalChatThread','trRoomThread'].forEach(id=>{const t=$(id);if(!t||watched.has(t))return;watched.add(t);
+      t.__v469ids=new Set(Array.from(t.querySelectorAll('.msg[data-mid]')).map(e=>e.dataset.mid));
+      new MutationObserver(onThread).observe(t,{childList:true,subtree:true});
+      if(ro)ro.observe(t);});
+  }
   function start(){
-    const m=main();if(!m)return;
-    // 送信ボタン（共通チャット・ルーム）と、写真の「送る」
+    const m=main(),scr=$('screen-chat');if(!m||!scr)return;
+    if(window.ResizeObserver){ro=new ResizeObserver(enforce);ro.observe(m);}
+    watchThreads();
+    new MutationObserver(watchThreads).observe(scr,{childList:true,subtree:true});
+    // 指の操作
+    m.addEventListener('touchstart',()=>{touching=true;sendUntil=0;},{passive:true});
+    m.addEventListener('touchend',()=>{touching=false;gestureUntil=Date.now()+400;settle();},{passive:true});
+    m.addEventListener('touchcancel',()=>{touching=false;gestureUntil=Date.now()+400;settle();},{passive:true});
+    m.addEventListener('wheel',()=>{sendUntil=0;gestureUntil=Date.now()+300;settle();},{passive:true});
+    m.addEventListener('keydown',()=>{gestureUntil=Date.now()+300;settle();});
+    m.addEventListener('scroll',()=>{
+      if(inGesture()){gestureUntil=Math.max(gestureUntil,Date.now()+250);settle();return;} // はずみで動いている間
+      enforce(); // 指以外で動いた（描き直し・ほかの処理）→ 最新を見る状態なら戻す
+    },{passive:true});
+    m.addEventListener('load',e=>{if(e.target&&e.target.tagName==='IMG')enforce();},true);
+    window.visualViewport?.addEventListener('resize',enforce,{passive:true});
+    window.addEventListener('resize',enforce,{passive:true});
+    // 送信（文字・写真）
     document.addEventListener('click',e=>{
       const b=e.target.closest?.('#portalChatSend,#trRoomSend,#trImgSend [data-a="ok"]');if(!b)return;
-      const box=b.closest('.chatBox');const input=box&&box.querySelector('textarea');
-      if(b.id&&input&&!String(input.value||'').trim())return; // 空のときは何もしない
-      sentAt=Date.now();lastMine=lastMineId();arm(3000);
+      if(b.id){const input=b.closest('.chatBox')?.querySelector('textarea');if(input&&!String(input.value||'').trim())return;}
+      sent();
     },true);
-    // 自分のメッセージが新しく一番下に入ったら（写真の保存に時間がかかったときも）、そこから3秒合わせる
-    const onThread=()=>{
-      if(sentAt&&Date.now()-sentAt<30000){const id=lastMineId();if(id&&id!==lastMine){lastMine=id;arm(3000);return;}}
-      if(sticking())soon();
-    };
-    ['portalChatThread','trRoomThread'].forEach(id=>{const t=document.getElementById(id);if(t)new MutationObserver(onThread).observe(t,{childList:true,subtree:true});});
-    // ルームのスレッドは後から作られることがあるので、見つけたら見張る
-    const late=new MutationObserver(()=>{const t=document.getElementById('trRoomThread');if(t&&!t.__v468){t.__v468=true;new MutationObserver(onThread).observe(t,{childList:true,subtree:true});}});
-    late.observe(document.getElementById('screen-chat')||document.body,{childList:true,subtree:true});
-    const rt=document.getElementById('trRoomThread');if(rt)rt.__v468=true;
-    // 指で動かしたら合わせるのをやめる
-    m.addEventListener('touchstart',()=>{touched=true;},{passive:true});
-    m.addEventListener('wheel',()=>{touched=true;},{passive:true});
-    // 一番下にいるかを覚えておき、画面の高さが変わったら（キーボード・下のメニュー）一番下に合わせ直す
-    m.addEventListener('scroll',()=>{wasBottom=m.scrollHeight-m.scrollTop-m.clientHeight<60;},{passive:true});
-    // 開いた直後・ルームの切り替え直後の4.5秒は、今までの合わせ方（v437：未読の線・最後のメッセージ）に任せる
-    let openedAt=Date.now();
-    const scr=document.getElementById('screen-chat');
-    if(scr){let was=scr.classList.contains('hidden');new MutationObserver(()=>{const h=scr.classList.contains('hidden');if(was&&!h){openedAt=Date.now();wasBottom=true;}was=h;}).observe(scr,{attributes:true,attributeFilter:['class']});}
-    ['portalChatThread','trRoomThread'].forEach(id=>{const t=document.getElementById(id);if(t)new MutationObserver(ms=>{if(ms.some(x=>x.removedNodes.length>3)&&!sticking()){const keep=Date.now()-openedAt<4500;if(keep)openedAt=Date.now();}}).observe(t,{childList:true});});
-    // 一番下にいるときに中身が増えた・伸びた（リンクのカード・写真・既読・リアクション）ら、一番下のままにする
-    const onGrow=()=>{
-      if(!shown())return;
-      if(sticking()){soon();return;}
-      if(wasBottom&&Date.now()-openedAt>4500)pin();
-    };
-    if(window.ResizeObserver){const ro=new ResizeObserver(()=>requestAnimationFrame(onGrow));['portalChatThread','trRoomThread'].forEach(id=>{const t=document.getElementById(id);if(t)ro.observe(t);});
-      const lateRo=new MutationObserver(()=>{const t=document.getElementById('trRoomThread');if(t&&!t.__v468ro){t.__v468ro=true;ro.observe(t);}});lateRo.observe(scr||document.body,{childList:true,subtree:true});}
-    let lastH=m.clientHeight;
-    const onResize=()=>{
-      const h=m.clientHeight;
-      if(sticking()){pin();lastH=h;return;}
-      if(h!==lastH){const keep=wasBottom;lastH=h;if(keep&&shown())pin();}
-    };
-    if(window.ResizeObserver)new ResizeObserver(onResize).observe(m);
-    window.visualViewport?.addEventListener('resize',()=>requestAnimationFrame(onResize),{passive:true});
-    m.addEventListener('load',e=>{if(e.target&&e.target.tagName==='IMG'&&sticking())soon();},true);
-    new MutationObserver(()=>{if(sticking())soon();}).observe(document.body,{attributes:true,attributeFilter:['class']});
+    document.addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)&&e.target&&/^(portalChatInput|trRoomInput)$/.test(e.target.id||'')&&String(e.target.value||'').trim())sent();},true);
+    // 入力欄を押したら最新を見る（今までも最新へ移動していた）
+    document.addEventListener('focusin',e=>{if(e.target&&/^(portalChatInput|trRoomInput)$/.test(e.target.id||'')&&!filtered()){follow=true;enforce();}},true);
+    // 開いたとき
+    let was=scr.classList.contains('hidden');
+    new MutationObserver(()=>{const h=scr.classList.contains('hidden');if(was&&!h)opened();was=h;}).observe(scr,{attributes:true,attributeFilter:['class']});
+    if(!was)opened();
+    // ルームに入った・出たとき
+    let roomWas=document.body.classList.contains('trRoomOpen');
+    new MutationObserver(()=>{const r=document.body.classList.contains('trRoomOpen');if(r!==roomWas){roomWas=r;opened();}}).observe(document.body,{attributes:true,attributeFilter:['class']});
+    // 念のための見回り（見ているときだけ）
+    setInterval(()=>{if(document.visibilityState==='visible'&&active())pin();},300);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
 </script>
+
 </body>
 </html>
