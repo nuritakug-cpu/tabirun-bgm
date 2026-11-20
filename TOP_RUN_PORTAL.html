@@ -1,3 +1,4 @@
+<!-- 2026-11-20 v471: HOME画像に「色の表示」（そのまま／カラー／モノクロ）を追加。ポータルカラーに CLEAR（ホワイト×イエロー×ブラック）を追加。Firebaseの保存先・Auth・Rulesは変更なし（HOME画像の調整値に colorMode、personalColor.preset に clear が入るのみ）。 -->
 <!-- TOP RUN PORTAL v470 | 2026-11-20 | Parent v469. チャット：ルームに入って未読を確認するとき、変な位置へずれる不具合を修正。これまでは入った瞬間に未読の線へ一度合わせるだけで（v437の合わせ直しはチャット画面を開いたときだけで、ルームに入ったときは働いていなかった）、そのあと写真・カードの読み込みや既読の描き直しで位置がずれていた。v470ではルームに入った直後（4.5秒、写真が読み込み終わるまで最大10秒）は未読の線（なければ一番下）に合わせ続ける。指で動かしたらやめる。共通チャットを開いたときも同じ。通信の変更なし。Rules変更なし。 -->
 <!-- TOP RUN PORTAL v469 | 2026-11-19 | Parent v468. チャット：送信してしばらくすると上の方（前の日のメッセージ）へ動いてしまう不具合を修正。v468は送信後3秒だけ一番下に合わせていたため、そのあとの描き直し（既読の更新・写真やカードの読み込み）で位置がずれていた。v469では「一番下を見ている状態」を指の操作だけで決める：指で上へ動かすまでは、何が描き直されても一番下（最新）にとどまる（0.3秒ごとにも確認）。上へ戻って読んでいるときは今までどおりその位置にとどまる。開いた直後4.5秒は未読の線の合わせ方（v437）を優先。日付で絞り込み中は動かさない。共通チャット・ルームとも。通信の変更なし。Rules変更なし。 -->
 <!-- TOP RUN PORTAL v468 | 2026-11-19 | Parent v467. チャット：送信したあと、自分のメッセージ（一番下）が見えない位置に止まる不具合を修正。原因は、送信で入力欄から指が離れると下のメニューが戻り、下の余白が広がるのにスクロールの位置がそのままだったため（キーボードが閉じるときも同じ）。(1) 一番下にいるときに下の余白・画面の高さが変わったら、一番下に合わせ直す。(2) 送信（文字・写真）してから3秒間は、自分のメッセージが一番下に見えるように合わせ続ける（指で動かしたらやめる）。共通チャット・ルームとも。通信の変更なし。Rules変更なし。 -->
@@ -797,7 +798,7 @@ button,a{font:inherit;color:inherit} button{cursor:pointer} a{text-decoration:no
 main{padding:20px 16px 30px}
 .hero{display:grid;grid-template-columns:1fr auto;gap:18px;align-items:end;padding:2px 2px 20px;position:relative;isolation:isolate}
 .hero>div:not(.homeHeroBackdrop){position:relative;z-index:1}
-.homeHeroBackdrop{position:absolute;z-index:0;left:50%;right:auto;top:-12px;width:100%;height:var(--portal-home-hero-range-height,calc(100% + 28px));transform:translateX(-50%);pointer-events:none;background-image:var(--portal-home-hero-image,none);background-repeat:no-repeat;background-size:var(--portal-home-hero-size,contain);background-position:var(--portal-home-hero-x,100%) var(--portal-home-hero-y-offset,0px);opacity:var(--portal-home-hero-opacity,.20);filter:grayscale(1) contrast(.92);mix-blend-mode:multiply;-webkit-mask-image:var(--portal-home-hero-mask-x,linear-gradient(90deg,transparent 0%,#000 18%,#000 82%,transparent 100%)),var(--portal-home-hero-mask-y,linear-gradient(180deg,transparent 0%,#000 24px,#000 calc(100% - 88px),transparent 100%));-webkit-mask-composite:source-in;mask-image:var(--portal-home-hero-mask-x,linear-gradient(90deg,transparent 0%,#000 18%,#000 82%,transparent 100%)),var(--portal-home-hero-mask-y,linear-gradient(180deg,transparent 0%,#000 24px,#000 calc(100% - 88px),transparent 100%));mask-composite:intersect}
+.homeHeroBackdrop{position:absolute;z-index:0;left:50%;right:auto;top:-12px;width:100%;height:var(--portal-home-hero-range-height,calc(100% + 28px));transform:translateX(-50%);pointer-events:none;background-image:var(--portal-home-hero-image,none);background-repeat:no-repeat;background-size:var(--portal-home-hero-size,contain);background-position:var(--portal-home-hero-x,100%) var(--portal-home-hero-y-offset,0px);opacity:var(--portal-home-hero-opacity,.20);filter:var(--portal-home-hero-filter,grayscale(1) contrast(.92));mix-blend-mode:var(--portal-home-hero-blend,multiply);-webkit-mask-image:var(--portal-home-hero-mask-x,linear-gradient(90deg,transparent 0%,#000 18%,#000 82%,transparent 100%)),var(--portal-home-hero-mask-y,linear-gradient(180deg,transparent 0%,#000 24px,#000 calc(100% - 88px),transparent 100%));-webkit-mask-composite:source-in;mask-image:var(--portal-home-hero-mask-x,linear-gradient(90deg,transparent 0%,#000 18%,#000 82%,transparent 100%)),var(--portal-home-hero-mask-y,linear-gradient(180deg,transparent 0%,#000 24px,#000 calc(100% - 88px),transparent 100%));mask-composite:intersect}
 .portalHomeImageReadIssue{margin:-12px 2px 12px;padding:7px 10px;border-left:3px solid #ba8827;background:rgba(249,236,201,.94);font-size:11px;font-weight:800;color:#47381d;line-height:1.5}
 .portalHomeImageReadIssue[hidden]{display:none!important}
 :is(html[data-portal-personal-color="winter"],html[data-portal-personal-color="matte"]) .portalHomeImageReadIssue{display:none!important}
@@ -4246,46 +4247,46 @@ html[data-portal-personal-color="winter"]{
  --pc-ui-helper:#c5ece7;
 }
 /* Each chosen button's pair wins over ordinary theme button rules. */
-html[data-portal-personal-color]:not([data-portal-personal-color="original"]) .portalRsvpSection{
+html[data-portal-personal-color]:not([data-portal-personal-color="original"]):not([data-portal-personal-color="clear"]) .portalRsvpSection{
  color:var(--pc-rsvp-text);border-color:var(--pc-rsvp-line);
 }
 html[data-portal-personal-color="winter"] .portalRsvpSection{background:var(--pc-rsvp-bg)!important;}
-html[data-portal-personal-color]:not([data-portal-personal-color="original"]) .portalRsvpCurrent,
-html[data-portal-personal-color]:not([data-portal-personal-color="original"]) .portalRsvpState,
-html[data-portal-personal-color]:not([data-portal-personal-color="original"]) .portalRsvpCaution{
+html[data-portal-personal-color]:not([data-portal-personal-color="original"]):not([data-portal-personal-color="clear"]) .portalRsvpCurrent,
+html[data-portal-personal-color]:not([data-portal-personal-color="original"]):not([data-portal-personal-color="clear"]) .portalRsvpState,
+html[data-portal-personal-color]:not([data-portal-personal-color="original"]):not([data-portal-personal-color="clear"]) .portalRsvpCaution{
  color:var(--pc-rsvp-muted)!important;
 }
-html[data-portal-personal-color]:not([data-portal-personal-color="original"]) .portalRsvpCurrent strong,
-html[data-portal-personal-color]:not([data-portal-personal-color="original"]) .portalRsvpTitle{color:var(--pc-rsvp-text)!important;}
-html[data-portal-personal-color]:not([data-portal-personal-color="original"]) .portalRsvpOptions button:not(.chosen):not([aria-pressed="true"]){
+html[data-portal-personal-color]:not([data-portal-personal-color="original"]):not([data-portal-personal-color="clear"]) .portalRsvpCurrent strong,
+html[data-portal-personal-color]:not([data-portal-personal-color="original"]):not([data-portal-personal-color="clear"]) .portalRsvpTitle{color:var(--pc-rsvp-text)!important;}
+html[data-portal-personal-color]:not([data-portal-personal-color="original"]):not([data-portal-personal-color="clear"]) .portalRsvpOptions button:not(.chosen):not([aria-pressed="true"]){
  background:var(--pc-rsvp-idle-bg)!important;color:var(--pc-rsvp-idle-ink)!important;
  border-color:var(--pc-rsvp-idle-border)!important;
 }
-html:where(:not(.portalAndroidHomeFontMatch))[data-portal-personal-color]:not([data-portal-personal-color="original"]) .portalRsvpOptions button:is(.chosen,[aria-pressed="true"]){
+html:where(:not(.portalAndroidHomeFontMatch))[data-portal-personal-color]:not([data-portal-personal-color="original"]):not([data-portal-personal-color="clear"]) .portalRsvpOptions button:is(.chosen,[aria-pressed="true"]){
  background:var(--pc-rsvp-chosen-bg)!important;color:var(--pc-rsvp-chosen-ink)!important;
  border:2px solid var(--pc-rsvp-chosen-border)!important;
  box-shadow:0 0 0 2px rgba(0,0,0,.11),inset 0 -2px 0 rgba(0,0,0,.1);
  font-weight:1000!important;
 }
-html:where(.portalAndroidHomeFontMatch)[data-portal-personal-color]:not([data-portal-personal-color="original"]) .portalRsvpOptions button:is(.chosen,[aria-pressed="true"]){
+html:where(.portalAndroidHomeFontMatch)[data-portal-personal-color]:not([data-portal-personal-color="original"]):not([data-portal-personal-color="clear"]) .portalRsvpOptions button:is(.chosen,[aria-pressed="true"]){
  background:var(--pc-rsvp-chosen-bg)!important;color:var(--pc-rsvp-chosen-ink)!important;
  border:2px solid var(--pc-rsvp-chosen-border)!important;
  box-shadow:0 0 0 2px rgba(0,0,0,.11),inset 0 -2px 0 rgba(0,0,0,.1);
  font-weight:800!important;
 }
-html[data-portal-personal-color]:not([data-portal-personal-color="original"]) .portalRsvpRoster{
+html[data-portal-personal-color]:not([data-portal-personal-color="original"]):not([data-portal-personal-color="clear"]) .portalRsvpRoster{
  border-top-color:var(--pc-rsvp-line)!important;
 }
-html[data-portal-personal-color]:not([data-portal-personal-color="original"]) .portalRsvpRoster summary{
+html[data-portal-personal-color]:not([data-portal-personal-color="original"]):not([data-portal-personal-color="clear"]) .portalRsvpRoster summary{
  color:var(--pc-rsvp-text)!important;
 }
-html[data-portal-personal-color]:not([data-portal-personal-color="original"]) .portalRsvpPerson{
+html[data-portal-personal-color]:not([data-portal-personal-color="original"]):not([data-portal-personal-color="clear"]) .portalRsvpPerson{
  background:var(--pc-rsvp-list-bg)!important;color:var(--pc-rsvp-list-ink)!important;
  border:0;
 }
 html[data-portal-personal-color="winter"] .portalRsvpPerson{border:1px solid var(--pc-rsvp-line)}
-html[data-portal-personal-color]:not([data-portal-personal-color="original"]) .portalRsvpPerson b{color:var(--pc-rsvp-list-ink)!important;}
-html[data-portal-personal-color]:not([data-portal-personal-color="original"]) .portalRsvpPerson :is(span,small){color:var(--pc-rsvp-list-muted)!important;}
+html[data-portal-personal-color]:not([data-portal-personal-color="original"]):not([data-portal-personal-color="clear"]) .portalRsvpPerson b{color:var(--pc-rsvp-list-ink)!important;}
+html[data-portal-personal-color]:not([data-portal-personal-color="original"]):not([data-portal-personal-color="clear"]) .portalRsvpPerson :is(span,small){color:var(--pc-rsvp-list-muted)!important;}
 /* Label family which previously retained dark colors against Winter's charcoal. */
 html[data-portal-personal-color="winter"] #screen-goal-tools :is(
  .portalLapCorrections label,#portalLapPresetHint,.portalLapFreeSum,
@@ -5135,7 +5136,7 @@ html[data-portal-personal-color="matte"] #screen-goal-tools{--guide-panel:#28212
 #portalReportCenter .trPersonReportActions button:disabled{opacity:.4}
 @media(max-width:370px){#portalReportCenter .trReportAxis button{font-size:13px;min-height:62px}#portalReportCenter .trPersonReportActions{flex-direction:column}}
 /* Five palette overrides keep active tab legible in light and dark management themes. */
-html[data-portal-personal-color="original"] #portalReportCenter{--tr-report-accent:#167d79}
+html:is([data-portal-personal-color="original"],[data-portal-personal-color="clear"]) #portalReportCenter{--tr-report-accent:#167d79}
 html[data-portal-personal-color="blue"] #portalReportCenter{--tr-report-accent:#155e97}
 html[data-portal-personal-color="sakura"] #portalReportCenter{--tr-report-accent:#8b4566}
 html[data-portal-personal-color="winter"] #portalReportCenter{--tr-report-accent:#146b73}
@@ -5311,13 +5312,13 @@ body.portalLimitedView .portalScreen:not(#screen-links){display:none!important}
 
 /* 2. The developer extras were illegible in the original palette. Keep their
    existing dark surfaces and make text legible instead of turning them white. */
-html:is([data-portal-personal-color="original"],[data-portal-personal-color="blue"],[data-portal-personal-color="sakura"]) #screen-management .portalManageMoreTabs button{
+html:is([data-portal-personal-color="original"],[data-portal-personal-color="clear"],[data-portal-personal-color="blue"],[data-portal-personal-color="sakura"]) #screen-management .portalManageMoreTabs button{
   background:#303735!important;
   border-color:#747d77!important;
   color:#fff!important;
   -webkit-text-fill-color:#fff!important;
 }
-html:is([data-portal-personal-color="original"],[data-portal-personal-color="blue"],[data-portal-personal-color="sakura"]) #screen-management .portalManageMoreTabs button.active{
+html:is([data-portal-personal-color="original"],[data-portal-personal-color="clear"],[data-portal-personal-color="blue"],[data-portal-personal-color="sakura"]) #screen-management .portalManageMoreTabs button.active{
   background:var(--gold-paper)!important;
   border-color:var(--gold-deep)!important;
   color:#332a0c!important;
@@ -5326,18 +5327,18 @@ html:is([data-portal-personal-color="original"],[data-portal-personal-color="blu
 
 /* Original HOME charcoal and gold; other existing personal color themes
    remain independent. Preserve all workflow button layout and typography. */
-html[data-portal-personal-color="original"] #screen-management .portalWorkflowMenu{
+html:is([data-portal-personal-color="original"],[data-portal-personal-color="clear"]) #screen-management .portalWorkflowMenu{
   background:linear-gradient(145deg,#333b39,#242a28);
   border-color:#858b84;
 }
-html[data-portal-personal-color="original"] #screen-management .portalWorkflowEyebrow{
+html:is([data-portal-personal-color="original"],[data-portal-personal-color="clear"]) #screen-management .portalWorkflowEyebrow{
   color:var(--gold-soft);
 }
-html[data-portal-personal-color="original"] #screen-management .portalWorkflowChoice{
+html:is([data-portal-personal-color="original"],[data-portal-personal-color="clear"]) #screen-management .portalWorkflowChoice{
   background:#35403d!important;
   border-color:#998b56;
 }
-html[data-portal-personal-color="original"] #screen-management .portalWorkflowChoice strong{
+html:is([data-portal-personal-color="original"],[data-portal-personal-color="clear"]) #screen-management .portalWorkflowChoice strong{
   color:var(--gold-soft)!important;
 }
 
@@ -5582,39 +5583,39 @@ html #screen-management :is(#developerChatDateFrom,#developerChatDateTo){
 }
 html:is([data-portal-personal-color="winter"],[data-portal-personal-color="matte"])
  #screen-management :is(#developerChatDateFrom,#developerChatDateTo){color-scheme:dark}
-html:is([data-portal-personal-color="original"],[data-portal-personal-color="blue"],[data-portal-personal-color="sakura"])
+html:is([data-portal-personal-color="original"],[data-portal-personal-color="clear"],[data-portal-personal-color="blue"],[data-portal-personal-color="sakura"])
  #screen-management :is(#developerChatDateFrom,#developerChatDateTo){color-scheme:light}
 
 /* ORIGINAL: keep the established charcoal HOME treatment instead of turning
    the dark action cards into pale/low-contrast ones. */
-html[data-portal-personal-color="original"] #screen-management .portalWorkflowMenu{
+html:is([data-portal-personal-color="original"],[data-portal-personal-color="clear"]) #screen-management .portalWorkflowMenu{
  background:linear-gradient(145deg,#333b39,#242a28)!important;color:#fff!important;border-color:#858b84!important;
 }
-html[data-portal-personal-color="original"] #screen-management .portalWorkflowMenu h3{
+html:is([data-portal-personal-color="original"],[data-portal-personal-color="clear"]) #screen-management .portalWorkflowMenu h3{
  color:#fff!important;-webkit-text-fill-color:#fff!important;
 }
-html[data-portal-personal-color="original"] #screen-management .portalWorkflowEyebrow{
+html:is([data-portal-personal-color="original"],[data-portal-personal-color="clear"]) #screen-management .portalWorkflowEyebrow{
  color:#e6d07c!important;-webkit-text-fill-color:#e6d07c!important;
 }
-html[data-portal-personal-color="original"] #screen-management .portalWorkflowChoice{
+html:is([data-portal-personal-color="original"],[data-portal-personal-color="clear"]) #screen-management .portalWorkflowChoice{
  background:#35403d!important;color:#fff!important;border-color:#998b56!important;
 }
-html[data-portal-personal-color="original"] #screen-management .portalWorkflowChoice :is(b,small){
+html:is([data-portal-personal-color="original"],[data-portal-personal-color="clear"]) #screen-management .portalWorkflowChoice :is(b,small){
  color:#fff!important;-webkit-text-fill-color:#fff!important;
 }
-html[data-portal-personal-color="original"] #screen-management .portalWorkflowChoice strong{
+html:is([data-portal-personal-color="original"],[data-portal-personal-color="clear"]) #screen-management .portalWorkflowChoice strong{
  color:#e6d07c!important;-webkit-text-fill-color:#e6d07c!important;
 }
-html[data-portal-personal-color="original"] :is(#screen-management .portalWorkflowTop,#screen-flow-manager #portalManagerBack){
+html:is([data-portal-personal-color="original"],[data-portal-personal-color="clear"]) :is(#screen-management .portalWorkflowTop,#screen-flow-manager #portalManagerBack){
  background:#333b39!important;color:#fff!important;border-color:#858b84!important;
 }
-html[data-portal-personal-color="original"] :is(#screen-management .portalWorkflowTop strong,#screen-flow-manager #portalManagerBack strong){
+html:is([data-portal-personal-color="original"],[data-portal-personal-color="clear"]) :is(#screen-management .portalWorkflowTop strong,#screen-flow-manager #portalManagerBack strong){
  color:#fff!important;-webkit-text-fill-color:#fff!important;
 }
-html[data-portal-personal-color="original"] :is(#screen-management .portalWorkflowTop button,#screen-flow-manager #portalManagerBack button){
+html:is([data-portal-personal-color="original"],[data-portal-personal-color="clear"]) :is(#screen-management .portalWorkflowTop button,#screen-flow-manager #portalManagerBack button){
  background:#414944!important;color:#fff!important;-webkit-text-fill-color:#fff!important;border-color:#b1b4a9!important;
 }
-html[data-portal-personal-color="original"] :is(#screen-management .portalWorkflowSearch,#screen-athlete-directory .portalWorkflowSearch){
+html:is([data-portal-personal-color="original"],[data-portal-personal-color="clear"]) :is(#screen-management .portalWorkflowSearch,#screen-athlete-directory .portalWorkflowSearch){
  background:#333b39!important;color:#fff!important;-webkit-text-fill-color:#fff!important;border-color:#858b84!important;
 }
 /* Existing MATTE controls with user-visible text on a white surface. */
@@ -7041,6 +7042,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       <p class="portalColorIntro">お好きなカラーを選択してください。</p>
       <div class="portalColorChoices" role="group" aria-label="ポータルのカラーを選ぶ">
         <button type="button" class="portalColorChoice" data-color="original" aria-pressed="true"><span class="portalColorSwatch"><strong>ORIGINAL.</strong></span><span class="portalColorName">オリジナル（イエロー）<span class="portalColorSelected">✓ 選択中</span></span></button>
+        <button type="button" class="portalColorChoice" data-color="clear" aria-pressed="false"><span class="portalColorSwatch"><strong>CLEAR.</strong></span><span class="portalColorName">クリア<span class="portalColorSelected">✓ 選択中</span></span></button>
         <button type="button" class="portalColorChoice" data-color="blue" aria-pressed="false"><span class="portalColorSwatch"><strong>BLUE.</strong></span><span class="portalColorName">ブルー<span class="portalColorSelected">✓ 選択中</span></span></button>
         <button type="button" class="portalColorChoice" data-color="sakura" aria-pressed="false"><span class="portalColorSwatch"><strong>SAKURA.</strong></span><span class="portalColorName">桜色<span class="portalColorSelected">✓ 選択中</span></span></button>
         <button type="button" class="portalColorChoice" data-color="winter" aria-pressed="false"><span class="portalColorSwatch"><strong>WINTER MINT.</strong></span><span class="portalColorName">ウインターミント<span class="portalColorSelected">✓ 選択中</span></span></button>
@@ -7955,7 +7957,8 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalFormRow" style="margin-top:12px"><label>画像ファイル</label><input id="developerHomeImageFile" type="file" accept="image/*"></div>
         <div class="portalHomeImagePreview" id="developerHomeImagePreview"><span>画像を選択するとここに表示されます</span></div>
         <div class="portalHomeImageControls" aria-label="HOME背景画像調整">
-          <div class="portalHomeImageControl"><label for="developerHomeImageOpacity">透過率</label><input id="developerHomeImageOpacity" type="range" min="5" max="60" step="1" value="24"><output id="developerHomeImageOpacityValue">24%</output></div>
+          <div class="portalHomeImageControl"><label for="developerHomeImageColorMode">色の表示</label><select id="developerHomeImageColorMode"><option value="natural">そのまま</option><option value="color">カラー</option><option value="mono" selected>モノクロ</option></select><output>色</output></div>
+          <div class="portalHomeImageControl"><label for="developerHomeImageOpacity">透過率</label><input id="developerHomeImageOpacity" type="range" min="5" max="100" step="1" value="24"><output id="developerHomeImageOpacityValue">24%</output></div>
           <div class="portalHomeImageControl"><label for="developerHomeImageX">左右位置</label><input id="developerHomeImageX" type="range" min="0" max="100" step="1" value="76"><output id="developerHomeImageXValue">76%</output></div>
           <div class="portalHomeImageControl"><label for="developerHomeImageY">上下位置</label><input id="developerHomeImageY" type="range" min="0" max="100" step="1" value="6"><output id="developerHomeImageYValue">6%</output></div>
           <div class="portalHomeImageControl"><label for="developerHomeImageZoom">ズーム</label><input id="developerHomeImageZoom" type="range" min="70" max="180" step="1" value="144"><output id="developerHomeImageZoomValue">144%</output></div>
@@ -7963,7 +7966,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
           <div class="portalHomeImageControl"><label for="developerHomeImageFeather">境界ぼかし</label><input id="developerHomeImageFeather" type="range" min="0" max="38" step="1" value="17"><output id="developerHomeImageFeatherValue">17%</output></div>
           <div class="portalHomeImageControl"><label for="developerHomeImageFadeDirection">横フェード</label><select id="developerHomeImageFadeDirection"><option value="both" selected>両端</option><option value="left">左側</option><option value="right">右側</option><option value="none">なし</option></select><output>方向</output></div>
           <div class="portalHomeImageControl"><label for="developerHomeImageBottomFade">下側フェード</label><input id="developerHomeImageBottomFade" type="range" min="0" max="45" step="1" value="22"><output id="developerHomeImageBottomFadeValue">22%</output></div>
-          <div class="portalHomeImageControlHint">デフォルトは、写真をHOME上部〜MY PAGE下端付近まで広げ、左右と下側を自然にフェードさせる設定です。左右位置：0%＝左／100%＝右。</div>
+          <div class="portalHomeImageControlHint">デフォルトは、写真をHOME上部〜MY PAGE下端付近まで広げ、左右と下側を自然にフェードさせる設定です。左右位置：0%＝左／100%＝右。色の表示：そのまま＝写真の色のまま／カラー＝色を残して背景になじませる／モノクロ＝白黒（これまでの表示）。写真をはっきり見せたいときは透過率も上げてください。</div>
         </div>
         <div class="portalDeveloperToolActions">
           <button class="primary" id="developerHomeImageApply" type="button">HOMEへ反映</button>
@@ -11573,7 +11576,10 @@ if(view==='list')portalApplyManageSearch(kind);
   let developerHomeImageNaturalApplied={w:0,h:0};
   let developerHomeImageApplied=false;
   let developerHomeImagePreviewAspect=0;
-  const developerHomeImageAdjust={opacity:24,x:76,y:6,zoom:144,range:125,feather:17,fadeDirection:'both',bottomFade:22};
+  const developerHomeImageAdjust={opacity:24,x:76,y:6,zoom:144,range:125,feather:17,fadeDirection:'both',bottomFade:22,colorMode:'mono'};
+  // v471: トップ画像の色の出し方。natural＝そのまま（加工なし）／color＝カラー（背景になじませる）／mono＝モノクロ（これまでの表示）
+  const developerHomeImageColorModes={natural:{filter:'none',blend:'normal',preview:'none'},color:{filter:'none',blend:'multiply',preview:'none'},mono:{filter:'grayscale(1) contrast(.92)',blend:'multiply',preview:'grayscale(1) contrast(.92)'}};
+  function developerHomeImageColorMode(){return Object.prototype.hasOwnProperty.call(developerHomeImageColorModes,developerHomeImageAdjust.colorMode)?developerHomeImageAdjust.colorMode:'mono';}
   const portalDeveloperParticipants=[];
   const portalVerifiedEventBasePeople=[];
   const portalVerifiedNumberRegistrations=[];
@@ -11680,6 +11686,7 @@ if(view==='list')portalApplyManageSearch(kind);
     const size=containedImageSize(preview.clientWidth,preview.clientHeight,developerHomeImageNaturalPending,developerHomeImageAdjust.zoom);
     preview.style.backgroundSize=size?`${size.w}px ${size.h}px`:'contain';
     preview.style.backgroundPosition=`${developerHomeImageAdjust.x}% ${developerHomeImageAdjust.y}%`;
+    preview.style.filter=developerHomeImageColorModes[developerHomeImageColorMode()].preview;
     if(preview.clientWidth>0&&preview.clientHeight>0){
       developerHomeImagePreviewAspect=preview.clientWidth/preview.clientHeight;
     }
@@ -11723,6 +11730,9 @@ if(view==='list')portalApplyManageSearch(kind);
   function applyDeveloperHomeImageAdjustmentsV448(){
     const root=document.documentElement,backdrop=$('homeHeroBackdrop');
     root.style.setProperty('--portal-home-hero-opacity',String(developerHomeImageAdjust.opacity/100));
+    const colorMode=developerHomeImageColorModes[developerHomeImageColorMode()];
+    root.style.setProperty('--portal-home-hero-filter',colorMode.filter);
+    root.style.setProperty('--portal-home-hero-blend',colorMode.blend);
     root.style.setProperty('--portal-home-hero-mask-x',developerHomeImageHorizontalMask());
     const baseRange=developerHomeImageBaseRangeHeight();
     const rangeHeight=baseRange?Math.round(baseRange*(developerHomeImageAdjust.range/100)):Math.max(1,backdrop?.clientHeight||1);
@@ -11758,8 +11768,8 @@ if(view==='list')portalApplyManageSearch(kind);
   // v467: 画面の向き・幅が変わったら（PCの窓の大きさ変更を含む）トップ画像の位置を計算し直す。通信なし。
   (function(){let t=0,lastW=window.innerWidth;window.addEventListener('resize',()=>{if(window.innerWidth===lastW)return;lastW=window.innerWidth;clearTimeout(t);t=setTimeout(()=>{try{if(developerHomeImageApplied)applyDeveloperHomeImageAdjustments();}catch(_){}},200);},{passive:true});})();
   function resetDeveloperHomeImageAdjustments(applyHome=true){
-    developerHomeImageAdjust.opacity=24;developerHomeImageAdjust.x=76;developerHomeImageAdjust.y=6;developerHomeImageAdjust.zoom=144;developerHomeImageAdjust.range=125;developerHomeImageAdjust.feather=17;developerHomeImageAdjust.fadeDirection='both';developerHomeImageAdjust.bottomFade=22;
-    const values={developerHomeImageOpacity:24,developerHomeImageX:76,developerHomeImageY:6,developerHomeImageZoom:144,developerHomeImageRange:125,developerHomeImageFeather:17,developerHomeImageFadeDirection:'both',developerHomeImageBottomFade:22};
+    developerHomeImageAdjust.opacity=24;developerHomeImageAdjust.x=76;developerHomeImageAdjust.y=6;developerHomeImageAdjust.zoom=144;developerHomeImageAdjust.range=125;developerHomeImageAdjust.feather=17;developerHomeImageAdjust.fadeDirection='both';developerHomeImageAdjust.bottomFade=22;developerHomeImageAdjust.colorMode='mono';
+    const values={developerHomeImageOpacity:24,developerHomeImageX:76,developerHomeImageY:6,developerHomeImageZoom:144,developerHomeImageRange:125,developerHomeImageFeather:17,developerHomeImageFadeDirection:'both',developerHomeImageBottomFade:22,developerHomeImageColorMode:'mono'};
     Object.entries(values).forEach(([id,v])=>{const el=$(id);if(el)el.value=String(v);});
     updateDeveloperHomeImageControlLabels();renderDeveloperHomeImagePreview();
     if(applyHome&&developerHomeImageApplied)applyDeveloperHomeImageAdjustments();
@@ -11776,6 +11786,12 @@ if(view==='list')portalApplyManageSearch(kind);
       updateDeveloperHomeImageControlLabels();renderDeveloperHomeImagePreview();
       if(developerHomeImageApplied)applyDeveloperHomeImageAdjustments();
     });
+  });
+  $('developerHomeImageColorMode')?.addEventListener('change',()=>{
+    const v=String($('developerHomeImageColorMode')?.value||'mono');
+    developerHomeImageAdjust.colorMode=Object.prototype.hasOwnProperty.call(developerHomeImageColorModes,v)?v:'mono';
+    renderDeveloperHomeImagePreview();
+    if(developerHomeImageApplied)applyDeveloperHomeImageAdjustments();
   });
   $('developerHomeImageFadeDirection')?.addEventListener('change',()=>{
     developerHomeImageAdjust.fadeDirection=String($('developerHomeImageFadeDirection')?.value||'both');
@@ -18530,9 +18546,10 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
       developerHomeImagePending=value.image;
       developerHomeImageNaturalPending={w:Number(value.width||0),h:Number(value.height||0)};
       developerHomeImageNaturalApplied={...developerHomeImageNaturalPending};
-      const allowed=['opacity','x','y','zoom','range','feather','fadeDirection','bottomFade'];
+      const allowed=['opacity','x','y','zoom','range','feather','fadeDirection','bottomFade','colorMode'];
+      developerHomeImageAdjust.colorMode='mono'; // v471: 色の設定がない以前の保存データは、これまでどおりモノクロ
       allowed.forEach(key=>{if(value.adjust&&key in value.adjust)developerHomeImageAdjust[key]=value.adjust[key];});
-      const controlMap={opacity:'developerHomeImageOpacity',x:'developerHomeImageX',y:'developerHomeImageY',zoom:'developerHomeImageZoom',range:'developerHomeImageRange',feather:'developerHomeImageFeather',fadeDirection:'developerHomeImageFadeDirection',bottomFade:'developerHomeImageBottomFade'};
+      const controlMap={opacity:'developerHomeImageOpacity',x:'developerHomeImageX',y:'developerHomeImageY',zoom:'developerHomeImageZoom',range:'developerHomeImageRange',feather:'developerHomeImageFeather',fadeDirection:'developerHomeImageFadeDirection',bottomFade:'developerHomeImageBottomFade',colorMode:'developerHomeImageColorMode'};
       Object.entries(controlMap).forEach(([key,id])=>{const el=$(id);if(el)el.value=String(developerHomeImageAdjust[key]);});
       root.style.setProperty('--portal-home-hero-image',`url("${nextUrl}")`);
       developerHomeImageApplied=true;
@@ -18991,12 +19008,47 @@ if(new URLSearchParams(location.search).get('commonPilot')==='1'){
 }
 </script>
 
+<style id="portal-personal-color-clear-v471">
+/* v471: CLEAR = TOP RUNロゴの配色（ホワイト・イエロー・ブラック）。オリジナルの見た目を土台に、色だけを差し替える。寸法・文字・配置は変えない。 */
+html[data-portal-personal-color="clear"]{
+ --paper:#ffffff;--paper2:#f5f5f3;--ink:#111111;--ink2:#2b2b2b;--white:#ffffff;
+ --muted:#666666;--muted2:#a0a0a0;--line:#e1e1e1;--line2:#ececec;
+ --dark:#111111;--dark2:#000000;--sage:#5a5a5a;--sage2:#333333;
+ --gold:#ffd400;--gold-soft:#ffe04d;--gold-deep:#806600;--gold-paper:#fff5bf;
+ --shadow:0 14px 34px rgba(0,0,0,.08);--shadow2:0 6px 18px rgba(0,0,0,.06);
+ --pc-rsvp-bg:#ffffff;--pc-rsvp-line:#e6e6e6;--pc-rsvp-chosen-bg:#ffd400;--pc-rsvp-chosen-ink:#111111;--pc-rsvp-chosen-border:#111111;
+ --pc-image-preview-bg:#f2f2f2;
+}
+html[data-portal-personal-color="clear"] body{background:#ffffff;background-image:none}
+html[data-portal-personal-color="clear"] .portalScreen{background:#ffffff;background-image:none}
+html[data-portal-personal-color="clear"] .top,
+html[data-portal-personal-color="clear"] .portalScreenHead{background:#0d0d0d;background-image:none;box-shadow:inset 0 -3px 0 #ffd400,0 6px 18px rgba(0,0,0,.12)}
+html[data-portal-personal-color="clear"] .portalBottomTabs{background:rgba(10,10,10,.97);border-top:2px solid #ffd400}
+html[data-portal-personal-color="clear"] .portalBottomBadge{background:#ffd400;color:#111}
+html[data-portal-personal-color="clear"] .hero h1{color:#111}
+html[data-portal-personal-color="clear"] .hero h1 .runDot{color:#ffd400;-webkit-text-stroke:1px #111}
+html[data-portal-personal-color="clear"] .hero h1 span{color:#444}
+html[data-portal-personal-color="clear"] .heroDate{border-left-color:#ffd400}
+html[data-portal-personal-color="clear"] .myCard,
+html[data-portal-personal-color="clear"] .portalProfileHero{background:linear-gradient(135deg,#0d0d0d 0%,#262626 100%)}
+html[data-portal-personal-color="clear"] :is(.calendarCard,.portalPanel,.event,.modalCard){background:#ffffff;border-color:#e3e3e3}
+html[data-portal-personal-color="clear"] .eventDate{background:#f4f4f2}
+html[data-portal-personal-color="clear"] .portalAgendaItem{background:#ffffff;border-color:#e6e6e6}
+html[data-portal-personal-color="clear"] .portalAgendaItem.event{border-left-color:#ffd400;background:#ffffff}
+html[data-portal-personal-color="clear"] .portalNoticePop{background:linear-gradient(135deg,#fffef5,#fff1a6);border-color:#f0d43c}
+html[data-portal-personal-color="clear"] .portalRegistrationState{background:#fff8cc;border-color:#f0d43c}
+html[data-portal-personal-color="clear"] .portalManageTabs button.active{border-color:#111;background:#ffd400;color:#111}
+html[data-portal-personal-color="clear"] .portalCalendarMode{background:#f3f3f3;border-color:#e3e3e3}
+html[data-portal-personal-color="clear"] .portalCalendarMode button[aria-pressed="true"]{background:#111;color:#fff}
+html[data-portal-personal-color="clear"] .sectionBar h2::before{background:#ffd400;box-shadow:0 0 0 1px #111}
+#screen-personal-color .portalColorChoice[data-color="clear"] .portalColorSwatch{color:#111;background:linear-gradient(118deg,#ffffff 0 58%,#ffd400 58% 80%,#111111 80% 100%);border-left:8px solid #111}
+</style>
 <script id="portal-personal-color-device-preview-20261014">
 /* Review-stage device persistence only. No Firebase/UID/profileId write or new identity path. */
 (function(){
   'use strict';
   var KEY='toprun.portal.personalColor.preview.v1';
-  var choices=['original','blue','sakura','winter','matte'];
+  var choices=['original','clear','blue','sakura','winter','matte'];
   var root=document.documentElement;
   function safeColor(value){return choices.indexOf(value)>=0?value:'original';}
   function read(){try{return safeColor(localStorage.getItem(KEY));}catch(_){return 'original';}}
