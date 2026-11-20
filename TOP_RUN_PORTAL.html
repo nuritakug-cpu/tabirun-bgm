@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v470 | 2026-11-20 | Parent v469. チャット：ルームに入って未読を確認するとき、変な位置へずれる不具合を修正。これまでは入った瞬間に未読の線へ一度合わせるだけで（v437の合わせ直しはチャット画面を開いたときだけで、ルームに入ったときは働いていなかった）、そのあと写真・カードの読み込みや既読の描き直しで位置がずれていた。v470ではルームに入った直後（4.5秒、写真が読み込み終わるまで最大10秒）は未読の線（なければ一番下）に合わせ続ける。指で動かしたらやめる。共通チャットを開いたときも同じ。通信の変更なし。Rules変更なし。 -->
 <!-- TOP RUN PORTAL v469 | 2026-11-19 | Parent v468. チャット：送信してしばらくすると上の方（前の日のメッセージ）へ動いてしまう不具合を修正。v468は送信後3秒だけ一番下に合わせていたため、そのあとの描き直し（既読の更新・写真やカードの読み込み）で位置がずれていた。v469では「一番下を見ている状態」を指の操作だけで決める：指で上へ動かすまでは、何が描き直されても一番下（最新）にとどまる（0.3秒ごとにも確認）。上へ戻って読んでいるときは今までどおりその位置にとどまる。開いた直後4.5秒は未読の線の合わせ方（v437）を優先。日付で絞り込み中は動かさない。共通チャット・ルームとも。通信の変更なし。Rules変更なし。 -->
 <!-- TOP RUN PORTAL v468 | 2026-11-19 | Parent v467. チャット：送信したあと、自分のメッセージ（一番下）が見えない位置に止まる不具合を修正。原因は、送信で入力欄から指が離れると下のメニューが戻り、下の余白が広がるのにスクロールの位置がそのままだったため（キーボードが閉じるときも同じ）。(1) 一番下にいるときに下の余白・画面の高さが変わったら、一番下に合わせ直す。(2) 送信（文字・写真）してから3秒間は、自分のメッセージが一番下に見えるように合わせ続ける（指で動かしたらやめる）。共通チャット・ルームとも。通信の変更なし。Rules変更なし。 -->
 <!-- TOP RUN PORTAL v466 | 2026-11-18 | Parent v465. Rules v385 が必要（v465と同じ）。イベントの一覧（トップのEVENTS・イベント画面・過去大会）に「2026.11月」の年月の見出しを付けた。月をまたぐ一覧で月を見誤らないように。並び順・カードの形は変えない。通信の変更なし。 -->
@@ -7319,7 +7320,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v469</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v470</b></div>
   </div>
 </div>
 
@@ -7563,7 +7564,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v469</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v470</b></div>
   </div>
 </div>
 
@@ -33594,7 +33595,7 @@ main > .hero{margin-left:-12px!important;margin-right:-12px!important;padding-le
   }
   function restore(){
     const m=main();if(!m||atBottom||!anchor||moving)return;
-    if(window.__trChatStickV468?.())return; // v468: 送信直後は一番下に合わせる側を優先
+    if(window.__trChatStickV468?.()||window.__trChatOpeningV470?.())return; // v468・v470: 送信直後・開いた直後はそちらを優先
     // v455: 指やはずみで動いている間は合わせない（古い目印へ跳ね戻る原因）
     if(Date.now()-lastMove<400)return;
     // v455: 一番下にいるなら戻さない
@@ -34002,6 +34003,8 @@ main > .hero{margin-left:-12px!important;margin-right:-12px!important;padding-le
 }
 </style>
 <script id="v469-chat-follow">
+/* v470: ルームに入った直後（4.5秒、写真が読み込み終わるまで最大10秒）は、未読の線（なければ一番下）に合わせ続ける。
+   これまでは入った瞬間に一度合わせるだけで、そのあと写真・カードの読み込みや既読の描き直しで位置がずれていた。 */
 /* v469: チャットの「一番下（最新）を見ている状態」を、指の操作だけで決める。
    ・指で上へ動かして止めた位置が一番下から離れていたら「読んでいる」状態（v443：その位置にとどまる）。
    ・それ以外（一番下にいる・送信した・入力欄を押した）は「最新を見る」状態で、既読の更新・写真やカードの読み込み・
@@ -34017,7 +34020,7 @@ main > .hero{margin-left:-12px!important;margin-right:-12px!important;padding-le
   const roomOpen=()=>{const r=$('trRoomThread');return !!r&&r.offsetParent!==null;};
   const filtered=()=>{try{return roomOpen()?!!window.__trRoomFilteredV469?.():!!window.__trCommonFilteredV469;}catch(_){return false;}};
   const dist=m=>m.scrollHeight-m.scrollTop-m.clientHeight;
-  let follow=true,settling=false,touching=false,gestureUntil=0,openUntil=0,sendUntil=0,sentAt=0,lastMine='',settleT=0,wasFiltered=false;
+  let follow=true,openStart=0,openDone=true,settling=false,touching=false,gestureUntil=0,openUntil=0,sendUntil=0,sentAt=0,lastMine='',settleT=0,wasFiltered=false;
   const inGesture=()=>touching||settling||Date.now()<gestureUntil;
   function active(){
     if(!shown()||inGesture())return false;
@@ -34027,13 +34030,25 @@ main > .hero{margin-left:-12px!important;margin-right:-12px!important;padding-le
     if(f)return false;
     const now=Date.now();
     if(now<sendUntil)return true;
-    return follow&&now>openUntil;
+    return follow&&openDone;
   }
+  // v470: 開いた直後の合わせ方（未読の線 → なければ一番下）
+  const thread=()=>roomOpen()?$('trRoomThread'):$('portalChatThread');
+  function opening(){return !openDone&&shown()&&!inGesture()&&!filtered()&&Date.now()>=sendUntil;}
+  function alignOpen(){
+    const m=main(),t=thread();if(!m||!t)return;
+    const line=t.querySelector('.chatUnreadLine');
+    if(line&&line.offsetParent!==null){
+      const d=line.getBoundingClientRect().top-m.getBoundingClientRect().top-14;
+      if(Math.abs(d)>2)m.scrollTop+=d;
+    }else if(t.querySelector('.msg[data-mid]'))pin();
+  }
+  window.__trChatOpeningV470=opening;
   window.__trChatStickV468=active; // v443・v437・下の余白の処理が参照（この間は一番下を優先）
   window.__trChatFollowV469=active;
   function pin(){const m=main();if(!m)return;if(dist(m)>1)m.scrollTop=m.scrollHeight;}
   let raf=0;
-  function enforce(){if(raf)return;raf=requestAnimationFrame(()=>{raf=0;if(active())pin();});}
+  function enforce(){if(raf)return;raf=requestAnimationFrame(()=>{raf=0;if(opening())alignOpen();else if(active())pin();});}
   function settle(){
     clearTimeout(settleT);settling=true;
     settleT=setTimeout(()=>{
@@ -34052,7 +34067,17 @@ main > .hero{margin-left:-12px!important;margin-right:-12px!important;padding-le
     sentAt=Date.now();sendUntil=sentAt+3000;follow=true;gestureUntil=0;touching=false;settling=false;clearTimeout(settleT);lastMine=lastMineId();
     pin();enforce();[60,200,450,800,1300,2000,3000].forEach(t=>setTimeout(enforce,t));
   }
-  function opened(){openUntil=Date.now()+4500;follow=true;setTimeout(()=>{if(Date.now()>=openUntil&&!inGesture()){const m=main();if(m&&shown())follow=dist(m)<60;}},4600);}
+  function opened(){openStart=Date.now();openUntil=openStart+4500;openDone=false;follow=true;[0,60,200,500].forEach(t=>setTimeout(enforce,t));}
+  function openTick(){
+    if(openDone)return;
+    const now=Date.now();
+    if(now<openUntil)return;
+    // 写真がまだ読み込み中なら少し延ばす（最大10秒）
+    const t=thread();const busy=t&&Array.from(t.querySelectorAll('img')).some(i=>!i.complete);
+    if(busy&&now-openStart<10000&&!inGesture()){openUntil=now+400;return;}
+    openDone=true;
+    if(!inGesture()){const m=main();if(m&&shown())follow=dist(m)<60;}
+  }
   const watched=new WeakSet();let ro=null;
   function onThread(muts){
     const t=muts[0]&&muts[0].target;
@@ -34079,10 +34104,10 @@ main > .hero{margin-left:-12px!important;margin-right:-12px!important;padding-le
     watchThreads();
     new MutationObserver(watchThreads).observe(scr,{childList:true,subtree:true});
     // 指の操作
-    m.addEventListener('touchstart',()=>{touching=true;sendUntil=0;},{passive:true});
+    m.addEventListener('touchstart',()=>{touching=true;sendUntil=0;if(!openDone){openUntil=0;openDone=true;}},{passive:true});
     m.addEventListener('touchend',()=>{touching=false;gestureUntil=Date.now()+400;settle();},{passive:true});
     m.addEventListener('touchcancel',()=>{touching=false;gestureUntil=Date.now()+400;settle();},{passive:true});
-    m.addEventListener('wheel',()=>{sendUntil=0;gestureUntil=Date.now()+300;settle();},{passive:true});
+    m.addEventListener('wheel',()=>{sendUntil=0;if(!openDone){openUntil=0;openDone=true;}gestureUntil=Date.now()+300;settle();},{passive:true});
     m.addEventListener('keydown',()=>{gestureUntil=Date.now()+300;settle();});
     m.addEventListener('scroll',()=>{
       if(inGesture()){gestureUntil=Math.max(gestureUntil,Date.now()+250);settle();return;} // はずみで動いている間
@@ -34108,7 +34133,7 @@ main > .hero{margin-left:-12px!important;margin-right:-12px!important;padding-le
     let roomWas=document.body.classList.contains('trRoomOpen');
     new MutationObserver(()=>{const r=document.body.classList.contains('trRoomOpen');if(r!==roomWas){roomWas=r;opened();}}).observe(document.body,{attributes:true,attributeFilter:['class']});
     // 念のための見回り（見ているときだけ）
-    setInterval(()=>{if(document.visibilityState==='visible'&&active())pin();},300);
+    setInterval(()=>{if(document.visibilityState!=='visible')return;openTick();if(opening())alignOpen();else if(active())pin();},250);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
