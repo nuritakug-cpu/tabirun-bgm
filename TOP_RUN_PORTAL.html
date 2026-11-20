@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v472 | 2026-11-21 | Parent v471. (1) HOME画像の保存が permission_denied になる不具合を修正：v471で調整値に足した colorMode を Rules（adjust の決まった項目以外は拒否）が拒否していた。Rulesは変更せず、色の表示を zoom の小数1桁（.0モノクロ／.1カラー／.2そのまま）に入れて保存する。以前のデータはモノクロのまま。(2) CLEAR：カレンダーのイベント日が白地に白文字で消えていた（.event のカード用の色がカレンダーの日付にも当たっていた）のを修正し、イベント日は黒地・白文字・イエローの線に。(3) CLEAR：RUN のあとのドットの縁取りをなくした。(4) CLEAR をオリジナルと区別できるよう、NEXT EVENT・練習メニューのカードを白地、ラベル・矢印を黒、今日をイエローに（色のみ、配置・寸法は変更なし）。(5) 版の表示を v472 に（v471 は v470 のままだった）。通信の変更なし。Rules変更なし。 -->
 <!-- 2026-11-20 v471: HOME画像に「色の表示」（そのまま／カラー／モノクロ）を追加。ポータルカラーに CLEAR（ホワイト×イエロー×ブラック）を追加。Firebaseの保存先・Auth・Rulesは変更なし（HOME画像の調整値に colorMode、personalColor.preset に clear が入るのみ）。 -->
 <!-- TOP RUN PORTAL v470 | 2026-11-20 | Parent v469. チャット：ルームに入って未読を確認するとき、変な位置へずれる不具合を修正。これまでは入った瞬間に未読の線へ一度合わせるだけで（v437の合わせ直しはチャット画面を開いたときだけで、ルームに入ったときは働いていなかった）、そのあと写真・カードの読み込みや既読の描き直しで位置がずれていた。v470ではルームに入った直後（4.5秒、写真が読み込み終わるまで最大10秒）は未読の線（なければ一番下）に合わせ続ける。指で動かしたらやめる。共通チャットを開いたときも同じ。通信の変更なし。Rules変更なし。 -->
 <!-- TOP RUN PORTAL v469 | 2026-11-19 | Parent v468. チャット：送信してしばらくすると上の方（前の日のメッセージ）へ動いてしまう不具合を修正。v468は送信後3秒だけ一番下に合わせていたため、そのあとの描き直し（既読の更新・写真やカードの読み込み）で位置がずれていた。v469では「一番下を見ている状態」を指の操作だけで決める：指で上へ動かすまでは、何が描き直されても一番下（最新）にとどまる（0.3秒ごとにも確認）。上へ戻って読んでいるときは今までどおりその位置にとどまる。開いた直後4.5秒は未読の線の合わせ方（v437）を優先。日付で絞り込み中は動かさない。共通チャット・ルームとも。通信の変更なし。Rules変更なし。 -->
@@ -7322,7 +7323,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v470</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v472</b></div>
   </div>
 </div>
 
@@ -7566,7 +7567,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v470</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v472</b></div>
   </div>
 </div>
 
@@ -11579,6 +11580,21 @@ if(view==='list')portalApplyManageSearch(kind);
   const developerHomeImageAdjust={opacity:24,x:76,y:6,zoom:144,range:125,feather:17,fadeDirection:'both',bottomFade:22,colorMode:'mono'};
   // v471: トップ画像の色の出し方。natural＝そのまま（加工なし）／color＝カラー（背景になじませる）／mono＝モノクロ（これまでの表示）
   const developerHomeImageColorModes={natural:{filter:'none',blend:'normal',preview:'none'},color:{filter:'none',blend:'multiply',preview:'none'},mono:{filter:'grayscale(1) contrast(.92)',blend:'multiply',preview:'grayscale(1) contrast(.92)'}};
+  // v472: Rules の adjust は決まった項目以外（colorMode）を拒否する（permission_denied の原因）。Rulesは変えず、色の表示は zoom の小数1桁に入れて保存する（.0＝モノクロ＝以前のデータ、.1＝カラー、.2＝そのまま）。拡大率は整数なので表示には影響しない。
+  const developerHomeImageColorCodes={mono:0,color:1,natural:2};
+  function developerHomeImageAdjustForSave(){
+    const a={...developerHomeImageAdjust};const mode=developerHomeImageColorMode();delete a.colorMode;
+    a.zoom=Math.round(Number(a.zoom)||144)+(developerHomeImageColorCodes[mode]||0)/10;
+    return a;
+  }
+  function developerHomeImageDecodeAdjust(adjust){
+    const a={...(adjust||{})};
+    if(typeof a.colorMode!=='string'&&Number.isFinite(Number(a.zoom))){
+      const z=Number(a.zoom),base=Math.floor(z+1e-6),code=Math.round((z-base)*10);
+      a.zoom=base;a.colorMode=code===1?'color':code===2?'natural':'mono';
+    }
+    return a;
+  }
   function developerHomeImageColorMode(){return Object.prototype.hasOwnProperty.call(developerHomeImageColorModes,developerHomeImageAdjust.colorMode)?developerHomeImageAdjust.colorMode:'mono';}
   const portalDeveloperParticipants=[];
   const portalVerifiedEventBasePeople=[];
@@ -11858,7 +11874,7 @@ const gateway=window.__TR_PORTAL_SYNC__;
     const button=$('developerHomeImageApply');button.disabled=true;
     $('developerHomeImageState').textContent='HOME画像をFirebaseへ保存しています…';
     try{
-      await gateway.saveHomeImage({image:developerHomeImagePending,width:developerHomeImageNaturalPending.w,height:developerHomeImageNaturalPending.h,adjust:{...developerHomeImageAdjust}});
+      await gateway.saveHomeImage({image:developerHomeImagePending,width:developerHomeImageNaturalPending.w,height:developerHomeImageNaturalPending.h,adjust:developerHomeImageAdjustForSave()});
       $('developerHomeImageState').textContent='HOME背景画像と表示設定をFirebaseへ保存しました。';
       showActionFeedback('Firebaseに保存しました','HOME背景画像のサーバーACKを確認しました。');
     }catch(error){$('developerHomeImageState').textContent='画像未保存：'+String(error?.message||error).slice(0,120);showActionFeedback('画像未保存',String(error?.message||error).slice(0,130));}
@@ -18548,7 +18564,8 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
       developerHomeImageNaturalApplied={...developerHomeImageNaturalPending};
       const allowed=['opacity','x','y','zoom','range','feather','fadeDirection','bottomFade','colorMode'];
       developerHomeImageAdjust.colorMode='mono'; // v471: 色の設定がない以前の保存データは、これまでどおりモノクロ
-      allowed.forEach(key=>{if(value.adjust&&key in value.adjust)developerHomeImageAdjust[key]=value.adjust[key];});
+      const decodedAdjust=value.adjust?developerHomeImageDecodeAdjust(value.adjust):null; // v472
+      allowed.forEach(key=>{if(decodedAdjust&&key in decodedAdjust)developerHomeImageAdjust[key]=decodedAdjust[key];});
       const controlMap={opacity:'developerHomeImageOpacity',x:'developerHomeImageX',y:'developerHomeImageY',zoom:'developerHomeImageZoom',range:'developerHomeImageRange',feather:'developerHomeImageFeather',fadeDirection:'developerHomeImageFadeDirection',bottomFade:'developerHomeImageBottomFade',colorMode:'developerHomeImageColorMode'};
       Object.entries(controlMap).forEach(([key,id])=>{const el=$(id);if(el)el.value=String(developerHomeImageAdjust[key]);});
       root.style.setProperty('--portal-home-hero-image',`url("${nextUrl}")`);
@@ -19026,12 +19043,12 @@ html[data-portal-personal-color="clear"] .portalScreenHead{background:#0d0d0d;ba
 html[data-portal-personal-color="clear"] .portalBottomTabs{background:rgba(10,10,10,.97);border-top:2px solid #ffd400}
 html[data-portal-personal-color="clear"] .portalBottomBadge{background:#ffd400;color:#111}
 html[data-portal-personal-color="clear"] .hero h1{color:#111}
-html[data-portal-personal-color="clear"] .hero h1 .runDot{color:#ffd400;-webkit-text-stroke:1px #111}
+html[data-portal-personal-color="clear"] .hero h1 .runDot{color:#ffd400;-webkit-text-stroke:0}
 html[data-portal-personal-color="clear"] .hero h1 span{color:#444}
 html[data-portal-personal-color="clear"] .heroDate{border-left-color:#ffd400}
 html[data-portal-personal-color="clear"] .myCard,
 html[data-portal-personal-color="clear"] .portalProfileHero{background:linear-gradient(135deg,#0d0d0d 0%,#262626 100%)}
-html[data-portal-personal-color="clear"] :is(.calendarCard,.portalPanel,.event,.modalCard){background:#ffffff;border-color:#e3e3e3}
+html[data-portal-personal-color="clear"] :is(.calendarCard,.portalPanel,.event:not(.day):not(.portalFullDay),.modalCard){background:#ffffff;border-color:#e3e3e3}
 html[data-portal-personal-color="clear"] .eventDate{background:#f4f4f2}
 html[data-portal-personal-color="clear"] .portalAgendaItem{background:#ffffff;border-color:#e6e6e6}
 html[data-portal-personal-color="clear"] .portalAgendaItem.event{border-left-color:#ffd400;background:#ffffff}
@@ -19041,6 +19058,17 @@ html[data-portal-personal-color="clear"] .portalManageTabs button.active{border-
 html[data-portal-personal-color="clear"] .portalCalendarMode{background:#f3f3f3;border-color:#e3e3e3}
 html[data-portal-personal-color="clear"] .portalCalendarMode button[aria-pressed="true"]{background:#111;color:#fff}
 html[data-portal-personal-color="clear"] .sectionBar h2::before{background:#ffd400;box-shadow:0 0 0 1px #111}
+/* v472: CLEAR をオリジナルとはっきり区別する（色だけ。寸法・配置は変えない）。白地＋黒の文字・ラベル＋イエローの差し色。 */
+html[data-portal-personal-color="clear"] .calFooter{background:#ffffff;border-color:#e4e4e4;border-left-color:#ffd400}
+html[data-portal-personal-color="clear"] .calFooterDate{border-right-color:#e4e4e4}
+html[data-portal-personal-color="clear"] .calFooterArrow{color:#111}
+html[data-portal-personal-color="clear"] :is(.heroKicker,.sectionBar small,.portalSectionTools small,.portalSectionToggle,.portalHomeCalNav button,#toggleHomeNextEvent,.calFooterDate span,.portalLinkCard small,.portalLinkCard strong){color:#111}
+html[data-portal-personal-color="clear"] .portalLinkCard{background:#ffffff;border-color:#e4e4e4}
+html[data-portal-personal-color="clear"] :is(.day,.portalFullDay).today:not(.event){background:#ffd400;color:#111;box-shadow:none}
+html[data-portal-personal-color="clear"] :is(.day,.portalFullDay).today:not(.event)::after{background:#111}
+html[data-portal-personal-color="clear"] :is(.day.event,.portalFullDay.event):not(.past-event){background:#111;color:#fff;box-shadow:0 6px 16px rgba(0,0,0,.18)}
+html[data-portal-personal-color="clear"] :is(.day.event,.portalFullDay.event):not(.past-event)::after{background:#ffd400}
+html[data-portal-personal-color="clear"] :is(.day.event,.portalFullDay.event).today{box-shadow:inset 0 0 0 2px #ffd400,0 6px 16px rgba(0,0,0,.18)}
 #screen-personal-color .portalColorChoice[data-color="clear"] .portalColorSwatch{color:#111;background:linear-gradient(118deg,#ffffff 0 58%,#ffd400 58% 80%,#111111 80% 100%);border-left:8px solid #111}
 </style>
 <script id="portal-personal-color-device-preview-20261014">
