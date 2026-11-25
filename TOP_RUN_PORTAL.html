@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v488 | 2026-11-25 | Parent v487（未公開。v484〜v487の中身を含む）。Rules v394 が必要（先に公開）。(1) 練習⇄イベントの切り替え（日付の変更、出欠の回答を移す／リセット）。(2) チャット・お知らせの赤字・下線を入力欄にそのまま表示し、見えているとおりに送る。コピー・貼り付けでも強調が付いたまま。(3) 開発者・管理者が自分を参加者として登録できる（管理画面の設定）。(4) シートの取り込み：イベントの開始時刻・集合時間・集合場所をPORTALの空欄にだけ入れる。PORTALのイベントをシートに書き出す（シート v16）。 -->
 <!-- TOP RUN PORTAL v487 | 2026-11-25 | Parent v486（未公開。v484〜v486の中身を含む）。Rules v393 のまま。シート v13 に合わせて、取り込み・書き出しの説明のタブの名前を新しい名前（01_練習予定・02_貼り付け・11_大会一覧・92_設定）にした。文の変更だけ。 -->
 <!-- TOP RUN PORTAL v486 | 2026-11-25 | Parent v485（未公開。v484・v485 の中身を含む）。Rules v393 のまま。シート v12 が必要。練習の「書き出し → 空欄を埋める → 埋めたところだけ取り込む」：(1) 管理画面の練習の「スプレッドシートから取り込む」に「シートに書き出す」（期間を月で選ぶ）。PORTALの練習（名称・集合・連絡事項・練習メニューなどすべて）をシートの「PORTAL練習予定」に書き出す。受信済みの練習予定を送るだけでFirebaseの読み込みは増えない。(2) 取り込みは「PORTAL練習ID」で同じ練習に結び付ける（日付で推測しない）。書き直した項目だけが「変更」になり、書き直していない項目はそのまま。名称・集合時間・集合場所も取り込める。終わった日の練習にも入れられる。 -->
 <!-- TOP RUN PORTAL v485 | 2026-11-25 | Parent v484（未公開。v484の練習メニュー・日誌の予定メニュー・シートの取り込みを含む）。Rules v393 が必要（v392に chat・roomMessages・notices の fmt を足しただけ）。(1) 下のメニューの沈み込み・上へスクロールしたときの隙間の根本対策：ページ全体はスクロールさせず、ホームもほかの画面と同じ「画面の中だけがスクロール」（#trHomeScrollV485）にした。v430（1pxずらして合わせ直す）・v445（1.5秒ごとに測って持ち上げる）を止め、メニューは v373 の bottom:0 だけ。iPhoneがキーボードなどでページをずらしたまま残したら先頭（0）に戻すだけ（測らない）。ホームのスクロール位置を使う所（カレンダーから戻る・予定の「もっと見る」・画面を画像に）を合わせた。(2) 文字の強調（赤字・下線）：チャット（共通・ルーム）の入力欄の「A」と、お知らせの本文の下の「文字を強調」。文字を指でなぞって選び、赤字・下線を押す。文はそのまま、強調の位置だけを fmt に保存（通知・古い版は普通の文）。書き直したら強調は外れる。(3) 練習日誌が読めないとき、英語の「Permission denied」ではなく日本語で、読めない理由と直し方を出す（承認の記録・本人ID・権限を読んで判定）。 -->
@@ -7422,7 +7423,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v487</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v488</b></div>
   </div>
 </div>
 
@@ -7535,6 +7536,12 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
     <div><small>MANAGEMENT</small><b>管理画面の設定</b></div><span class="portalHeadSpacer"></span>
   </div>
   <div class="portalScreenBody">
+    <section id="trSelfMemberV488" class="portalManagementSettingsSection" hidden>
+      <div class="portalPanelHead"><small>MEMBER</small><b>自分を参加者として登録</b></div>
+      <p class="portalHelp">開発者・管理者で、保護者などとして参加している人は、参加者としても登録すると練習日誌などが使えます。開発者・管理者の権限はそのまま残ります。</p>
+      <button id="trSelfMemberBtnV488" type="button" style="min-height:44px" hidden>自分を参加者として登録する</button>
+      <p id="trSelfMemberStateV488" class="portalHelp" role="status" aria-live="polite"></p>
+    </section>
     <section id="portalIdentityLinkDeveloper" class="portalManagementSettingsSection" hidden>
       <div class="portalPanelHead"><small>APPROVAL</small><b>開発者：参加承認</b></div>
   <details id="portalIdentityLinkDeveloperDetails" class="portalManageAccessDisclosure"><summary>参加承認の申請を開く</summary>
@@ -7700,7 +7707,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v487</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v488</b></div>
   </div>
 </div>
 
@@ -10765,7 +10772,7 @@ let editingNoticeId=null, editingPracticeKey=null, editingEventId=null, editingP
       qsa('[data-practice-entry-mode]').forEach(b=>b.classList.toggle('active',b.dataset.practiceEntryMode==='single'));
       $('practiceEntrySingle').classList.remove('hidden');$('practiceEntryBulk').classList.add('hidden');
     }else if(kind==='event'){
-      editingEventId=null;copyingEventFromId=null;
+      editingEventId=null;copyingEventFromId=null;window.__trSwitchV488?.show('event',null);
       $('manageEventDate').value='';$('manageEventTitle').value='';$('manageEventUrl').value='';if($('manageEventNote'))$('manageEventNote').value='';window.trLinksSetV388?.([]);window.trMeetSetV465?.('manageEvent',null);
       if($('manageEventNote'))$('manageEventNote').value='';$('manageEventDisplayCategory').value='competition';$('manageEventType').value='OTHER';
       if($('portalEventCreatedConnection'))$('portalEventCreatedConnection').hidden=true;
@@ -11181,7 +11188,7 @@ if(view==='list')portalApplyManageSearch(kind);
       }
       if(kind==='event'){
         const item=eventItems.find(x=>x.id===id); if(!item)return;
-        copyingEventFromId=null; editingEventId=id;
+        copyingEventFromId=null; editingEventId=id;window.__trSwitchV488?.show('event',id);
         $('manageEventDate').value=item.date||'';portalEventTimeSet(item.startTime);window.trMeetSetV465?.('manageEvent',item); $('manageEventTitle').value=item.title||''; if($('manageEventNote'))$('manageEventNote').value=item.note||'';
         setPlaceSelectValue('manageEventPlace','manageEventCustomPlaceRow','manageEventCustomPlace',item.place||'');
         $('manageEventDisplayCategory').value=portalEventDisplayCategory(item);$('manageEventType').value=item.type||'EVENT BASE'; $('manageEventUrl').value=item.type==='OTHER'?(item.url||''):(portalOfficialPublicLink(item.url||'')?.url||item.url||'');window.trLinksSetV388?.(item.links||(item.type==='OTHER'&&item.url?[{type:'other',label:'リンク',url:item.url}]:[]));if($('manageEventArchive'))$('manageEventArchive').value=portalArchiveName(item.archive)||''; /* v425: 名前だけを表示 */$('manageEventEntryDeadline').value=item.entryDeadline||'';document.querySelector('input[name="manageEventDeclaredRequired"][value="'+(item.requiresDeclaredTime===true?'yes':'no')+'"]').checked=true;portalRulesLoad(item);portalLoadEventDates(item);portalUpdateEventDisplayCategory();
@@ -11318,7 +11325,7 @@ if(view==='list')portalApplyManageSearch(kind);
     box.querySelectorAll('[data-portal-event-connect]').forEach(button=>button.addEventListener('click',()=>{
       const selected=eventItems.find(item=>item.id===button.dataset.portalEventConnect);
       if(!selected)return;
-      editingEventId=null;copyingEventFromId=null;
+      editingEventId=null;copyingEventFromId=null;window.__trSwitchV488?.show('event',null);
       portalOpenManagementFlow('event','new',{preserve:true});
       portalShowEventConnection(selected);
     }));
@@ -11404,6 +11411,70 @@ if(view==='list')portalApplyManageSearch(kind);
     try{await gateway.resetPracticeResponses(sk);pState.textContent='参加回答をリセットしました。';showActionFeedback('リセットしました','この練習の参加回答を消しました。');}
     catch(error){const m=String(error?.code||error?.message||error).slice(0,120);pState.textContent='リセットできませんでした：'+m;showActionFeedback('リセットできませんでした',m);}
   });
+
+  // v488: 練習 ⇄ イベントの切り替え。修正中の練習・イベントの下に「イベントに切り替える／練習に切り替える」。
+  //   日付を変えられる。出欠の回答は「移す」（はじめから選択）か「リセットして答え直してもらう」。
+  (function(){
+    const sw=document.createElement('div');sw.id='trSwitchDlgV488';sw.hidden=true;document.body.appendChild(sw);
+    const esc=t=>String(t==null?'':t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    let cur=null;
+    const addBtn=(afterId,id,label)=>{const a=$(afterId);if(!a||$(id))return null;const b=document.createElement('button');b.type='button';b.id=id;b.hidden=true;b.className='trSwitchBtnV488';b.textContent=label;a.insertAdjacentElement('afterend',b);return b;};
+    const pb=addBtn('managePracticeResetAnswers','managePracticeSwitchV488','イベントに切り替える');
+    const eb=addBtn('manageEventAdd','manageEventSwitchV488','練習に切り替える');
+    const rs=$('managePracticeResetAnswers');
+    if(rs&&pb)new MutationObserver(()=>{pb.hidden=rs.hidden;}).observe(rs,{attributes:true,attributeFilter:['hidden']});
+    window.__trSwitchV488={show(kind,id){if(kind==='event'&&eb)eb.hidden=!id;}};
+    function count(kind,key){const g=window.__TR_PORTAL_SYNC__;const rows=kind==='practice'?g?.practiceResponses?.[key]:g?.eventResponses?.[key];return Object.keys(rows||{}).length;}
+    function close(){sw.hidden=true;sw.innerHTML='';cur=null;}
+    function open(kind){
+      let src,key,title,date;
+      if(kind==='practice'){
+        key=editingPracticeKey;src=key&&schedules[key];if(!src){showActionFeedback('切り替えられません','一覧の「修正」から練習を選んでください。');return;}
+        key=src._sourceKey||key;title=src.name||'';date=String(src.date||key).slice(0,10);
+      }else{
+        src=eventItems.find(x=>x.id===editingEventId);if(!src){showActionFeedback('切り替えられません','一覧の「修正」からイベントを選んでください。');return;}
+        if(src.type&&src.type!=='OTHER'){showActionFeedback('切り替えられません','EVENT BASE につながった大会は、練習に切り替えられません。');return;}
+        key=src.id;title=src.title||'';date=src.date||'';
+      }
+      const n=count(kind,key),to=kind==='practice'?'イベント':'練習';
+      cur={kind,key,date};
+      sw.innerHTML='<div class="trSwBgV488" data-sw-close></div><div class="trSwBoxV488" role="dialog" aria-modal="true" aria-label="'+to+'に切り替える">'+
+        '<b class="trSwTitleV488">'+to+'に切り替える</b>'+
+        '<label class="trSwRowV488">日付<input type="date" id="trSwDateV488" value="'+esc(date)+'"></label>'+
+        '<label class="trSwRowV488">'+(kind==='practice'?'イベント名':'練習の名称（なくてもよい）')+'<input type="text" id="trSwTitleV488" maxlength="'+(kind==='practice'?80:40)+'" value="'+esc(title)+'"></label>'+
+        '<div class="trSwRowV488">出欠の回答'+(n?'（'+n+'人分）':'（まだありません）')+
+          '<label class="trSwOptV488"><input type="radio" name="trSwAnsV488" value="keep" checked> 回答を移す</label>'+
+          '<label class="trSwOptV488"><input type="radio" name="trSwAnsV488" value="reset"> リセットして答え直してもらう</label></div>'+
+        '<p class="trSwNoteV488">場所・時間・集合・連絡事項・リンクは、そのまま'+to+'に移ります。元の'+(kind==='practice'?'練習':'イベント')+'は消えます。</p>'+
+        '<p class="trSwStateV488" id="trSwStateV488" role="status"></p>'+
+        '<div class="trSwBtnsV488"><button type="button" data-sw-close>やめる</button><button type="button" class="portalPrimary" id="trSwGoV488">切り替える</button></div></div>';
+      sw.hidden=false;
+    }
+    sw.addEventListener('click',async ev=>{
+      if(ev.target.closest('[data-sw-close]')){close();return;}
+      if(!ev.target.closest('#trSwGoV488')||!cur)return;
+      const st=$('trSwStateV488'),go=$('trSwGoV488'),g=window.__TR_PORTAL_SYNC__;
+      const date=$('trSwDateV488').value,title=$('trSwTitleV488').value.trim(),keep=(sw.querySelector('input[name="trSwAnsV488"]:checked')||{}).value!=='reset';
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){st.textContent='日付を選んでください。';return;}
+      if(cur.kind==='practice'&&!title){st.textContent='イベント名を入れてください。';return;}
+      if(!g?.switchKindV488){st.textContent='PORTALの準備ができていません。開き直してください。';return;}
+      go.disabled=true;st.textContent='切り替えています…';
+      try{
+        const r=await g.switchKindV488({from:cur.kind,key:cur.key,date,title,keepAnswers:keep});
+        const to=r.newKind==='event'?'イベント':'練習';
+        if(!r.removed){
+          st.textContent=to+'は作りました。'+r.failed.length+'人分（'+r.failed.slice(0,5).join('、')+(r.failed.length>5?' ほか':'')+'）の回答を移せなかったため、元の予定は消さずに残しています。Rules v394 を確かめてください。';
+          showActionFeedback('一部を移せませんでした','元の予定は残しています。');go.disabled=false;return;
+        }
+        const kind=cur.kind,cur0=cur;close();
+        portalResetManagementDraft(kind);
+        if(kind==='event'&&eb)eb.hidden=true;
+        showActionFeedback(to+'に切り替えました',(keep?(r.moved+'人分の回答を移しました。'):'回答はリセットしました。答え直してもらってください。')+(date!==cur0.date?'日付が変わったので、お知らせで知らせてください。':''));
+      }catch(error){go.disabled=false;st.textContent='切り替えられませんでした：'+String(error?.code||error?.message||error).slice(0,140);}
+    });
+    pb?.addEventListener('click',()=>open('practice'));
+    eb?.addEventListener('click',()=>open('event'));
+  })();
   $('managePracticeAdd').addEventListener('click',async()=>{
     // v131: the button always answers — a reason or progress is shown right under it, never "nothing happens".
     const pState=$('managePracticeState');pState.textContent='確認中…';pState.setAttribute('role','status');
@@ -11698,7 +11769,7 @@ if(view==='list')portalApplyManageSearch(kind);
     flowUpdateRecords();if(currentScreen()?.id==='screen-competition-results')renderPortalPersonalRecord();
     $('manageEventState').textContent=formerItem?'大会の修正をFirebaseに保存しました。':source?'コピーから新しい大会をFirebaseに保存しました。':'新しい大会をFirebaseに保存しました。';
     portalPrepareEventNotice(item,formerItem);
-    editingEventId=null;copyingEventFromId=null;$('manageEventAdd').textContent='PORTALにイベントを保存';portalSwitchEventWorkspace('new');
+    editingEventId=null;copyingEventFromId=null;window.__trSwitchV488?.show('event',null);$('manageEventAdd').textContent='PORTALにイベントを保存';portalSwitchEventWorkspace('new');
     if($('manageEventNote'))$('manageEventNote').value='';$('manageEventDisplayCategory').value='competition';$('manageEventType').value='OTHER';portalUpdateEventDisplayCategory();$('manageEventTitle').value='';$('manageEventUrl').value='';window.trLinksSetV388?.([]);if($('manageEventArchive'))$('manageEventArchive').value='';$('manageEventEntryDeadline').value='';$('manageEventPlace').value='';$('manageEventCustomPlaceRow').classList.add('hidden');$('manageEventCustomPlace').value='';portalEventExtraDateDraft=[];portalEventMetricDateDraft={};portalDrawEventDates();portalEventTimeSet('');window.trMeetSetV465?.('manageEvent',null);portalRulesLoad(null);document.querySelector('input[name="manageEventDeclaredRequired"][value="no"]').checked=true;portalSetEventRaceMode(null);
     eventListMonth=date.slice(0,7);$('manageEventMonth').value=eventListMonth;
     renderHomeCalendar();renderFullCalendar();renderEventTab();renderManagedHomeEvents();renderManageEvents();renderHomeNextEvent();
@@ -14748,7 +14819,7 @@ const fiveLine=full&&mark>0&&Math.abs(mark%5000)<.01;
     // Firebase path. Never silently assign the one P76 ID to another event.
     showScreen('management');
     document.querySelector('[data-manage-pane="event"]')?.click();
-    editingEventId=null;copyingEventFromId=null;
+    editingEventId=null;copyingEventFromId=null;window.__trSwitchV488?.show('event',null);
     portalOpenManagementFlow('event','new',{preserve:true});
     portalShowEventConnection(item);
     if(item.type==='RELAY EVENT BASE'){
@@ -18881,7 +18952,12 @@ applyNotices(rows){
           <div class="trSbExportRowV486"><label>から<input type="month" data-sb-from></label><label>まで<input type="month" data-sb-to></label></div>
           <button type="button" class="portalSmallButton" data-sb-export>シートに書き出す</button>
           <p class="portalHelp" data-sb-export-state role="status" aria-live="polite"></p>
-        </details>`:''}
+        </details>`:`<details class="trSbExportV486"><summary>PORTALのイベントをシートに書き出す</summary>
+          <p class="portalHelp">選んだ期間のイベントを、シートの「11_大会一覧」に書き出します。同じ大会の行には、開始時刻・集合時間・集合場所をPORTALの内容で入れます（会場は空欄のときだけ）。シートにない大会は行を足します。</p>
+          <div class="trSbExportRowV486"><label>から<input type="month" data-sb-from></label><label>まで<input type="month" data-sb-to></label></div>
+          <button type="button" class="portalSmallButton" data-sb-export>シートに書き出す</button>
+          <p class="portalHelp" data-sb-export-state role="status" aria-live="polite"></p>
+        </details>`}
         <div data-sb-out></div>
         <div class="portalManageState" data-sb-state role="status" aria-live="polite"></div>`;
       el.querySelector('[data-sb-url-save]').addEventListener('click',()=>{
@@ -18896,7 +18972,7 @@ applyNotices(rows){
       if(ex){
         const ym=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
         const now=new Date();el.querySelector('[data-sb-from]').value=ym(now);el.querySelector('[data-sb-to]').value=ym(new Date(now.getFullYear(),now.getMonth()+2,1));
-        ex.addEventListener('click',()=>exportPracticesV486(el));
+        ex.addEventListener('click',()=>kind==='event'?exportEventsV488(el):exportPracticesV486(el));
       }
     }
     function say(kind,text){const s=box(kind)?.querySelector('[data-sb-state]');if(s)s.textContent=text;}
@@ -18994,6 +19070,16 @@ applyNotices(rows){
       (x.links||[]).forEach(l=>{if(out.length<20&&/^https?:\/\/\S+$/.test(l.url)&&!have.has(l.url)){out.push({type:l.type,label:String(l.label||'').slice(0,40),url:l.url});have.add(l.url);}});
       return out;
     }
+    // v488: シートの開始時刻・集合時間・集合場所は、PORTALの空欄にだけ入れる（入っている所は変えない）
+    const EVF_V488={startTime:'開始時刻',meetTime:'集合時間',meetPlace:'集合場所'};
+    function evFillV488(cur,x){
+      const f={},hm=/^([01]\d|2[0-3]):[0-5]\d$/;
+      if(!String(cur?.startTime||'').trim()&&hm.test(String(x.startTime||'')))f.startTime=String(x.startTime);
+      if(!String(cur?.meetTime||'').trim()&&hm.test(String(x.meetTime||'')))f.meetTime=String(x.meetTime);
+      if(!String(cur?.meetPlace||'').trim()&&String(x.meetPlace||'').trim())f.meetPlace=String(x.meetPlace).trim().slice(0,120);
+      return f;
+    }
+    const evFillTextV488=f=>Object.keys(f).map(k=>EVF_V488[k]+'：なし → '+f[k]+'（空欄に入れる）');
     function diffEvents(list){
       const claimed=new Set(list.map(x=>x.id).filter(Boolean));
       return list.map(x=>{
@@ -19019,6 +19105,7 @@ applyNotices(rows){
             const add=(x.links||[]).filter(l=>!(cur.links||[]).some(c=>c.url===l.url));
             if(add.length)r.changes.push('資料リンクを追加：'+add.map(l=>l.label).join('・'));
           }else if((x.links||[]).length)r.info.push('この大会はEVENT BASE連携のため、リンクは追加しません');
+          r.changes.push(...evFillTextV488(evFillV488(cur,x)));
           r.title=r.title+'（紐付け済み）';
           r.status=r.changes.length?'change':'same';return r;
         }
@@ -19026,6 +19113,7 @@ applyNotices(rows){
         add('大会名',cur.title,x.title);
         const cd=(Array.isArray(cur.dates)&&cur.dates.length?cur.dates:[cur.date]).map(dayLabel).join('・'),nd=(x.dates.length?x.dates:[x.date]).map(dayLabel).join('・');
         add('開催日',cd,nd);add('会場',cur.place,x.place);
+        r.changes.push(...evFillTextV488(evFillV488(cur,x)));
         if(cur.type==='OTHER'&&linkSig(cur.links)!==linkSig(x.links))r.changes.push('リンク：'+((cur.links||[]).map(l=>l.label).join('・')||'なし')+' → '+(x.links.map(l=>l.label).join('・')||'なし'));
         if(!r.changes.length){r.status='same';return r;}
         if(cd!==nd&&Array.isArray(cur.raceMetrics)&&cur.raceMetrics.length)r.note='開催日が変わります。種目の開催日をイベントの修正画面で確認してください';
@@ -19038,19 +19126,25 @@ applyNotices(rows){
       const links=(x.links||[]).filter(l=>/^https?:\/\/\S+$/.test(l.url)).slice(0,20).map(l=>({type:l.type,label:String(l.label||'').slice(0,40),url:l.url}));
       const dates=(x.dates&&x.dates.length?x.dates:[x.date]).slice(0,31);
       let item,previous=null;
+      const fillV488=cur?evFillV488(cur,x):{};
       if(cur&&x.linked){
-        if(cur.type!=='OTHER')return '変更なし';
+        if(cur.type!=='OTHER'){
+          if(!Object.keys(fillV488).length)return '変更なし';
+          previous={...cur};item={...cur,...fillV488};
+          await portalTimeout(g.saveEvent(item,previous));return '空欄に入れました';
+        }
         previous={...cur};
-        item={...cur,links:mergedLinks(cur,x)};
+        item={...cur,...fillV488,links:mergedLinks(cur,x)};
         if(cur.displayCategory!=='event')item.url=cur.url||item.links[0]?.url||'';
       }else if(cur){
         previous={...cur};
-        item={...cur,title:x.title,date:dates[0],dates,place:x.place||cur.place||'未定'};
+        item={...cur,...fillV488,title:x.title,date:dates[0],dates,place:x.place||cur.place||'未定'};
         if(cur.type==='OTHER'){item.links=links;if(cur.displayCategory!=='event')item.url=links[0]?.url||'';}
       }else{
         item={id:x.id,links,date:dates[0],dates,metricDates:{},startTime:x.startTime||'',title:x.title,place:x.place||'未定',type:'OTHER',url:links[0]?.url||'',archive:'',
           state:links.length?'ACCESS OPEN':'DEVELOPMENT',relay:false,displayCategory:'competition',registration:'受付中',enabled:true,copiedFrom:'',previewOnly:false,pendingId:'',
-          official:false,eligibility:{enabled:false,rules:[],note:''},requiresDeclaredTime:false,raceMetrics:[],raceEntryEnabled:false,entryDeadline:'',attendanceOpen:true,goalDefaultFromMyPage:true};
+          official:false,eligibility:{enabled:false,rules:[],note:''},requiresDeclaredTime:false,raceMetrics:[],raceEntryEnabled:false,entryDeadline:'',attendanceOpen:true,goalDefaultFromMyPage:true,
+          ...(/^([01]\d|2[0-3]):[0-5]\d$/.test(String(x.meetTime||''))?{meetTime:String(x.meetTime)}:{}),...(String(x.meetPlace||'').trim()?{meetPlace:String(x.meetPlace).trim().slice(0,120)}:{})};
       }
       await portalTimeout(g.saveEvent(item,previous));
       // v450: 開催日が変わったときは、PORTAL内の大会の出走登録の日付を合わせ、出欠をリセット（練習の取り込みと同じ）
@@ -19119,6 +19213,32 @@ applyNotices(rows){
       }catch(error){if(res)res.textContent='紐付けできませんでした：'+String(error?.message||error).slice(0,90);}
     }
 
+    // v488: PORTALのイベントをシートに書き出す（受信済みのイベントを送るだけ。Firebaseの読み込みは増えない）
+    async function exportEventsV488(el){
+      const st=el.querySelector('[data-sb-export-state]'),btn=el.querySelector('[data-sb-export]');
+      const show=t=>{if(st)st.textContent=t;};
+      if(!canManage){show('管理者として確認できていません。PORTALを開き直してください。');return;}
+      const url=savedUrl();if(!validUrl(url)){show('先に接続URLを設定してください。');return;}
+      const from=el.querySelector('[data-sb-from]').value,to=el.querySelector('[data-sb-to]').value;
+      if(!/^\d{4}-\d{2}$/.test(from)||!/^\d{4}-\d{2}$/.test(to)||from>to){show('期間（から・まで）を選んでください。');return;}
+      const rows=eventItems.filter(e=>e&&/^event-[A-Za-z0-9_-]{1,80}$/.test(String(e.id||''))&&!e.previewOnly).map(e=>{
+        const ds=evDates(e).filter(Boolean).sort();const d0=ds[0]||'';if(!d0||d0.slice(0,7)<from||d0.slice(0,7)>to)return null;
+        return {id:e.id,date:d0,dates:ds,title:String(e.title||''),place:String(e.place||''),startTime:String(e.startTime||''),meetTime:String(e.meetTime||''),meetPlace:String(e.meetPlace||''),
+          category:e.displayCategory==='event'?'イベント':'大会',cancelled:String(e.state||'')==='CANCELLED'};
+      }).filter(Boolean).sort((a,b)=>a.date.localeCompare(b.date));
+      if(!rows.length){show('この期間のイベントはありません。');return;}
+      if(!confirm(rows.length+'件のイベントをシートの「11_大会一覧」に書き出します。\n同じ大会の行は、開始時刻・集合時間・集合場所をPORTALの内容にします。\n\nよろしいですか？'))return;
+      btn.disabled=true;show('書き出しています…（'+rows.length+'件）');
+      try{
+        const u=new URL(url);
+        const res=await Promise.race([fetch(u.toString(),{method:'POST',cache:'no-store',redirect:'follow',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'exportEvents',key:u.searchParams.get('key')||'',rows})}),
+          new Promise((_,ng)=>setTimeout(()=>ng(Error('シートから60秒応答がありません')),60000))]);
+        const d=await res.json();
+        if(!d||d.ok!==true)throw Error(d?.error||'シートが断りました');
+        show(d.done+'件を書き出しました（新しく'+d.added+'件）。');
+      }catch(e){show('書き出せませんでした：'+String(e?.message||e).slice(0,100)+'（シートのスクリプトが v16 か確かめてください）');}
+      finally{btn.disabled=false;}
+    }
     // v486: PORTALの練習をシートに書き出す（受信済みの練習予定を送るだけ。Firebaseの読み込みは増えない）
     async function exportPracticesV486(el){
       const st=el.querySelector('[data-sb-export-state]'),btn=el.querySelector('[data-sb-export]');
@@ -22668,6 +22788,88 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       // v315: イベントの参加回答も一緒に消す
       try{await dbMod.remove(ref('eventResponses/'+id));if(gate.eventResponses&&gate.eventResponses[id])gate.eventResponses[id]={};ui?.applyEventResponses?.(gate.eventResponses);}
       catch(error){throw Error('イベントは削除しましたが、参加回答を消せませんでした（Rules v315 を確認）：'+String(error?.code||error?.message||error).slice(0,60));}
+    };
+    // v488: 練習 ⇄ イベントの切り替え（日付の変更・出欠の回答を「移す」か「リセット」）。開発者・管理者だけ。
+    //   順番：新しい方を保存 → 回答を移す（選んだとき）→ 移せなかった人がいなければ元を消す（元の回答も一緒に消える）。
+    //   回答を移すのは Rules v394（movedByUid を付けた書き込みだけ、開発者・管理者に許可）。
+    gate.switchKindV488=async({from,key,date,title,keepAnswers})=>{
+      if(!(['developer','admin'].includes(gate.role)&&gate.roleVerified===true&&gate.uid===auth.currentUser?.uid))throw Error('開発者・管理者の権限が必要です');
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(String(date||'')))throw Error('日付を選んでください');
+      title=String(title||'').trim();
+      let newKind,newKey,srcPath,fromLabel;
+      if(from==='practice'){
+        ensure('practices');ensure('eventItems');
+        const sourceKey=gate.practices?.[key]?key:gate.practiceStorageKey(key),src=gate.practices?.[sourceKey];
+        if(!src||src.kind!=='practice')throw Error('練習予定が見つかりません');
+        if(!title)throw Error('イベント名を入れてください');
+        const links=(Array.isArray(src.links)?src.links:Object.values(src.links||{})).filter(l=>l&&/^https?:\/\//.test(String(l.url||''))).slice(0,8)
+          .map(l=>({type:['guide','schedule','result','other'].includes(l.type)?l.type:'other',label:String(l.label||'').slice(0,40),url:String(l.url).slice(0,1000)}));
+        const note=String(src.other||'').trim();
+        const item={id:'event-'+Date.now()+'-'+Math.random().toString(36).slice(2,8),displayCategory:'event',date,dates:[date],metricDates:{},
+          startTime:/^\d{2}:\d{2}$/.test(String(src.start||''))?src.start:'',title:title.slice(0,80),place:String(src.place||'未定').slice(0,80)||'未定',
+          type:'OTHER',url:'',links,state:'DEVELOPMENT',relay:false,registration:'受付中',attendanceOpen:true,enabled:true,previewOnly:false,pendingId:'',copiedFrom:'',
+          official:false,eligibility:{enabled:false,rules:[],note:''},requiresDeclaredTime:false,raceMetrics:[],raceEntryEnabled:false,entryDeadline:'',goalDefaultFromMyPage:true,
+          note:note&&note!=='—'?note.slice(0,2000):'',meetTime:String(src.meetTime||''),meetPlace:String(src.meetPlace||'')};
+        await gate.saveEvent(item,null);
+        newKind='event';newKey=item.id;srcPath='practiceResponses/'+sourceKey;fromLabel='practice:'+sourceKey;key=sourceKey;
+      }else if(from==='event'){
+        ensure('eventItems');ensure('practices');
+        const ev=gate.eventItems?.[key];if(!ev)throw Error('イベントが見つかりません');
+        if(ev.type!=='OTHER')throw Error('EVENT BASE につながった大会は、練習に切り替えられません');
+        if(ev.displayCategory==='competition'){
+          const entries=(await dbMod.get(ref(nativeRoot+key))).val()||{};
+          if(Object.values(entries).some(byMetric=>byMetric&&Object.values(byMetric).some(row=>!!row)))throw Error('正式出走登録が残っている大会は、練習に切り替えられません');
+        }
+        const links=(Array.isArray(ev.links)?ev.links:Object.values(ev.links||{})).filter(l=>l&&/^https?:\/\//.test(String(l.url||''))).slice(0,6)
+          .map(l=>({type:['guide','schedule','other'].includes(l.type)?l.type:'other',label:String(l.label||'').slice(0,40),url:String(l.url).slice(0,1000)}));
+        const st=String(ev.startTime||'');
+        newKey=await gate.savePractice({date,place:String(ev.place||'未定').slice(0,40)||'未定',start:/^\d{2}:\d{2}$/.test(st)?st:'',end:'',
+          other:String(ev.note||'').trim().slice(0,1000)||'—',enabled:true,name:(title||String(ev.title||'')).slice(0,40),links,
+          meetTime:String(ev.meetTime||''),meetPlace:String(ev.meetPlace||'')});
+        newKind='practice';srcPath='eventResponses/'+key;fromLabel='event:'+key;
+      }else throw Error('切り替えの種類が分かりません');
+      let moved=0;const failed=[];
+      if(keepAnswers){
+        const rows=(await dbMod.get(ref(srcPath))).val()||{},now=Date.now();
+        const toBase=(newKind==='event'?'eventResponses/':'practiceResponses/')+newKey+'/';
+        for(const [uid,r] of Object.entries(rows)){
+          if(!/^[A-Za-z0-9_-]{6,128}$/.test(uid)||!r||typeof r!=='object')continue;
+          if(!['join','support','decline','maybe'].includes(r.answer)||typeof r.profileId!=='string')continue;
+          const next={answer:r.answer,profileId:r.profileId,name:String(r.name||'参加者').slice(0,24)||'参加者',createdAt:Number(r.createdAt)||now,updatedAt:now,
+            movedByUid:gate.uid,movedFrom:fromLabel.slice(0,120)};
+          if(typeof r.proxyByUid==='string'&&/^[A-Za-z0-9_-]{6,128}$/.test(r.proxyByUid)){next.proxyByUid=r.proxyByUid;next.proxyByName=String(r.proxyByName||'').slice(0,24);}
+          try{await dbMod.set(ref(toBase+uid),next);moved++;}
+          catch(error){failed.push(String(r.name||uid.slice(-6)));}
+        }
+      }
+      if(failed.length)return {newKind,newKey,moved,failed,removed:false};
+      if(from==='practice')await gate.deletePractice(key);else await gate.deleteEvent(key);
+      return {newKind,newKey,moved,failed,removed:true};
+    };
+    // v488: 開発者・管理者が自分を参加者として登録する（保護者として日誌などを使うため）。
+    //   今までの参加者と同じ「申請 → 承認」。開発者は自分の申請をそのまま承認する。管理者は申請だけ（開発者の承認一覧に出る）。
+    gate.selfMemberStatusV488=async()=>{
+      const uid=auth.currentUser?.uid||'';if(!uid)return {status:'none'};
+      const prof=await p104Profile(uid);
+      const access=(await dbMod.get(ref('memberAccess/'+uid))).val();
+      if(access?.active===true&&access.profileId===prof.profileId)return {status:'active'};
+      if(access)return {status:'mismatch'};
+      const req=(await dbMod.get(ref('memberRequests/'+uid))).val();
+      return {status:req?.status==='pending'&&req.profileId===prof.profileId?'pending':'none',suffix:req?.numberSuffix||''};
+    };
+    gate.selfMemberV488=async()=>{
+      if(!(['developer','admin'].includes(gate.role)&&gate.roleVerified===true&&gate.uid===auth.currentUser?.uid))throw Error('開発者・管理者の権限が必要です');
+      const uid=auth.currentUser.uid,now=await gate.selfMemberStatusV488();
+      if(now.status==='active')return {status:'active'};
+      if(now.status==='mismatch')throw Error('参加承認の記録はありますが、今の本人情報と一致しません');
+      const req=await gate.requestMemberApproval();
+      if(req?.status==='active')return {status:'active'};
+      if(gate.role!=='developer')return {status:'pending',suffix:req?.suffix||''};
+      await gate.approveMemberApprovalRequest(uid);
+      const after=await gate.selfMemberStatusV488();
+      if(after.status!=='active')throw Error('承認の保存を確かめられませんでした');
+      gate.memberApproved=true;
+      return {status:'active'};
     };
     gate.saveNotice=async({id,date,title,body,images})=>{
       ensure('notices');
@@ -34652,6 +34854,43 @@ html body nav.portalBottomTabs{translate:none!important}
 .trSbExportRowV486{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0}
 .trSbExportRowV486 label{display:grid;gap:4px;font-size:12px;font-weight:800}
 </style>
+<style id="v488-css">
+/* v488: 入力欄の中の赤字・下線 */
+.trFmtHostV488{position:relative}
+.trFmtMirV488{position:absolute;pointer-events:none;overflow:hidden;white-space:pre-wrap;overflow-wrap:break-word;word-break:normal;background:transparent!important;margin:0;-webkit-text-fill-color:currentColor;box-shadow:none!important;outline:0}
+.trFmtMirV488[hidden]{display:none!important}
+.trFmtMirV488 .trFmtR{color:#d4231a!important;-webkit-text-fill-color:#d4231a!important}
+.trFmtMirV488.trFmtDarkV488 .trFmtR{color:#ff7a70!important;-webkit-text-fill-color:#ff7a70!important}
+.trFmtMirV488 .trFmtU{text-decoration:underline;text-decoration-color:var(--trUc,currentColor);text-decoration-thickness:2px;text-underline-offset:3px}
+.trFmtMirV488 .trFmtR.trFmtU{text-decoration-color:currentColor}
+.trFmtBarV488{display:grid;gap:4px;margin:0 0 6px;padding:6px 6px 0}
+.trFmtBarV488[hidden]{display:none!important}
+.trFmtBarBtnsV488{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.trFmtBarBtnsV488 button{min-height:40px;border-radius:12px;border:1px solid rgba(128,128,128,.45);background:transparent;color:inherit;font:inherit;font-size:14px;font-weight:800;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+.trFmtBarBtnsV488 .trFmtBtnR{color:#d4231a}
+html[data-portal-personal-color="matte"] .trFmtBarBtnsV488 .trFmtBtnR,html[data-portal-personal-color="winter"] .trFmtBarBtnsV488 .trFmtBtnR{color:#ff7a70}
+.trFmtBarBtnsV488 .trFmtBtnU{text-decoration:underline;text-underline-offset:3px}
+.trFmtBarHelpV488{margin:0;font-size:11.5px;opacity:.75;line-height:1.5}
+.trFmtABtnV485[aria-expanded="true"],.trFmtNoticeBtnV485[aria-expanded="true"]{border-color:#d4231a;color:#d4231a}
+/* v488: 練習⇄イベントの切り替え */
+.trSwitchBtnV488{margin-top:8px;min-height:44px;width:100%}
+.trSwitchBtnV488[hidden]{display:none!important}
+#trSwitchDlgV488{position:fixed;inset:0;z-index:2147483000}
+#trSwitchDlgV488[hidden]{display:none!important}
+.trSwBgV488{position:absolute;inset:0;background:rgba(0,0,0,.42)}
+.trSwBoxV488{position:absolute;left:12px;right:12px;top:50%;transform:translateY(-50%);max-width:460px;margin:0 auto;max-height:calc(100% - 40px);overflow-y:auto;box-sizing:border-box;padding:16px;border-radius:18px;background:var(--white,#fff);color:var(--ink,#252b2b);display:grid;gap:12px}
+html[data-portal-personal-color="winter"] .trSwBoxV488{background:#0d3a44;color:#f2ffff}
+html[data-portal-personal-color="matte"] .trSwBoxV488{background:#2a2125;color:#f4ece8}
+.trSwTitleV488{font-size:17px}
+.trSwRowV488{display:grid;gap:6px;font-size:13px;font-weight:700}
+.trSwRowV488 input[type=date],.trSwRowV488 input[type=text]{min-height:42px;font-size:16px;box-sizing:border-box;width:100%}
+.trSwOptV488{display:flex;gap:8px;align-items:center;font-weight:600;font-size:14px;min-height:36px}
+.trSwNoteV488{margin:0;font-size:12.5px;opacity:.85;line-height:1.6}
+.trSwStateV488{margin:0;min-height:1.2em;font-size:12.5px;white-space:pre-wrap}
+.trSwBtnsV488{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.trSwBtnsV488 button{min-height:46px}
+#trSelfMemberV488[hidden]{display:none!important}
+</style>
 <style id="v485-fmt">
 /* v485: 文字の強調（赤字・下線） */
 .trFmtR{color:#d4231a;font-weight:800}
@@ -34691,8 +34930,46 @@ html[data-portal-personal-color="matte"] .trFmtBtnsV485 .trFmtBtnR,html[data-por
 .trFmtNoticeBtnV485 span{display:inline-block;width:20px;font-weight:900}
 .trFmtNoticeBtnV485.on{border-color:#d4231a;color:#d4231a}
 </style>
+<script id="v488-self-member">
+/* v488: 開発者・管理者が自分を参加者として登録する（保護者として日誌などを使うため）。管理画面の設定の中。読むのは押したとき・開いたときの自分の分だけ */
+(function(){
+  'use strict';
+  const $=id=>document.getElementById(id),g=()=>window.__TR_PORTAL_SYNC__;
+  let busy=false;
+  function staff(){const x=g();return !!x&&x.roleVerified===true&&['developer','admin'].includes(x.role);}
+  async function refresh(){
+    const sec=$('trSelfMemberV488');if(!sec)return;
+    if(!staff()){sec.hidden=true;return;}
+    sec.hidden=false;const st=$('trSelfMemberStateV488'),btn=$('trSelfMemberBtnV488'),dev=g().role==='developer';
+    btn.textContent=dev?'自分を参加者として登録する':'参加者として申請する';
+    try{
+      const r=await g().selfMemberStatusV488();
+      if(r.status==='active'){btn.hidden=true;st.textContent='参加者としても登録されています（日誌などが使えます）。';}
+      else if(r.status==='pending'){btn.hidden=!dev;st.textContent=dev?'申請はあります。押すと承認まで行います。':'申請しました。開発者の「参加承認の申請」で承認されるのを待ってください（確認コード '+(r.suffix||'—')+'）。';}
+      else if(r.status==='mismatch'){btn.hidden=true;st.textContent='参加承認の記録はありますが、今の本人情報と一致しません。開発者に確認してください。';}
+      else{btn.hidden=false;st.textContent=dev?'まだ参加者として登録されていません。押すと、申請と承認をまとめて行います。':'まだ参加者として登録されていません。押すと申請し、開発者が承認します。';}
+    }catch(e){btn.hidden=false;st.textContent='状態を確かめられませんでした：'+String(e?.code||e?.message||e).slice(0,100);}
+  }
+  async function go(){
+    if(busy)return;busy=true;const st=$('trSelfMemberStateV488'),btn=$('trSelfMemberBtnV488');btn.disabled=true;st.textContent='登録しています…';
+    try{
+      const r=await g().selfMemberV488();
+      st.textContent=r.status==='active'?'参加者として登録しました。日誌が開けないときは、PORTALを開き直してください。':'申請しました。開発者の承認を待ってください（確認コード '+(r.suffix||'—')+'）。';
+      if(r.status==='active')btn.hidden=true;
+    }catch(e){st.textContent='登録できませんでした：'+String(e?.code||e?.message||e).slice(0,120);}
+    finally{busy=false;btn.disabled=false;}
+  }
+  function start(){
+    const btn=$('trSelfMemberBtnV488');if(!btn)return;btn.addEventListener('click',go);
+    window.addEventListener('tr-portal-authorized',()=>setTimeout(refresh,800));
+    const scr=$('screen-management-settings');if(scr)new MutationObserver(()=>{if(!scr.classList.contains('hidden'))refresh();}).observe(scr,{attributes:true,attributeFilter:['class']});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+})();
+</script>
 <script id="v485-fmt-js">
-/* v485: 文字の強調（赤字・下線）。チャット（共通・ルーム）とお知らせ。
+/* v485→v488: 文字の強調（赤字・下線）。チャット（共通・ルーム）とお知らせ。
+   v488: 入力欄の中にそのまま色・線を出し、見えているとおりに送る（別の画面は使わない）。コピー・貼り付けでも強調が付いたまま。
    文はそのまま保存し、「どこを赤字・下線にするか」だけを fmt（[{s:開始,e:終わり,k:'r'|'u'}]）として一緒に保存する（Rules v393）。
    通知や古い版では、普通の文として出る。読み込み・監視は増えない。 */
 (function(){
@@ -34734,85 +35011,215 @@ html[data-portal-personal-color="matte"] .trFmtBtnsV485 .trFmtBtnR,html[data-por
       t.parentNode.replaceChild(frag,t);
     });
   }
-  // ---- 強調の画面（下から出る）
-  var S={text:'',flags:[],sel:null,done:null};
-  function sheet(){
-    var sh=$('trFmtSheetV485');if(sh)return sh;
-    sh=document.createElement('div');sh.id='trFmtSheetV485';sh.hidden=true;sh.setAttribute('role','dialog');sh.setAttribute('aria-modal','true');sh.setAttribute('aria-label','文字を強調');
-    sh.innerHTML='<div class="trFmtBgV485" data-fmt-close></div><div class="trFmtBoxV485"><div class="trFmtHeadV485"><b>文字を強調</b><button type="button" data-fmt-close aria-label="閉じる">×</button></div>'+
-      '<p class="trFmtHelpV485">強調したい文字を指でなぞって選び、ボタンを押してください。</p>'+
-      '<div class="trFmtTextV485" data-fmt-text></div>'+
-      '<div class="trFmtBtnsV485"><button type="button" data-fmt-k="r" class="trFmtBtnR">赤字</button><button type="button" data-fmt-k="u" class="trFmtBtnU">下線</button><button type="button" data-fmt-k="x">強調を消す</button></div>'+
-      '<p class="trFmtStateV485" data-fmt-state aria-live="polite"></p>'+
-      '<div class="trFmtGoV485"><button type="button" class="portalPrimary" data-fmt-ok>これで決定</button></div></div>';
-    document.body.appendChild(sh);
-    sh.addEventListener('pointerdown',function(e){if(e.target.closest('[data-fmt-k]'))e.preventDefault();});
-    sh.addEventListener('mousedown',function(e){if(e.target.closest('[data-fmt-k]'))e.preventDefault();});
-    sh.addEventListener('click',function(e){
-      if(e.target.closest('[data-fmt-close]')){close();return;}
-      var b=e.target.closest('[data-fmt-k]');if(b){apply(b.getAttribute('data-fmt-k'));return;}
-      if(e.target.closest('[data-fmt-ok]')){var f=fmtOf(S.flags);if(f.length>MAXR){say('強調する所が多すぎます（'+MAXR+'か所まで）。');return;}var cb=S.done;close();if(cb)cb(f);}
-    });
-    document.addEventListener('selectionchange',function(){
-      var box=sh.querySelector('[data-fmt-text]');if(sh.hidden||!box)return;
-      var s=window.getSelection();if(!s||!s.rangeCount)return;var r=s.getRangeAt(0);
-      if(!box.contains(r.startContainer)||!box.contains(r.endContainer))return;
-      var a=off(box,r.startContainer,r.startOffset),z=off(box,r.endContainer,r.endOffset);
-      if(z>a){S.sel=[a,z];say('');}
-    });
-    return sh;
+  // ================= v488: 入力欄にそのまま赤字・下線を出す（見えているとおりに送る） =================
+  // 入力欄（textarea）はそのまま使い、同じ位置に重ねた表示用の層（mirror）に色と線を描く。
+  // 強調があるときだけ入力欄の文字を透明にし、表示用の層の文字が見えるようにする（カーソル・選択は入力欄のまま）。
+  // 文を足したり消したりしても、強調はその文字についたまま動く（前後を比べて、変わった所だけ入れ替える）。
+  var EDS={};          // key（common / room / notice）→ 入力欄の状態
+  function isLight(c){var m=String(c||'').match(/\d+(\.\d+)?/g);if(!m||m.length<3)return false;return (+m[0]*299+(+m[1])*587+(+m[2])*114)/1000>150;}
+  function edOf(ta){for(var k in EDS){if(EDS[k].ta===ta)return EDS[k];}return null;}
+  function zeros(n){var a=new Array(n);for(var i=0;i<n;i++)a[i]=0;return a;}
+  function has(e){return !!(e&&e.flags.some(Boolean));}
+  // 前の文と今の文を比べて、変わった所だけ強調を入れ替える
+  function sync(e){
+    if(!e)return;var a=e.val,b=String(e.ta.value||'');
+    if(a===b){if(e.flags.length!==b.length)e.flags=zeros(b.length);return;}
+    var f=e.flags.length===a.length?e.flags:zeros(a.length);
+    if(!b){e.flags=[];e.val='';e.pend=null;return;}
+    var n=Math.min(a.length,b.length),p=0;while(p<n&&a.charCodeAt(p)===b.charCodeAt(p))p++;
+    var s=0;while(s<n-p&&a.charCodeAt(a.length-1-s)===b.charCodeAt(b.length-1-s))s++;
+    var ins=b.length-p-s,left=p>0?f[p-1]:0,right=(a.length-s)<a.length?f[a.length-s]:0;
+    var mid;
+    if(e.pend&&e.pend.length===ins)mid=e.pend.slice();
+    else{var inh=(left&&left===right)?left:0;mid=zeros(ins);for(var i=0;i<ins;i++)mid[i]=inh;}
+    e.flags=f.slice(0,p).concat(mid,f.slice(a.length-s));e.val=b;e.pend=null;
   }
-  function off(root,node,o){
-    if(node.nodeType!==3){var k=0;for(var i=0;i<o&&i<node.childNodes.length;i++)k+=(node.childNodes[i].textContent||'').length;return before(root,node)+k;}
-    return before(root,node)+o;
+  function setFlags(e,text,fmt){
+    sync(e);var v=e.val,t=String(text||'');e.flags=zeros(v.length);
+    if(!t||!fmt)return;var off=v.indexOf(t);if(off<0)return;
+    var fl=flagsOf(fmt,t.length);for(var i=0;i<fl.length;i++)e.flags[off+i]=fl[i];
   }
-  function before(root,node){var w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,null),n,k=0;while((n=w.nextNode())){if(n===node||(node.nodeType!==3&&node.contains(n)))return k;k+=n.nodeValue.length;}return k;}
-  function say(t){var el=$('trFmtSheetV485');var s=el&&el.querySelector('[data-fmt-state]');if(s)s.textContent=t||'';}
-  function paint(){
-    var box=sheet().querySelector('[data-fmt-text]'),t=S.text,fl=S.flags,h='',i=0;
+  function fmtFor(e,text){
+    sync(e);var t=String(text||'');if(!t)return [];
+    var off=e.val.indexOf(t);if(off<0)return [];
+    return clean(fmtOf(e.flags.slice(off,off+t.length)),t.length);
+  }
+  // ---- 表示用の層
+  var COPY=['fontFamily','fontSize','fontWeight','fontStyle','lineHeight','letterSpacing','wordSpacing','textIndent','textAlign','textTransform',
+    'paddingTop','paddingRight','paddingBottom','paddingLeft','borderTopWidth','borderRightWidth','borderBottomWidth','borderLeftWidth','boxSizing','tabSize','direction'];
+  function paint(e){
+    if(!e)return;sync(e);var ta=e.ta,on=has(e);
+    if(e.btn)e.btn.classList.toggle('on',on);
+    if(!on){unhide(e);if(e.mir)e.mir.hidden=true;return;}
+    var host=ta.offsetParent;if(!host)return;
+    if(!e.mir||e.mir.parentNode!==host){
+      if(e.mir&&e.mir.parentNode)e.mir.parentNode.removeChild(e.mir);
+      e.mir=document.createElement('div');e.mir.className='trFmtMirV488';e.mir.setAttribute('aria-hidden','true');host.appendChild(e.mir);
+    }
+    unhide(e);
+    var cs=getComputedStyle(ta),col=cs.color,m=e.mir;
+    var zi=parseInt(cs.zIndex,10);m.style.zIndex=String(isNaN(zi)?5:zi+1);
+    COPY.forEach(function(k){m.style[k]=cs[k];});
+    var bl=parseFloat(cs.borderLeftWidth)||0,br=parseFloat(cs.borderRightWidth)||0,sb=Math.max(0,ta.offsetWidth-ta.clientWidth-bl-br);
+    m.style.borderStyle='solid';m.style.borderColor='transparent';
+    if(sb)m.style.paddingRight=((parseFloat(cs.paddingRight)||0)+sb)+'px';
+    m.style.left=ta.offsetLeft+'px';m.style.top=ta.offsetTop+'px';m.style.width=ta.offsetWidth+'px';m.style.height=ta.offsetHeight+'px';
+    m.style.color=col;m.style.setProperty('--trUc',col);
+    m.classList.toggle('trFmtDarkV488',isLight(col));
+    var t=e.val,fl=e.flags,h='',i=0;
     while(i<t.length){var v=fl[i],j=i+1;while(j<t.length&&fl[j]===v)j++;var seg=esc(t.slice(i,j));h+=v?'<span class="'+(v&1?'trFmtR':'')+(v&2?' trFmtU':'')+'">'+seg+'</span>':seg;i=j;}
-    box.innerHTML=h;
+    m.innerHTML=h+'<br>';m.hidden=false;m.scrollTop=ta.scrollTop;
+    hide(e,col);
   }
-  function apply(k){
-    if(k==='x'&&!S.sel){S.flags=S.flags.map(function(){return 0;});paint();say('強調をすべて消しました。');return;}
-    if(!S.sel){say('先に、強調したい文字を指でなぞって選んでください。');return;}
-    var a=S.sel[0],z=S.sel[1];
-    if(k==='x'){for(var i=a;i<z;i++)S.flags[i]=0;}
-    else{var bit=k==='r'?1:2,all=true;for(var j=a;j<z;j++)if(!(S.flags[j]&bit))all=false;for(var q=a;q<z;q++)S.flags[q]=all?(S.flags[q]&~bit):(S.flags[q]|bit);}
-    S.sel=null;try{window.getSelection().removeAllRanges();}catch(_){}
-    paint();say(k==='x'?'選んだところの強調を消しました。':'続けて、ほかの文字も選べます。');
+  // 入力欄の文字を透明にする（テーマの !important より強い、要素の style で付ける。外すときは元に戻す）
+  var HP=['color','-webkit-text-fill-color','caret-color'];
+  function hide(e,col){
+    var st=e.ta.style;if(e.hid)return;
+    e.prev=HP.map(function(k){return [st.getPropertyValue(k),st.getPropertyPriority(k)];});
+    st.setProperty('color','transparent','important');st.setProperty('-webkit-text-fill-color','transparent','important');st.setProperty('caret-color',col,'important');
+    e.ta.classList.add('trFmtHideV488');e.hid=true;
   }
-  function open(text,f,done){
-    var sh=sheet();S.text=text;S.flags=flagsOf(f,text.length);S.sel=null;S.done=done;paint();say('');
-    sh.hidden=false;document.body.classList.add('trFmtOpenV485');requestAnimationFrame(function(){sh.classList.add('on');});
+  function unhide(e){
+    if(!e.hid)return;var st=e.ta.style;
+    HP.forEach(function(k,i){var p=e.prev&&e.prev[i];if(p&&p[0])st.setProperty(k,p[0],p[1]);else st.removeProperty(k);});
+    e.ta.classList.remove('trFmtHideV488');e.hid=false;
   }
-  function close(){var sh=$('trFmtSheetV485');if(!sh||sh.hidden)return;sh.classList.remove('on');document.body.classList.remove('trFmtOpenV485');S.done=null;setTimeout(function(){sh.hidden=true;},160);}
+  function later(e){if(e.raf)return;e.raf=requestAnimationFrame(function(){e.raf=0;paint(e);});}
+  // ---- 赤字・下線・消す
+  function say(e,t){if(e&&e.state){e.state.textContent=t||'';clearTimeout(e.sayT);if(t)e.sayT=setTimeout(function(){e.state.textContent='';},4000);}}
+  function apply(e,k){
+    sync(e);var ta=e.ta,a=ta.selectionStart,z=ta.selectionEnd;
+    if(!(z>a)&&e.sel&&e.sel[1]<=e.val.length){a=e.sel[0];z=e.sel[1];}
+    if(!(z>a)){
+      if(k==='x'&&has(e)){e.flags=zeros(e.val.length);paint(e);say(e,'強調をすべて消しました。');return;}
+      say(e,'強調したい文字を、入力欄の中で指でなぞって選んでから押してください。');return;
+    }
+    if(k==='x'){for(var i=a;i<z;i++)e.flags[i]=0;}
+    else{var bit=k==='r'?1:2,all=true;for(var j=a;j<z;j++)if(!(e.flags[j]&bit))all=false;for(var q=a;q<z;q++)e.flags[q]=all?(e.flags[q]&~bit):(e.flags[q]|bit);}
+    if(fmtOf(e.flags).length>MAXR){say(e,'強調する所が多すぎます（'+MAXR+'か所まで）。');}
+    e.sel=null;paint(e);
+    try{ta.focus({preventScroll:true});ta.setSelectionRange(z,z);}catch(_){}
+    say(e,k==='x'?'選んだ所の強調を消しました。':'このまま送ると、見えているとおりに届きます。');
+  }
+  // ---- コピー・貼り付け（強調ごと）
+  function isRed(c){
+    c=String(c||'').trim().toLowerCase();if(!c)return false;if(c==='red'||c==='crimson'||c==='firebrick'||c==='darkred')return true;
+    var r,g,b,m;
+    if((m=c.match(/^#([0-9a-f])([0-9a-f])([0-9a-f])$/))){r=parseInt(m[1]+m[1],16);g=parseInt(m[2]+m[2],16);b=parseInt(m[3]+m[3],16);}
+    else if((m=c.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/))){r=parseInt(m[1],16);g=parseInt(m[2],16);b=parseInt(m[3],16);}
+    else if((m=c.match(/rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/))){r=+m[1];g=+m[2];b=+m[3];}
+    else return false;
+    return r>=120&&g<=110&&b<=110&&r-g>=70;
+  }
+  var BLOCK=/^(P|DIV|LI|UL|OL|TR|TABLE|H[1-6]|BLOCKQUOTE|SECTION|ARTICLE|HEADER|FOOTER)$/;
+  function fromHtml(html){
+    var doc;try{doc=new DOMParser().parseFromString(String(html||''),'text/html');}catch(_){return null;}
+    if(!doc||!doc.body)return null;
+    var keep=!!doc.querySelector('[data-trfmt]'),out='',fl=[];
+    function add(t,v){for(var i=0;i<t.length;i++){out+=t.charAt(i);fl.push(v);}}
+    function nl(){if(out&&out.charAt(out.length-1)!=='\n')add('\n',0);}
+    function walk(node,v){
+      for(var c=node.firstChild;c;c=c.nextSibling){
+        if(c.nodeType===3){var t=c.nodeValue||'';if(!keep)t=t.replace(/[ \t\r\n ]+/g,' ');add(t,v);continue;}
+        if(c.nodeType!==1)continue;
+        var tag=c.tagName;if(tag==='STYLE'||tag==='SCRIPT'||tag==='HEAD'||tag==='TITLE')continue;
+        if(tag==='BR'){add('\n',0);continue;}
+        var w=v,cls=String(c.getAttribute('class')||''),st=String(c.getAttribute('style')||'').toLowerCase();
+        var col=(st.match(/(?:^|;)\s*color\s*:\s*([^;]+)/)||[])[1];
+        if(/\btrFmtR\b/.test(cls)||isRed(col)||isRed(c.getAttribute('color')))w|=1;
+        if(/\btrFmtU\b/.test(cls)||tag==='U'||/text-decoration[^;]*underline/.test(st))w|=2;
+        if(BLOCK.test(tag))nl();
+        walk(c,w);
+        if(BLOCK.test(tag))nl();
+      }
+    }
+    walk(doc.body,0);
+    while(out&&/[\n ]$/.test(out.charAt(out.length-1))&&!keep){out=out.slice(0,-1);fl.pop();}
+    while(out&&/^[\n ]/.test(out.charAt(0))&&!keep){out=out.slice(1);fl.shift();}
+    return {text:out,flags:fl};
+  }
+  function toHtml(t,fl){
+    var h='',i=0;
+    while(i<t.length){var v=fl[i],j=i+1;while(j<t.length&&fl[j]===v)j++;var seg=esc(t.slice(i,j));
+      h+=v?'<span class="'+(v&1?'trFmtR':'')+(v&2?' trFmtU':'')+'" style="'+(v&1?'color:#d4231a;':'')+(v&2?'text-decoration:underline;':'')+'">'+seg+'</span>':seg;i=j;}
+    return '<span data-trfmt="1" style="white-space:pre-wrap">'+h+'</span>';
+  }
+  function onCopy(e,ev,cut){
+    sync(e);var ta=e.ta,a=ta.selectionStart,z=ta.selectionEnd;if(!(z>a)||!ev.clipboardData)return;
+    var fl=e.flags.slice(a,z);if(!fl.some(Boolean))return;
+    var t=e.val.slice(a,z);
+    try{ev.clipboardData.setData('text/plain',t);ev.clipboardData.setData('text/html',toHtml(t,fl));}catch(_){return;}
+    ev.preventDefault();
+    if(cut){ta.setRangeText('',a,z,'end');ta.dispatchEvent(new Event('input',{bubbles:true}));}
+  }
+  function onPaste(e,ev){
+    var cd=ev.clipboardData;if(!cd)return;var html='';try{html=cd.getData('text/html');}catch(_){}
+    if(!html)return;var r=fromHtml(html);if(!r||!r.text||!r.flags.some(Boolean))return;   // 強調がなければ、いつもどおり貼る
+    sync(e);var ta=e.ta,a=ta.selectionStart,z=ta.selectionEnd,t=r.text,fl=r.flags;
+    var max=ta.maxLength>0?ta.maxLength:0;
+    if(max&&e.val.length-(z-a)+t.length>max){var room=Math.max(0,max-(e.val.length-(z-a)));t=t.slice(0,room);fl=fl.slice(0,room);}
+    ev.preventDefault();
+    e.pend=fl;ta.setRangeText(t,a,z,'end');
+    ta.dispatchEvent(new Event('input',{bubbles:true}));
+    say(e,'赤字・下線もそのまま貼りました。');
+  }
+  // ---- 入力欄に付ける
+  function bar(e,where){
+    var b=document.createElement('div');b.className='trFmtBarV488';b.hidden=true;
+    b.innerHTML='<div class="trFmtBarBtnsV488"><button type="button" data-fmt-k="r" class="trFmtBtnR">赤字</button><button type="button" data-fmt-k="u" class="trFmtBtnU">下線</button><button type="button" data-fmt-k="x">消す</button></div>'+
+      '<p class="trFmtBarHelpV488">入力欄の文字を指でなぞって選び、ボタンを押します。見えているとおりに送られます。</p><p class="trFmtStateV485" aria-live="polite"></p>';
+    where(b);e.bar=b;e.state=b.querySelector('.trFmtStateV485');
+    var keep=function(ev){if(ev.target.closest('[data-fmt-k]'))ev.preventDefault();};   // 押しても入力欄の選択を外さない
+    b.addEventListener('pointerdown',keep);b.addEventListener('mousedown',keep);b.addEventListener('touchstart',function(ev){if(ev.target.closest('[data-fmt-k]')){ev.preventDefault();var k=ev.target.closest('[data-fmt-k]').getAttribute('data-fmt-k');e.tk=Date.now();apply(e,k);}},{passive:false});
+    b.addEventListener('click',function(ev){var x=ev.target.closest('[data-fmt-k]');if(!x)return;if(Date.now()-(e.tk||0)<700)return;apply(e,x.getAttribute('data-fmt-k'));});
+  }
+  function toggleBar(e,show){if(!e||!e.bar)return;e.bar.hidden=show===undefined?!e.bar.hidden:!show;if(e.btn)e.btn.setAttribute('aria-expanded',e.bar.hidden?'false':'true');if(!e.bar.hidden){try{e.ta.focus({preventScroll:true});}catch(_){}}}
+  function attach(key,ta,opt){
+    if(!ta)return null;var e=EDS[key];if(e&&e.ta===ta)return e;
+    e={key:key,ta:ta,val:String(ta.value||''),flags:zeros(String(ta.value||'').length),pend:null,sel:null,mir:null,bar:null,btn:null,state:null};
+    EDS[key]=e;
+    var host=ta.parentNode;if(host&&getComputedStyle(host).position==='static')host.classList.add('trFmtHostV488');
+    ta.addEventListener('input',function(){sync(e);later(e);});
+    ta.addEventListener('scroll',function(){if(e.mir)e.mir.scrollTop=ta.scrollTop;});
+    ta.addEventListener('focus',function(){later(e);});
+    ta.addEventListener('copy',function(ev){onCopy(e,ev,false);});
+    ta.addEventListener('cut',function(ev){onCopy(e,ev,true);});
+    ta.addEventListener('paste',function(ev){onPaste(e,ev);});
+    try{new ResizeObserver(function(){later(e);}).observe(ta);}catch(_){}
+    if(opt&&opt.bar)bar(e,opt.bar);
+    return e;
+  }
+  document.addEventListener('selectionchange',function(){
+    var a=document.activeElement,e=a&&edOf(a);if(!e)return;
+    if(a.selectionEnd>a.selectionStart)e.sel=[a.selectionStart,a.selectionEnd];
+  });
+  window.addEventListener('resize',function(){for(var k in EDS)later(EDS[k]);});
+  // 送ったあと・保存のあとなど、プログラムで入力欄が空になったときのために、強調があるときだけ時々そろえる（通信なし）
+  setInterval(function(){for(var k in EDS){var e=EDS[k];if(e.flags.length&&e.ta.value!==e.val)paint(e);}},600);
+
   function toast(t){try{if(window.showActionFeedback){window.showActionFeedback(t,'');return;}}catch(_){}}
 
-  // ---- チャット：入力欄の「A」、送るときに fmt を付ける、表示に反映
-  var CH={};   // ctx（common / room）→ {text, fmt}
+  // ---- チャット：入力欄の「A」で赤字・下線のボタンを出す。送るときに fmt を付ける。表示はこれまでどおり
   function inputOf(ctx){return $(ctx==='room'?'trRoomInput':'portalChatInput');}
-  function paintBtn(ctx){var b=document.querySelector('[data-fmt-ctx="'+ctx+'"]');if(b)b.classList.toggle('on',!!(CH[ctx]&&CH[ctx].fmt.length));}
   function addBtn(ctx){
     var input=inputOf(ctx),box=input&&input.closest('.chatBox'),wrap=box&&box.querySelector('.trAttach');
+    if(!input||!box)return;
+    var e=attach(ctx,input,{bar:function(b){box.parentNode.insertBefore(b,box);}});
     if(!wrap||wrap.querySelector('[data-fmt-ctx]'))return;
-    var b=document.createElement('button');b.type='button';b.className='trFmtABtnV485';b.setAttribute('data-fmt-ctx',ctx);b.setAttribute('aria-label','文字を強調（赤字・下線）');b.textContent='A';
-    wrap.appendChild(b);wrap.classList.add('trFmtWrapV485');box.classList.add('trHasFmtV485');
-    b.addEventListener('click',function(e){
-      e.preventDefault();var t=String(input.value||'').trim();
-      if(!t){toast('先にメッセージを入力してください');input.focus();return;}
-      var cur=CH[ctx]&&CH[ctx].text===t?CH[ctx].fmt:[];
-      open(t,cur,function(f){CH[ctx]=f.length?{text:t,fmt:f}:null;paintBtn(ctx);});
-    });
-    input.addEventListener('input',function(){var st=CH[ctx];if(st&&String(input.value||'').trim()!==st.text){CH[ctx]=null;paintBtn(ctx);toast('文を変えたので、強調を外しました');}});
+    var b=document.createElement('button');b.type='button';b.className='trFmtABtnV485';b.setAttribute('data-fmt-ctx',ctx);b.setAttribute('aria-label','文字を強調（赤字・下線）');b.setAttribute('aria-expanded','false');b.textContent='A';
+    wrap.appendChild(b);wrap.classList.add('trFmtWrapV485');box.classList.add('trHasFmtV485');e.btn=b;
+    b.addEventListener('pointerdown',function(ev){ev.preventDefault();});
+    b.addEventListener('click',function(ev){ev.preventDefault();toggleBar(e);});
+    paint(e);
   }
   function hookTake(){
-    var X=window.__trChatExtras;if(!X||X.__v485)return !!X;
+    var X=window.__trChatExtras;if(!X||X.__v488)return !!X;
     var o=X.take.bind(X);
-    X.take=function(k,text){var out=o(k,text)||{};var ctx=k==='common'?'common':/^room:/.test(k)?'room':'';var st=ctx&&CH[ctx];
-      if(st&&st.text===String(text||'')&&st.fmt.length){var f=clean(st.fmt,st.text.length);if(f.length)out.fmt=f;}
-      if(ctx){CH[ctx]=null;paintBtn(ctx);}return out;};
-    X.__v485=true;return true;
+    X.take=function(k,text){var out=o(k,text)||{};var ctx=k==='common'?'common':/^room:/.test(k)?'room':'';var e=ctx&&EDS[ctx];
+      if(e){var f=fmtFor(e,text);if(f.length)out.fmt=f;else delete out.fmt;
+        setTimeout(function(){paint(e);},0);setTimeout(function(){paint(e);},400);}
+      return out;};
+    X.__v488=true;X.__v485=true;return true;
   }
   function hookDecor(){
     var D=window.__trChatDecor;if(!D||D.__v485)return !!D;
@@ -34821,34 +35228,32 @@ html[data-portal-personal-color="matte"] .trFmtBtnsV485 .trFmtBtnR,html[data-por
       var html=o(Object.assign({},m,{text:mark(t,f)}));return unmark(html);};
     D.__v485=true;return true;
   }
-  // ---- お知らせ：本文の下の「文字を強調」、保存のときに fmt、表示に反映
-  var NT=null;   // {text, fmt}
+  // ---- お知らせ：本文の下の「文字を強調」で同じボタンを出す。保存のときに fmt、表示はこれまでどおり
   function noticeBtn(){
     var ta=$('manageNoticeBody');if(!ta||$('trFmtNoticeBtnV485'))return;
-    var b=document.createElement('button');b.type='button';b.id='trFmtNoticeBtnV485';b.className='trFmtNoticeBtnV485';b.innerHTML='<span>A</span> 文字を強調（赤字・下線）';
-    var st=document.createElement('p');st.id='trFmtNoticeStateV485';st.className='portalHelp';
-    var anchor=ta.parentNode.querySelector('.trPasteLinkV480')||ta;anchor.insertAdjacentElement('afterend',b);b.insertAdjacentElement('afterend',st);
-    b.addEventListener('click',function(){
-      var t=String(ta.value||'').trim();if(!t){st.textContent='先に内容を入力してください。';return;}
-      var cur=NT&&NT.text===t?NT.fmt:[];
-      open(t,cur,function(f){NT=f.length?{text:t,fmt:f}:null;noticePaint();});
-    });
-    ta.addEventListener('input',function(){if(NT&&String(ta.value||'').trim()!==NT.text){NT=null;noticePaint('本文を変えたので、強調を外しました。もう一度「文字を強調」で付けてください。');}});
+    var b=document.createElement('button');b.type='button';b.id='trFmtNoticeBtnV485';b.className='trFmtNoticeBtnV485';b.setAttribute('aria-expanded','false');b.innerHTML='<span>A</span> 文字を強調（赤字・下線）';
+    var anchor=ta.parentNode.querySelector('.trPasteLinkV480')||ta;anchor.insertAdjacentElement('afterend',b);
+    var e=attach('notice',ta,{bar:function(x){b.insertAdjacentElement('afterend',x);}});e.btn=b;
+    b.addEventListener('pointerdown',function(ev){ev.preventDefault();});
+    b.addEventListener('click',function(){toggleBar(e);});
   }
-  function noticePaint(msg){var st=$('trFmtNoticeStateV485'),b=$('trFmtNoticeBtnV485');if(b)b.classList.toggle('on',!!NT);if(st)st.textContent=msg||(NT?'強調あり（'+NT.fmt.length+'か所）。保存すると反映されます。':'');}
-  function noticeLoad(item){var t=String(item&&item.body||'').trim(),f=item?clean(item.fmt,t.length):[];NT=f.length?{text:t,fmt:f}:null;noticePaint();}
-  function noticeFmtFor(body){var t=String(body||'');if(NT&&NT.text===t){var f=clean(NT.fmt,t.length);return f.length?f:null;}return null;}
+  function noticeLoad(item){var e=EDS.notice;if(!e)return;e.val=String(e.ta.value||'');e.flags=zeros(e.val.length);e.pend=null;e.sel=null;
+    if(item&&item.fmt)setFlags(e,String(item.body||''),item.fmt);paint(e);if(e.bar&&!has(e))toggleBar(e,false);}
+  function noticeFmtFor(body){var e=EDS.notice;if(!e)return null;var f=fmtFor(e,body);return f.length?f:null;}
   function noticeShow(el,item){try{if(item&&item.fmt)applyDom(el,String(item.body||''),item.fmt);}catch(_){}}
+  // v485 の画面（open）は使わない。古い呼び出しが残っていても、そのまま返すだけ
+  function open(text,f,done){if(typeof done==='function')done(clean(f,String(text||'').length));}
 
   function start(){
     noticeBtn();
-    window.addEventListener('tr-notice-form-v482',function(e){var m=e&&e.detail&&e.detail.mode;if(m==='saved'||m==='reset'){NT=null;noticePaint();}});
-    var tries=0,t=setInterval(function(){tries++;var a=hookTake(),b=hookDecor();addBtn('common');addBtn('room');if((a&&b&&document.querySelector('[data-fmt-ctx="common"]'))||tries>120)clearInterval(t);},500);
+    var tries=0,t=setInterval(function(){tries++;var a=hookTake(),b=hookDecor();addBtn('common');addBtn('room');if((a&&b&&document.querySelector('[data-fmt-ctx="common"]')&&(document.querySelector('[data-fmt-ctx="room"]')||!$('trRoomInput')))||tries>120)clearInterval(t);},500);
     var chat=$('screen-chat');if(chat)new MutationObserver(function(){addBtn('common');addBtn('room');}).observe(chat,{childList:true,subtree:true});
   }
-  window.trFmtV485={clean:clean,mark:mark,unmark:unmark,applyDom:applyDom,open:open,noticeLoad:noticeLoad,noticeFmtFor:noticeFmtFor,noticeShow:noticeShow};
+  window.trFmtV485={clean:clean,mark:mark,unmark:unmark,applyDom:applyDom,open:open,noticeLoad:noticeLoad,noticeFmtFor:noticeFmtFor,noticeShow:noticeShow,
+    _v488:{EDS:EDS,sync:sync,paint:paint,apply:apply,fromHtml:fromHtml,toHtml:toHtml,fmtFor:fmtFor}};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
+
 </script>
 <style id="v458-practice-extra">
 /* v458: 練習の資料・リンク（イベントのリンクと同じ控えめな形） */
