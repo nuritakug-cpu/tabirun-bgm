@@ -1,3 +1,4 @@
+<!-- TOP RUN PORTAL v489 | 2026-11-25 | Parent v488（未公開）。Rules v394 のまま。(1) 赤字・下線：強調したあとも選び直せるように（入力欄の style を最初の1回だけ変える・選んだ範囲を残す）。強調した文字の中をタップして「消す」「赤字」「下線」を押すと、そのかたまりの強調を外せる。(2) 練習の前のお知らせ（#trPreAlertV489。ホームの控えには入れない）：練習の日の0時から開始時刻まで、トップのヘッダーの下に出す（選手と、子どもを紐付けた保護者）。「参加しない」の人には出さない。押す（×でも）と消えて、その練習ではもう出ない。出欠が分からないときだけ、その練習の回答を1回読む。 -->
 <!-- TOP RUN PORTAL v488 | 2026-11-25 | Parent v487（未公開。v484〜v487の中身を含む）。Rules v394 が必要（先に公開）。(1) 練習⇄イベントの切り替え（日付の変更、出欠の回答を移す／リセット）。(2) チャット・お知らせの赤字・下線を入力欄にそのまま表示し、見えているとおりに送る。コピー・貼り付けでも強調が付いたまま。(3) 開発者・管理者が自分を参加者として登録できる（管理画面の設定）。(4) シートの取り込み：イベントの開始時刻・集合時間・集合場所をPORTALの空欄にだけ入れる。PORTALのイベントをシートに書き出す（シート v16）。 -->
 <!-- TOP RUN PORTAL v487 | 2026-11-25 | Parent v486（未公開。v484〜v486の中身を含む）。Rules v393 のまま。シート v13 に合わせて、取り込み・書き出しの説明のタブの名前を新しい名前（01_練習予定・02_貼り付け・11_大会一覧・92_設定）にした。文の変更だけ。 -->
 <!-- TOP RUN PORTAL v486 | 2026-11-25 | Parent v485（未公開。v484・v485 の中身を含む）。Rules v393 のまま。シート v12 が必要。練習の「書き出し → 空欄を埋める → 埋めたところだけ取り込む」：(1) 管理画面の練習の「スプレッドシートから取り込む」に「シートに書き出す」（期間を月で選ぶ）。PORTALの練習（名称・集合・連絡事項・練習メニューなどすべて）をシートの「PORTAL練習予定」に書き出す。受信済みの練習予定を送るだけでFirebaseの読み込みは増えない。(2) 取り込みは「PORTAL練習ID」で同じ練習に結び付ける（日付で推測しない）。書き直した項目だけが「変更」になり、書き直していない項目はそのまま。名称・集合時間・集合場所も取り込める。終わった日の練習にも入れられる。 -->
@@ -7423,7 +7424,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
         <div class="portalPanelHead"><small>ACCOUNT / DEVICE</small><b>他の端末で同じマイページを使う</b></div>
         <span class="portalPanelAction">本人引継ぎコードを発行 ›</span>
       </button>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v488</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v489</b></div>
   </div>
 </div>
 
@@ -7707,7 +7708,7 @@ html.trHeroV388 .shell > main .sectionBar h2{font-family:"Inter",-apple-system,B
       </div>
     </details>
     </section>
-    <div class="portalVersionPill" aria-label="バージョン"><b>v488</b></div>
+    <div class="portalVersionPill" aria-label="バージョン"><b>v489</b></div>
   </div>
 </div>
 
@@ -11475,6 +11476,62 @@ if(view==='list')portalApplyManageSearch(kind);
     pb?.addEventListener('click',()=>open('practice'));
     eb?.addEventListener('click',()=>open('event'));
   })();
+
+  // v489: 練習の前のお知らせ。練習の日の0時から開始時刻まで、トップのヘッダーの下に1回だけ出す。押す（×でも）と消えて、もう出ない。
+  //   対象：選手（中学1〜3年）と、子どもを紐付けた保護者。「参加しない」と答えた人（保護者は子ども全員）には出さない。
+  (function(){
+    const box=document.createElement('div');box.className='trEntryAlertV449';box.id='trPreAlertV489';box.hidden=true;
+    const anchor=$('trEntryAlertV449');if(!anchor)return;anchor.insertAdjacentElement('beforebegin',box);
+    const KEY='trPreAlertDoneV489';
+    const done=()=>{try{return JSON.parse(localStorage.getItem(KEY)||'{}')||{};}catch(_){return {};}};
+    const markDone=k=>{const d=done();d[k]=Date.now();for(const x of Object.keys(d))if(Date.now()-Number(d[x]||0)>20*864e5)delete d[x];try{localStorage.setItem(KEY,JSON.stringify(d));}catch(_){}};
+    const esc=t=>String(t==null?'':t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    let busy=false;
+    function pick(){
+      const g=window.__TR_PORTAL_SYNC__;
+      if(!g?.hasOperationalAccess?.()||!g.loaded?.practices||window.__TR_PORTAL_VIEW_ONLY__||portalParticipantPreviewMode)return null;
+      const kids=Object.entries(g.familyChildren||{}).filter(([u,c])=>c&&c.profileId);
+      const athlete=['1','2','3'].includes(String(g.personal?.basicProfile?.grade||''));
+      if(!athlete&&!kids.length)return null;
+      const persons=[];if(athlete)persons.push({uid:g.uid,name:''});
+      kids.forEach(([u,c])=>persons.push({uid:u,name:(window.__TR_NAMES__?.book?.[u]?.displayName)||c.name||''}));
+      const now=new Date(),day=todayDateKey(),d=done();
+      const list=Object.entries(g.practices||{}).filter(([k,p])=>p&&p.kind==='practice'&&p.enabled!==false&&!d[k]&&
+          (/^\d{4}-\d{2}-\d{2}$/.test(p.scheduledDate||'')?p.scheduledDate:k.slice(0,10))===day)
+        .map(([k,p])=>{const m=/^(\d{1,2}):(\d{2})/.exec(String(p.start||''));
+          const st=m?new Date(now.getFullYear(),now.getMonth(),now.getDate(),+m[1],+m[2]):null;return {k,p,day,st,t:st?st.getTime():8.64e15};})
+        .filter(x=>!x.st||x.st>now).sort((a,b)=>a.t-b.t);
+      return list.length?Object.assign(list[0],{persons}):null;
+    }
+    async function render(){
+      if(busy)return;busy=true;
+      try{
+        const x=pick(),g=window.__TR_PORTAL_SYNC__;
+        if(!x){box.hidden=true;box.innerHTML='';box.dataset.key='';return;}
+        let ans={};try{ans=await g.practiceAnswersOnceV489(x.k,x.persons.map(p=>p.uid));}catch(_){ans={};}
+        const going=x.persons.filter(p=>ans[p.uid]!=='decline');
+        if(!going.length){box.hidden=true;box.innerHTML='';box.dataset.key='';return;}
+        const p=x.p,time=x.st?String(p.start).slice(0,5)+'〜':'時間未定',place=String(p.place||'').trim();
+        const head=p.noticeKind==='cancel'?'【中止】今日の練習':(p.noticeKind==='change'?'【変更】':'')+'今日 '+time+' 練習';
+        const sub=[place,p.noticeKind&&p.noticeText?String(p.noticeText).slice(0,40):'',
+          going.some(q=>q.name)?going.filter(q=>q.name).map(q=>q.name+'さん').join('・'):'',
+          p.noticeKind!=='cancel'&&going.some(q=>!ans[q.uid])?'出欠がまだです':''].filter(Boolean).join('　');
+        const html='<button type="button" class="trEntryAlertItemV449 trPreAlertItemV489" data-pre-open="'+esc(x.day)+'"><i aria-hidden="true">!</i><span><b>'+esc(head)+'</b>'+(sub?'<small>'+esc(sub)+'</small>':'')+'</span><em class="trPreCloseV489" data-pre-close aria-label="閉じる">×</em></button>';
+        if(box.dataset.key!==x.k||box.innerHTML!==html){box.dataset.key=x.k;box.innerHTML=html;}
+        box.hidden=false;
+      }finally{busy=false;}
+    }
+    box.addEventListener('click',ev=>{
+      const k=box.dataset.key;if(!k)return;
+      const b=ev.target.closest('[data-pre-open]');markDone(k);box.hidden=true;box.innerHTML='';box.dataset.key='';
+      if(b&&!ev.target.closest('[data-pre-close]')){try{openScheduleDetail(b.dataset.preOpen);}catch(_){}}
+    });
+    window.trPreAlertV489={render};
+    window.addEventListener('tr-portal-authorized',()=>setTimeout(render,1500));
+    window.addEventListener('tr-family-updated',()=>setTimeout(render,300));
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)render();});
+    setInterval(()=>{if(!document.hidden)render();},60000);
+  })();
   $('managePracticeAdd').addEventListener('click',async()=>{
     // v131: the button always answers — a reason or progress is shown right under it, never "nothing happens".
     const pState=$('managePracticeState');pState.textContent='確認中…';pState.setAttribute('role','status');
@@ -11958,7 +12015,7 @@ if(view==='list')portalApplyManageSearch(kind);
       const m=document.createElement('main');m.className=main.className;
       const stop=$('calendar');
       for(const el of [...main.children]){
-        if(el.id==='trEntryAlertV449'||el.id==='trDiaryAlertV474'||el.id==='trPendingBanner'||el.classList.contains('portalNoticeHomeWrap'))continue;
+        if(el.id==='trEntryAlertV449'||el.id==='trDiaryAlertV474'||el.id==='trPreAlertV489'||el.id==='trPendingBanner'||el.classList.contains('portalNoticeHomeWrap'))continue;
         const c=el.cloneNode(true);
         c.querySelectorAll('[id]').forEach(x=>x.removeAttribute('id'));c.removeAttribute('id');
         if(c.classList.contains('hero'))c.querySelector('.homeHeroBackdrop')?.classList.add('trStageBackdrop');
@@ -18743,6 +18800,7 @@ sel.innerHTML='<option value="">大会に合わせて共通目標を選択</opti
       });
       renderHomeCalendar();renderFullCalendar();renderManagePractices();
       try{window.trDiaryV474?.renderAlert();}catch(_){} // v474
+      try{window.trPreAlertV489?.render();}catch(_){} // v489
       if($('detailScheduleEntries')&&!$('screen-schedule-detail').classList.contains('hidden')){
         renderScheduleDetailBody(selectedDateKey);
         window.__TR_PORTAL_SYNC__?.watchOwnDate?.(selectedDateKey);
@@ -22870,6 +22928,21 @@ if(!/^[A-Za-z0-9_-]{6,100}$/.test(target?.id||'')||!e||!metric||!goal)
       if(after.status!=='active')throw Error('承認の保存を確かめられませんでした');
       gate.memberApproved=true;
       return {status:'active'};
+    };
+    // v489: 練習の前のお知らせ用。その日の練習の、自分（と家族の子ども）の回答だけを知る。
+    //   受信中ならそれを使う。受信していないときだけ、その練習の回答を1回読む（10分は読み直さない。監視は増やさない）。
+    const preAnsCacheV489={};
+    gate.practiceAnswersOnceV489=async(key,uids)=>{
+      uids=(uids||[]).filter(u=>/^[A-Za-z0-9_-]{6,128}$/.test(String(u||'')));
+      const pick=rows=>{const o={};uids.forEach(u=>{const r=rows&&rows[u];if(r&&!gate.isStalePracticeResponse?.(key,r))o[u]=r.answer||'';});return o;};
+      const raw=(gate.rawPracticeResponses?.()||{})[key];
+      if(raw&&typeof raw==='object'&&(gate.sharedResponseReady?.practice?.[key]||(['developer','admin'].includes(gate.role)&&gate.loaded?.practiceResponses)))return pick(raw);
+      const c=preAnsCacheV489[key];if(c&&Date.now()-c.at<600000)return pick(c.rows);
+      let rows={};
+      try{rows=(await dbMod.get(ref('practiceResponses/'+key))).val()||{};}
+      catch(_){for(const u of uids){try{const v=(await dbMod.get(ref('practiceResponses/'+key+'/'+u))).val();if(v)rows[u]=v;}catch(__){}}}
+      preAnsCacheV489[key]={at:Date.now(),rows};
+      return pick(rows);
     };
     gate.saveNotice=async({id,date,title,body,images})=>{
       ensure('notices');
@@ -34890,6 +34963,9 @@ html[data-portal-personal-color="matte"] .trSwBoxV488{background:#2a2125;color:#
 .trSwBtnsV488{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .trSwBtnsV488 button{min-height:46px}
 #trSelfMemberV488[hidden]{display:none!important}
+/* v489: 練習の前のお知らせ */
+#trPreAlertV489[hidden]{display:none!important}
+.trPreAlertItemV489 .trPreCloseV489{font-size:20px;line-height:1;padding:2px 2px 2px 8px}
 </style>
 <style id="v485-fmt">
 /* v485: 文字の強調（赤字・下線） */
@@ -34968,8 +35044,9 @@ html[data-portal-personal-color="matte"] .trFmtBtnsV485 .trFmtBtnR,html[data-por
 })();
 </script>
 <script id="v485-fmt-js">
-/* v485→v488: 文字の強調（赤字・下線）。チャット（共通・ルーム）とお知らせ。
+/* v485→v488→v489: 文字の強調（赤字・下線）。チャット（共通・ルーム）とお知らせ。
    v488: 入力欄の中にそのまま色・線を出し、見えているとおりに送る（別の画面は使わない）。コピー・貼り付けでも強調が付いたまま。
+   v489: 強調したあとも選び直せる（入力欄の style を何度も変えない・選んだ範囲を残す）。文字の中をタップして押すと、そのかたまりの強調を外せる。
    文はそのまま保存し、「どこを赤字・下線にするか」だけを fmt（[{s:開始,e:終わり,k:'r'|'u'}]）として一緒に保存する（Rules v393）。
    通知や古い版では、普通の文として出る。読み込み・監視は増えない。 */
 (function(){
@@ -35056,8 +35133,8 @@ html[data-portal-personal-color="matte"] .trFmtBtnsV485 .trFmtBtnR,html[data-por
       if(e.mir&&e.mir.parentNode)e.mir.parentNode.removeChild(e.mir);
       e.mir=document.createElement('div');e.mir.className='trFmtMirV488';e.mir.setAttribute('aria-hidden','true');host.appendChild(e.mir);
     }
-    unhide(e);
-    var cs=getComputedStyle(ta),col=cs.color,m=e.mir;
+    // v489: 入力欄の style は、透明にする最初の1回だけ変える（選んでいる途中に触ると iPhone で選択が外れるため）
+    var cs=getComputedStyle(ta),col=e.hid?(e.col||cs.caretColor):cs.color,m=e.mir;e.col=col;
     var zi=parseInt(cs.zIndex,10);m.style.zIndex=String(isNaN(zi)?5:zi+1);
     COPY.forEach(function(k){m.style[k]=cs[k];});
     var bl=parseFloat(cs.borderLeftWidth)||0,br=parseFloat(cs.borderRightWidth)||0,sb=Math.max(0,ta.offsetWidth-ta.clientWidth-bl-br);
@@ -35074,7 +35151,7 @@ html[data-portal-personal-color="matte"] .trFmtBtnsV485 .trFmtBtnR,html[data-por
   // 入力欄の文字を透明にする（テーマの !important より強い、要素の style で付ける。外すときは元に戻す）
   var HP=['color','-webkit-text-fill-color','caret-color'];
   function hide(e,col){
-    var st=e.ta.style;if(e.hid)return;
+    var st=e.ta.style;if(e.hid)return;e.col=col;
     e.prev=HP.map(function(k){return [st.getPropertyValue(k),st.getPropertyPriority(k)];});
     st.setProperty('color','transparent','important');st.setProperty('-webkit-text-fill-color','transparent','important');st.setProperty('caret-color',col,'important');
     e.ta.classList.add('trFmtHideV488');e.hid=true;
@@ -35090,16 +35167,20 @@ html[data-portal-personal-color="matte"] .trFmtBtnsV485 .trFmtBtnR,html[data-por
   function apply(e,k){
     sync(e);var ta=e.ta,a=ta.selectionStart,z=ta.selectionEnd;
     if(!(z>a)&&e.sel&&e.sel[1]<=e.val.length){a=e.sel[0];z=e.sel[1];}
+    var caret=false;
     if(!(z>a)){
-      if(k==='x'&&has(e)){e.flags=zeros(e.val.length);paint(e);say(e,'強調をすべて消しました。');return;}
-      say(e,'強調したい文字を、入力欄の中で指でなぞって選んでから押してください。');return;
+      // v489: 範囲を選ばずに、強調した文字の中にカーソルを置いて押したときは、そのひとかたまりを対象にする
+      var bitc=k==='r'?1:k==='u'?2:3,pos=a,fl=e.flags,hit=-1;
+      if(pos<fl.length&&(fl[pos]&bitc))hit=pos;else if(pos>0&&(fl[pos-1]&bitc))hit=pos-1;
+      if(hit>=0){a=hit;z=hit+1;while(a>0&&(fl[a-1]&bitc))a--;while(z<fl.length&&(fl[z]&bitc))z++;caret=true;}
+      else{say(e,'強調したい文字を、入力欄の中で指でなぞって選んでから押してください。強調を外すときは、その文字の中をタップしてから押してもかまいません。');return;}
     }
     if(k==='x'){for(var i=a;i<z;i++)e.flags[i]=0;}
     else{var bit=k==='r'?1:2,all=true;for(var j=a;j<z;j++)if(!(e.flags[j]&bit))all=false;for(var q=a;q<z;q++)e.flags[q]=all?(e.flags[q]&~bit):(e.flags[q]|bit);}
     if(fmtOf(e.flags).length>MAXR){say(e,'強調する所が多すぎます（'+MAXR+'か所まで）。');}
     e.sel=null;paint(e);
-    try{ta.focus({preventScroll:true});ta.setSelectionRange(z,z);}catch(_){}
-    say(e,k==='x'?'選んだ所の強調を消しました。':'このまま送ると、見えているとおりに届きます。');
+    try{ta.focus({preventScroll:true});if(caret)ta.setSelectionRange(z,z);else ta.setSelectionRange(a,z);}catch(_){}   // v489: 選んだ範囲はそのまま残す
+    say(e,k==='x'||caret?'強調を外しました。':'このまま送ると、見えているとおりに届きます。');
   }
   // ---- コピー・貼り付け（強調ごと）
   function isRed(c){
@@ -35167,7 +35248,7 @@ html[data-portal-personal-color="matte"] .trFmtBtnsV485 .trFmtBtnR,html[data-por
   function bar(e,where){
     var b=document.createElement('div');b.className='trFmtBarV488';b.hidden=true;
     b.innerHTML='<div class="trFmtBarBtnsV488"><button type="button" data-fmt-k="r" class="trFmtBtnR">赤字</button><button type="button" data-fmt-k="u" class="trFmtBtnU">下線</button><button type="button" data-fmt-k="x">消す</button></div>'+
-      '<p class="trFmtBarHelpV488">入力欄の文字を指でなぞって選び、ボタンを押します。見えているとおりに送られます。</p><p class="trFmtStateV485" aria-live="polite"></p>';
+      '<p class="trFmtBarHelpV488">入力欄の文字を指でなぞって選び、ボタンを押します。強調を外すときは、その文字の中をタップして「消す」でも外せます。見えているとおりに送られます。</p><p class="trFmtStateV485" aria-live="polite"></p>';
     where(b);e.bar=b;e.state=b.querySelector('.trFmtStateV485');
     var keep=function(ev){if(ev.target.closest('[data-fmt-k]'))ev.preventDefault();};   // 押しても入力欄の選択を外さない
     b.addEventListener('pointerdown',keep);b.addEventListener('mousedown',keep);b.addEventListener('touchstart',function(ev){if(ev.target.closest('[data-fmt-k]')){ev.preventDefault();var k=ev.target.closest('[data-fmt-k]').getAttribute('data-fmt-k');e.tk=Date.now();apply(e,k);}},{passive:false});
@@ -35194,6 +35275,8 @@ html[data-portal-personal-color="matte"] .trFmtBtnsV485 .trFmtBtnR,html[data-por
     if(a.selectionEnd>a.selectionStart)e.sel=[a.selectionStart,a.selectionEnd];
   });
   window.addEventListener('resize',function(){for(var k in EDS)later(EDS[k]);});
+  // テーマを変えたときだけ、元の文字の色を読み直す
+  try{new MutationObserver(function(){for(var k in EDS){var e=EDS[k];if(e.hid){unhide(e);paint(e);}}}).observe(document.documentElement,{attributes:true,attributeFilter:['data-portal-personal-color']});}catch(_){}
   // 送ったあと・保存のあとなど、プログラムで入力欄が空になったときのために、強調があるときだけ時々そろえる（通信なし）
   setInterval(function(){for(var k in EDS){var e=EDS[k];if(e.flags.length&&e.ta.value!==e.val)paint(e);}},600);
 
