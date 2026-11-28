@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="theme-color" content="#05070c">
+<title>TOP RUN 計測ボタン検証 v1</title>
+<style>
+:root{--lime:#d9ff4a;--bg:#05070c;--nv:#0b1322;--ln:rgba(214,224,240,.22);--tx:#eef2f7;--sub:#93a0b2;--red:#ff3b4a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body.lock{overflow:hidden;position:fixed;inset:0;touch-action:none}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:8px;padding:calc(env(safe-area-inset-top) + 8px) 12px 8px;background:rgba(5,7,12,.96);border-bottom:1px solid var(--ln)}
+.top b{font:italic 800 13px/1.15 Arial,sans-serif;letter-spacing:.02em;white-space:nowrap}.top b i{color:var(--lime);font-style:inherit}
+.tabs{display:flex;gap:4px;margin-left:auto}.tabs button{white-space:nowrap;padding:7px 8px;border:1px solid var(--ln);border-radius:6px;font-size:12px;font-weight:700;color:var(--sub)}.tabs button.on{background:var(--lime);border-color:var(--lime);color:#0b1004}
+.pg{display:none;padding:10px 12px calc(env(safe-area-inset-bottom) + 16px)}.pg.on{display:block}
+/* 状態の帯 */
+.stat{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px}
+.stat div{padding:5px 8px;border:1px solid var(--ln);border-radius:6px;background:var(--nv);min-height:40px;overflow:hidden}
+.stat small{display:block;font-size:10px;color:var(--sub);font-weight:700}.stat span{display:block;font-weight:800;font-size:12px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ok{color:var(--lime)}.ng{color:var(--red)}.wn{color:#ffd23f}
+.clock{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.clock .t{flex:1;font:italic 800 38px/1 "SF Mono",Menlo,monospace;letter-spacing:-.02em}
+.mode{padding:8px 12px;border-radius:8px;border:2px solid var(--lime);color:var(--lime);font-weight:800;font-size:14px;min-width:112px}
+.mode.on{background:var(--lime);color:#0b1004}
+.startb{width:100%;height:56px;border-radius:10px;background:var(--lime);color:#0b1004;font:italic 900 26px/1 Arial,sans-serif;letter-spacing:.08em;margin-bottom:8px}
+.startb:disabled{background:#1d2433;color:#556}
+/* 選手ボタン：位置は固定（順位で並べ替えない） */
+.runners{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.rb{position:relative;display:flex;flex-direction:column;justify-content:space-between;height:96px;padding:8px 12px;border-radius:10px;border:2px solid var(--c);background:linear-gradient(160deg,rgba(255,255,255,.06),rgba(255,255,255,0)),var(--nv);text-align:left;overflow:hidden}
+.rb:nth-child(5){grid-column:1 / span 2;height:78px}.rb:nth-child(5) .v{font-size:20px}.rb:nth-child(5) .s{display:none}
+.rb .h{display:flex;align-items:center;gap:8px}.rb .k{display:inline-grid;place-items:center;min-width:26px;height:26px;padding:0 6px;border-radius:5px;background:var(--c);color:#05070c;font-weight:900;font-size:14px}
+.rb .n{font-weight:800;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rb .s{font-size:12px;color:var(--sub)}.rb .v{font:italic 800 24px/1 "SF Mono",Menlo,monospace}
+.rb .st{position:absolute;right:10px;top:10px;font-size:11px;font-weight:900;letter-spacing:.06em;color:var(--c)}
+.rb.fin{opacity:.55}.rb.fin .st{color:#fff}
+.rb.flash{animation:fl .35s ease-out}@keyframes fl{0%{background:var(--c)}100%{}}
+.rb.err{animation:er .4s}@keyframes er{0%,50%{background:var(--red)}100%{}}
+.row{display:flex;gap:8px;margin-top:8px}.row button{flex:1;height:46px;border-radius:8px;border:1px solid var(--ln);background:var(--nv);font-weight:800}
+.row .undo{border-color:#ffd23f;color:#ffd23f}
+.msg{min-height:22px;margin-top:6px;font-weight:700;font-size:13px}
+/* 履歴・ログ */
+h3{margin:14px 0 6px;font-size:13px;color:var(--lime)}
+table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:5px 4px;border-bottom:1px solid rgba(255,255,255,.07);text-align:left;white-space:nowrap}th{color:var(--sub);font-weight:700}
+td.m{font-family:"SF Mono",Menlo,monospace}td.del button{color:var(--red);font-weight:800;padding:2px 6px}
+tr.undone td{text-decoration:line-through;opacity:.45}
+.card{padding:10px 12px;margin-bottom:10px;border:1px solid var(--ln);border-radius:8px;background:var(--nv)}
+.card p{margin:4px 0;color:var(--sub);font-size:12px}
+.asg{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;margin:6px 0}
+.asg .lab{font-weight:800}.asg code{padding:4px 8px;border-radius:5px;background:#000;border:1px solid var(--ln);font-size:12px;min-width:80px}
+.asg button{padding:8px 12px;border-radius:6px;border:1px solid var(--lime);color:var(--lime);font-weight:800;font-size:12px}
+.asg button.wait{background:var(--lime);color:#0b1004}
+input[type=text],input[type=number],select{width:100%;height:38px;padding:0 10px;border-radius:6px;border:1px solid var(--ln);background:#000;color:#fff;font:inherit;-webkit-user-select:text;user-select:text}
+label.f{display:block;margin:8px 0 4px;font-size:12px;color:var(--sub);font-weight:700}
+.chk{display:flex;align-items:center;gap:8px;margin:8px 0;font-weight:700}
+.btn{display:inline-block;padding:9px 14px;border-radius:7px;border:1px solid var(--ln);background:#000;font-weight:800;font-size:13px;margin:4px 4px 0 0}
+.btn.l{border-color:var(--lime);color:var(--lime)}
+#trap{position:fixed;left:-200px;top:0;width:10px;height:10px;opacity:0}
+.log td{font-size:11px}
+</style></head>
+<body>
+<div class="top"><b>TOP RUN <i>計測ボタン検証</i> v1</b><div class="tabs"><button data-p="m" class="on">計測</button><button data-p="s">設定</button><button data-p="l">入力ログ</button></div></div>
+
+<!-- 計測 -->
+<section class="pg on" id="pg-m">
+  <div class="stat"><div><small>画面消灯防止</small><span id="wlS" class="ng">無効</span></div><div><small>外部入力</small><span id="inS">未検出</span></div><div><small>種目</small><span id="evS">1500m</span></div></div>
+  <div class="clock"><div class="t" id="clock">0:00.0</div><button class="mode" id="modeB">計測モード<br>OFF</button></div>
+  <button class="startb" id="startB" disabled>START</button>
+  <div class="runners" id="runners"></div>
+  <div class="row"><button class="undo" id="undoB">↶ 直前を取り消す</button><button id="resetB">リセット</button></div>
+  <div class="msg" id="msg">「計測モード」をONにすると、物理ボタン・画面タップで計測できます。</div>
+  <h3>計測履歴</h3>
+  <table><thead><tr><th>#</th><th>選手</th><th>区分</th><th>記録</th><th>ラップ</th><th>入力</th><th></th></tr></thead><tbody id="hist"></tbody></table>
+  <div class="row"><button id="copyB">結果をコピー（報告用）</button></div>
+</section>
+
+<!-- 設定 -->
+<section class="pg" id="pg-s">
+  <div class="card"><b>ボタンの割り当て</b><p>「割り当て」を押してから、使いたい物理ボタンを押してください。レース中に順位が変わっても、ボタンと選手の対応は変わりません。</p><div id="asg"></div></div>
+  <div class="card"><b>種目・選手</b>
+    <label class="f">種目</label><select id="dist"><option value="800">800m（2周）</option><option value="1500" selected>1500m（300m＋3周＝4回目でFINISH）</option><option value="3000">3000m（200m＋7周＝8回目でFINISH）</option></select>
+    <div id="names"></div>
+    <label class="f">同じ選手の二重計測を防ぐ間隔（秒）</label><input type="number" id="guard" min="0" max="60" step="0.5" value="5">
+    <p>この秒数以内に同じ選手を続けて押すと、警告音を鳴らして記録しません。別々の選手は続けて押しても記録します。</p>
+  </div>
+  <div class="card"><b>確認音・振動</b>
+    <div class="chk"><input type="checkbox" id="snd" checked><span>確認音（選手ごとに高さを変える）</span></div>
+    <div class="chk"><input type="checkbox" id="vib" checked><span>振動（対応端末のみ）</span></div>
+    <span class="btn l" id="testSnd">音を試す</span><span class="btn" id="vibS">振動：確認中</span>
+  </div>
+  <div class="card"><b>キー入力の受信補助（iPhoneで反応しないとき）</b>
+    <div class="chk"><input type="checkbox" id="trapC"><span>見えない入力欄で受け取る（画面キーボードは出しません）</span></div>
+    <p>iPhoneでは、機器の種類によって、入力欄にフォーカスがないとキー入力がページに届かないことがあります。届かないときだけONにして試してください。</p>
+  </div>
+</section>
+
+<!-- 入力ログ -->
+<section class="pg" id="pg-l">
+  <div class="card"><b>受け取ったキー・ボタンの生データ</b><p>key／code／リピート（長押し）／受け取った時刻を表示します。計測モードに関係なく記録します（このログは計測には使いません）。</p>
+  <p>遅れ＝キーが押された時刻（event.timeStamp）から、処理が始まるまでの時間。</p>
+  <span class="btn" id="clrLog">ログを消す</span><span class="btn" id="gpS">ゲームパッド：未接続</span></div>
+  <table class="log"><thead><tr><th>時刻</th><th>種類</th><th>key</th><th>code</th><th>連打</th><th>遅れ</th></tr></thead><tbody id="log"></tbody></table>
+</section>
+<input id="trap" type="text" inputmode="none" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" readonly>
+
+<script>
+/* ===== 共通計測モジュール（EVENT BASE／駅伝ベース／MY RACE LIVE で共用する予定の中身）=====
+   入力（物理キー・ゲームパッド・画面タップ）→ 同じ measure(runner, t, source) を通る。
+   計測時刻は「入力を受け取った時点」：キーは event.timeStamp、タップは pointerdown の timeStamp、ゲームパッドは gamepad.timestamp。
+   すべて performance.timeOrigin を足して「時刻（ミリ秒）」にそろえる（通信の完了時刻は使わない） */
+const $=id=>document.getElementById(id);
+const COLORS=['#d9ff4a','#4ad9ff','#ff8a5c','#c79bff','#ffd23f'];
+const DEF_KEYS={START:'Enter',R1:'Digit1',R2:'Digit2',R3:'Digit3',R4:'Digit4',R5:'Digit5',UNDO:'Backspace'};
+const LS={get(k,d){try{const v=localStorage.getItem('trkt_'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('trkt_'+k,JSON.stringify(v))}catch(e){}}};
+const S={keys:LS.get('keys',DEF_KEYS),names:LS.get('names',['選手A','選手B','選手C','選手D','選手E']),dist:LS.get('dist',1500),guard:LS.get('guard',5),snd:LS.get('snd',true),vib:LS.get('vib',true),
+  measuring:false,start:null,recs:[],assign:null,down:{}};
+const T0=performance.timeOrigin||(Date.now()-performance.now());
+const toEpoch=ts=>T0+ts;                       // event.timeStamp → 時刻（ミリ秒）
+const fmt=ms=>{if(ms==null||ms<0)return'—';const s=ms/1000,m=Math.floor(s/60),r=s-m*60;return m+':'+(r<10?'0':'')+r.toFixed(2)};
+const clockT=d=>{const n=new Date(d);return n.toLocaleTimeString('ja-JP',{hour12:false})+'.'+String(n.getMilliseconds()).padStart(3,'0')};
+/* 計測地点：最初の区間（端数）＋400mごと。最後の地点で自動的に FINISH */
+function points(D){const f=D%400,P=[];let d=f||400;while(d<=D){P.push(d);d+=400}return P}
+
+/* ---------- 音・振動 ---------- */
+let AC=null;function audio(){if(!AC){const C=window.AudioContext||window.webkitAudioContext;if(C)AC=new C()}if(AC&&AC.state!=='running')AC.resume().catch(()=>{});return AC}
+function tone(f,dur=.09,type='square',g=.22,at=0){const a=audio();if(!a||!S.snd)return;const t=a.currentTime+at,o=a.createOscillator(),v=a.createGain();o.type=type;o.frequency.value=f;v.gain.setValueAtTime(g,t);v.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(v);v.connect(a.destination);o.start(t);o.stop(t+dur+.02)}
+const RUN_HZ=[880,1046,1318,1568,1760];
+function okSound(i,finish){tone(RUN_HZ[i]);if(finish){tone(RUN_HZ[i]*1.5,.12,'square',.2,.1);tone(RUN_HZ[i]*2,.18,'square',.18,.22)}}
+function errSound(){tone(180,.18,'sawtooth',.3);tone(140,.22,'sawtooth',.3,.2)}
+function vib(p){if(S.vib&&navigator.vibrate)try{navigator.vibrate(p)}catch(e){}}
+
+/* ---------- 画面消灯防止（Screen Wake Lock）---------- */
+const WL={s:null,want:false,state:'off',err:''};
+async function wlOn(){WL.want=true;if(!('wakeLock' in navigator)){WL.state='unsupported';wlPaint();return}
+  try{WL.s=await navigator.wakeLock.request('screen');WL.state='on';WL.err='';WL.s.addEventListener('release',()=>{WL.s=null;if(WL.want){WL.state='lost'}else WL.state='off';wlPaint()})}catch(e){WL.s=null;WL.state='error';WL.err=e.name}wlPaint()}
+async function wlOff(){WL.want=false;try{if(WL.s)await WL.s.release()}catch(e){}WL.s=null;WL.state='off';wlPaint()}
+function wlPaint(){const e=$('wlS');const m={on:['有効','ok'],off:['無効','ng'],unsupported:['使えません','ng'],error:['取得失敗→タップで再取得','wn'],lost:['解除→タップで再取得','wn']}[WL.state];
+  // 実際に取得できている（release されていない）ときだけ「有効」と表示する
+  if(WL.state==='on'&&(!WL.s||WL.s.released)){WL.state='lost';return wlPaint()}e.textContent=m[0];e.className=m[1]}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&WL.want&&!WL.s)wlOn()});
+// iPhone では復帰時の自動再取得が拒否されることがあるため、次のタップで取り直す
+document.addEventListener('pointerdown',()=>{if(WL.want&&!WL.s&&WL.state!=='unsupported')wlOn()},true);
+setInterval(wlPaint,2000);
+
+/* ---------- 計測の本体（入力方法に関係なく、ここを通る）---------- */
+function runnerOf(code){for(let i=0;i<5;i++)if(S.keys['R'+(i+1)]===code)return i;return-1}
+function msg(t,c){const m=$('msg');m.textContent=t;m.className='msg '+(c||'')}
+function lapsOf(i){return S.recs.filter(r=>r.i===i&&!r.undone)}
+function startRace(t,src){if(!S.measuring){return}if(S.start!=null){errSound();msg('すでにスタートしています（やり直すときはリセット）','wn');return}
+  S.start=t;S.recs.push({kind:'START',i:-1,t,src});tone(1200,.12);tone(1600,.16,'square',.22,.12);vib(60);$('startB').disabled=true;msg('スタート：'+clockT(t),'ok');paint()}
+function measure(i,t,src){if(!S.measuring)return;const el=$('runners').children[i];
+  if(S.start==null){errSound();vib([40,40,40]);flash(el,'err');msg('まだスタートしていません','ng');return}
+  const L=lapsOf(i),P=points(S.dist);if(L.length>=P.length){errSound();flash(el,'err');msg(S.names[i]+'はゴール済みです','wn');return}
+  const prev=L.length?L[L.length-1].t:S.start;
+  if(L.length&&t-prev<S.guard*1000){errSound();vib([40,40,40]);flash(el,'err');msg(S.names[i]+'：'+((t-prev)/1000).toFixed(1)+'秒前に計測済みのため、二重計測として記録しません','wn');return}
+  if(t<S.start){errSound();msg('スタートより前の入力です','ng');return}
+  const fin=L.length===P.length-1;S.recs.push({kind:fin?'FINISH':'LAP',i,t,src,d:P[L.length],lap:t-prev});
+  okSound(i,fin);vib(fin?[60,40,60]:50);flash(el,'flash');msg(S.names[i]+' '+(fin?'FINISH ':'LAP '+(L.length+1)+'（'+P[L.length]+'m） ')+fmt(t-S.start),'ok');paint()}
+function undo(src){if(!S.measuring)return;for(let k=S.recs.length-1;k>=0;k--){const r=S.recs[k];if(r.undone)continue;
+    if(r.kind==='START'&&S.recs.some(x=>x.kind!=='START'&&!x.undone))break;r.undone=true;if(r.kind==='START'){S.start=null;$('startB').disabled=!S.measuring}tone(520,.08,'triangle');tone(390,.12,'triangle',.22,.09);vib(30);msg('取り消し：'+(r.i>=0?S.names[r.i]+' ':'')+r.kind,'wn');paint();return}
+  errSound();msg('取り消せる計測がありません','wn')}
+function flash(el,c){if(!el)return;el.classList.remove('flash','err');void el.offsetWidth;el.classList.add(c)}
+
+/* ---------- 入力：物理キー ---------- */
+let lastIn='';
+function onKey(e){const now=performance.now();logRow('key',e.key,e.code,e.repeat,now-e.timeStamp);
+  const code=e.code||e.key;$('inS').textContent=code;$('inS').className='ok';
+  if(S.assign){e.preventDefault();assignTo(S.assign,code);return}
+  if(!S.measuring)return;                       // 計測モード以外では何もしない（誤操作防止）
+  const act=Object.keys(S.keys).find(k=>S.keys[k]===code);if(!act)return;e.preventDefault();
+  if(e.repeat){logNote('長押しのリピートを無視');return}
+  if(S.down[code]){logNote('キーを離す前の再入力を無視');return}   // repeat が付かない機器への対策
+  S.down[code]=1;const t=toEpoch(e.timeStamp);
+  if(act==='START')startRace(t,'キー');else if(act==='UNDO')undo('キー');else measure(+act.slice(1)-1,t,'キー')}
+window.addEventListener('keydown',onKey,true);
+window.addEventListener('keyup',e=>{delete S.down[e.code||e.key]},true);
+window.addEventListener('blur',()=>{S.down={}});
+
+/* ---------- 入力：ゲームパッド（キーボードモードにできない機器の確認用）---------- */
+const GP={prev:{},raf:0};
+function gpPoll(){const L=navigator.getGamepads?navigator.getGamepads():[];let any=false;
+  for(const g of L){if(!g)continue;any=true;g.buttons.forEach((b,k)=>{const id='GP'+g.index+'-B'+k,was=GP.prev[id];if(b.pressed&&!was){const ts=g.timestamp||performance.now();logRow('pad','B'+k,id,false,performance.now()-ts);
+      $('inS').textContent='パッド B'+k;$('inS').className='ok';
+      if(S.assign)assignTo(S.assign,id);else if(S.measuring){const act=Object.keys(S.keys).find(a=>S.keys[a]===id);const t=toEpoch(ts);if(act==='START')startRace(t,'パッド');else if(act==='UNDO')undo('パッド');else if(act)measure(+act.slice(1)-1,t,'パッド')}}GP.prev[id]=b.pressed})}
+  $('gpS').textContent='ゲームパッド：'+(any?L.filter(Boolean).map(g=>g.id).join(', '):'未接続');GP.raf=any?requestAnimationFrame(gpPoll):0}
+window.addEventListener('gamepadconnected',()=>{if(!GP.raf)GP.raf=requestAnimationFrame(gpPoll)});
+
+/* ---------- 入力：画面タップ（位置は固定。pointerdown の時刻で記録）---------- */
+function bindTap(el,fn){el.addEventListener('pointerdown',e=>{e.preventDefault();audio();fn(toEpoch(e.timeStamp))})}
+bindTap($('startB'),t=>startRace(t,'タップ'));
+
+/* ---------- 画面 ---------- */
+function buildRunners(){$('runners').innerHTML=S.names.map((n,i)=>'<button class="rb" style="--c:'+COLORS[i]+'"><div class="h"><span class="k" data-k="'+i+'"></span><span class="n">'+esc(n)+'</span></div><span class="st"></span><div><div class="s"></div><div class="v">—</div></div></button>').join('');
+  [...$('runners').children].forEach((el,i)=>bindTap(el,t=>measure(i,t,'タップ')))}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function keyLabel(c){if(!c)return'—';if(c.startsWith('GP'))return c.replace(/^GP\d+-/,'');return c.replace(/^Digit/,'').replace(/^Key/,'').replace(/^Numpad/,'N')}
+function paint(){const P=points(S.dist);[...$('runners').children].forEach((el,i)=>{const L=lapsOf(i),fin=L.length>=P.length;el.classList.toggle('fin',fin);
+    el.querySelector('.k').textContent=keyLabel(S.keys['R'+(i+1)]);el.querySelector('.st').textContent=S.start==null?'待機':fin?'FINISH':'LAP '+(L.length+1)+'/'+P.length;
+    el.querySelector('.s').textContent=L.length?('前回 '+fmt(L[L.length-1].lap)+'（'+L[L.length-1].d+'m）'):'次：'+P[0]+'m';el.querySelector('.v').textContent=L.length?fmt(L[L.length-1].t-S.start):'—'});
+  $('evS').textContent=S.dist+'m';
+  $('hist').innerHTML=S.recs.map((r,k)=>({r,k})).reverse().map(({r,k})=>'<tr class="'+(r.undone?'undone':'')+'"><td>'+(k+1)+'</td><td style="color:'+(r.i>=0?COLORS[r.i]:'#fff')+'">'+(r.i>=0?esc(S.names[r.i]):'全員')+'</td><td>'+r.kind+(r.d?' '+r.d+'m':'')+'</td><td class="m">'+(r.kind==='START'?clockT(r.t):fmt(r.t-S.start))+'</td><td class="m">'+(r.lap!=null?fmt(r.lap):'')+'</td><td>'+r.src+'</td><td class="del">'+(r.undone||r.kind==='START'?'':'<button data-del="'+k+'">削除</button>')+'</td></tr>').join('')}
+$('hist').addEventListener('click',e=>{const b=e.target.closest('[data-del]');if(!b)return;const r=S.recs[+b.dataset.del];if(!r||!confirm((r.i>=0?S.names[r.i]:'')+' '+r.kind+' を削除しますか？'))return;r.undone=true;
+  // 削除した後のラップは、ひとつ前の記録から計算し直す
+  for(let i=0;i<5;i++){let prev=S.start;let n=0;const P=points(S.dist);for(const x of S.recs){if(x.i!==i||x.undone)continue;x.lap=x.t-prev;x.d=P[n];x.kind=n===P.length-1?'FINISH':'LAP';prev=x.t;n++}}paint()});
+setInterval(()=>{$('clock').textContent=S.start==null?'0:00.0':fmt(Date.now()-S.start).slice(0,-1)},100);
+
+/* 計測モード：ON の間だけ物理ボタンを受け付け、画面消灯防止とスクロール固定をする */
+$('modeB').addEventListener('click',()=>{audio();S.measuring=!S.measuring;const b=$('modeB');b.classList.toggle('on',S.measuring);b.innerHTML='計測モード<br>'+(S.measuring?'ON':'OFF');
+  document.body.classList.toggle('lock',S.measuring);$('startB').disabled=!S.measuring||S.start!=null;if(S.measuring){wlOn();tab('m');msg('計測モード ON：START（'+keyLabel(S.keys.START)+'）で一斉スタート','ok')}else{wlOff();msg('計測モード OFF：物理ボタンは反応しません')}if(S.measuring&&$('trapC').checked)trap()});
+$('undoB').addEventListener('click',()=>undo('タップ'));
+$('resetB').addEventListener('click',()=>{if(S.recs.length&&!confirm('計測をすべて消してやり直しますか？'))return;S.start=null;S.recs=[];$('startB').disabled=!S.measuring;paint();msg('リセットしました')});
+$('copyB').addEventListener('click',()=>{const ua=navigator.userAgent,sa=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
+  const lines=['TOP RUN 計測ボタン検証 v1','端末：'+ua,'表示：'+(sa?'ホーム画面に追加':'ブラウザ'),'画面消灯防止：'+$('wlS').textContent,'種目：'+S.dist+'m','割り当て：'+Object.entries(S.keys).map(([k,v])=>k+'='+v).join(' '),''].concat(S.recs.filter(r=>!r.undone).map(r=>(r.i>=0?S.names[r.i]:'START')+' '+r.kind+(r.d?' '+r.d+'m':'')+' '+(r.kind==='START'?clockT(r.t):fmt(r.t-S.start))+(r.lap!=null?' (ラップ '+fmt(r.lap)+')':'')+' ['+r.src+']'));
+  const txt=lines.join('\n');(navigator.clipboard?navigator.clipboard.writeText(txt):Promise.reject()).then(()=>msg('コピーしました','ok')).catch(()=>{prompt('コピーしてください',txt)})});
+
+/* ---------- 設定 ---------- */
+const ACTS=[['START','START（一斉スタート）'],['R1','選手1'],['R2','選手2'],['R3','選手3'],['R4','選手4'],['R5','選手5'],['UNDO','UNDO（取り消し）']];
+function paintAsg(){$('asg').innerHTML=ACTS.map(([k,l])=>'<div class="asg"><span class="lab">'+l+'</span><code>'+esc(S.keys[k]||'—')+'</code><button data-a="'+k+'" class="'+(S.assign===k?'wait':'')+'">'+(S.assign===k?'押してください':'割り当て')+'</button></div>').join('')+'<span class="btn" id="defK">初期値に戻す</span>'}
+$('asg').addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(b){audio();S.assign=S.assign===b.dataset.a?null:b.dataset.a;paintAsg();if(S.assign&&$('trapC').checked)trap();return}if(e.target.id==='defK'){S.keys=Object.assign({},DEF_KEYS);LS.set('keys',S.keys);paintAsg();paint()}});
+function assignTo(a,code){for(const k in S.keys)if(S.keys[k]===code&&k!==a)S.keys[k]='';S.keys[a]=code;S.assign=null;LS.set('keys',S.keys);tone(1320,.08);paintAsg();paint()}
+function paintNames(){$('names').innerHTML=S.names.map((n,i)=>'<label class="f" style="color:'+COLORS[i]+'">選手'+(i+1)+'</label><input type="text" data-n="'+i+'" value="'+esc(n)+'">').join('')}
+$('names').addEventListener('input',e=>{const i=e.target.dataset.n;if(i==null)return;S.names[+i]=e.target.value||('選手'+(+i+1));LS.set('names',S.names);buildRunners();paint()});
+$('dist').value=S.dist;$('dist').addEventListener('change',e=>{S.dist=+e.target.value;LS.set('dist',S.dist);paint()});
+$('guard').value=S.guard;$('guard').addEventListener('change',e=>{S.guard=Math.max(0,+e.target.value||0);LS.set('guard',S.guard)});
+$('snd').checked=S.snd;$('snd').addEventListener('change',e=>{S.snd=e.target.checked;LS.set('snd',S.snd)});
+$('vib').checked=S.vib;$('vib').addEventListener('change',e=>{S.vib=e.target.checked;LS.set('vib',S.vib)});
+$('vibS').textContent='振動：'+(navigator.vibrate?'使える可能性あり':'この環境では使えません');
+$('testSnd').addEventListener('click',()=>{audio();[0,1,2,3,4].forEach(i=>setTimeout(()=>okSound(i),i*180));setTimeout(errSound,1000)});
+/* 受信補助：見えない入力欄にフォーカスを置く（inputmode=none で画面キーボードを出さない） */
+function trap(){const t=$('trap');t.removeAttribute('readonly');t.focus({preventScroll:true});t.value=''}
+$('trapC').addEventListener('change',e=>{if(e.target.checked)trap();else $('trap').blur()});
+$('trap').addEventListener('input',e=>{e.target.value=''});
+
+/* ---------- 入力ログ ---------- */
+const LOG=[];function logRow(kind,key,code,rep,lat){LOG.unshift('<tr><td>'+clockT(Date.now())+'</td><td>'+kind+'</td><td>'+esc(key)+'</td><td>'+esc(code)+'</td><td class="'+(rep?'wn':'')+'">'+(rep?'リピート':'')+'</td><td>'+(lat!=null&&isFinite(lat)?lat.toFixed(1)+'ms':'')+'</td></tr>');if(LOG.length>60)LOG.pop();$('log').innerHTML=LOG.join('')}
+function logNote(t){LOG.unshift('<tr><td colspan="6" class="wn">'+esc(t)+'</td></tr>');if(LOG.length>60)LOG.pop();$('log').innerHTML=LOG.join('')}
+$('clrLog').addEventListener('click',()=>{LOG.length=0;$('log').innerHTML=''});
+
+/* タブ（計測モード中は計測画面に固定） */
+function tab(p){document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.p===p));document.querySelectorAll('.pg').forEach(g=>g.classList.toggle('on',g.id==='pg-'+p))}
+document.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('[data-p]');if(!b)return;if(S.measuring&&b.dataset.p!=='m'){msg('計測モード中は計測画面のままです（OFFにしてから）','wn');return}tab(b.dataset.p)});
+
+buildRunners();paint();paintAsg();paintNames();wlPaint();
+</script>
+</body></html>
